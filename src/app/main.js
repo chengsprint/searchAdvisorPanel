@@ -1328,7 +1328,7 @@ function barchart(vals, labels, H, col, unit) {
     const shellState = buildSnapshotShellState(payload);
     html = html.replace(
       "</head>",
-      `<style id="sadv-react-style">${reactShellCss}</style><style id="sadv-snapshot-shell-hide">#sadv-header,#sadv-mode-bar,#sadv-site-bar,#sadv-tabs{display:none !important}#sadv-react-shell-host{display:block !important;width:100% !important;flex-shrink:0}</style></head>`,
+      `<style id="sadv-react-style">${reactShellCss}</style><style id="sadv-snapshot-shell-hide">#sadv-header,#sadv-mode-bar,#sadv-site-bar{display:none !important}#sadv-react-shell-host{display:block !important;width:100% !important;flex-shrink:0}</style></head>`,
     );
     html = html.replace(
       "<body>",
@@ -3187,6 +3187,14 @@ function barchart(vals, labels, H, col, unit) {
     });
 
     console.log('[Demo Mode] Complete: All mock data injected for', allSites.length, 'sites');
+
+    // Remove snapshot shell hide CSS in demo mode
+    const hideStyle = document.getElementById("sadv-snapshot-shell-hide");
+    if (hideStyle) {
+      hideStyle.remove();
+      console.log('[Demo Mode] Removed snapshot shell hide CSS');
+    }
+
     return true;
   }
 
@@ -5322,6 +5330,11 @@ function barchart(vals, labels, H, col, unit) {
     shouldBootstrapFullRefresh() && runFullRefreshPipeline({ trigger: "cache-expiry" });
     let bootMode = "all";
     let bootSite = null;
+    // In demo mode, default to site mode with first demo site
+    if (IS_DEMO_MODE && allSites.length > 0) {
+      bootMode = "site";
+      bootSite = allSites[0];
+    }
     const curSiteMatch = location.search.match(/site=([^&]+)/);
     if (curSiteMatch) {
       const cur = decodeURIComponent(curSiteMatch[1]);
