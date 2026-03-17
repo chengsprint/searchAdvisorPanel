@@ -54,7 +54,7 @@
   // Performance: Reusable style strings (reduces string allocation)
   const S = {
     card: "background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1)",
-    row: "display:flex;justify-content:space-between;align-items:center;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;margin-bottom:8px;transition:all 0.2s",
+    row: "display:flex;justify-content:space-between;align-items:center;padding:16px;background:#0f172a;border:1px solid #334155;border-radius:12px;margin-bottom:12px;transition:all 0.2s",
     flexBetween: "display:flex;justify-content:space-between;align-items:center",
     muted: "font-size:12px;color:#94a3b8",
     valueGreen: "font-size:12px;font-weight:600;color:#10b981",
@@ -458,7 +458,7 @@ function barchart(vals, labels, H, col, unit) {
   function chartCard(title, valueStr, valueCol, svgEl, labelsArr) {
     const wrap = document.createElement("div");
     wrap.style.cssText =
-      "background:#0f172a;border:1px solid #334155;border-radius:14px;padding:16px;margin-bottom:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1)";
+      "background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1)";
     const hd = document.createElement("div");
     hd.style.cssText =
       "display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px";
@@ -499,7 +499,7 @@ function barchart(vals, labels, H, col, unit) {
       { green: C.green, amber: C.amber, red: C.red, blue: C.blue }[type] ||
       C.blue;
     const d = document.createElement("div");
-    d.style.cssText = `border-left:3px solid ${col};background:${col}0d;border-radius:8px;padding:12px 16px;margin-bottom:12px;font-size:12px;line-height:1.6;color:#94a3b8;border:1px solid ${col}22`;
+    d.style.cssText = `border-left:3px solid ${col};background:${col}0d;border-radius:12px;padding:16px;margin-bottom:12px;font-size:12px;line-height:1.6;color:#94a3b8;border:1px solid ${col}22`;
     d.innerHTML = html; // Warning: callers must ensure HTML is safe or sanitized
     return d;
   }
