@@ -1,0 +1,7 @@
+node_modules/
+dist/runtime.js
+dist/demo.html
+dist/widget.html
+npm-debug.log*
+.DS_Store
+verify-build.js
