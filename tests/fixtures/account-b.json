@@ -1,0 +1,89 @@
+{
+  "__schema_version": "1.0",
+  "__exported_at": "2026-03-16T11:00:00Z",
+  "__source_account": "account-b@naver.com",
+  "__source_enc_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "sites": {
+    "https://site-b.com": {
+      "expose": {
+        "items": [{
+          "period": {
+            "start": "20260301",
+            "end": "20260315",
+            "prevClickRatio": "+8.0",
+            "prevExposeRatio": "+5.0"
+          },
+          "logs": [
+            { "date": "20260301", "clickCount": 300, "exposeCount": 600, "ctr": "50.00" }
+          ],
+          "urls": [
+            { "key": "https://site-b.com/product", "clickCount": 200, "exposeCount": 400, "ctr": "50.00" }
+          ],
+          "querys": [
+            { "key": "사이트B 검색어", "clickCount": 150, "exposeCount": 300, "ctr": "50.00" }
+          ]
+        }]
+      },
+      "crawl": {
+        "items": [{
+          "stats": [
+            { "date": "20260301", "pageCount": 2000, "downloadSize": 20000000, "sumTryCount": 100, "sumErrorCount": 0, "notFound": 0, "serverError": 0, "connectTimeout": 0 }
+          ],
+          "sitemaps": [{ "url": "https://site-b.com/sitemap.xml", "status": "ok", "count": 100 }]
+        }]
+      },
+      "backlink": {
+        "items": [{
+          "total": 200,
+          "domains": 20,
+          "countTime": [
+            { "timeStamp": "20260301", "backlinkCnt": 195 },
+            { "timeStamp": "20260302", "backlinkCnt": 200 }
+          ],
+          "topDomain": [
+            { "domain": "link-b.com", "backlinkCnt": 100 },
+            { "domain": "partner-b.com", "backlinkCnt": 60 }
+          ]
+        }]
+      },
+      "diagnosisMeta": {
+        "code": 0,
+        "items": [{
+          "meta": [
+            { "date": "20260301", "stateCount": { "1": 1000, "2": 20, "3": 10, "4": 5 } }
+          ]
+        }]
+      },
+      "_merge": {
+        "__source": "account-b@naver.com",
+        "__accountId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "__fetchedAt": 1710558800000,
+        "__version": 1
+      }
+    },
+    "https://shared-site.com": {
+      "expose": {
+        "items": [{
+          "period": {
+            "start": "20260301",
+            "end": "20260315",
+            "prevClickRatio": "+10.0",
+            "prevExposeRatio": "+7.0"
+          },
+          "logs": [
+            { "date": "20260301", "clickCount": 120, "exposeCount": 240, "ctr": "50.00" },
+            { "date": "20260302", "clickCount": 180, "exposeCount": 360, "ctr": "50.00" }
+          ],
+          "urls": [],
+          "querys": []
+        }]
+      },
+      "_merge": {
+        "__source": "account-b@naver.com",
+        "__accountId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "__fetchedAt": 1710558800000,
+        "__version": 1
+      }
+    }
+  }
+}

@@ -1,0 +1,295 @@
+{
+  "__schema_version": "1.0",
+  "__merged_at": "2026-03-17T01:30:00Z",
+  "__merge_strategy": "newer",
+  "accounts_merged": ["account-a@naver.com", "account-b@naver.com"],
+  "sites": {
+    "https://myshop.kr": {
+      "expose": {
+        "items": [{
+          "period": {
+            "start": "20260301",
+            "end": "20260316",
+            "prevClickRatio": "+12.5",
+            "prevExposeRatio": "+8.3"
+          },
+          "logs": [
+            { "date": "20260301", "clickCount": 234, "exposeCount": 567, "ctr": "41.27" },
+            { "date": "20260302", "clickCount": 189, "exposeCount": 423, "ctr": "44.68" },
+            { "date": "20260303", "clickCount": 312, "exposeCount": 678, "ctr": "46.02" },
+            { "date": "20260304", "clickCount": 278, "exposeCount": 589, "ctr": "47.20" },
+            { "date": "20260305", "clickCount": 345, "exposeCount": 712, "ctr": "48.46" },
+            { "date": "20260306", "clickCount": 298, "exposeCount": 634, "ctr": "47.00" },
+            { "date": "20260307", "clickCount": 389, "exposeCount": 789, "ctr": "49.30" },
+            { "date": "20260308", "clickCount": 412, "exposeCount": 823, "ctr": "50.06" }
+          ],
+          "urls": [
+            { "key": "https://myshop.kr/product/123", "clickCount": 156, "exposeCount": 312, "ctr": "50.00" },
+            { "key": "https://myshop.kr/product/456", "clickCount": 98, "exposeCount": 234, "ctr": "41.88" },
+            { "key": "https://myshop.kr/category/shoes", "clickCount": 87, "exposeCount": 189, "ctr": "46.03" },
+            { "key": "https://myshop.kr/event/spring-sale", "clickCount": 234, "exposeCount": 456, "ctr": "51.32" }
+          ],
+          "querys": [
+            { "key": "나이키 운동화", "clickCount": 89, "exposeCount": 178, "ctr": "50.00" },
+            { "key": "봄 신상 세일", "clickCount": 67, "exposeCount": 145, "ctr": "46.21" },
+            { "key": "마이샵 할인", "clickCount": 45, "exposeCount": 112, "ctr": "40.18" },
+            { "key": "트레이닝복 추천", "clickCount": 34, "exposeCount": 89, "ctr": "38.20" }
+          ]
+        }]
+      },
+      "crawl": {
+        "items": [{
+          "stats": [
+            { "date": "20260301", "pageCount": 3521, "downloadSize": 35700000, "sumTryCount": 75, "sumErrorCount": 2, "notFound": 1, "serverError": 0, "connectTimeout": 1 },
+            { "date": "20260302", "pageCount": 3642, "downloadSize": 36900000, "sumTryCount": 78, "sumErrorCount": 1, "notFound": 0, "serverError": 0, "connectTimeout": 1 },
+            { "date": "20260303", "pageCount": 3712, "downloadSize": 37600000, "sumTryCount": 82, "sumErrorCount": 3, "notFound": 2, "serverError": 1, "connectTimeout": 0 }
+          ],
+          "sitemaps": [
+            { "url": "https://myshop.kr/sitemap.xml", "status": "ok", "count": 156 },
+            { "url": "https://myshop.kr/sitemap-products.xml", "status": "ok", "count": 234 }
+          ]
+        }]
+      },
+      "backlink": {
+        "items": [{
+          "total": 580,
+          "domains": 35,
+          "countTime": [
+            { "timeStamp": "20260301", "backlinkCnt": 545 },
+            { "timeStamp": "20260302", "backlinkCnt": 560 },
+            { "timeStamp": "20260303", "backlinkCnt": 580 }
+          ],
+          "topDomain": [
+            { "domain": "blog.naver.com", "backlinkCnt": 120 },
+            { "domain": "tistory.com", "backlinkCnt": 89 },
+            { "domain": "instagram.com", "backlinkCnt": 67 },
+            { "domain": "facebook.com", "backlinkCnt": 45 }
+          ]
+        }]
+      },
+      "diagnosisMeta": {
+        "code": 0,
+        "items": [{
+          "meta": [
+            { "date": "20260301", "stateCount": { "1": 1010, "2": 35, "3": 18, "4": 8 } },
+            { "date": "20260302", "stateCount": { "1": 1025, "2": 32, "3": 15, "4": 6 } },
+            { "date": "20260303", "stateCount": { "1": 1042, "2": 28, "3": 12, "4": 5 } }
+          ]
+        }]
+      },
+      "_merge": {
+        "__source": "account-a@naver.com",
+        "__fetchedAt": 1710643200000,
+        "__version": 1
+      }
+    },
+    "https://techblog.io": {
+      "expose": {
+        "items": [{
+          "period": {
+            "start": "20260301",
+            "end": "20260316",
+            "prevClickRatio": "+23.4",
+            "prevExposeRatio": "+15.7"
+          },
+          "logs": [
+            { "date": "20260301", "clickCount": 567, "exposeCount": 1234, "ctr": "45.95" },
+            { "date": "20260302", "clickCount": 623, "exposeCount": 1356, "ctr": "45.95" },
+            { "date": "20260303", "clickCount": 712, "exposeCount": 1489, "ctr": "47.82" },
+            { "date": "20260304", "clickCount": 689, "exposeCount": 1423, "ctr": "48.42" },
+            { "date": "20260305", "clickCount": 756, "exposeCount": 1567, "ctr": "48.25" }
+          ],
+          "urls": [
+            { "key": "https://techblog.io/posts/react-19-features", "clickCount": 234, "exposeCount": 456, "ctr": "51.32" },
+            { "key": "https://techblog.io/posts/nextjs-15-guide", "clickCount": 189, "exposeCount": 378, "ctr": "50.00" },
+            { "key": "https://techblog.io/posts/typescript-tips", "clickCount": 156, "exposeCount": 312, "ctr": "50.00" }
+          ],
+          "querys": [
+            { "key": "React 19 새로운 기능", "clickCount": 123, "exposeCount": 234, "ctr": "52.56" },
+            { "key": "Next.js 15 튜토리얼", "clickCount": 98, "exposeCount": 189, "ctr": "51.85" },
+            { "key": "TypeScript 모범 사례", "clickCount": 67, "exposeCount": 145, "ctr": "46.21" },
+            { "key": "프론트엔드 개발 가이드", "clickCount": 56, "exposeCount": 123, "ctr": "45.53" }
+          ]
+        }]
+      },
+      "crawl": {
+        "items": [{
+          "stats": [
+            { "date": "20260301", "pageCount": 856, "downloadSize": 12300000, "sumTryCount": 45, "sumErrorCount": 0, "notFound": 0, "serverError": 0, "connectTimeout": 0 },
+            { "date": "20260302", "pageCount": 892, "downloadSize": 12800000, "sumTryCount": 48, "sumErrorCount": 1, "notFound": 1, "serverError": 0, "connectTimeout": 0 }
+          ],
+          "sitemaps": [
+            { "url": "https://techblog.io/sitemap.xml", "status": "ok", "count": 89 }
+          ]
+        }]
+      },
+      "backlink": {
+        "items": [{
+          "total": 234,
+          "domains": 18,
+          "countTime": [
+            { "timeStamp": "20260301", "backlinkCnt": 220 },
+            { "timeStamp": "20260302", "backlinkCnt": 234 }
+          ],
+          "topDomain": [
+            { "domain": "github.com", "backlinkCnt": 45 },
+            { "domain": "dev.to", "backlinkCnt": 34 },
+            { "domain": "medium.com", "backlinkCnt": 28 }
+          ]
+        }]
+      },
+      "diagnosisMeta": {
+        "code": 0,
+        "items": [{
+          "meta": [
+            { "date": "20260301", "stateCount": { "1": 420, "2": 12, "3": 5, "4": 2 } },
+            { "date": "20260302", "stateCount": { "1": 435, "2": 10, "3": 4, "4": 1 } }
+          ]
+        }]
+      },
+      "_merge": {
+        "__source": "account-a@naver.com",
+        "__fetchedAt": 1710643200000,
+        "__version": 1
+      }
+    },
+    "https://company-site.co.kr": {
+      "expose": {
+        "items": [{
+          "period": {
+            "start": "20260301",
+            "end": "20260316",
+            "prevClickRatio": "+5.2",
+            "prevExposeRatio": "+3.1"
+          },
+          "logs": [
+            { "date": "20260301", "clickCount": 123, "exposeCount": 345, "ctr": "35.65" },
+            { "date": "20260302", "clickCount": 145, "exposeCount": 378, "ctr": "38.36" },
+            { "date": "20260303", "clickCount": 134, "exposeCount": 356, "ctr": "37.64" }
+          ],
+          "urls": [
+            { "key": "https://company-site.co.kr/about", "clickCount": 45, "exposeCount": 123, "ctr": "36.59" },
+            { "key": "https://company-site.co.kr/services", "clickCount": 56, "exposeCount": 145, "ctr": "38.62" },
+            { "key": "https://company-site.co.kr/contact", "clickCount": 34, "exposeCount": 89, "ctr": "38.20" }
+          ],
+          "querys": [
+            { "key": "회사 소개", "clickCount": 34, "exposeCount": 89, "ctr": "38.20" },
+            { "key": "서비스 문의", "clickCount": 23, "exposeCount": 67, "ctr": "34.33" }
+          ]
+        }]
+      },
+      "crawl": {
+        "items": [{
+          "stats": [
+            { "date": "20260301", "pageCount": 234, "downloadSize": 5600000, "sumTryCount": 28, "sumErrorCount": 0, "notFound": 0, "serverError": 0, "connectTimeout": 0 },
+            { "date": "20260302", "pageCount": 245, "downloadSize": 5900000, "sumTryCount": 30, "sumErrorCount": 0, "notFound": 0, "serverError": 0, "connectTimeout": 0 }
+          ],
+          "sitemaps": [
+            { "url": "https://company-site.co.kr/sitemap.xml", "status": "ok", "count": 45 }
+          ]
+        }]
+      },
+      "backlink": {
+        "items": [{
+          "total": 89,
+          "domains": 12,
+          "countTime": [
+            { "timeStamp": "20260301", "backlinkCnt": 85 },
+            { "timeStamp": "20260302", "backlinkCnt": 89 }
+          ],
+          "topDomain": [
+            { "domain": "linkedin.com", "backlinkCnt": 23 },
+            { "domain": "crunchbase.com", "backlinkCnt": 12 }
+          ]
+        }]
+      },
+      "diagnosisMeta": {
+        "code": 0,
+        "items": [{
+          "meta": [
+            { "date": "20260301", "stateCount": { "1": 120, "2": 8, "3": 3, "4": 1 } },
+            { "date": "20260302", "stateCount": { "1": 125, "2": 7, "3": 2, "4": 1 } }
+          ]
+        }]
+      },
+      "_merge": {
+        "__source": "account-b@naver.com",
+        "__fetchedAt": 1710639600000,
+        "__version": 1
+      }
+    },
+    "https://online-store.net": {
+      "expose": {
+        "items": [{
+          "period": {
+            "start": "20260301",
+            "end": "20260316",
+            "prevClickRatio": "+18.9",
+            "prevExposeRatio": "+12.4"
+          },
+          "logs": [
+            { "date": "20260301", "clickCount": 456, "exposeCount": 987, "ctr": "46.20" },
+            { "date": "20260302", "clickCount": 523, "exposeCount": 1089, "ctr": "48.03" },
+            { "date": "20260303", "clickCount": 489, "exposeCount": 1023, "ctr": "47.80" },
+            { "date": "20260304", "clickCount": 567, "exposeCount": 1156, "ctr": "49.05" },
+            { "date": "20260305", "clickCount": 612, "exposeCount": 1234, "ctr": "49.59" }
+          ],
+          "urls": [
+            { "key": "https://online-store.net/products/laptop", "clickCount": 178, "exposeCount": 356, "ctr": "50.00" },
+            { "key": "https://online-store.net/products/phone", "clickCount": 156, "exposeCount": 312, "ctr": "50.00" },
+            { "key": "https://online-store.net/products/tablet", "clickCount": 134, "exposeCount": 278, "ctr": "48.20" },
+            { "key": "https://online-store.net/sale", "clickCount": 234, "exposeCount": 467, "ctr": "50.11" }
+          ],
+          "querys": [
+            { "key": "노트북 할인", "clickCount": 89, "exposeCount": 178, "ctr": "50.00" },
+            { "key": "스마트폰 최저가", "clickCount": 78, "exposeCount": 156, "ctr": "50.00" },
+            { "key": "태블릿 추천", "clickCount": 56, "exposeCount": 123, "ctr": "45.53" },
+            { "key": "온라인 스토어 세일", "clickCount": 67, "exposeCount": 145, "ctr": "46.21" }
+          ]
+        }]
+      },
+      "crawl": {
+        "items": [{
+          "stats": [
+            { "date": "20260301", "pageCount": 4567, "downloadSize": 67000000, "sumTryCount": 120, "sumErrorCount": 3, "notFound": 2, "serverError": 1, "connectTimeout": 0 },
+            { "date": "20260302", "pageCount": 4723, "downloadSize": 68900000, "sumTryCount": 125, "sumErrorCount": 2, "notFound": 1, "serverError": 0, "connectTimeout": 1 }
+          ],
+          "sitemaps": [
+            { "url": "https://online-store.net/sitemap.xml", "status": "ok", "count": 234 },
+            { "url": "https://online-store.net/sitemap-products.xml", "status": "ok", "count": 567 }
+          ]
+        }]
+      },
+      "backlink": {
+        "items": [{
+          "total": 892,
+          "domains": 45,
+          "countTime": [
+            { "timeStamp": "20260301", "backlinkCnt": 856 },
+            { "timeStamp": "20260302", "backlinkCnt": 892 }
+          ],
+          "topDomain": [
+            { "domain": "ppomppu.co.kr", "backlinkCnt": 156 },
+            { "domain": "naver.com", "backlinkCnt": 134 },
+            { "domain": "daum.net", "backlinkCnt": 89 },
+            { "domain": "youtube.com", "backlinkCnt": 78 }
+          ]
+        }]
+      },
+      "diagnosisMeta": {
+        "code": 0,
+        "items": [{
+          "meta": [
+            { "date": "20260301", "stateCount": { "1": 1567, "2": 45, "3": 23, "4": 12 } },
+            { "date": "20260302", "stateCount": { "1": 1589, "2": 42, "3": 20, "4": 10 } }
+          ]
+        }]
+      },
+      "_merge": {
+        "__source": "account-b@naver.com",
+        "__fetchedAt": 1710639600000,
+        "__version": 1
+      }
+    }
+  }
+}

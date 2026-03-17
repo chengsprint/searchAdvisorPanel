@@ -1,0 +1,24 @@
+{
+  "name": "searchadvisor-runtime",
+  "version": "1.0.0",
+  "description": "SearchAdvisor Runtime - Modular Development",
+  "main": "dist/runtime.js",
+  "scripts": {
+    "build": "node build.js",
+    "check": "node --check dist/runtime.js",
+    "test": "node build.js && node --check dist/runtime.js"
+  },
+  "keywords": [
+    "searchadvisor",
+    "runtime",
+    "analytics"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "playwright": "^1.58.2"
+  },
+  "dependencies": {
+    "puppeteer": "^24.39.1"
+  }
+}

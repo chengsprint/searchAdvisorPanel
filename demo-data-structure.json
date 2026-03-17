@@ -1,0 +1,61 @@
+{
+  "DEMO_SITE_DATA": {
+    "https://example.com": {
+      "expose": {
+        "items": [{
+          "period": {
+            "start": "20260301",
+            "end": "20260315",
+            "prevClickRatio": "+5.2",
+            "prevExposeRatio": "+3.1"
+          },
+          "logs": [
+            { "date": "20260302", "clickCount": 234, "exposeCount": 567, "ctr": "41.27" },
+            { "date": "20260303", "clickCount": 189, "exposeCount": 423, "ctr": "44.68" }
+          ],
+          "urls": [
+            { "key": "https://example.com/product/1", "clickCount": 150, "exposeCount": 400, "ctr": "37.50" }
+          ],
+          "querys": [
+            { "key": "검색어예시1", "clickCount": 80, "exposeCount": 250, "ctr": "32.00" }
+          ]
+        }]
+      },
+      "crawl": {
+        "items": [{
+          "stats": [
+            { "date": "20260302", "pageCount": 3500, "downloadSize": 35000000, "sumTryCount": 75, "sumErrorCount": 2, "notFound": 1, "serverError": 0, "connectTimeout": 0 }
+          ],
+          "sitemaps": [{ "url": "https://example.com/sitemap.xml", "status": "ok", "count": 156 }]
+        }]
+      },
+      "backlink": {
+        "items": [{
+          "total": 580,
+          "domains": 35,
+          "countTime": [
+            { "timeStamp": "20260302", "backlinkCnt": 195 }
+          ],
+          "topDomain": [
+            { "domain": "backlink-source.com", "backlinkCnt": 120 },
+            { "domain": "partner-site.net", "backlinkCnt": 95 }
+          ]
+        }]
+      },
+      "diagnosisMeta": {
+        "code": 0,
+        "items": [{
+          "meta": [
+            { "date": "20260302", "stateCount": { "1": 1010, "2": 35, "3": 18, "4": 8 } }
+          ]
+        }]
+      },
+      "_merge": {
+        "__source": "account-1",
+        "__fetchedAt": 1710123456789,
+        "__version": 1,
+        "__accountId": "enc_abc123"
+      }
+    }
+  }
+}
