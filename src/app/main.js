@@ -80,6 +80,26 @@
   const FULL_REFRESH_JITTER_MS = 150;
   const BACKOFF_BASE_DELAY_MS = 2000;
   const BACKOFF_MAX_DELAY_MS = 30000;
+
+  async function fetchWithRetry(url, options, maxRetries = 2) {
+    let attempt = 0;
+    while (attempt <= maxRetries) {
+      try {
+        const res = await fetch(url, options);
+        if (res.ok) return res;
+        if (res.status !== 429 && res.status < 500) return res; // Don't retry 4xx (except 429)
+      } catch (e) {
+        if (attempt === maxRetries) throw e;
+      }
+      attempt++;
+      if (attempt <= maxRetries) {
+        const delay = Math.min(BACKOFF_BASE_DELAY_MS * Math.pow(2, attempt - 1), BACKOFF_MAX_DELAY_MS);
+        const jitter = Math.floor(Math.random() * 500);
+        await new Promise((r) => setTimeout(r, delay + jitter));
+      }
+    }
+    throw new Error("Max retries exceeded");
+  }
   let TIP = null;
   function tip() {
     if (!TIP) {
@@ -470,7 +490,7 @@ function barchart(vals, labels, H, col, unit) {
     d.style.cssText =
       "font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#64748b;margin:24px 0 12px;display:flex;align-items:center;gap:10px";
     d.innerHTML =
-      t +
+      escHtml(t) +
       ' <span style="flex:1;height:1px;background:#334155;display:inline-block;opacity:0.3"></span>';
     return d;
   }
@@ -480,7 +500,7 @@ function barchart(vals, labels, H, col, unit) {
       C.blue;
     const d = document.createElement("div");
     d.style.cssText = `border-left:3px solid ${col};background:${col}0d;border-radius:8px;padding:12px 16px;margin-bottom:12px;font-size:12px;line-height:1.6;color:#94a3b8;border:1px solid ${col}22`;
-    d.innerHTML = html;
+    d.innerHTML = html; // Warning: callers must ensure HTML is safe or sanitized
     return d;
   }
   function ctrBadge(v) {
@@ -541,7 +561,7 @@ function barchart(vals, labels, H, col, unit) {
   const p = document.createElement("div");
   p.id = "sadv-p";
   p.style.cssText = `position:fixed;top:0;right:0;width:min(${PNL}px,100vw);max-width:100vw;height:100vh;display:flex;flex-direction:column;background:#020617;z-index:9999999;font-family:Pretendard,system-ui,sans-serif;font-size:13px;color:#f8fafc;border-left:1px solid #334155;box-sizing:border-box;box-shadow:-10px 0 15px -3px rgba(0,0,0,0.1)`;
-  p.innerHTML = `<style>#sadv-p *{box-sizing:border-box}#sadv-p ::-webkit-scrollbar{width:6px}#sadv-p ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}#sadv-header{flex-shrink:0;background:rgba(2,6,23,0.8);backdrop-filter:blur(12px);padding:16px;border-bottom:1px solid #334155;z-index:10}#sadv-mode-bar{display:flex;gap:4px;margin-top:12px;background:#0f172a;padding:4px;border-radius:10px;border:1px solid #334155}.sadv-mode{flex:1;background:transparent;border:1px solid transparent;color:#94a3b8;border-radius:6px;padding:6px 8px;font-size:12px;font-weight:600;cursor:pointer;text-align:center;transition:all .2s}.sadv-mode.on{background:#1e293b;border-color:#334155;color:#0ea5e9;box-shadow:0 1px 3px rgba(0,0,0,0.1)}#sadv-site-bar{margin-top:12px;position:relative;display:none}#sadv-site-bar.show{display:block}#sadv-combo-wrap{position:relative}#sadv-combo-btn{width:100%;background:#0f172a;border:1px solid #334155;color:#f8fafc;border-radius:10px;padding:10px 36px 10px 12px;font-size:13px;cursor:pointer;text-align:left;font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:10px}#sadv-combo-btn:hover{border-color:#0ea5e9;background:#1e293b}#sadv-combo-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#64748b}#sadv-combo-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:500}#sadv-combo-arrow{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#64748b;font-size:12px;pointer-events:none;transition:transform .2s}#sadv-combo-wrap.open #sadv-combo-arrow{transform:translateY(-50%) rotate(180deg)}#sadv-combo-drop{display:none;position:absolute;top:calc(100% + 8px);left:0;right:0;background:#0f172a;border:1px solid #334155;border-radius:12px;padding:6px;z-index:100;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);max-height:300px;overflow-y:auto}#sadv-combo-wrap.open #sadv-combo-drop{display:block}.sadv-combo-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;cursor:pointer;transition:all .1s;border:1px solid transparent}.sadv-combo-item:hover{background:#1e293b}.sadv-combo-item.active{background:#1e293b;border-color:#334155;color:#0ea5e9}#sadv-tabs{display:none;gap:4px;padding:12px 16px 0;overflow-x:auto;scrollbar-width:none;flex-wrap:wrap;flex-shrink:0;border-bottom:1px solid #334155}#sadv-tabs.show{display:flex}#sadv-tabs::-webkit-scrollbar{display:none}.sadv-t{background:transparent;border:1px solid transparent;color:#94a3b8;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;margin-bottom:8px;transition:all .2s}.sadv-t:hover{color:#f8fafc;background:#0f172a}.sadv-t.on{background:#0ea5e9;border-color:#0ea5e9;color:#020617;box-shadow:0 4px 6px -1px rgba(14,165,233,0.2)}#sadv-refresh-btn{display:inline-flex;align-items:center;gap:6px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s}#sadv-refresh-btn:hover{border-color:#0ea5e9;color:#0ea5e9;background:#1e293b}#sadv-bd{flex:1;overflow-y:auto;overflow-x:hidden;padding:16px 16px 60px}.sadv-allcard{background:#0f172a;border:1px solid #334155;border-radius:14px;padding:16px;margin-bottom:12px;cursor:pointer;transition:all .2s;box-shadow:0 1px 3px rgba(0,0,0,0.1)}.sadv-allcard:hover{border-color:#0ea5e9;transform:translateY(-2px);box-shadow:0 10px 15px -3px rgba(0,0,0,0.1)}</style><div id="sadv-header"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:7px;font-size:16px;font-weight:800;letter-spacing:-0.02em"><span style="display:inline-flex;opacity:0.95">${ICONS.logoSearch}</span>Search<span style="color:#10b981">Advisor</span></div><div id="sadv-account-badge" style="display:none;max-width:180px;align-items:center;padding:4px 10px;border-radius:999px;border:1px solid #334155;color:#0ea5e9;background:rgba(15,23,42,0.6);font-size:11px;font-weight:700;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div></div><div id="sadv-site-label" style="font-size:11px;color:#64748b;margin-top:2px;display:flex;align-items:center;gap:4px">\ub85c\ub529 \uc911...</div></div><div style="display:flex;gap:6px;align-items:center"><button id="sadv-refresh-btn" title="새로고침" style="display:inline-flex;align-items:center;gap:5px">${ICONS.refresh} 새로고침</button><button id="sadv-save-btn" title="현재 화면 저장" style="display:inline-flex;align-items:center;gap:5px">${ICONS.save} 저장</button><button id="sadv-x" style="background:none;border:1px solid #334155;color:#64748b;width:28px;height:28px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s">${ICONS.xMark}</button></div></div><div id="sadv-mode-bar"><button class="sadv-mode on" data-m="all" style="display:inline-flex;align-items:center;justify-content:center;gap:5px">${ICONS.globe} 전체현황</button><button class="sadv-mode" data-m="site" style="display:inline-flex;align-items:center;justify-content:center;gap:5px">${ICONS.layers} 사이트별</button></div><div id="sadv-site-bar"><div id="sadv-combo-wrap"><button id="sadv-combo-btn"><span id="sadv-combo-dot"></span><span id="sadv-combo-label">\uc0ac\uc774\ud2b8 \uc120\ud0dd</span></button><span id="sadv-combo-arrow" style="display:inline-flex;align-items:center">${ICONS.chevronDown}</span><div id="sadv-combo-drop"></div></div></div></div><div id="sadv-tabs"></div><div id="sadv-bd"><div style="padding:60px 20px;text-align:center;color:#64748b">⏳ \ub85c\ub529 \uc911...</div></div>`;
+  p.innerHTML = `<style>#sadv-p *{box-sizing:border-box}#sadv-p ::-webkit-scrollbar{width:6px}#sadv-p ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}#sadv-header{padding:20px;border-bottom:1px solid #1e293b;background:rgba(2,6,23,0.8);backdrop-filter:blur(12px)}#sadv-mode-bar{display:flex;gap:4px;margin-top:16px;background:#0f172a;padding:4px;border-radius:12px;border:1px solid #334155}.sadv-mode{flex:1;background:transparent;border:none;color:#94a3b8;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}.sadv-mode.on{background:#1e293b;color:#0ea5e9;box-shadow:0 4px 6px -1px rgba(0,0,0,0.2)}#sadv-site-bar{margin-top:12px;position:relative;display:none}#sadv-site-bar.show{display:block}#sadv-combo-wrap{position:relative}#sadv-combo-btn{width:100%;background:#0f172a;border:1px solid #334155;color:#f8fafc;border-radius:10px;padding:10px 36px 10px 12px;font-size:13px;cursor:pointer;text-align:left;font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:10px}#sadv-combo-btn:hover{border-color:#0ea5e9;background:#1e293b}#sadv-combo-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#64748b}#sadv-combo-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:500}#sadv-combo-arrow{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#64748b;font-size:12px;pointer-events:none;transition:transform .2s}#sadv-combo-wrap.open #sadv-combo-arrow{transform:translateY(-50%) rotate(180deg)}#sadv-combo-drop{display:none;position:absolute;top:calc(100% + 8px);left:0;right:0;background:#0f172a;border:1px solid #334155;border-radius:12px;padding:6px;z-index:100;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);max-height:300px;overflow-y:auto}#sadv-combo-wrap.open #sadv-combo-drop{display:block}.sadv-combo-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;cursor:pointer;transition:all .1s;border:1px solid transparent}.sadv-combo-item:hover{background:#1e293b}.sadv-combo-item.active{background:#1e293b;border-color:#334155;color:#0ea5e9}#sadv-tabs{display:none;flex-wrap:wrap;gap:6px;padding:12px 20px;background:#020617;border-bottom:1px solid #1e293b}#sadv-tabs.show{display:flex}#sadv-tabs::-webkit-scrollbar{display:none}.sadv-t{background:transparent;border:1px solid transparent;color:#64748b;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}.sadv-t:hover{color:#f8fafc;background:#1e293b}.sadv-t.on{background:rgba(14,165,233,0.1);border-color:rgba(14,165,233,0.2);color:#0ea5e9}#sadv-refresh-btn{display:inline-flex;align-items:center;gap:6px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s}#sadv-refresh-btn:hover{border-color:#0ea5e9;color:#0ea5e9;background:#1e293b}#sadv-bd{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px}.sadv-allcard{background:#0f172a;border:1px solid #1e293b;border-radius:16px;padding:20px;margin-bottom:16px;cursor:pointer;transition:all .2s}.sadv-allcard:hover{border-color:#334155;transform:translateY(-2px)}</style><div id="sadv-header"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:7px;font-size:18px;font-weight:800;letter-spacing:-0.03em"><span style="display:inline-flex;opacity:0.95">${ICONS.logoSearch}</span>Search<span style="color:#10b981">Advisor</span></div><div id="sadv-account-badge" style="display:none;padding:4px 12px;border-radius:999px;border:1px solid #1e293b;color:#0ea5e9;background:rgba(15,23,42,0.6);font-size:11px;font-weight:600;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div></div><div id="sadv-site-label" style="font-size:11px;color:#64748b;margin-top:4px;display:flex;align-items:center;gap:4px">\ub85c\ub529 \uc911...</div></div><div style="display:flex;gap:8px;align-items:center"><button id="sadv-refresh-btn" class="sadv-btn" title="새로고침" style="display:inline-flex;align-items:center;gap:5px">${ICONS.refresh} 새로고침</button><button id="sadv-save-btn" class="sadv-btn" title="현재 화면 저장" style="display:inline-flex;align-items:center;gap:5px">${ICONS.save} 저장</button><button id="sadv-x" style="background:none;border:1px solid #1e293b;color:#475569;width:32px;height:32px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s">${ICONS.xMark}</button></div></div><div id="sadv-mode-bar"><button class="sadv-mode on" data-m="all" style="display:inline-flex;align-items:center;justify-content:center;gap:5px">${ICONS.globe} 전체현황</button><button class="sadv-mode" data-m="site" style="display:inline-flex;align-items:center;justify-content:center;gap:5px">${ICONS.layers} 사이트별</button></div><div id="sadv-site-bar"><div id="sadv-combo-wrap"><button id="sadv-combo-btn"><span id="sadv-combo-dot"></span><span id="sadv-combo-label">\uc0ac\uc774\ud2b8 \uc120\ud0dd</span></button><span id="sadv-combo-arrow" style="display:inline-flex;align-items:center">${ICONS.chevronDown}</span><div id="sadv-combo-drop"></div></div></div></div><div id="sadv-tabs"></div><div id="sadv-bd"><div style="padding:60px 20px;text-align:center;color:#64748b">⏳ \ub85c\ub529 \uc911...</div></div>`;
   document.body.appendChild(p);
   const siteUiStyle = document.createElement("style");
   siteUiStyle.textContent = `
@@ -551,21 +571,19 @@ function barchart(vals, labels, H, col, unit) {
 #sadv-tabs.show{
   display:flex !important;
   flex-wrap:wrap;
-  justify-content:center;
-  align-content:flex-start;
   gap:6px;
-  padding:12px 16px 10px;
-  background:rgba(2,6,23,0.4);
-  border-bottom:1px solid #334155;
+  padding:12px 20px;
+  background:#020617;
+  border-bottom:1px solid #1e293b;
 }
 .sadv-t{
   position:relative;
   min-height:32px;
-  padding:8px 12px;
+  padding:6px 12px;
   border-radius:8px;
   border:1px solid transparent;
   background:transparent;
-  color:#94a3b8;
+  color:#64748b;
   font-size:12px;
   font-weight:600;
   transition:all 0.2s ease;
@@ -573,25 +591,15 @@ function barchart(vals, labels, H, col, unit) {
 }
 .sadv-t:hover{
   color:#f8fafc;
-  background:rgba(30,41,59,0.6);
+  background:#1e293b;
 }
 .sadv-t.on{
-  background:#1e293b;
-  border-color:#334155;
+  background:rgba(14, 165, 233, 0.1);
+  border-color:rgba(14, 165, 233, 0.2);
   color:#0ea5e9;
 }
-.sadv-t.on::after{
-  content:"";
-  position:absolute;
-  left:12px;
-  right:12px;
-  bottom:4px;
-  height:2px;
-  border-radius:2px;
-  background:#0ea5e9;
-}
 #sadv-bd{
-  padding-top:16px;
+  padding:20px;
 }
 #sadv-save-btn{
   display:inline-flex;
@@ -749,7 +757,15 @@ function barchart(vals, labels, H, col, unit) {
             stats.errors.push({ site, error: "request rejected" });
           }
         }
-        dataBySite[site] = siteData;
+        dataBySite[site] = {
+          ...siteData,
+          __source: {
+            accountLabel: accountLabel || "unknown",
+            accountEncId: encId || "unknown",
+            fetchedAt: siteData.__cacheSavedAt || new Date().toISOString(),
+            exportedAt: savedAtIso(new Date()),
+          }
+        };
         summaryRows.push(buildSiteSummaryRow(site, siteData));
         done++;
         if (onProgress) onProgress(done, total, site, stats);
@@ -764,6 +780,10 @@ function barchart(vals, labels, H, col, unit) {
     summaryRows.sort((a, b) => b.totalC - a.totalC);
     return {
       savedAt: savedAtIso(new Date()),
+      accountLabel: accountLabel || "unknown",
+      accountEncId: encId || "unknown",
+      generatorVersion: window.__SEARCHADVISOR_RUNTIME_VERSION__ || "unknown",
+      exportFormat: "snapshot-v2",
       curMode,
       curSite,
       curTab,
@@ -1453,7 +1473,9 @@ function barchart(vals, labels, H, col, unit) {
   </div>
   ${clone.outerHTML}
   <script>
+    // <!-- SADV_PAYLOAD_START -->
     const EXPORT_PAYLOAD = ${JSON.stringify(payload)};
+    // <!-- SADV_PAYLOAD_END -->
     window.__SEARCHADVISOR_EXPORT_PAYLOAD__ = EXPORT_PAYLOAD;
     const SITE_META_MAP = EXPORT_PAYLOAD.siteMeta || {};
     const MERGED_META = EXPORT_PAYLOAD.mergedMeta || null;
@@ -1604,6 +1626,7 @@ function barchart(vals, labels, H, col, unit) {
       getSiteLabel,
       applyReportDecorations: applySnapshotReportDecorations,
     };
+    const ICONS = ${JSON.stringify(ICONS)};
     const C = ${JSON.stringify(C)};
     const COLORS = ${JSON.stringify(COLORS)};
     const DOW = ${JSON.stringify(DOW)};
@@ -1946,6 +1969,7 @@ function barchart(vals, labels, H, col, unit) {
     const d = lsGet(getSiteDataCacheKey(site));
     if (!d) return null;
     if (!d.data || typeof d.data !== "object") return null;
+    if (d.ts && Date.now() - d.ts > DATA_TTL) return null; // TTL 검증 추가
     return {
       ...d.data,
       __cacheSavedAt: typeof d.ts === "number" ? d.ts : null,
@@ -2302,12 +2326,12 @@ function barchart(vals, labels, H, col, unit) {
     }
 
     // Check required metadata fields
-    const requiredMeta = ['__exported_at', '__source_enc_id'];
-    for (const field of requiredMeta) {
-      if (!data[field]) {
-        result.valid = false;
-        result.errors.push(`Missing required field: ${field}`);
-      }
+    const isSingleExport = data.exportFormat === "snapshot-v2" || (data.__exported_at && data.__source_enc_id);
+    const isMerged = data.__merged_at && data.accounts_merged;
+    
+    if (!isSingleExport && !isMerged) {
+      result.valid = false;
+      result.errors.push('Missing required export/merge metadata fields');
     }
 
     // Validate sites object
@@ -2868,6 +2892,7 @@ function barchart(vals, labels, H, col, unit) {
   function getCachedUiState() {
     const cached = lsGet(getUiStateCacheKey());
     if (!cached || typeof cached !== "object") return null;
+    if (cached.ts && Date.now() - cached.ts > 7 * 24 * 60 * 60 * 1000) return null; // 7일 TTL
     const mode = cached.mode === "site" ? "site" : cached.mode === "all" ? "all" : null;
     const tab = typeof cached.tab === "string" ? cached.tab : null;
     const site = typeof cached.site === "string" ? cached.site : null;
@@ -2891,14 +2916,14 @@ function barchart(vals, labels, H, col, unit) {
     console.log('[loadSiteList] Starting, force:', force, 'encId:', encId?.substring(0, 20) + '...');
     if (!force) {
       const c = lsGet(getSiteListCacheKey());
-      if (c && c.ts && Date.now() - c.ts < 864e5 && c.sites && c.sites.length) {
+      if (c && c.ts && Date.now() - c.ts < DATA_TTL && c.sites && c.sites.length) {
         console.log('[loadSiteList] Using cached sites:', c.sites);
         allSites = c.sites;
         return;
       }
     }
     try {
-      const r = await fetch(
+      const r = await fetchWithRetry(
         "https://searchadvisor.naver.com/api-board/list/" + encId,
         { credentials: "include", headers: { accept: "application/json" } },
       );
@@ -2988,7 +3013,7 @@ function barchart(vals, labels, H, col, unit) {
               backlinkFetchState: 'success',
               diagnosisMetaFetchedAt: Date.now(),
               diagnosisMetaFetchState: 'success',
-              diagnosisMetaRange: siteData.diagnosisMeta?.items?.[0]?.meta?.[0]?.date ?
+              diagnosisMetaRange: (siteData.diagnosisMeta && siteData.diagnosisMeta.items && siteData.diagnosisMeta.items.length > 0 && siteData.diagnosisMeta.items[0].meta && siteData.diagnosisMeta.items[0].meta.length > 0) ?
                 { start: siteData.diagnosisMeta.items[0].meta[0].date, end: siteData.diagnosisMeta.items[0].meta[siteData.diagnosisMeta.items[0].meta.length - 1].date } :
                 { start: "20260301", end: "20260315" },
               detailLoaded: true,
@@ -3084,9 +3109,13 @@ function barchart(vals, labels, H, col, unit) {
         items: [{
           stats: logs.map(log => ({
             date: log.date,
-            discovered: log.exposeCount + Math.floor(Math.random() * 10),
-            indexed: log.clickCount + Math.floor(Math.random() * 5),
-            failed: Math.floor(Math.random() * 3)
+            pageCount: 1000 + Math.floor(Math.random() * 500),
+            downloadSize: 50000 + Math.floor(Math.random() * 10000),
+            sumTryCount: 200 + Math.floor(Math.random() * 100),
+            sumErrorCount: Math.floor(Math.random() * 10),
+            notFound: Math.floor(Math.random() * 5),
+            serverError: Math.floor(Math.random() * 2),
+            connectTimeout: 0,
           })),
           sitemaps: [{ url: `${site}/sitemap.xml`, status: "ok", count: 156 }]
         }]
@@ -3098,19 +3127,19 @@ function barchart(vals, labels, H, col, unit) {
           domains: Math.floor(Math.random() * 50) + 10,
           countTime: logs.map(log => ({
             timeStamp: log.date,
-            count: Math.floor(Math.random() * 20) + 180
+            backlinkCnt: Math.floor(Math.random() * 20) + 180
           })),
           topDomain: [
-            { domain: `backlink-source-${idx+1}.com`, count: Math.floor(Math.random() * 100) + 50 },
-            { domain: `partner-site-${idx+1}.net`, count: Math.floor(Math.random() * 80) + 30 },
-            { domain: `news-portal-${idx+1}.kr`, count: Math.floor(Math.random() * 60) + 20 },
-            { domain: `blog-platform-${idx+1}.com`, count: Math.floor(Math.random() * 40) + 10 }
+            { domain: `backlink-source-${idx+1}.com`, backlinkCnt: Math.floor(Math.random() * 100) + 50 },
+            { domain: `partner-site-${idx+1}.net`, backlinkCnt: Math.floor(Math.random() * 80) + 30 },
+            { domain: `news-portal-${idx+1}.kr`, backlinkCnt: Math.floor(Math.random() * 60) + 20 },
+            { domain: `blog-platform-${idx+1}.com`, backlinkCnt: Math.floor(Math.random() * 40) + 10 }
           ]
         }]
       };
 
       const diagnosisData = {
-        code: 1,
+        code: 0,
         items: [{
           meta: Array.from({length: 15}, (_, i) => {
             const d = new Date(startDate);
@@ -3350,9 +3379,9 @@ function barchart(vals, labels, H, col, unit) {
 
   function buildSiteSummaryRow(site, data) {
     const item = (data && data.expose && data.expose.items && data.expose.items[0]) || {};
-    const logs = (item.logs || []).sort((a, b) => a.date.localeCompare(b.date));
-    const clicks = logs.map((r) => r.clickCount || 0);
-    const exposes = logs.map((r) => r.exposeCount || 0);
+    const logs = (item.logs || []).sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+    const clicks = logs.map((r) => Number(r.clickCount) || 0);
+    const exposes = logs.map((r) => Number(r.exposeCount) || 0);
     const totalC = clicks.reduce((a, b) => a + b, 0);
     const totalE = exposes.reduce((a, b) => a + b, 0);
     const avgCtr = totalE ? (totalC / totalE) * 100 : 0;
@@ -3404,7 +3433,7 @@ function barchart(vals, labels, H, col, unit) {
       avgCtr: +avgCtr.toFixed(2),
       trend: cSt.slope || 0,
       latestClick: clicks.slice(-7).reduce((a, b) => a + b, 0),
-      prevClickRatio: period.prevClickRatio != null ? parseFloat(period.prevClickRatio) : undefined,
+      prevClickRatio: period.prevClickRatio != null && Number.isFinite(parseFloat(period.prevClickRatio)) ? parseFloat(period.prevClickRatio) : undefined,
       logs,
       clicks,
       diagnosisIndexedCurrent: diagnosisLatestCounts["1"] || 0,
@@ -3496,7 +3525,7 @@ function barchart(vals, labels, H, col, unit) {
         let diagnosisMetaFetchState = "failure";
         const diagnosisMetaFetchedAt = Date.now();
         try {
-          response = await fetch(
+          response = await fetchWithRetry(
             base +
               "/diagnosis/meta/" +
               encId +
@@ -3565,7 +3594,7 @@ function barchart(vals, labels, H, col, unit) {
     inflightExpose[site] = (async function () {
       try {
         const exposeFetchedAt = Date.now();
-        const exposeRes = await fetch(
+        const exposeRes = await fetchWithRetry(
           base + "/expose/" + encId + "?site=" + enc + "&period=90&device=&topN=50",
           { credentials: "include", headers: { accept: "application/json" } },
         );
@@ -3608,7 +3637,7 @@ function barchart(vals, labels, H, col, unit) {
       try {
         const requests = await Promise.all([
           needCrawl
-            ? fetch(
+            ? fetchWithRetry(
                 base +
                   "/crawl/" +
                   encId +
@@ -3647,7 +3676,7 @@ function barchart(vals, labels, H, col, unit) {
                 fetchedAt: baseData.crawlFetchedAt ?? null,
               }),
           needBacklink
-            ? fetch(
+            ? fetchWithRetry(
                 base +
                   "/backlink/" +
                   encId +
@@ -3959,7 +3988,9 @@ function barchart(vals, labels, H, col, unit) {
       item.innerHTML = `<div class="sadv-combo-item-dot" style="background:${col}"></div><div class="sadv-combo-item-info"><div class="sadv-combo-item-name">${escHtml(shortName.split("/")[0])}</div><div class="sadv-combo-item-url">${escHtml(shortName)}</div></div><div class="sadv-combo-item-click" style="color:${clickCol}">${escHtml(clickStr)}</div>`;
       item.addEventListener("click", function () {
         setComboSite(s);
-        document.getElementById("sadv-combo-wrap").classList.remove("open");
+        const wrap = document.getElementById("sadv-combo-wrap");
+        wrap.classList.remove("open");
+        wrap.setAttribute("aria-expanded", "false");
       });
       drop.appendChild(item);
     });
@@ -3981,12 +4012,19 @@ function barchart(vals, labels, H, col, unit) {
     if (curMode === "site" && !sameSite) loadSiteView(site);
     __sadvNotify();
   }
+  const comboWrapMain = document.getElementById("sadv-combo-wrap");
+  if (comboWrapMain) {
+    comboWrapMain.setAttribute("role", "combobox");
+    comboWrapMain.setAttribute("aria-expanded", "false");
+  }
+
   document
     .getElementById("sadv-combo-btn")
     .addEventListener("click", function (e) {
       e.stopPropagation();
       const wrap = document.getElementById("sadv-combo-wrap");
       wrap.classList.toggle("open");
+      wrap.setAttribute("aria-expanded", wrap.classList.contains("open") ? "true" : "false");
       if (wrap.classList.contains("open")) {
         setTimeout(function () {
           const inp = document.getElementById("sadv-combo-search");
@@ -4012,7 +4050,10 @@ function barchart(vals, labels, H, col, unit) {
     });
   document.addEventListener("click", function (e) {
     const wrap = document.getElementById("sadv-combo-wrap");
-    if (wrap && !wrap.contains(e.target)) wrap.classList.remove("open");
+    if (wrap && !wrap.contains(e.target)) {
+      wrap.classList.remove("open");
+      wrap.setAttribute("aria-expanded", "false");
+    }
   });
   const TABS = [
     { id: "overview", label: "개요", icon: ICONS.dashboard },
@@ -4025,25 +4066,32 @@ function barchart(vals, labels, H, col, unit) {
     { id: "pattern", label: "패턴", icon: ICONS.barChart },
     { id: "insight", label: "인사이트", icon: ICONS.lightbulb },
   ];
+  tabsEl.setAttribute("role", "tablist");
   tabsEl.innerHTML = TABS.map(
     (t) =>
-      `<button class="sadv-t${t.id === curTab ? " on" : ""}" data-t="${t.id}" style="display:inline-flex;align-items:center;gap:5px">${t.icon}${t.label}</button>`,
+      `<button class="sadv-t${t.id === curTab ? " on" : ""}" data-t="${t.id}" role="tab" aria-selected="${t.id === curTab}" aria-controls="sadv-tabpanel" style="display:inline-flex;align-items:center;gap:5px">${t.icon}${t.label}</button>`,
   ).join("");
   tabsEl.addEventListener("click", function (e) {
     const t = e.target.closest("[data-t]");
     if (!t || t.dataset.t === curTab) return;
     curTab = t.dataset.t;
-    tabsEl.querySelectorAll(".sadv-t").forEach((b) => b.classList.remove("on"));
+    tabsEl.querySelectorAll(".sadv-t").forEach((b) => {
+      b.classList.remove("on");
+      b.setAttribute("aria-selected", "false");
+    });
     t.classList.add("on");
+    t.setAttribute("aria-selected", "true");
     setCachedUiState();
     if (window.__sadvR) renderTab(window.__sadvR);
     __sadvNotify();
   });
   function renderTab(R) {
-    bdEl.innerHTML = "";
-    bdEl.appendChild(R[curTab]());
+    bdEl.setAttribute("role", "tabpanel");
+    bdEl.id = "sadv-tabpanel";
+    bdEl.replaceChildren(R[curTab]());
     bdEl.scrollTop = 0;
   }
+  modeBar.setAttribute("role", "tablist");
   modeBar.addEventListener("click", function (e) {
     const m = e.target.closest("[data-m]");
     if (!m) return;
@@ -4054,8 +4102,15 @@ function barchart(vals, labels, H, col, unit) {
     curMode = mode;
     modeBar
       .querySelectorAll(".sadv-mode")
-      .forEach((b) => b.classList.remove("on"));
-    modeBar.querySelector(`[data-m="${mode}"]`).classList.add("on");
+      .forEach((b) => {
+        b.classList.remove("on");
+        b.setAttribute("aria-selected", "false");
+      });
+    const targetBtn = modeBar.querySelector(`[data-m="${mode}"]`);
+    if (targetBtn) {
+      targetBtn.classList.add("on");
+      targetBtn.setAttribute("aria-selected", "true");
+    }
     if (mode === "all") {
       siteBar.classList.remove("show");
       tabsEl.classList.remove("show");
@@ -4079,6 +4134,9 @@ function barchart(vals, labels, H, col, unit) {
           sites.slice(i, i + ALL_SITES_BATCH).map((s) => fetchExposeData(s)),
         )),
       );
+      if (i + ALL_SITES_BATCH < sites.length) {
+        await new Promise(r => setTimeout(r, 150 + Math.floor(Math.random() * 100)));
+      }
     }
     return results;
   }
@@ -4484,22 +4542,34 @@ function barchart(vals, labels, H, col, unit) {
           "</div>";
       }
       card.appendChild(indexBlock);
-      card.addEventListener("mouseenter", function () {
-        card.style.borderColor = col + "88";
-      });
-      card.addEventListener("mouseleave", function () {
-        card.style.borderColor = "#334155";
-        card.style.borderTopColor = col + "44";
-      });
-      card.addEventListener("click", function () {
-        curSite = r.site;
-        switchMode("site");
-      });
+      card.dataset.site = r.site;
+      card.dataset.col = col;
       wrap.appendChild(card);
     });
+
+    wrap.addEventListener("mouseenter", function (e) {
+      const card = e.target.closest(".sadv-allcard");
+      if (card && card.dataset.col) {
+        card.style.borderColor = card.dataset.col + "88";
+      }
+    }, true);
+    wrap.addEventListener("mouseleave", function (e) {
+      const card = e.target.closest(".sadv-allcard");
+      if (card && card.dataset.col) {
+        card.style.borderColor = "#334155";
+        card.style.borderTopColor = card.dataset.col + "44";
+      }
+    }, true);
+    wrap.addEventListener("click", function (e) {
+      const card = e.target.closest(".sadv-allcard");
+      if (card && card.dataset.site) {
+        curSite = card.dataset.site;
+        switchMode("site");
+      }
+    });
+
     if (requestId !== allViewReqId || curMode !== "all") return;
-    bdEl.innerHTML = "";
-    bdEl.appendChild(wrap);
+    bdEl.replaceChildren(wrap);
     bdEl.scrollTop = 0;
   };
   async function loadSiteView(site) {
@@ -4509,7 +4579,7 @@ function barchart(vals, labels, H, col, unit) {
     bdEl.innerHTML = `<div style="padding:50px 20px;text-align:center;color:#64748b"><div style="display:inline-flex;align-items:center;gap:8px">${ICONS.refresh.replace('width="13" height="13"','width="16" height="16"')} 로딩 중...</div></div>`;
     const d = await fetchSiteData(site);
     if (requestId !== siteViewReqId || site !== curSite) return;
-    if (!d.expose || !d.expose.items || !d.expose.items.length) {
+    if (!d || !d.expose || !d.expose.items || !d.expose.items.length) {
       bdEl.innerHTML =
         `<div style="padding:40px 20px;text-align:center"><div style="display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;background:#0f172a;border:1px solid #334155;border-radius:12px;margin-bottom:16px;color:#ef4444">${ICONS.xMark.replace('width="14" height="14"','width="22" height="22"')}</div><div style="color:#f8fafc;font-weight:700;font-size:14px;margin-bottom:6px">데이터 없음</div><div style="color:#64748b;font-size:12px">이 사이트의 데이터가 없습니다</div></div>`;
       return;
@@ -4525,11 +4595,11 @@ function barchart(vals, labels, H, col, unit) {
       rawLogs = item.logs || [],
       urls = item.urls || [],
       queries = item.querys || [];
-    const logs = [...rawLogs].sort((a, b) => a.date.localeCompare(b.date));
+    const logs = [...rawLogs].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
     const dates = logs.map((r) => fmtB(r.date)),
-      clicks = logs.map((r) => r.clickCount),
-      exposes = logs.map((r) => r.exposeCount),
-      ctrs = logs.map((r) => parseFloat(r.ctr));
+      clicks = logs.map((r) => Number(r.clickCount) || 0),
+      exposes = logs.map((r) => Number(r.exposeCount) || 0),
+      ctrs = logs.map((r) => { const n = parseFloat(r.ctr); return Number.isFinite(n) ? n : 0; });
     const cSt = st(clicks),
       totalC = clicks.reduce((a, b) => a + b, 0),
       totalE = exposes.reduce((a, b) => a + b, 0),
@@ -4581,7 +4651,7 @@ function barchart(vals, labels, H, col, unit) {
         crawlData.items[0].stats) ||
       [];
     const crawlSorted = [...crawlStats].sort((a, b) =>
-      a.date.localeCompare(b.date),
+      (a.date || "").localeCompare(b.date || ""),
     );
     const blData =
       (backlinkData && backlinkData.items && backlinkData.items[0]) || {};
@@ -5028,7 +5098,7 @@ function barchart(vals, labels, H, col, unit) {
       },
       insight: function () {
         const wrap = document.createElement("div"),
-          ctrNum = parseFloat(avgCtr);
+          ctrNum = Number(avgCtr) || 0;
         wrap.appendChild(secTitle("\uC885\uD569 \uBD84\uC11D"));
         wrap.appendChild(
           ibox(
@@ -5218,7 +5288,7 @@ function barchart(vals, labels, H, col, unit) {
               <span style="color:${C.purple}">\uC0C9\uC778 <b>${escHtml(fmt(indexed))}</b></span>
               <span style="color:${C.amber}">\uB300\uAE30 <b>${escHtml(fmt(pending))}</b></span>
               ${error > 0 ? `<span style="color:${C.red}">\uC624\uB958 <b>${escHtml(fmt(error))}</b></span>` : ""}
-              ${dropped > 0 ? `<span style="color:#ff5252}\">\uC5D0\uB7EC <b>${escHtml(fmt(dropped))}</b></span>` : ""}
+              ${dropped > 0 ? `<span style="color:#ff5252">\uC5D0\uB7EC <b>${escHtml(fmt(dropped))}</b></span>` : ""}
             </div>
           `;
           wrap.appendChild(row);
