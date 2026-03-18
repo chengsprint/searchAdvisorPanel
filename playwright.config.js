@@ -35,7 +35,7 @@ module.exports = defineConfig({
   // Shared settings for all tests
   use: {
     // Base URL for tests
-    baseURL: 'file:///tmp/worktree-p3/dist',
+    baseURL: 'http://localhost:8080',
 
     // Trace configuration
     trace: 'retain-on-failure',
@@ -97,10 +97,4 @@ module.exports = defineConfig({
 
   // Output directory
   outputDir: 'test-results/artifacts',
-
-  // Global setup
-  globalSetup: require.resolve('./tests/global-setup'),
-
-  // Global teardown
-  globalTeardown: require.resolve('./tests/global-teardown'),
 });
