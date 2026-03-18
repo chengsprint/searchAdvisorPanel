@@ -173,6 +173,486 @@ Error generating stack: `+l.message+`
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */const e0=Ka("x",[["path",{d:"M18 6 6 18",key:"1bl5f8"}],["path",{d:"m6 6 12 12",key:"d8bk6v"}]]);function t0(a){var s,f,v="";if(typeof a=="string"||typeof a=="number")v+=a;else if(typeof a=="object")if(Array.isArray(a)){var p=a.length;for(s=0;s<p;s++)a[s]&&(f=t0(a[s]))&&(v&&(v+=" "),v+=f)}else for(f in a)a[f]&&(v&&(v+=" "),v+=f);return v}function n0(){for(var a,s,f=0,v="",p=arguments.length;f<p;f++)(a=arguments[f])&&(s=t0(a))&&(v&&(v+=" "),v+=s);return v}const ow=(a,s)=>{const f=new Array(a.length+s.length);for(let v=0;v<a.length;v++)f[v]=a[v];for(let v=0;v<s.length;v++)f[a.length+v]=s[v];return f},cw=(a,s)=>({classGroupId:a,validator:s}),l0=(a=new Map,s=null,f)=>({nextPart:a,validators:s,classGroupId:f}),vd="-",a0=[],uw="arbitrary..",sw=a=>{const s=dw(a),{conflictingClassGroups:f,conflictingClassGroupModifiers:v}=a;return{getClassGroupId:E=>{if(E.startsWith("[")&&E.endsWith("]"))return fw(E);const T=E.split(vd),O=T[0]===""&&T.length>1?1:0;return r0(T,O,s)},getConflictingClassGroupIds:(E,T)=>{if(T){const O=v[E],R=f[E];return O?R?ow(R,O):O:R||a0}return f[E]||a0}}},r0=(a,s,f)=>{if(a.length-s===0)return f.classGroupId;const p=a[s],S=f.nextPart.get(p);if(S){const R=r0(a,s+1,S);if(R)return R}const E=f.validators;if(E===null)return;const T=s===0?a.join(vd):a.slice(s).join(vd),O=E.length;for(let R=0;R<O;R++){const k=E[R];if(k.validator(T))return k.classGroupId}},fw=a=>a.slice(1,-1).indexOf(":")===-1?void 0:(()=>{const s=a.slice(1,-1),f=s.indexOf(":"),v=s.slice(0,f);return v?uw+v:void 0})(),dw=a=>{const{theme:s,classGroups:f}=a;return hw(f,s)},hw=(a,s)=>{const f=l0();for(const v in a){const p=a[v];Xh(p,f,v,s)}return f},Xh=(a,s,f,v)=>{const p=a.length;for(let S=0;S<p;S++){const E=a[S];vw(E,s,f,v)}},vw=(a,s,f,v)=>{if(typeof a=="string"){gw(a,s,f);return}if(typeof a=="function"){bw(a,s,f,v);return}mw(a,s,f,v)},gw=(a,s,f)=>{const v=a===""?s:i0(s,a);v.classGroupId=f},bw=(a,s,f,v)=>{if(yw(a)){Xh(a(v),s,f,v);return}s.validators===null&&(s.validators=[]),s.validators.push(cw(f,a))},mw=(a,s,f,v)=>{const p=Object.entries(a),S=p.length;for(let E=0;E<S;E++){const[T,O]=p[E];Xh(O,i0(s,T),f,v)}},i0=(a,s)=>{let f=a;const v=s.split(vd),p=v.length;for(let S=0;S<p;S++){const E=v[S];let T=f.nextPart.get(E);T||(T=l0(),f.nextPart.set(E,T)),f=T}return f},yw=a=>"isThemeGetter"in a&&a.isThemeGetter===!0,pw=a=>{if(a<1)return{get:()=>{},set:()=>{}};let s=0,f=Object.create(null),v=Object.create(null);const p=(S,E)=>{f[S]=E,s++,s>a&&(s=0,v=f,f=Object.create(null))};return{get(S){let E=f[S];if(E!==void 0)return E;if((E=v[S])!==void 0)return p(S,E),E},set(S,E){S in f?f[S]=E:p(S,E)}}},Ih="!",o0=":",xw=[],c0=(a,s,f,v,p)=>({modifiers:a,hasImportantModifier:s,baseClassName:f,maybePostfixModifierPosition:v,isExternal:p}),ww=a=>{const{prefix:s,experimentalParseClassName:f}=a;let v=p=>{const S=[];let E=0,T=0,O=0,R;const k=p.length;for(let Z=0;Z<k;Z++){const $=p[Z];if(E===0&&T===0){if($===o0){S.push(p.slice(O,Z)),O=Z+1;continue}if($==="/"){R=Z;continue}}$==="["?E++:$==="]"?E--:$==="("?T++:$===")"&&T--}const L=S.length===0?p:p.slice(O);let U=L,V=!1;L.endsWith(Ih)?(U=L.slice(0,-1),V=!0):L.startsWith(Ih)&&(U=L.slice(1),V=!0);const K=R&&R>O?R-O:void 0;return c0(S,V,U,K)};if(s){const p=s+o0,S=v;v=E=>E.startsWith(p)?S(E.slice(p.length)):c0(xw,!1,E,void 0,!0)}if(f){const p=v;v=S=>f({className:S,parseClassName:p})}return v},Sw=a=>{const s=new Map;return a.orderSensitiveModifiers.forEach((f,v)=>{s.set(f,1e6+v)}),f=>{const v=[];let p=[];for(let S=0;S<f.length;S++){const E=f[S],T=E[0]==="[",O=s.has(E);T||O?(p.length>0&&(p.sort(),v.push(...p),p=[]),v.push(E)):p.push(E)}return p.length>0&&(p.sort(),v.push(...p)),v}},Ew=a=>({cache:pw(a.cacheSize),parseClassName:ww(a),sortModifiers:Sw(a),...sw(a)}),Cw=/\s+/,Tw=(a,s)=>{const{parseClassName:f,getClassGroupId:v,getConflictingClassGroupIds:p,sortModifiers:S}=s,E=[],T=a.trim().split(Cw);let O="";for(let R=T.length-1;R>=0;R-=1){const k=T[R],{isExternal:L,modifiers:U,hasImportantModifier:V,baseClassName:K,maybePostfixModifierPosition:Z}=f(k);if(L){O=k+(O.length>0?" "+O:O);continue}let $=!!Z,oe=v($?K.substring(0,Z):K);if(!oe){if(!$){O=k+(O.length>0?" "+O:O);continue}if(oe=v(K),!oe){O=k+(O.length>0?" "+O:O);continue}$=!1}const me=U.length===0?"":U.length===1?U[0]:S(U).join(":"),de=V?me+Ih:me,ve=de+oe;if(E.indexOf(ve)>-1)continue;E.push(ve);const Te=p(oe,$);for(let Ee=0;Ee<Te.length;++Ee){const be=Te[Ee];E.push(de+be)}O=k+(O.length>0?" "+O:O)}return O},Rw=(...a)=>{let s=0,f,v,p="";for(;s<a.length;)(f=a[s++])&&(v=u0(f))&&(p&&(p+=" "),p+=v);return p},u0=a=>{if(typeof a=="string")return a;let s,f="";for(let v=0;v<a.length;v++)a[v]&&(s=u0(a[v]))&&(f&&(f+=" "),f+=s);return f},Aw=(a,...s)=>{let f,v,p,S;const E=O=>{const R=s.reduce((k,L)=>L(k),a());return f=Ew(R),v=f.cache.get,p=f.cache.set,S=T,T(O)},T=O=>{const R=v(O);if(R)return R;const k=Tw(O,f);return p(O,k),k};return S=E,(...O)=>S(Rw(...O))},_w=[],Qn=a=>{const s=f=>f[a]||_w;return s.isThemeGetter=!0,s},s0=/^\[(?:(\w[\w-]*):)?(.+)\]$/i,f0=/^\((?:(\w[\w-]*):)?(.+)\)$/i,Mw=/^\d+(?:\.\d+)?\/\d+(?:\.\d+)?$/,Ow=/^(\d+(\.\d+)?)?(xs|sm|md|lg|xl)$/,zw=/\d+(%|px|r?em|[sdl]?v([hwib]|min|max)|pt|pc|in|cm|mm|cap|ch|ex|r?lh|cq(w|h|i|b|min|max))|\b(calc|min|max|clamp)\(.+\)|^0$/,Dw=/^(rgba?|hsla?|hwb|(ok)?(lab|lch)|color-mix)\(.+\)$/,kw=/^(inset_)?-?((\d+)?\.?(\d+)[a-z]+|0)_-?((\d+)?\.?(\d+)[a-z]+|0)/,Nw=/^(url|image|image-set|cross-fade|element|(repeating-)?(linear|radial|conic)-gradient)\(.+\)$/,No=a=>Mw.test(a),ut=a=>!!a&&!Number.isNaN(Number(a)),Lo=a=>!!a&&Number.isInteger(Number(a)),Zh=a=>a.endsWith("%")&&ut(a.slice(0,-1)),Xi=a=>Ow.test(a),d0=()=>!0,Lw=a=>zw.test(a)&&!Dw.test(a),Vh=()=>!1,Bw=a=>kw.test(a),Hw=a=>Nw.test(a),Uw=a=>!De(a)&&!ke(a),Fw=a=>Bo(a,y0,Vh),De=a=>s0.test(a),jc=a=>Bo(a,p0,Lw),h0=a=>Bo(a,Qw,ut),Yw=a=>Bo(a,w0,d0),Pw=a=>Bo(a,x0,Vh),v0=a=>Bo(a,b0,Vh),Gw=a=>Bo(a,m0,Hw),gd=a=>Bo(a,S0,Bw),ke=a=>f0.test(a),Ys=a=>qc(a,p0),Xw=a=>qc(a,x0),g0=a=>qc(a,b0),Iw=a=>qc(a,y0),Zw=a=>qc(a,m0),bd=a=>qc(a,S0,!0),Vw=a=>qc(a,w0,!0),Bo=(a,s,f)=>{const v=s0.exec(a);return v?v[1]?s(v[1]):f(v[2]):!1},qc=(a,s,f=!1)=>{const v=f0.exec(a);return v?v[1]?s(v[1]):f:!1},b0=a=>a==="position"||a==="percentage",m0=a=>a==="image"||a==="url",y0=a=>a==="length"||a==="size"||a==="bg-size",p0=a=>a==="length",Qw=a=>a==="number",x0=a=>a==="family-name",w0=a=>a==="number"||a==="weight",S0=a=>a==="shadow",Ww=Aw(()=>{const a=Qn("color"),s=Qn("font"),f=Qn("text"),v=Qn("font-weight"),p=Qn("tracking"),S=Qn("leading"),E=Qn("breakpoint"),T=Qn("container"),O=Qn("spacing"),R=Qn("radius"),k=Qn("shadow"),L=Qn("inset-shadow"),U=Qn("text-shadow"),V=Qn("drop-shadow"),K=Qn("blur"),Z=Qn("perspective"),$=Qn("aspect"),oe=Qn("ease"),me=Qn("animate"),de=()=>["auto","avoid","all","avoid-page","page","left","right","column"],ve=()=>["center","top","bottom","left","right","top-left","left-top","top-right","right-top","bottom-right","right-bottom","bottom-left","left-bottom"],Te=()=>[...ve(),ke,De],Ee=()=>["auto","hidden","clip","visible","scroll"],be=()=>["auto","contain","none"],ce=()=>[ke,De,O],ye=()=>[No,"full","auto",...ce()],He=()=>[Lo,"none","subgrid",ke,De],Ze=()=>["auto",{span:["full",Lo,ke,De]},Lo,ke,De],$e=()=>[Lo,"auto",ke,De],st=()=>["auto","min","max","fr",ke,De],Ge=()=>["start","end","center","between","around","evenly","stretch","baseline","center-safe","end-safe"],Ve=()=>["start","end","center","stretch","center-safe","end-safe"],D=()=>["auto",...ce()],J=()=>[No,"auto","full","dvw","dvh","lvw","lvh","svw","svh","min","max","fit",...ce()],we=()=>[No,"screen","full","dvw","lvw","svw","min","max","fit",...ce()],Pe=()=>[No,"screen","full","lh","dvh","lvh","svh","min","max","fit",...ce()],W=()=>[a,ke,De],_=()=>[...ve(),g0,v0,{position:[ke,De]}],se=()=>["no-repeat",{repeat:["","x","y","space","round"]}],Ae=()=>["auto","cover","contain",Iw,Fw,{size:[ke,De]}],Re=()=>[Zh,Ys,jc],pe=()=>["","none","full",R,ke,De],_e=()=>["",ut,Ys,jc],Xe=()=>["solid","dashed","dotted","double"],Vt=()=>["normal","multiply","screen","overlay","darken","lighten","color-dodge","color-burn","hard-light","soft-light","difference","exclusion","hue","saturation","color","luminosity"],Qe=()=>[ut,Zh,g0,v0],ea=()=>["","none",K,ke,De],_t=()=>["none",ut,ke,De],Fl=()=>["none",ut,ke,De],Ue=()=>[ut,ke,De],ol=()=>[No,"full",...ce()];return{cacheSize:500,theme:{animate:["spin","ping","pulse","bounce"],aspect:["video"],blur:[Xi],breakpoint:[Xi],color:[d0],container:[Xi],"drop-shadow":[Xi],ease:["in","out","in-out"],font:[Uw],"font-weight":["thin","extralight","light","normal","medium","semibold","bold","extrabold","black"],"inset-shadow":[Xi],leading:["none","tight","snug","normal","relaxed","loose"],perspective:["dramatic","near","normal","midrange","distant","none"],radius:[Xi],shadow:[Xi],spacing:["px",ut],text:[Xi],"text-shadow":[Xi],tracking:["tighter","tight","normal","wide","wider","widest"]},classGroups:{aspect:[{aspect:["auto","square",No,De,ke,$]}],container:["container"],columns:[{columns:[ut,De,ke,T]}],"break-after":[{"break-after":de()}],"break-before":[{"break-before":de()}],"break-inside":[{"break-inside":["auto","avoid","avoid-page","avoid-column"]}],"box-decoration":[{"box-decoration":["slice","clone"]}],box:[{box:["border","content"]}],display:["block","inline-block","inline","flex","inline-flex","table","inline-table","table-caption","table-cell","table-column","table-column-group","table-footer-group","table-header-group","table-row-group","table-row","flow-root","grid","inline-grid","contents","list-item","hidden"],sr:["sr-only","not-sr-only"],float:[{float:["right","left","none","start","end"]}],clear:[{clear:["left","right","both","none","start","end"]}],isolation:["isolate","isolation-auto"],"object-fit":[{object:["contain","cover","fill","none","scale-down"]}],"object-position":[{object:Te()}],overflow:[{overflow:Ee()}],"overflow-x":[{"overflow-x":Ee()}],"overflow-y":[{"overflow-y":Ee()}],overscroll:[{overscroll:be()}],"overscroll-x":[{"overscroll-x":be()}],"overscroll-y":[{"overscroll-y":be()}],position:["static","fixed","absolute","relative","sticky"],inset:[{inset:ye()}],"inset-x":[{"inset-x":ye()}],"inset-y":[{"inset-y":ye()}],start:[{"inset-s":ye(),start:ye()}],end:[{"inset-e":ye(),end:ye()}],"inset-bs":[{"inset-bs":ye()}],"inset-be":[{"inset-be":ye()}],top:[{top:ye()}],right:[{right:ye()}],bottom:[{bottom:ye()}],left:[{left:ye()}],visibility:["visible","invisible","collapse"],z:[{z:[Lo,"auto",ke,De]}],basis:[{basis:[No,"full","auto",T,...ce()]}],"flex-direction":[{flex:["row","row-reverse","col","col-reverse"]}],"flex-wrap":[{flex:["nowrap","wrap","wrap-reverse"]}],flex:[{flex:[ut,No,"auto","initial","none",De]}],grow:[{grow:["",ut,ke,De]}],shrink:[{shrink:["",ut,ke,De]}],order:[{order:[Lo,"first","last","none",ke,De]}],"grid-cols":[{"grid-cols":He()}],"col-start-end":[{col:Ze()}],"col-start":[{"col-start":$e()}],"col-end":[{"col-end":$e()}],"grid-rows":[{"grid-rows":He()}],"row-start-end":[{row:Ze()}],"row-start":[{"row-start":$e()}],"row-end":[{"row-end":$e()}],"grid-flow":[{"grid-flow":["row","col","dense","row-dense","col-dense"]}],"auto-cols":[{"auto-cols":st()}],"auto-rows":[{"auto-rows":st()}],gap:[{gap:ce()}],"gap-x":[{"gap-x":ce()}],"gap-y":[{"gap-y":ce()}],"justify-content":[{justify:[...Ge(),"normal"]}],"justify-items":[{"justify-items":[...Ve(),"normal"]}],"justify-self":[{"justify-self":["auto",...Ve()]}],"align-content":[{content:["normal",...Ge()]}],"align-items":[{items:[...Ve(),{baseline:["","last"]}]}],"align-self":[{self:["auto",...Ve(),{baseline:["","last"]}]}],"place-content":[{"place-content":Ge()}],"place-items":[{"place-items":[...Ve(),"baseline"]}],"place-self":[{"place-self":["auto",...Ve()]}],p:[{p:ce()}],px:[{px:ce()}],py:[{py:ce()}],ps:[{ps:ce()}],pe:[{pe:ce()}],pbs:[{pbs:ce()}],pbe:[{pbe:ce()}],pt:[{pt:ce()}],pr:[{pr:ce()}],pb:[{pb:ce()}],pl:[{pl:ce()}],m:[{m:D()}],mx:[{mx:D()}],my:[{my:D()}],ms:[{ms:D()}],me:[{me:D()}],mbs:[{mbs:D()}],mbe:[{mbe:D()}],mt:[{mt:D()}],mr:[{mr:D()}],mb:[{mb:D()}],ml:[{ml:D()}],"space-x":[{"space-x":ce()}],"space-x-reverse":["space-x-reverse"],"space-y":[{"space-y":ce()}],"space-y-reverse":["space-y-reverse"],size:[{size:J()}],"inline-size":[{inline:["auto",...we()]}],"min-inline-size":[{"min-inline":["auto",...we()]}],"max-inline-size":[{"max-inline":["none",...we()]}],"block-size":[{block:["auto",...Pe()]}],"min-block-size":[{"min-block":["auto",...Pe()]}],"max-block-size":[{"max-block":["none",...Pe()]}],w:[{w:[T,"screen",...J()]}],"min-w":[{"min-w":[T,"screen","none",...J()]}],"max-w":[{"max-w":[T,"screen","none","prose",{screen:[E]},...J()]}],h:[{h:["screen","lh",...J()]}],"min-h":[{"min-h":["screen","lh","none",...J()]}],"max-h":[{"max-h":["screen","lh",...J()]}],"font-size":[{text:["base",f,Ys,jc]}],"font-smoothing":["antialiased","subpixel-antialiased"],"font-style":["italic","not-italic"],"font-weight":[{font:[v,Vw,Yw]}],"font-stretch":[{"font-stretch":["ultra-condensed","extra-condensed","condensed","semi-condensed","normal","semi-expanded","expanded","extra-expanded","ultra-expanded",Zh,De]}],"font-family":[{font:[Xw,Pw,s]}],"font-features":[{"font-features":[De]}],"fvn-normal":["normal-nums"],"fvn-ordinal":["ordinal"],"fvn-slashed-zero":["slashed-zero"],"fvn-figure":["lining-nums","oldstyle-nums"],"fvn-spacing":["proportional-nums","tabular-nums"],"fvn-fraction":["diagonal-fractions","stacked-fractions"],tracking:[{tracking:[p,ke,De]}],"line-clamp":[{"line-clamp":[ut,"none",ke,h0]}],leading:[{leading:[S,...ce()]}],"list-image":[{"list-image":["none",ke,De]}],"list-style-position":[{list:["inside","outside"]}],"list-style-type":[{list:["disc","decimal","none",ke,De]}],"text-alignment":[{text:["left","center","right","justify","start","end"]}],"placeholder-color":[{placeholder:W()}],"text-color":[{text:W()}],"text-decoration":["underline","overline","line-through","no-underline"],"text-decoration-style":[{decoration:[...Xe(),"wavy"]}],"text-decoration-thickness":[{decoration:[ut,"from-font","auto",ke,jc]}],"text-decoration-color":[{decoration:W()}],"underline-offset":[{"underline-offset":[ut,"auto",ke,De]}],"text-transform":["uppercase","lowercase","capitalize","normal-case"],"text-overflow":["truncate","text-ellipsis","text-clip"],"text-wrap":[{text:["wrap","nowrap","balance","pretty"]}],indent:[{indent:ce()}],"vertical-align":[{align:["baseline","top","middle","bottom","text-top","text-bottom","sub","super",ke,De]}],whitespace:[{whitespace:["normal","nowrap","pre","pre-line","pre-wrap","break-spaces"]}],break:[{break:["normal","words","all","keep"]}],wrap:[{wrap:["break-word","anywhere","normal"]}],hyphens:[{hyphens:["none","manual","auto"]}],content:[{content:["none",ke,De]}],"bg-attachment":[{bg:["fixed","local","scroll"]}],"bg-clip":[{"bg-clip":["border","padding","content","text"]}],"bg-origin":[{"bg-origin":["border","padding","content"]}],"bg-position":[{bg:_()}],"bg-repeat":[{bg:se()}],"bg-size":[{bg:Ae()}],"bg-image":[{bg:["none",{linear:[{to:["t","tr","r","br","b","bl","l","tl"]},Lo,ke,De],radial:["",ke,De],conic:[Lo,ke,De]},Zw,Gw]}],"bg-color":[{bg:W()}],"gradient-from-pos":[{from:Re()}],"gradient-via-pos":[{via:Re()}],"gradient-to-pos":[{to:Re()}],"gradient-from":[{from:W()}],"gradient-via":[{via:W()}],"gradient-to":[{to:W()}],rounded:[{rounded:pe()}],"rounded-s":[{"rounded-s":pe()}],"rounded-e":[{"rounded-e":pe()}],"rounded-t":[{"rounded-t":pe()}],"rounded-r":[{"rounded-r":pe()}],"rounded-b":[{"rounded-b":pe()}],"rounded-l":[{"rounded-l":pe()}],"rounded-ss":[{"rounded-ss":pe()}],"rounded-se":[{"rounded-se":pe()}],"rounded-ee":[{"rounded-ee":pe()}],"rounded-es":[{"rounded-es":pe()}],"rounded-tl":[{"rounded-tl":pe()}],"rounded-tr":[{"rounded-tr":pe()}],"rounded-br":[{"rounded-br":pe()}],"rounded-bl":[{"rounded-bl":pe()}],"border-w":[{border:_e()}],"border-w-x":[{"border-x":_e()}],"border-w-y":[{"border-y":_e()}],"border-w-s":[{"border-s":_e()}],"border-w-e":[{"border-e":_e()}],"border-w-bs":[{"border-bs":_e()}],"border-w-be":[{"border-be":_e()}],"border-w-t":[{"border-t":_e()}],"border-w-r":[{"border-r":_e()}],"border-w-b":[{"border-b":_e()}],"border-w-l":[{"border-l":_e()}],"divide-x":[{"divide-x":_e()}],"divide-x-reverse":["divide-x-reverse"],"divide-y":[{"divide-y":_e()}],"divide-y-reverse":["divide-y-reverse"],"border-style":[{border:[...Xe(),"hidden","none"]}],"divide-style":[{divide:[...Xe(),"hidden","none"]}],"border-color":[{border:W()}],"border-color-x":[{"border-x":W()}],"border-color-y":[{"border-y":W()}],"border-color-s":[{"border-s":W()}],"border-color-e":[{"border-e":W()}],"border-color-bs":[{"border-bs":W()}],"border-color-be":[{"border-be":W()}],"border-color-t":[{"border-t":W()}],"border-color-r":[{"border-r":W()}],"border-color-b":[{"border-b":W()}],"border-color-l":[{"border-l":W()}],"divide-color":[{divide:W()}],"outline-style":[{outline:[...Xe(),"none","hidden"]}],"outline-offset":[{"outline-offset":[ut,ke,De]}],"outline-w":[{outline:["",ut,Ys,jc]}],"outline-color":[{outline:W()}],shadow:[{shadow:["","none",k,bd,gd]}],"shadow-color":[{shadow:W()}],"inset-shadow":[{"inset-shadow":["none",L,bd,gd]}],"inset-shadow-color":[{"inset-shadow":W()}],"ring-w":[{ring:_e()}],"ring-w-inset":["ring-inset"],"ring-color":[{ring:W()}],"ring-offset-w":[{"ring-offset":[ut,jc]}],"ring-offset-color":[{"ring-offset":W()}],"inset-ring-w":[{"inset-ring":_e()}],"inset-ring-color":[{"inset-ring":W()}],"text-shadow":[{"text-shadow":["none",U,bd,gd]}],"text-shadow-color":[{"text-shadow":W()}],opacity:[{opacity:[ut,ke,De]}],"mix-blend":[{"mix-blend":[...Vt(),"plus-darker","plus-lighter"]}],"bg-blend":[{"bg-blend":Vt()}],"mask-clip":[{"mask-clip":["border","padding","content","fill","stroke","view"]},"mask-no-clip"],"mask-composite":[{mask:["add","subtract","intersect","exclude"]}],"mask-image-linear-pos":[{"mask-linear":[ut]}],"mask-image-linear-from-pos":[{"mask-linear-from":Qe()}],"mask-image-linear-to-pos":[{"mask-linear-to":Qe()}],"mask-image-linear-from-color":[{"mask-linear-from":W()}],"mask-image-linear-to-color":[{"mask-linear-to":W()}],"mask-image-t-from-pos":[{"mask-t-from":Qe()}],"mask-image-t-to-pos":[{"mask-t-to":Qe()}],"mask-image-t-from-color":[{"mask-t-from":W()}],"mask-image-t-to-color":[{"mask-t-to":W()}],"mask-image-r-from-pos":[{"mask-r-from":Qe()}],"mask-image-r-to-pos":[{"mask-r-to":Qe()}],"mask-image-r-from-color":[{"mask-r-from":W()}],"mask-image-r-to-color":[{"mask-r-to":W()}],"mask-image-b-from-pos":[{"mask-b-from":Qe()}],"mask-image-b-to-pos":[{"mask-b-to":Qe()}],"mask-image-b-from-color":[{"mask-b-from":W()}],"mask-image-b-to-color":[{"mask-b-to":W()}],"mask-image-l-from-pos":[{"mask-l-from":Qe()}],"mask-image-l-to-pos":[{"mask-l-to":Qe()}],"mask-image-l-from-color":[{"mask-l-from":W()}],"mask-image-l-to-color":[{"mask-l-to":W()}],"mask-image-x-from-pos":[{"mask-x-from":Qe()}],"mask-image-x-to-pos":[{"mask-x-to":Qe()}],"mask-image-x-from-color":[{"mask-x-from":W()}],"mask-image-x-to-color":[{"mask-x-to":W()}],"mask-image-y-from-pos":[{"mask-y-from":Qe()}],"mask-image-y-to-pos":[{"mask-y-to":Qe()}],"mask-image-y-from-color":[{"mask-y-from":W()}],"mask-image-y-to-color":[{"mask-y-to":W()}],"mask-image-radial":[{"mask-radial":[ke,De]}],"mask-image-radial-from-pos":[{"mask-radial-from":Qe()}],"mask-image-radial-to-pos":[{"mask-radial-to":Qe()}],"mask-image-radial-from-color":[{"mask-radial-from":W()}],"mask-image-radial-to-color":[{"mask-radial-to":W()}],"mask-image-radial-shape":[{"mask-radial":["circle","ellipse"]}],"mask-image-radial-size":[{"mask-radial":[{closest:["side","corner"],farthest:["side","corner"]}]}],"mask-image-radial-pos":[{"mask-radial-at":ve()}],"mask-image-conic-pos":[{"mask-conic":[ut]}],"mask-image-conic-from-pos":[{"mask-conic-from":Qe()}],"mask-image-conic-to-pos":[{"mask-conic-to":Qe()}],"mask-image-conic-from-color":[{"mask-conic-from":W()}],"mask-image-conic-to-color":[{"mask-conic-to":W()}],"mask-mode":[{mask:["alpha","luminance","match"]}],"mask-origin":[{"mask-origin":["border","padding","content","fill","stroke","view"]}],"mask-position":[{mask:_()}],"mask-repeat":[{mask:se()}],"mask-size":[{mask:Ae()}],"mask-type":[{"mask-type":["alpha","luminance"]}],"mask-image":[{mask:["none",ke,De]}],filter:[{filter:["","none",ke,De]}],blur:[{blur:ea()}],brightness:[{brightness:[ut,ke,De]}],contrast:[{contrast:[ut,ke,De]}],"drop-shadow":[{"drop-shadow":["","none",V,bd,gd]}],"drop-shadow-color":[{"drop-shadow":W()}],grayscale:[{grayscale:["",ut,ke,De]}],"hue-rotate":[{"hue-rotate":[ut,ke,De]}],invert:[{invert:["",ut,ke,De]}],saturate:[{saturate:[ut,ke,De]}],sepia:[{sepia:["",ut,ke,De]}],"backdrop-filter":[{"backdrop-filter":["","none",ke,De]}],"backdrop-blur":[{"backdrop-blur":ea()}],"backdrop-brightness":[{"backdrop-brightness":[ut,ke,De]}],"backdrop-contrast":[{"backdrop-contrast":[ut,ke,De]}],"backdrop-grayscale":[{"backdrop-grayscale":["",ut,ke,De]}],"backdrop-hue-rotate":[{"backdrop-hue-rotate":[ut,ke,De]}],"backdrop-invert":[{"backdrop-invert":["",ut,ke,De]}],"backdrop-opacity":[{"backdrop-opacity":[ut,ke,De]}],"backdrop-saturate":[{"backdrop-saturate":[ut,ke,De]}],"backdrop-sepia":[{"backdrop-sepia":["",ut,ke,De]}],"border-collapse":[{border:["collapse","separate"]}],"border-spacing":[{"border-spacing":ce()}],"border-spacing-x":[{"border-spacing-x":ce()}],"border-spacing-y":[{"border-spacing-y":ce()}],"table-layout":[{table:["auto","fixed"]}],caption:[{caption:["top","bottom"]}],transition:[{transition:["","all","colors","opacity","shadow","transform","none",ke,De]}],"transition-behavior":[{transition:["normal","discrete"]}],duration:[{duration:[ut,"initial",ke,De]}],ease:[{ease:["linear","initial",oe,ke,De]}],delay:[{delay:[ut,ke,De]}],animate:[{animate:["none",me,ke,De]}],backface:[{backface:["hidden","visible"]}],perspective:[{perspective:[Z,ke,De]}],"perspective-origin":[{"perspective-origin":Te()}],rotate:[{rotate:_t()}],"rotate-x":[{"rotate-x":_t()}],"rotate-y":[{"rotate-y":_t()}],"rotate-z":[{"rotate-z":_t()}],scale:[{scale:Fl()}],"scale-x":[{"scale-x":Fl()}],"scale-y":[{"scale-y":Fl()}],"scale-z":[{"scale-z":Fl()}],"scale-3d":["scale-3d"],skew:[{skew:Ue()}],"skew-x":[{"skew-x":Ue()}],"skew-y":[{"skew-y":Ue()}],transform:[{transform:[ke,De,"","none","gpu","cpu"]}],"transform-origin":[{origin:Te()}],"transform-style":[{transform:["3d","flat"]}],translate:[{translate:ol()}],"translate-x":[{"translate-x":ol()}],"translate-y":[{"translate-y":ol()}],"translate-z":[{"translate-z":ol()}],"translate-none":["translate-none"],accent:[{accent:W()}],appearance:[{appearance:["none","auto"]}],"caret-color":[{caret:W()}],"color-scheme":[{scheme:["normal","dark","light","light-dark","only-dark","only-light"]}],cursor:[{cursor:["auto","default","pointer","wait","text","move","help","not-allowed","none","context-menu","progress","cell","crosshair","vertical-text","alias","copy","no-drop","grab","grabbing","all-scroll","col-resize","row-resize","n-resize","e-resize","s-resize","w-resize","ne-resize","nw-resize","se-resize","sw-resize","ew-resize","ns-resize","nesw-resize","nwse-resize","zoom-in","zoom-out",ke,De]}],"field-sizing":[{"field-sizing":["fixed","content"]}],"pointer-events":[{"pointer-events":["auto","none"]}],resize:[{resize:["none","","y","x"]}],"scroll-behavior":[{scroll:["auto","smooth"]}],"scroll-m":[{"scroll-m":ce()}],"scroll-mx":[{"scroll-mx":ce()}],"scroll-my":[{"scroll-my":ce()}],"scroll-ms":[{"scroll-ms":ce()}],"scroll-me":[{"scroll-me":ce()}],"scroll-mbs":[{"scroll-mbs":ce()}],"scroll-mbe":[{"scroll-mbe":ce()}],"scroll-mt":[{"scroll-mt":ce()}],"scroll-mr":[{"scroll-mr":ce()}],"scroll-mb":[{"scroll-mb":ce()}],"scroll-ml":[{"scroll-ml":ce()}],"scroll-p":[{"scroll-p":ce()}],"scroll-px":[{"scroll-px":ce()}],"scroll-py":[{"scroll-py":ce()}],"scroll-ps":[{"scroll-ps":ce()}],"scroll-pe":[{"scroll-pe":ce()}],"scroll-pbs":[{"scroll-pbs":ce()}],"scroll-pbe":[{"scroll-pbe":ce()}],"scroll-pt":[{"scroll-pt":ce()}],"scroll-pr":[{"scroll-pr":ce()}],"scroll-pb":[{"scroll-pb":ce()}],"scroll-pl":[{"scroll-pl":ce()}],"snap-align":[{snap:["start","end","center","align-none"]}],"snap-stop":[{snap:["normal","always"]}],"snap-type":[{snap:["none","x","y","both"]}],"snap-strictness":[{snap:["mandatory","proximity"]}],touch:[{touch:["auto","none","manipulation"]}],"touch-x":[{"touch-pan":["x","left","right"]}],"touch-y":[{"touch-pan":["y","up","down"]}],"touch-pz":["touch-pinch-zoom"],select:[{select:["none","text","all","auto"]}],"will-change":[{"will-change":["auto","scroll","contents","transform",ke,De]}],fill:[{fill:["none",...W()]}],"stroke-w":[{stroke:[ut,Ys,jc,h0]}],stroke:[{stroke:["none",...W()]}],"forced-color-adjust":[{"forced-color-adjust":["auto","none"]}]},conflictingClassGroups:{overflow:["overflow-x","overflow-y"],overscroll:["overscroll-x","overscroll-y"],inset:["inset-x","inset-y","inset-bs","inset-be","start","end","top","right","bottom","left"],"inset-x":["right","left"],"inset-y":["top","bottom"],flex:["basis","grow","shrink"],gap:["gap-x","gap-y"],p:["px","py","ps","pe","pbs","pbe","pt","pr","pb","pl"],px:["pr","pl"],py:["pt","pb"],m:["mx","my","ms","me","mbs","mbe","mt","mr","mb","ml"],mx:["mr","ml"],my:["mt","mb"],size:["w","h"],"font-size":["leading"],"fvn-normal":["fvn-ordinal","fvn-slashed-zero","fvn-figure","fvn-spacing","fvn-fraction"],"fvn-ordinal":["fvn-normal"],"fvn-slashed-zero":["fvn-normal"],"fvn-figure":["fvn-normal"],"fvn-spacing":["fvn-normal"],"fvn-fraction":["fvn-normal"],"line-clamp":["display","overflow"],rounded:["rounded-s","rounded-e","rounded-t","rounded-r","rounded-b","rounded-l","rounded-ss","rounded-se","rounded-ee","rounded-es","rounded-tl","rounded-tr","rounded-br","rounded-bl"],"rounded-s":["rounded-ss","rounded-es"],"rounded-e":["rounded-se","rounded-ee"],"rounded-t":["rounded-tl","rounded-tr"],"rounded-r":["rounded-tr","rounded-br"],"rounded-b":["rounded-br","rounded-bl"],"rounded-l":["rounded-tl","rounded-bl"],"border-spacing":["border-spacing-x","border-spacing-y"],"border-w":["border-w-x","border-w-y","border-w-s","border-w-e","border-w-bs","border-w-be","border-w-t","border-w-r","border-w-b","border-w-l"],"border-w-x":["border-w-r","border-w-l"],"border-w-y":["border-w-t","border-w-b"],"border-color":["border-color-x","border-color-y","border-color-s","border-color-e","border-color-bs","border-color-be","border-color-t","border-color-r","border-color-b","border-color-l"],"border-color-x":["border-color-r","border-color-l"],"border-color-y":["border-color-t","border-color-b"],translate:["translate-x","translate-y","translate-none"],"translate-none":["translate","translate-x","translate-y","translate-z"],"scroll-m":["scroll-mx","scroll-my","scroll-ms","scroll-me","scroll-mbs","scroll-mbe","scroll-mt","scroll-mr","scroll-mb","scroll-ml"],"scroll-mx":["scroll-mr","scroll-ml"],"scroll-my":["scroll-mt","scroll-mb"],"scroll-p":["scroll-px","scroll-py","scroll-ps","scroll-pe","scroll-pbs","scroll-pbe","scroll-pt","scroll-pr","scroll-pb","scroll-pl"],"scroll-px":["scroll-pr","scroll-pl"],"scroll-py":["scroll-pt","scroll-pb"],touch:["touch-x","touch-y","touch-pz"],"touch-x":["touch"],"touch-y":["touch"],"touch-pz":["touch"]},conflictingClassGroupModifiers:{"font-size":["leading"]},orderSensitiveModifiers:["*","**","after","backdrop","before","details-content","file","first-letter","first-line","marker","placeholder","selection"]}});function md(...a){return Ww(n0(a))}const E0=a=>typeof a=="boolean"?`${a}`:a===0?"0":a,C0=n0,Jw=((a,s)=>f=>{var v;if(s?.variants==null)return C0(a,f?.class,f?.className);const{variants:p,defaultVariants:S}=s,E=Object.keys(p).map(R=>{const k=f?.[R],L=S?.[R];if(k===null)return null;const U=E0(k)||E0(L);return p[R][U]}),T=f&&Object.entries(f).reduce((R,k)=>{let[L,U]=k;return U===void 0||(R[L]=U),R},{}),O=s==null||(v=s.compoundVariants)===null||v===void 0?void 0:v.reduce((R,k)=>{let{class:L,className:U,...V}=k;return Object.entries(V).every(K=>{let[Z,$]=K;return Array.isArray($)?$.includes({...S,...T}[Z]):{...S,...T}[Z]===$})?[...R,L,U]:R},[]);return C0(a,E,O,f?.class,f?.className)})("inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md border text-sm font-medium transition-colors outline-none disabled:pointer-events-none disabled:opacity-50",{variants:{variant:{default:"border-white/10 bg-white/[0.04] text-slate-100 hover:border-sky-400/40 hover:bg-white/[0.07]",ghost:"border-transparent bg-transparent text-slate-300 hover:bg-white/[0.05] hover:text-slate-50",subtle:"border-white/8 bg-slate-950/60 text-slate-300 hover:border-sky-400/25 hover:text-slate-50"},size:{default:"h-9 px-3",sm:"h-8 px-2.5 text-xs",icon:"h-9 w-9"}},defaultVariants:{variant:"default",size:"default"}}),$c=H.forwardRef(({className:a,variant:s,size:f,...v},p)=>Y.jsx("button",{ref:p,className:md(Jw({variant:s,size:f}),a),...v}));$c.displayName="Button";const Kw=[{id:"overview",label:"\uAC1C\uC694",icon:dd},{id:"daily",label:"\uC77C\uBCC4",icon:fd},{id:"urls",label:"URL",icon:hd},{id:"queries",label:"\uAC80\uC0C9\uC5B4",icon:Ku},{id:"crawl",label:"\uD06C\uB864",icon:Wb},{id:"backlink",label:"\uBC31\uB9C1\uD06C",icon:hd},{id:"diagnosis",label:"\uBA54\uD0C0",icon:$b}];function jw(a){const[s,f]=H.useState(()=>a.getState());return H.useEffect(()=>a.subscribe(v=>{f({...v,rows:[...v.rows],allSites:[...v.allSites]})}),[a]),s}function T0(a){return a?a.replace(/^https?:\/\//,""):"\uC0AC\uC774\uD2B8 \uC120\uD0DD"}function qw(a,s){const f=s.map(p=>p.site).filter(p=>a.includes(p)),v=new Set(f);return[...f,...a.filter(p=>!v.has(p))]}function $w(a){return a?new Intl.DateTimeFormat("ko-KR",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:!1}).format(a):"\uC5C6\uC74C"}function eS(a){if(a==null)return"\uC5C6\uC74C";if(a<=0)return"\uB9CC\uB8CC";const s=Math.max(1,Math.ceil(a/6e4)),f=Math.floor(s/1440),v=Math.floor(s%1440/60),p=s%60;return f>0?`${f}\uC77C ${v}\uC2DC\uAC04`:v>0?`${v}\uC2DC\uAC04 ${p}\uBD84`:`${p}\uBD84`}function tS({api:a,portalContainer:s}){const f=jw(a),[v,p]=H.useState(""),[S,E]=H.useState(!1),[T,O]=H.useState(()=>Date.now()),R=H.useMemo(()=>qw(f.allSites,f.rows),[f.allSites,f.rows]),k=H.useMemo(()=>{const K=v.trim().toLowerCase();return K?R.filter(Z=>Z.toLowerCase().includes(K)):R},[R,v]);H.useEffect(()=>{S||p("")},[S]),H.useEffect(()=>{const K=window.setInterval(()=>{O(Date.now())},3e4);return()=>window.clearInterval(K)},[]);const L=f.cacheMeta?.remainingMs==null?null:Math.max(0,f.cacheMeta.remainingMs-(T-f.cacheMeta.measuredAt)),U=f.curMode==="all",V=()=>{document.getElementById("sadv-bd")?.scrollTo({top:0,behavior:"smooth"}),window.scrollTo({top:0,behavior:"smooth"})};return Y.jsxs(Y.Fragment,{children:[Y.jsxs("div",{className:"sadvx-shell",children:[Y.jsxs("div",{className:"px-3.5 pt-2.5 pb-2.5",children:[Y.jsxs("div",{className:"grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-1.5",children:[Y.jsx("div",{className:"min-w-0",children:Y.jsxs("div",{className:"flex min-w-0 items-center gap-2",children:[Y.jsx("div",{className:"flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-sky-400/18 bg-white/[0.03] text-sky-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",children:Y.jsx(Ku,{className:"h-4 w-4"})}),Y.jsxs("div",{className:"truncate text-[16px] font-semibold tracking-[-0.025em] text-slate-50",children:["Search",Y.jsx("span",{className:"text-emerald-400",children:"Advisor"})]}),f.accountLabel?Y.jsx("div",{className:"max-w-[150px] shrink truncate rounded-full border border-sky-400/15 bg-sky-400/[0.08] px-2 py-1 text-[9px] font-semibold leading-none text-sky-100",children:f.accountLabel}):null]})}),Y.jsxs("div",{className:"flex shrink-0 items-center justify-end gap-1",children:[Y.jsx($c,{size:"icon",variant:"subtle",title:"\uC0C8\uB85C\uACE0\uCE68",onClick:()=>a.refresh(),children:Y.jsx(qb,{className:"h-4 w-4"})}),Y.jsxs($c,{variant:"subtle",size:"sm",title:"\uD604\uC7AC \uD654\uBA74 \uC800\uC7A5",onClick:()=>a.download(),children:[Y.jsx(Kb,{className:"h-3.5 w-3.5"}),"HTML"]}),Y.jsx($c,{size:"icon",variant:"subtle",title:"\uB2EB\uAE30",onClick:()=>{document.getElementById("sadv-react-style")?.remove(),a.close()},children:Y.jsx(e0,{className:"h-4 w-4"})})]}),Y.jsxs("div",{className:"col-span-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 border-b border-white/6 pb-2 text-[10px] leading-4 text-slate-400",children:[Y.jsx("span",{className:"min-w-0 truncate",children:f.curMode==="all"?Y.jsxs("span",{children:[f.allSites.length,"\uAC1C \uC0AC\uC774\uD2B8 \uB4F1\uB85D\uB428"]}):Y.jsx("span",{children:T0(f.curSite)})}),Y.jsxs("span",{className:"ml-auto flex flex-wrap items-center justify-end gap-1.5 text-[9px] leading-none text-slate-500",children:[Y.jsxs("span",{className:"rounded-full border border-white/8 bg-white/[0.03] px-2 py-1",children:["v ",f.runtimeVersion||"dev"]}),Y.jsxs("span",{className:"rounded-full border border-white/8 bg-white/[0.03] px-2 py-1",title:f.cacheMeta?`${f.cacheMeta.label} \uAE30\uC900 \uCD5C\uADFC \uAC31\uC2E0`:"\uCE90\uC2DC \uAE30\uC900 \uC5C6\uC74C",children:["\uCE90\uC2DC\uC800\uC7A5 ",$w(f.cacheMeta?.updatedAt??null)]}),U?Y.jsxs("span",{className:"rounded-full border border-white/8 bg-white/[0.03] px-2 py-1",title:f.cacheMeta?`${f.cacheMeta.label} \uAE30\uC900 \uC790\uB3D9 \uAC31\uC2E0 \uC794\uC5EC \uC2DC\uAC04`:"\uCE90\uC2DC \uAE30\uC900 \uC5C6\uC74C",children:["\uC7AC\uC870\uD68C\uAE4C\uC9C0 ",eS(L)]}):null]})]})]}),Y.jsxs("div",{className:"mt-2.5 grid grid-cols-2 gap-1.5",children:[Y.jsxs($c,{variant:f.curMode==="all"?"default":"subtle",className:md("h-9.5 rounded-xl font-semibold tracking-[-0.01em]",f.curMode==="all"&&"border-sky-400/35 bg-sky-400/[0.08] text-sky-50"),onClick:()=>a.switchMode("all"),children:[Y.jsx(jb,{className:"h-3.5 w-3.5"}),"\uC804\uCCB4\uD604\uD669"]}),Y.jsxs($c,{variant:f.curMode==="site"?"default":"subtle",className:md("h-9.5 rounded-xl font-semibold tracking-[-0.01em]",f.curMode==="site"&&"border-sky-400/35 bg-sky-400/[0.08] text-sky-50"),onClick:()=>a.switchMode("site"),children:[Y.jsx(dd,{className:"h-3.5 w-3.5"}),"\uC0AC\uC774\uD2B8\uBCC4"]})]}),f.curMode==="site"?Y.jsx("div",{className:"mt-3",children:Y.jsxs(g1,{open:S,onOpenChange:E,children:[Y.jsx(b1,{asChild:!0,children:Y.jsxs("button",{className:"flex h-11 w-full items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 text-left text-sm text-slate-100 transition-colors hover:border-sky-400/30 focus:outline-none",children:[Y.jsx("span",{className:"h-2.5 w-2.5 rounded-full bg-emerald-400/90 shadow-[0_0_0_4px_rgba(16,185,129,0.12)]"}),Y.jsx("span",{className:"min-w-0 flex-1 truncate font-medium",children:T0(f.curSite)}),Y.jsx(Jb,{className:"h-4 w-4 text-slate-400"})]})}),Y.jsx(m1,{container:s??void 0,children:Y.jsxs(y1,{sideOffset:8,align:"center",className:"z-[10000001] w-[min(var(--radix-popover-trigger-width),448px)] min-w-[min(var(--radix-popover-trigger-width),448px)] max-w-[calc(100vw-32px)] rounded-2xl border border-white/10 bg-slate-950/96 p-2 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur",children:[Y.jsxs("div",{className:"border-b border-white/8 px-2 pb-2",children:[Y.jsxs("div",{className:"relative",children:[Y.jsx(Ku,{className:"pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"}),Y.jsx("input",{value:v,onChange:K=>p(K.target.value),placeholder:"\uC0AC\uC774\uD2B8 \uAC80\uC0C9...",className:"h-10 w-full rounded-xl border border-white/10 bg-white/[0.03] pl-9 pr-3 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-sky-400/30"})]}),Y.jsxs("div",{className:"mt-2 text-[10px] font-medium tracking-[0.14em] text-slate-500",children:["\uC804\uCCB4 ",R.length,"\uAC1C · \uD074\uB9AD\uC21C \uC815\uB82C"]})]}),Y.jsxs(k1,{className:"mt-2 h-[280px] overflow-hidden",children:[Y.jsx(N1,{className:"h-full",children:Y.jsx("div",{className:"space-y-1 pr-1",children:k.map(K=>{const Z=f.rows.find(oe=>oe.site===K),$=f.curSite===K;return Y.jsxs("button",{onClick:()=>{a.setSite(K),E(!1)},className:md("flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors",$?"border-sky-400/35 bg-sky-400/[0.08]":"border-transparent bg-white/[0.02] hover:border-white/10 hover:bg-white/[0.05]"),children:[Y.jsx("span",{className:"h-2.5 w-2.5 rounded-full bg-slate-500"}),Y.jsxs("div",{className:"min-w-0 flex-1",children:[Y.jsx("div",{className:"truncate text-[12px] font-medium text-slate-100",children:K.replace(/^https?:\/\//,"")}),Y.jsx("div",{className:"truncate text-[10px] text-slate-500",children:K})]}),Y.jsx("div",{className:"shrink-0 text-[11px] font-semibold text-emerald-400",children:Z?`${Z.totalC.toLocaleString()} \uD074\uB9AD`:"-"})]},K)})})}),Y.jsx(L1,{orientation:"vertical",className:"flex w-2.5 p-[1px]",children:Y.jsx(B1,{className:"flex-1 rounded-full bg-white/10"})})]})]})})]})}):null]}),f.curMode==="site"?Y.jsx("div",{className:"border-t border-white/6 bg-black/10 px-2.5 pb-2 pt-1.5",children:Y.jsx($1,{value:f.curTab,onValueChange:K=>a.setTab(K),children:Y.jsx(ew,{className:"flex flex-wrap items-center justify-center gap-1.5",children:Kw.map(K=>{const Z=K.icon;return Y.jsxs(tw,{value:K.id,className:"inline-flex h-8.5 items-center gap-1.5 rounded-lg border border-transparent px-2.5 text-[11px] font-medium tracking-[-0.01em] text-slate-400 outline-none transition-colors data-[state=active]:border-sky-400/30 data-[state=active]:bg-sky-400/[0.08] data-[state=active]:text-slate-50 hover:bg-white/[0.04] hover:text-slate-100",children:[Y.jsx(Z,{className:"h-3.5 w-3.5"}),K.label]},K.id)})})})}):null]}),Ff.createPortal(Y.jsx($c,{type:"button",size:"icon",title:"\uCD5C\uC0C1\uB2E8 \uC774\uB3D9",onClick:V,className:"fixed right-5 bottom-5 z-[10000012] h-10 w-10 rounded-full border border-sky-300/45 bg-linear-to-b from-sky-300 to-sky-500 text-slate-950 shadow-[0_14px_32px_rgba(56,189,248,0.35)] backdrop-blur transition-all hover:-translate-y-0.5 hover:from-sky-200 hover:to-sky-400 hover:shadow-[0_18px_38px_rgba(56,189,248,0.42)]",children:Y.jsx(Qb,{className:"h-4 w-4"})}),s??document.body)]})}})()
+// React 18 Compatibility Layer
+// 이 파일은 React 17/18 호환성을 위한 유틸리티를 제공합니다.
+
+// ============================================================================
+// React 버전 감지
+// ============================================================================
+
+/**
+ * React 버전을 감지합니다.
+ * @returns {Object} { major: number, minor: number, patch: number, isConcurrent: boolean }
+ * @example
+ * const version = detectReactVersion();
+ * console.log(version.major); // 18
+ * console.log(version.isConcurrent); // true
+ */
+function detectReactVersion() {
+  const React = (typeof window !== 'undefined' && window.React) ||
+                (typeof require === 'function' && require('react'));
+
+  if (!React || !React.version) {
+    return { major: 0, minor: 0, patch: 0, isConcurrent: false };
+  }
+
+  const parts = React.version.split('.').map(Number);
+  const major = parts[0] || 0;
+  const minor = parts[1] || 0;
+  const patch = parts[2] || 0;
+
+  // React 18+ supports Concurrent Mode
+  const isConcurrent = major >= 18;
+
+  return { major, minor, patch, isConcurrent };
+}
+
+/**
+ * React 18 Concurrent Features 지원 여부를 확인합니다.
+ * @returns {boolean} Concurrent Features 지원 여부
+ */
+function supportsConcurrentFeatures() {
+  const version = detectReactVersion();
+  return version.isConcurrent;
+}
+
+// ============================================================================
+// MutationObserver 대체 (React 18 호환)
+// ============================================================================
+
+/**
+ * React 18 호환 가능한 DOM 관찰자를 생성합니다.
+ * MutationObserver는 React 18의 Concurrent Mode와 함께 사용할 때
+ * 문제를 일으킬 수 있으므로, 대안을 제공합니다.
+ *
+ * @param {Element} target - 관찰할 DOM 요소
+ * @param {Function} callback - 변경 시 호출할 콜백
+ * @param {Object} options - 관찰 옵션
+ * @returns {Object} { disconnect: Function, observe: Function }
+ * @example
+ * const observer = createReact18CompatibleObserver(document.body, () => {
+ *   console.log('DOM changed');
+ * }, { subtree: true });
+ */
+function createReact18CompatibleObserver(target, callback, options = {}) {
+  const version = detectReactVersion();
+
+  // React 17 이하 또는 MutationObserver가 없는 경우
+  if (version.major < 18 || typeof MutationObserver === 'undefined') {
+    if (typeof MutationObserver !== 'undefined') {
+      const observer = new MutationObserver(callback);
+      observer.observe(target, options);
+      return {
+        disconnect: () => observer.disconnect(),
+        observe: (t, opts) => observer.observe(t, opts)
+      };
+    } else {
+      // MutationObserver가 없는 경우 (아주 오래된 브라우저)
+      // 폴리필을 사용하거나 대체 전략을 사용합니다.
+      return {
+        disconnect: () => {},
+        observe: () => {}
+      };
+    }
+  }
+
+  // React 18+인 경우, 더 안전한 관찰 전략을 사용합니다.
+  // Concurrent Mode에서는 MutationObserver가 과도하게 트리거될 수 있습니다.
+  let timeoutId = null;
+  let isScheduled = false;
+
+  const scheduleCallback = () => {
+    if (isScheduled) return;
+
+    isScheduled = true;
+
+    // React 18의 스케줄링을 활용하여 렌더링을 방해하지 않도록 합니다.
+    if (typeof requestIdleCallback !== 'undefined') {
+      requestIdleCallback(() => {
+        callback();
+        isScheduled = false;
+      }, { timeout: 1000 });
+    } else if (typeof requestAnimationFrame !== 'undefined') {
+      requestAnimationFrame(() => {
+        callback();
+        isScheduled = false;
+      });
+    } else {
+      setTimeout(() => {
+        callback();
+        isScheduled = false;
+      }, 0);
+    }
+  };
+
+  // React 18에서도 MutationObserver는 사용하지만,
+  // 디바운스를 적용하여 과도한 트리거를 방지합니다.
+  const debouncedCallback = () => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    timeoutId = setTimeout(scheduleCallback, 100);
+  };
+
+  const observer = new MutationObserver(debouncedCallback);
+  observer.observe(target, options);
+
+  return {
+    disconnect: () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      observer.disconnect();
+    },
+    observe: (t, opts) => observer.observe(t, opts)
+  };
+}
+
+// ============================================================================
+// Concurrent Mode 호환 비동기 처리
+// ============================================================================
+
+/**
+ * React 18 Concurrent Mode에 최적화된 비동기 작업 스케줄러입니다.
+ * Concurrent Mode를 방해하지 않도록 적절한 우선순위로 작업을 예약합니다.
+ *
+ * @param {Function} task - 실행할 비동기 작업
+ * @param {Object} options - { priority: 'user-visible' | 'background' | 'idle', timeout: number }
+ * @returns {Promise} 작업 완료 Promise
+ * @example
+ * await runConcurrentTask(async () => {
+ *   await fetchData();
+ * }, { priority: 'user-visible', timeout: 5000 });
+ */
+function runConcurrentTask(task, options = {}) {
+  const { priority = 'user-visible', timeout = 5000 } = options;
+  const version = detectReactVersion();
+
+  return new Promise((resolve, reject) => {
+    const executeTask = async () => {
+      try {
+        const result = await task();
+        resolve(result);
+      } catch (error) {
+        reject(error);
+      }
+    };
+
+    if (!version.isConcurrent) {
+      // React 17 이하에서는 일반 Promise를 사용합니다.
+      executeTask();
+      return;
+    }
+
+    // React 18+에서는 우선순위에 따라 다른 스케줄링을 사용합니다.
+    switch (priority) {
+      case 'user-visible':
+        // 사용자에게 보이는 작업: 즉시 실행
+        if (typeof scheduler !== 'undefined' && scheduler.unstable_scheduleCallback) {
+          scheduler.unstable_scheduleCallback(
+            scheduler.unstable_UserBlockingPriority,
+            executeTask
+          );
+        } else {
+          Promise.resolve().then(executeTask);
+        }
+        break;
+
+      case 'background':
+        // 백그라운드 작업: 낮은 우선순위
+        if (typeof scheduler !== 'undefined' && scheduler.unstable_scheduleCallback) {
+          scheduler.unstable_scheduleCallback(
+            scheduler.unstable_NormalPriority,
+            executeTask
+          );
+        } else {
+          Promise.resolve().then(executeTask);
+        }
+        break;
+
+      case 'idle':
+        // 유휴 시 작업: 브라우저가 유휴 상태일 때 실행
+        if (typeof requestIdleCallback !== 'undefined') {
+          requestIdleCallback(() => executeTask(), { timeout });
+        } else if (typeof scheduler !== 'undefined' && scheduler.unstable_scheduleCallback) {
+          scheduler.unstable_scheduleCallback(
+            scheduler.unstable_IdlePriority,
+            executeTask
+          );
+        } else {
+          setTimeout(executeTask, 0);
+        }
+        break;
+
+      default:
+        executeTask();
+    }
+  });
+}
+
+/**
+ * React 18의 useTransition과 유사한 기능을 제공합니다.
+ * 긴 작업을 수행하면서도 UI를 반응형으로 유지합니다.
+ *
+ * @param {Function} task - 실행할 작업
+ * @returns {Promise} 작업 완료 Promise
+ * @example
+ * const [startTransition, isPending] = createTransition();
+ * await startTransition(async () => {
+ *   await heavyComputation();
+ * });
+ */
+function createTransition() {
+  const version = detectReactVersion();
+  let isPending = false;
+
+  const startTransition = async (task) => {
+    isPending = true;
+    try {
+      await runConcurrentTask(task, { priority: 'background' });
+    } finally {
+      isPending = false;
+    }
+  };
+
+  return [startTransition, () => isPending];
+}
+
+// ============================================================================
+// StrictMode 지원
+// ============================================================================
+
+/**
+ * React 18 StrictMode에서 안전한 side-effect 함수를 생성합니다.
+ * StrictMode는 개발 모드에서 이중 렌더링을 수행하므로,
+ * side-effect가 여러 번 실행되는 것을 방지해야 합니다.
+ *
+ * @param {Function} effect - side-effect 함수
+ * @returns {Function} StrictMode-safe wrapper 함수
+ * @example
+ * const safeEffect = createStrictModeSafeEffect(() => {
+ *   console.log('This will only run once per mount');
+ * });
+ */
+function createStrictModeSafeEffect(effect) {
+  let cleanup = null;
+  let ran = false;
+
+  return (...args) => {
+    if (ran) {
+      // 이미 실행된 경우, cleanup만 실행합니다.
+      if (typeof cleanup === 'function') {
+        cleanup();
+      }
+      return;
+    }
+
+    ran = true;
+    cleanup = effect(...args);
+
+    // cleanup 함수를 반환합니다.
+    return () => {
+      if (typeof cleanup === 'function') {
+        cleanup();
+      }
+      ran = false;
+    };
+  };
+}
+
+/**
+ * 이중 렌더링을 감지하고 방지하는 래퍼 함수입니다.
+ * React 18 StrictMode에서는 개발 모드에서 컴포넌트가 두 번 렌더링됩니다.
+ *
+ * @param {Function} fn - 실행할 함수
+ * @param {Object} options - { key: string, debounceMs: number }
+ * @returns {Function} 래핑된 함수
+ * @example
+ * const safeRender = preventDoubleRender(() => {
+ *   initializeComponent();
+ * }, { key: 'component-init', debounceMs: 100 });
+ */
+function preventDoubleRender(fn, options = {}) {
+  const { key = 'default', debounceMs = 100 } = options;
+  const cacheKey = `__prevent_double_render_${key}`;
+  let lastCallTime = 0;
+
+  return (...args) => {
+    const now = Date.now();
+
+    if (typeof window !== 'undefined') {
+      const lastTime = window[cacheKey] || 0;
+
+      if (now - lastTime < debounceMs) {
+        // 아직 debounce 기간 내이면 무시합니다.
+        return;
+      }
+
+      window[cacheKey] = now;
+    }
+
+    return fn(...args);
+  };
+}
+
+// ============================================================================
+// 전역 상태 관리 (React 18 호환)
+// ============================================================================
+
+/**
+ * React 18 호환 전역 상태 관리자입니다.
+ * Concurrent Mode에서도 안전하게 사용할 수 있습니다.
+ *
+ * @param {Object} initialState - 초기 상태
+ * @returns {Object} { getState, setState, subscribe }
+ * @example
+ * const store = createReact18CompatibleState({ count: 0 });
+ * store.subscribe((state) => console.log(state));
+ * store.setState({ count: 1 });
+ */
+function createReact18CompatibleState(initialState = {}) {
+  let state = { ...initialState };
+  const listeners = new Set();
+  const version = detectReactVersion();
+
+  const notifyListeners = () => {
+    if (version.isConcurrent) {
+      // React 18에서는 다음 타이머 틱에 알림을 보냅니다.
+      Promise.resolve().then(() => {
+        const stateSnapshot = { ...state };
+        listeners.forEach((listener) => {
+          try {
+            listener(stateSnapshot);
+          } catch (error) {
+            console.error('[React18Compat] Listener error:', error);
+          }
+        });
+      });
+    } else {
+      // React 17 이하에서는 즉시 알림을 보냅니다.
+      const stateSnapshot = { ...state };
+      listeners.forEach((listener) => {
+        try {
+          listener(stateSnapshot);
+        } catch (error) {
+          console.error('[React18Compat] Listener error:', error);
+        }
+      });
+    }
+  };
+
+  return {
+    getState: () => ({ ...state }),
+
+    setState: (partial) => {
+      const nextState = typeof partial === 'function'
+        ? partial(state)
+        : partial;
+
+      state = { ...state, ...nextState };
+      notifyListeners();
+    },
+
+    subscribe: (listener) => {
+      listeners.add(listener);
+
+      // 구독 해제 함수를 반환합니다.
+      return () => {
+        listeners.delete(listener);
+      };
+    }
+  };
+}
+
+// ============================================================================
+// 유틸리티 함수
+// ============================================================================
+
+/**
+ * 현재 환경이 React 18 StrictMode인지 확인합니다.
+ * @returns {boolean} StrictMode 여부
+ */
+function isStrictMode() {
+  const version = detectReactVersion();
+
+  if (version.major < 18) {
+    return false;
+  }
+
+  // React 18에서는 개발 모드일 때 자동으로 StrictMode가 활성화될 수 있습니다.
+  // 실제 StrictMode 여부는 런타임에 확인하기 어렵습니다.
+  // 대신, 개발 모드인지 확인합니다.
+  return typeof process !== 'undefined' &&
+         process.env &&
+         process.env.NODE_ENV === 'development';
+}
+
+/**
+ * React 18 호환성 정보를 반환합니다.
+ * @returns {Object} 호환성 정보
+ */
+function getReact18CompatibilityInfo() {
+  const version = detectReactVersion();
+
+  return {
+    version,
+    supportsConcurrent: supportsConcurrentFeatures(),
+    isStrictMode: isStrictMode(),
+    features: {
+      createRoot: version.major >= 18,
+      concurrentMode: version.major >= 18,
+      automaticBatching: version.major >= 18,
+      strictModeDoubleRender: version.major >= 18,
+      transition: version.major >= 18,
+      deferredValue: version.major >= 18
+    },
+    recommendations: version.major >= 18
+      ? ['createRoot 사용 권장', 'Concurrent Features 활용 가능', 'StrictMode 이중 렌더링 주의']
+      : ['ReactDOM.render 사용', 'Concurrent Features 미지원', '향후 React 18 업그레이드 권장']
+  };
+}
+
+// ============================================================================
+// 전역 노출 (디버깅 및 테스트용)
+// ============================================================================
+
+if (typeof window !== 'undefined') {
+  window.__REACT18_COMPAT__ = {
+    detectReactVersion,
+    supportsConcurrentFeatures,
+    createReact18CompatibleObserver,
+    runConcurrentTask,
+    createTransition,
+    createStrictModeSafeEffect,
+    preventDoubleRender,
+    createReact18CompatibleState,
+    isStrictMode,
+    getReact18CompatibilityInfo
+  };
+
+  // 개발 모드에서 호환성 정보를 콘솔에 출력합니다.
+  if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'development') {
+    console.log('[React18Compat] Compatibility Info:', getReact18CompatibilityInfo());
+  }
+}
+
+// ============================================================================
+// 내보내기 (ES6 모듈 방식)
+// ============================================================================
+
+export {
+  detectReactVersion,
+  supportsConcurrentFeatures,
+  createReact18CompatibleObserver,
+  runConcurrentTask,
+  createTransition,
+  createStrictModeSafeEffect,
+  preventDoubleRender,
+  createReact18CompatibleState,
+  isStrictMode,
+  getReact18CompatibilityInfo
+};
+
 const CONFIG = {
   UI: {
     PANEL_WIDTH: 490,
@@ -218,26 +698,19 @@ const CONFIG = {
 };
 
 // ============================================================
-// ERROR TRACKING SYSTEM
+// ERROR TRACKING SYSTEM (Minimal for bundle size)
 // ============================================================
 const ERROR_TRACKING = {
-  enabled: false, // 기본 비활성, 사용자 설정으로 활성화 가능
-  endpoint: null, // 추후 엔드포인트 설정 시 사용
+  enabled: false,
+  endpoint: null,
   sampleRate: 1.0,
   maxQueueSize: 10,
   errorQueue: [],
-
-  /**
-   * 에러 리포팅 (전송 또는 대기열 저장)
-   * @param {Object} errorContext - 에러 컨텍스트
-   */
   reportError: function(errorContext) {
     if (!this.enabled) {
-      // 비활성 상태에서는 콘솔에만 출력
       console.error('[Error Tracking]', errorContext);
       return;
     }
-
     const enrichedError = {
       ...errorContext,
       timestamp: Date.now(),
@@ -247,30 +720,18 @@ const ERROR_TRACKING = {
       siteCount: window.__sadvInitData?.sites?.length || 0,
       isMultiAccount: window.__sadvAccountState?.isMultiAccount || false
     };
-
-    // 샘플링
-    if (Math.random() > this.sampleRate) {
-      return;
-    }
-
-    // 엔드포인트가 있으면 전송
+    if (Math.random() > this.sampleRate) return;
     if (this.endpoint) {
       this.sendToEndpoint(enrichedError);
     } else {
-      // 대기열에 저장 (최대 크기 제한)
       if (this.errorQueue.length >= this.maxQueueSize) {
-        this.errorQueue.shift(); // 가장 오래된 에러 제거
+        this.errorQueue.shift();
       }
       this.errorQueue.push(enrichedError);
     }
   },
-
-  /**
-   * 엔드포인트로 에러 전송
-   */
   sendToEndpoint: function(errorData) {
     if (!this.endpoint) return;
-
     fetch(this.endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -278,46 +739,29 @@ const ERROR_TRACKING = {
       keepalive: true
     }).catch(err => {
       console.error('[Error Tracking] Failed to report error:', err);
-      // 실패 시 대기열에 저장
       if (this.errorQueue.length < this.maxQueueSize) {
         this.errorQueue.push(errorData);
       }
     });
   },
-
-  /**
-   * 대기열에 있는 에러 모두 전송
-   */
   flushQueue: function() {
     if (!this.endpoint || this.errorQueue.length === 0) return;
-
     const errorsToSend = [...this.errorQueue];
     this.errorQueue = [];
-
     errorsToSend.forEach(error => {
       this.sendToEndpoint(error);
     });
   },
-
-  /**
-   * 에러 추적 활성화 및 엔드포인트 설정
-   */
   enable: function(endpoint) {
     this.enabled = true;
     this.endpoint = endpoint;
     console.log('[Error Tracking] Enabled with endpoint:', endpoint);
   },
-
-  /**
-   * 에러 추적 비활성화
-   */
   disable: function() {
     this.enabled = false;
     console.log('[Error Tracking] Disabled');
   }
 };
-
-// 전역 에러 핸들러 등록
 if (typeof window !== 'undefined') {
   window.addEventListener('error', (event) => {
     ERROR_TRACKING.reportError({
@@ -329,7 +773,6 @@ if (typeof window !== 'undefined') {
       stack: event.error?.stack
     });
   });
-
   window.addEventListener('unhandledrejection', (event) => {
     ERROR_TRACKING.reportError({
       type: 'unhandledRejection',
@@ -347,7 +790,6 @@ const ICONS = {
   calendar: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
   up: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
   down: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>',
-  index: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
   link: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
   search: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
   external: '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>',
@@ -531,13 +973,7 @@ const DATA_TTL = 12 * 60 * 60 * 1000;
 // ============================================================
 // P0-3: ACCOUNT_UTILS - 계정 유틸리티 통합
 // ============================================================
-// 다중 계정 지원을 위한 중앙 집중식 계정 관리 유틸리티
-// 중복 제거: getAccountLabel(), getAccountInfo() 등을 이 객체로 통합
 const ACCOUNT_UTILS = {
-  /**
-   * 현재 사용자의 계정 이메일(라벨)을 반환
-   * @returns {string} 계정 이메일 또는 빈 문자열
-   */
   getAccountLabel: function() {
     try {
       const authUser = window.__NUXT__?.state?.authUser;
@@ -546,11 +982,6 @@ const ACCOUNT_UTILS = {
       return "";
     }
   },
-
-  /**
-   * 현재 사용자의 encId를 반환
-   * @returns {string} encId 또는 빈 문자열
-   */
   getEncId: function() {
     try {
       return window.__NUXT__?.state?.authUser?.encId || "";
@@ -558,11 +989,6 @@ const ACCOUNT_UTILS = {
       return "";
     }
   },
-
-  /**
-   * 계정 정보 전체를 반환 (라벨 + encId)
-   * @returns {Object} { accountLabel, encId }
-   */
   getAccountInfo: function() {
     try {
       const authUser = window.__NUXT__?.state?.authUser;
@@ -574,54 +1000,27 @@ const ACCOUNT_UTILS = {
       return { accountLabel: "", encId: "" };
     }
   },
-
-  /**
-   * 다중 계정 모드에서 현재 활성 계정 반환
-   * @returns {string} 현재 계정 이메일
-   */
   getCurrentAccount: function() {
     return window.__sadvAccountState?.currentAccount ||
            ACCOUNT_UTILS.getAccountLabel();
   },
-
-  /**
-   * 다중 계정 모드인지 확인
-   * @returns {boolean} 다중 계정 여부
-   */
   isMultiAccount: function() {
     return window.__sadvAccountState?.isMultiAccount || false;
   },
-
-  /**
-   * 모든 계정 목록 반환
-   * @returns {string[]} 계정 이메일 배열 (복사본)
-   */
   getAllAccounts: function() {
     if (!ACCOUNT_UTILS.isMultiAccount()) {
       const label = ACCOUNT_UTILS.getAccountLabel();
       return label ? [label] : [];
     }
-    // 배열 복사본 반환으로 원본 데이터 보호
     const accounts = window.__sadvAccountState?.allAccounts;
     return accounts ? [...accounts] : [];
   },
-
-  /**
-   * 특정 계정의 데이터를 반환
-   * @param {string} accountEmail - 계정 이메일
-   * @returns {Object|null} 계정 데이터 또는 null
-   */
   getAccountData: function(accountEmail) {
     if (!window.__sadvAccountState?.isMultiAccount) {
       return null;
     }
     return window.__sadvAccountState.accountsData?.[accountEmail] || null;
   },
-
-  /**
-   * 현재 계정 상태 객체 반환 (다중 계정 정보 포함)
-   * @returns {Object|null} 계정 상태 또는 null
-   */
   getAccountState: function() {
     return window.__sadvAccountState || null;
   }
@@ -820,6 +1219,23 @@ const ALL_SITES_BATCH = 4;
 const FULL_REFRESH_BATCH_SIZE = 1;
 const FULL_REFRESH_SITE_DELAY_MS = 350;
 const FULL_REFRESH_JITTER_MS = 150;
+
+// ============================================================
+// P2 Issue #2: V1 SCHEMA DEFINITION (Compressed)
+// ============================================================
+const V1_SCHEMA = {
+  FIELDS: ['sites', 'dataBySite', 'siteMeta', 'savedAt', 'encId', '__schema_version'],
+  META: { SCHEMA_VERSION: '__schema_version', EXPORTED_AT: '__exported_at', SOURCE_ACCOUNT: '__source_account', SOURCE_ENC_ID: '__source_enc_id' },
+  DEFAULTS: { SCHEMA_VERSION: '1.0', SAVED_AT: null, SITES: [], DATA_BY_SITE: {}, SITE_META: {} },
+  SITE_FIELDS: ['expose', 'crawl', 'backlink', 'diagnosisMeta', 'detailLoaded', '__cacheSavedAt']
+};
+const V1_MIGRATION = {
+  VERSION: '1.0.0',
+  SUPPORTED_V1_VERSIONS: ['1.0'],
+  MODES: { AUTO: 'auto', MANUAL: 'manual', ROLLBACK: 'rollback' },
+  STATUS: { SUCCESS: 'success', PARTIAL: 'partial', FAILED: 'failed', SKIPPED: 'skipped', INVALID: 'invalid' },
+  LS_KEYS: { V1_BACKUP: 'sadv_v1_backup_', MIGRATION_LOG: 'sadv_migration_log_', LAST_MIGRATION: 'sadv_last_migration' }
+};
 
 // ============================================================
 // P1: USER-FRIENDLY ERROR MESSAGES
@@ -2906,7 +3322,52 @@ async function loadSiteList(refresh = false) {
       return handleV2MultiAccount(exportPayload);
     }
 
-    // 레거시 V1 포맷은 지원하지 않음 (Big Bang Migration 완료)
+    // P2 Issue #2: V1 마이그레이션 지원
+    // V1 페이로드 감지 및 자동 마이그레이션
+    if (canMigrateV1(exportPayload)) {
+      console.log('[loadSiteList] Detected V1 payload, attempting migration...');
+
+      try {
+        // V1 데이터 백업
+        const backupKey = backupV1Data(exportPayload);
+
+        // V1 → V2 마이그레이션
+        const v2Payload = migrateV1ToV2(exportPayload, {
+          accountEmail: ACCOUNT_UTILS.getAccountLabel(),
+          encId: ACCOUNT_UTILS.getEncId(),
+          validate: true
+        });
+
+        // 마이그레이션된 V2 페이로드 처리
+        if (v2Payload.__meta && v2Payload.accounts) {
+          console.log('[loadSiteList] V1 → V2 migration successful');
+
+          // 마이그레이션된 데이터로 전역 변수 업데이트
+          window.__SEARCHADVISOR_EXPORT_PAYLOAD__ = v2Payload;
+
+          // 사용자에게 마이그레이션 알림 (선택사항)
+          if (typeof __sadvNotify === 'function') {
+            __sadvNotify('V1 데이터가 V2 형식으로 자동 마이그레이션되었습니다');
+          }
+
+          return handleV2MultiAccount(v2Payload);
+        }
+      } catch (e) {
+        console.error('[loadSiteList] V1 migration failed:', e);
+
+        // 마이그레이션 실패 시 사용자에게 알림
+        if (typeof showError === 'function') {
+          showError(
+            'V1 데이터 마이그레이션에 실패했습니다',
+            e,
+            'V1_Migration'
+          );
+        }
+
+        return [];
+      }
+    }
+
     // V2 포맷이 아닌 경우 빈 배열 반환
     if (exportPayload && !exportPayload.__meta) {
       console.warn('[loadSiteList] Unsupported payload format (missing __meta)');
@@ -2946,6 +3407,24 @@ async function loadSiteList(refresh = false) {
   }
 
   console.log('[loadSiteList] No sites found, returning empty array');
+
+  // P2 Issue #2: 레거시 캐시에서 V1 데이터 탐지 시도
+  if (!refresh) {
+    try {
+      const migrationResult = detectAndMigrateV1Data();
+      if (migrationResult.detected && migrationResult.migrated && migrationResult.payload) {
+        console.log('[loadSiteList] V1 data detected and migrated from cache');
+
+        // 마이그레이션된 데이터 처리
+        window.__SEARCHADVISOR_EXPORT_PAYLOAD__ = migrationResult.payload;
+
+        return handleV2MultiAccount(migrationResult.payload);
+      }
+    } catch (e) {
+      console.warn('[loadSiteList] V1 cache migration failed:', e);
+    }
+  }
+
   return [];
 }
 
@@ -3191,7 +3670,584 @@ function getAccountList() {
   });
 }
 
+// ============================================================
+// P2 Issue #2: V1 MIGRATION FUNCTIONS
+// ============================================================
+
+/**
+ * V1 페이로드 유효성 검증
+ * @param {Object} payload - 검증할 V1 페이로드
+ * @returns {Object} { valid: boolean, errors: string[], version: string }
+ */
+function validateV1Payload(payload) {
+  if (!payload || typeof payload !== 'object') {
+    return {
+      valid: false,
+      errors: ['페이로드가 객체가 아닙니다'],
+      version: null
+    };
+  }
+
+  const errors = [];
+
+  // V1 필수 필드 검증 (sites 또는 dataBySite 중 하나는 있어야 함)
+  const hasSites = payload.sites && typeof payload.sites === 'object';
+  const hasDataBySite = payload.dataBySite && typeof payload.dataBySite === 'object';
+
+  if (!hasSites && !hasDataBySite) {
+    errors.push('sites 또는 dataBySite 필드가 없습니다');
+  }
+
+  // V1 스키마 버전 확인
+  const schemaVersion = payload.__schema_version || payload[V1_SCHEMA.META.SCHEMA_VERSION] || '1.0';
+
+  if (V1_MIGRATION.SUPPORTED_V1_VERSIONS.indexOf(schemaVersion) === -1) {
+    errors.push(`지원하지 않는 V1 스키마 버전: ${schemaVersion}`);
+  }
+
+  // encId 검증 (선택사항이지만 있으면 검증)
+  if (payload.encId && typeof payload.encId !== 'string') {
+    errors.push('encId 필드가 문자열이 아닙니다');
+  }
+
+  // savedAt 검증 (선택사항이지만 있으면 검증)
+  if (payload.savedAt && !DATA_VALIDATION.isValidTimestamp(payload.savedAt)) {
+    errors.push('savedAt 타임스탬프가 유효하지 않습니다');
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors: errors,
+    version: schemaVersion
+  };
+}
+
+/**
+ * V1 페이로드를 V2 페이로드로 변환
+ * @param {Object} v1Payload - V1 페이로드
+ * @param {Object} options - 변환 옵션
+ * @returns {Object} V2 페이로드
+ */
+function migrateV1ToV2(v1Payload, options = {}) {
+  const {
+    accountEmail = null,
+    encId = null,
+    validate = true
+  } = options;
+
+  // 유효성 검증
+  if (validate) {
+    const validation = validateV1Payload(v1Payload);
+    if (!validation.valid) {
+      console.error('[migrateV1ToV2] Invalid V1 payload:', validation.errors);
+      throw new Error(`유효하지 않은 V1 페이로드: ${validation.errors.join(', ')}`);
+    }
+  }
+
+  // 계정 이메일 결정 (우선순위: options > payload > ACCOUNT_UTILS)
+  const finalAccountEmail = accountEmail ||
+                            v1Payload.__source_account ||
+                            ACCOUNT_UTILS.getAccountLabel() ||
+                            'unknown@naver.com';
+
+  // encId 결정
+  const finalEncId = encId ||
+                     v1Payload.__source_enc_id ||
+                     v1Payload.encId ||
+                     ACCOUNT_UTILS.getEncId() ||
+                     'unknown';
+
+  // V1 데이터 추출
+  const v1Sites = v1Payload.sites || {};
+  const v1DataBySite = v1Payload.dataBySite || {};
+  const v1SiteMeta = v1Payload.siteMeta || {};
+
+  // V2 구조로 변환
+  const v2Payload = {
+    __meta: {
+      version: PAYLOAD_V2.VERSION,
+      exportedAt: v1Payload.savedAt || Date.now(),
+      migratedFrom: 'V1',
+      migratedAt: Date.now(),
+      originalVersion: v1Payload.__schema_version || '1.0'
+    },
+    accounts: {
+      [finalAccountEmail]: {
+        encId: finalEncId,
+        sites: [],
+        dataBySite: {},
+        siteMeta: v1SiteMeta
+      }
+    }
+  };
+
+  // sites 배열 결합 (V1의 sites와 dataBySite 키 통합)
+  const allSiteKeys = new Set([
+    ...Object.keys(v1Sites),
+    ...Object.keys(v1DataBySite)
+  ]);
+
+  // 사이트 데이터 변환
+  for (const siteUrl of allSiteKeys) {
+    const siteData = v1Sites[siteUrl] || {};
+    const detailData = v1DataBySite[siteUrl] || {};
+
+    // 기본 사이트 데이터 구조 생성
+    const migratedSiteData = {
+      expose: siteData.expose || detailData.expose || null,
+      crawl: siteData.crawl || detailData.crawl || null,
+      backlink: siteData.backlink || detailData.backlink || null,
+      diagnosisMeta: siteData.diagnosisMeta || detailData.diagnosisMeta || null,
+      detailLoaded: siteData.detailLoaded || detailData.detailLoaded || false,
+      __cacheSavedAt: siteData.__cacheSavedAt || detailData.__cacheSavedAt || null,
+      // 마이그레이션 메타데이터
+      __source: finalAccountEmail,
+      __fetchedAt: siteData.__fetched_at || detailData.__fetched_at || null,
+      __version: 1,
+      __accountId: finalEncId,
+      __migratedFrom: 'V1',
+      __migratedAt: Date.now()
+    };
+
+    // 추가 필드 복사 (알 수 없는 필드 보존)
+    const allKeys = new Set([
+      ...Object.keys(siteData),
+      ...Object.keys(detailData)
+    ]);
+
+    const knownFields = ['expose', 'crawl', 'backlink', 'diagnosisMeta',
+                         'detailLoaded', '__cacheSavedAt', '__fetched_at',
+                         '__source', '__version', '__accountId'];
+
+    for (const key of allKeys) {
+      if (!knownFields.includes(key)) {
+        migratedSiteData[key] = siteData[key] || detailData[key];
+      }
+    }
+
+    // V2 구조에 추가
+    v2Payload.accounts[finalAccountEmail].sites.push(siteUrl);
+    v2Payload.accounts[finalAccountEmail].dataBySite[siteUrl] = migratedSiteData;
+  }
+
+  // UI 상태 초기화 (선택사항)
+  if (v1Payload.curMode || v1Payload.curSite || v1Payload.curTab) {
+    v2Payload.ui = {
+      curMode: v1Payload.curMode || CONFIG.MODE.ALL,
+      curSite: v1Payload.curSite || null,
+      curTab: v1Payload.curTab || 'overview'
+    };
+  }
+
+  console.log('[migrateV1ToV2] Migration completed:', {
+    from: v1Payload.__schema_version || '1.0',
+    to: PAYLOAD_V2.VERSION,
+    account: finalAccountEmail,
+    siteCount: v2Payload.accounts[finalAccountEmail].sites.length
+  });
+
+  return v2Payload;
+}
+
+/**
+ * V2 페이로드를 V1 페이로드로 변환 (롤백)
+ * @param {Object} v2Payload - V2 페이로드
+ * @param {Object} options - 변환 옵션
+ * @returns {Object} V1 페이로드
+ */
+function migrateV2ToV1(v2Payload, options = {}) {
+  const {
+    accountEmail = null,
+    includeMetadata = true
+  } = options;
+
+  // V2 페이로드 검증
+  if (!DATA_VALIDATION.isValidV2Payload(v2Payload)) {
+    console.error('[migrateV2ToV1] Invalid V2 payload');
+    throw new Error('유효하지 않은 V2 페이로드');
+  }
+
+  // 변환할 계정 결정
+  const targetAccount = accountEmail ||
+                        Object.keys(v2Payload.accounts)[0] ||
+                        ACCOUNT_UTILS.getAccountLabel();
+
+  if (!targetAccount || !v2Payload.accounts[targetAccount]) {
+    throw new Error(`계정을 찾을 수 없습니다: ${targetAccount}`);
+  }
+
+  const account = v2Payload.accounts[targetAccount];
+
+  // V1 구조로 변환
+  const v1Payload = {
+    sites: {},
+    dataBySite: account.dataBySite || {},
+    siteMeta: account.siteMeta || {},
+    savedAt: v2Payload.__meta?.exportedAt || Date.now(),
+    encId: account.encId || ''
+  };
+
+  // 메타데이터 추가
+  if (includeMetadata) {
+    v1Payload.__schema_version = '1.0';
+    v1Payload.__source_account = targetAccount;
+    v1Payload.__source_enc_id = account.encId;
+    v1Payload.__rolled_back_from = v2Payload.__meta?.version || PAYLOAD_V2.VERSION;
+    v1Payload.__rolled_back_at = Date.now();
+  }
+
+  // sites 배열 기반으로 sites 객체 구성
+  if (Array.isArray(account.sites)) {
+    for (const siteUrl of account.sites) {
+      const siteData = account.dataBySite?.[siteUrl] || {};
+      v1Payload.sites[siteUrl] = {
+        expose: siteData.expose || null,
+        crawl: siteData.crawl || null,
+        backlink: siteData.backlink || null,
+        diagnosisMeta: siteData.diagnosisMeta || null,
+        detailLoaded: siteData.detailLoaded || false,
+        __cacheSavedAt: siteData.__cacheSavedAt || null
+      };
+    }
+  }
+
+  // UI 상태 복원
+  if (v2Payload.ui) {
+    v1Payload.curMode = v2Payload.ui.curMode;
+    v1Payload.curSite = v2Payload.ui.curSite;
+    v1Payload.curTab = v2Payload.ui.curTab;
+  }
+
+  console.log('[migrateV2ToV1] Rollback completed:', {
+    from: v2Payload.__meta?.version || PAYLOAD_V2.VERSION,
+    to: '1.0',
+    account: targetAccount,
+    siteCount: account.sites?.length || 0
+  });
+
+  return v1Payload;
+}
+
+/**
+ * 레거시 캐시 호환성 유지를 위한 데이터 변환
+ * @param {string} cacheKey - localStorage 캐시 키
+ * @param {Object} data - 캐시 데이터
+ * @returns {Object} 변환된 데이터
+ */
+function normalizeLegacyCache(cacheKey, data) {
+  if (!data || typeof data !== 'object') {
+    return data;
+  }
+
+  // V1 캐시 키 패턴 확인
+  const isV1Key = cacheKey.includes('sadv_data_v1') ||
+                  cacheKey.includes('sadv_sites_v1');
+
+  if (!isV1Key) {
+    return data; // V2 캐시는 그대로 반환
+  }
+
+  // V1 캐시 데이터 변환
+  const normalized = { ...data };
+
+  // V1 데이터 구조를 V2 호환 형태로 변환
+  if (normalized.sites && !normalized.dataBySite) {
+    // V1 sites 객체를 dataBySite로 변환
+    normalized.dataBySite = normalized.sites;
+    delete normalized.sites;
+  }
+
+  // 캐시 저장 시간 표준화
+  if (normalized.ts && !normalized.__cacheSavedAt) {
+    normalized.__cacheSavedAt = normalized.ts;
+  }
+
+  console.log('[normalizeLegacyCache] V1 cache normalized:', cacheKey);
+
+  return normalized;
+}
+
+/**
+ * localStorage에서 V1 데이터 탐지 및 마이그레이션
+ * @returns {Object} { detected: boolean, migrated: boolean, payload: Object|null }
+ */
+function detectAndMigrateV1Data() {
+  console.log('[detectAndMigrateV1Data] Scanning for V1 data...');
+
+  // V1 localStorage 키 패턴 검색
+  const v1Keys = Object.keys(localStorage).filter(key =>
+    key.startsWith('sadv_') && (key.includes('v1') || key.includes('sites'))
+  );
+
+  if (v1Keys.length === 0) {
+    console.log('[detectAndMigrateV1Data] No V1 data found');
+    return { detected: false, migrated: false, payload: null };
+  }
+
+  console.log(`[detectAndMigrateV1Data] Found ${v1Keys.length} V1 keys:`, v1Keys);
+
+  let v1Payload = null;
+  let migrationSuccess = false;
+
+  try {
+    // 사이트 목록 캐시 확인
+    const sitesCacheKey = v1Keys.find(key => key.includes('sites'));
+    if (sitesCacheKey) {
+      const cachedData = JSON.parse(localStorage.getItem(sitesCacheKey));
+      if (cachedData && cachedData.sites) {
+        v1Payload = {
+          sites: cachedData.sites.reduce((acc, siteUrl) => {
+            acc[siteUrl] = {};
+            return acc;
+          }, {}),
+          savedAt: cachedData.ts || Date.now()
+        };
+      }
+    }
+
+    // 데이터 캐시 확인 및 병합
+    const dataCacheKeys = v1Keys.filter(key => key.includes('data'));
+    if (dataCacheKeys.length > 0) {
+      if (!v1Payload) v1Payload = { sites: {}, dataBySite: {}, savedAt: Date.now() };
+
+      for (const cacheKey of dataCacheKeys) {
+        try {
+          const cachedData = JSON.parse(localStorage.getItem(cacheKey));
+          if (cachedData && cachedData.data) {
+            // URL 디코딩 (V1 캐시 키에서 사이트 URL 추출)
+            const siteUrl = extractSiteUrlFromCacheKey(cacheKey);
+            if (siteUrl) {
+              v1Payload.dataBySite[siteUrl] = cachedData.data;
+              if (!v1Payload.sites[siteUrl]) {
+                v1Payload.sites[siteUrl] = {};
+              }
+            }
+          }
+        } catch (e) {
+          console.warn(`[detectAndMigrateV1Data] Failed to parse cache: ${cacheKey}`, e);
+        }
+      }
+    }
+
+    // V1 데이터 마이그레이션
+    if (v1Payload && (Object.keys(v1Payload.sites).length > 0 || Object.keys(v1Payload.dataBySite).length > 0)) {
+      const v2Payload = migrateV1ToV2(v1Payload, { validate: false });
+
+      // 마이그레이션 로그 저장
+      const migrationLog = {
+        detectedAt: Date.now(),
+        migratedAt: Date.now(),
+        v1Keys: v1Keys,
+        status: V1_MIGRATION.STATUS.SUCCESS,
+        siteCount: Object.keys(v1Payload.sites).length
+      };
+      localStorage.setItem(V1_MIGRATION.LS_KEYS.LAST_MIGRATION, JSON.stringify(migrationLog));
+
+      migrationSuccess = true;
+
+      return {
+        detected: true,
+        migrated: true,
+        payload: v2Payload,
+        log: migrationLog
+      };
+    }
+
+    return { detected: true, migrated: false, payload: null };
+  } catch (e) {
+    console.error('[detectAndMigrateV1Data] Migration failed:', e);
+    return {
+      detected: true,
+      migrated: false,
+      payload: null,
+      error: e.message
+    };
+  }
+}
+
+/**
+ * V1 캐시 키에서 사이트 URL 추출 (헬퍼 함수)
+ * @param {string} cacheKey - V1 캐시 키
+ * @returns {string|null} 사이트 URL 또는 null
+ */
+function extractSiteUrlFromCacheKey(cacheKey) {
+  try {
+    // V1 캐시 키 패턴: sadv_data_v2_{namespace}_{encodedUrl}
+    const parts = cacheKey.split('_');
+    if (parts.length >= 4) {
+      const encodedPart = parts.slice(3).join('_');
+      // Base64 디코딩 시도
+      const decoded = atob(encodedPart);
+      return decodeURIComponent(decoded);
+    }
+  } catch (e) {
+    console.warn('[extractSiteUrlFromCacheKey] Failed to decode:', cacheKey, e);
+  }
+  return null;
+}
+
+/**
+ * V1 데이터 백업 생성
+ * @param {Object} v1Payload - 백업할 V1 페이로드
+ * @returns {string} 백업 키
+ */
+function backupV1Data(v1Payload) {
+  const backupKey = V1_MIGRATION.LS_KEYS.V1_BACKUP + Date.now();
+  const backupData = {
+    payload: v1Payload,
+    backedUpAt: Date.now(),
+    version: v1Payload.__schema_version || '1.0'
+  };
+
+  try {
+    localStorage.setItem(backupKey, JSON.stringify(backupData));
+    console.log('[backupV1Data] V1 data backed up to:', backupKey);
+    return backupKey;
+  } catch (e) {
+    console.error('[backupV1Data] Backup failed:', e);
+    throw new Error('V1 데이터 백업 실패');
+  }
+}
+
+/**
+ * 마이그레이션 가능한 V1 데이터 확인
+ * @param {Object} payload - 확인할 페이로드
+ * @returns {boolean} 마이그레이션 가능 여부
+ */
+function canMigrateV1(payload) {
+  if (!payload || typeof payload !== 'object') {
+    return false;
+  }
+
+  // V2 페이로드인 경우 (이미 마이그레이션됨)
+  if (payload.__meta && payload.accounts) {
+    return false;
+  }
+
+  // V1 페이로드 필수 필드 확인
+  const hasV1Fields = payload.sites || payload.dataBySite;
+  return hasV1Fields;
+}
+
+/**
+ * 마이그레이션 통계 반환
+ * @returns {Object} 마이그레이션 통계
+ */
+function getMigrationStats() {
+  try {
+    const lastMigration = localStorage.getItem(V1_MIGRATION.LS_KEYS.LAST_MIGRATION);
+    if (lastMigration) {
+      return JSON.parse(lastMigration);
+    }
+  } catch (e) {
+    console.error('[getMigrationStats] Failed to parse migration log:', e);
+  }
+
+  return {
+    detectedAt: null,
+    migratedAt: null,
+    status: null,
+    siteCount: 0
+  };
+}
+
 // fetchWithRetry function is provided by 00-constants.js
+
+// ============================================================
+// P2-3: API RESPONSE VALIDATION
+// ============================================================
+
+/**
+ * API 응답 스키마 정의 (간소화 버전)
+ * 각 API 엔드포인트의 예상 응답 구조 정의
+ */
+const API_RESPONSE_SCHEMAS = {
+  EXPOSE: {
+    required: ['code'],
+    optional: ['items', 'message']
+  },
+  CRAWL: {
+    required: ['code'],
+    optional: ['items', 'message']
+  },
+  BACKLINK: {
+    required: ['code'],
+    optional: ['items', 'message']
+  },
+  DIAGNOSIS_META: {
+    required: ['code'],
+    optional: ['items', 'message']
+  }
+};
+
+/**
+ * API 응답 기본 검증
+ * @param {object} response - 검증할 API 응답
+ * @param {string} apiType - API 유형
+ * @returns {object} { valid: boolean, errors: string[] }
+ */
+function validateApiResponse(response, apiType) {
+  const schema = API_RESPONSE_SCHEMAS[apiType];
+  if (!schema) {
+    return { valid: true, errors: [] }; // 알 수 없는 타입은 통과
+  }
+
+  const errors = [];
+
+  // null 체크
+  if (!response || typeof response !== 'object') {
+    return { valid: false, errors: ['Response is null or not an object'] };
+  }
+
+  // 필수 필드 검증
+  if (schema.required) {
+    for (const field of schema.required) {
+      if (!(field in response)) {
+        errors.push(`Missing required field: ${field}`);
+      }
+    }
+  }
+
+  // code 필드 검증 (대부분의 API 응답에 있음)
+  if ('code' in response && response.code !== 0) {
+    errors.push(`API returned error code: ${response.code}`);
+  }
+
+  // items 배열 구조 기본 검증
+  if (response.items && !Array.isArray(response.items)) {
+    errors.push('items field is not an array');
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors
+  };
+}
+
+/**
+ * 안전한 JSON 파싱 함수
+ * @param {Response} response - fetch Response 객체
+ * @param {string} apiType - API 유형
+ * @returns {Promise<object|null>} 파싱된 데이터 또는 null
+ */
+async function safeParseJson(response, apiType) {
+  try {
+    const data = await response.json();
+    const validation = validateApiResponse(data, apiType);
+
+    if (!validation.valid) {
+      console.warn(`[API] ${apiType} validation warnings:`, validation.errors.join(', '));
+      // 데이터가 있으면 반환하고, 에러만 기록
+      if (data && typeof data === 'object') {
+        return data;
+      }
+    }
+    return data;
+  } catch (e) {
+    console.error(`[API] ${apiType} JSON parse error:`, e);
+    return null;
+  }
+}
 
 // In-flight request tracking (prevents duplicate concurrent requests)
 const inflightExpose = {};
@@ -3228,7 +4284,7 @@ async function fetchExposeData(site, options) {
         base + "/expose/" + encId + "?site=" + enc + "&period=90&device=&topN=50",
         { credentials: "include", headers: { accept: "application/json" } },
       );
-      const expose = exposeRes.ok ? await exposeRes.json() : null;
+      const expose = exposeRes.ok ? await safeParseJson(exposeRes, 'EXPOSE') : null;
       return persistSiteData(site, {
         expose: exposeRes.ok ? expose : null,
         exposeFetchState: exposeRes.ok ? "success" : "failure",
@@ -3291,7 +4347,7 @@ async function fetchCrawlData(site, options) {
           "&isAlly=false&count=5",
         { credentials: "include", headers: { accept: "application/json" } },
       );
-      const crawl = crawlRes.ok ? await crawlRes.json() : null;
+      const crawl = crawlRes.ok ? await safeParseJson(crawlRes, 'CRAWL') : null;
       return persistSiteData(site, {
         ...baseData,
         crawl: crawlRes.ok ? crawl : null,
@@ -3356,7 +4412,7 @@ async function fetchBacklinkData(site, options) {
           today,
         { credentials: "include", headers: { accept: "application/json" } },
       );
-      const backlink = backlinkRes.ok ? await backlinkRes.json() : null;
+      const backlink = backlinkRes.ok ? await safeParseJson(backlinkRes, 'BACKLINK') : null;
       return persistSiteData(site, {
         ...baseData,
         backlink: backlinkRes.ok ? backlink : null,
@@ -3428,7 +4484,7 @@ async function fetchSiteData(site, options) {
                   key: "crawl",
                   ok: response.ok,
                   status: response.status,
-                  data: response.ok ? await response.json() : null,
+                  data: response.ok ? await safeParseJson(response, 'CRAWL') : null,
                   fetchedAt: Date.now(),
                 };
               })
@@ -3467,7 +4523,7 @@ async function fetchSiteData(site, options) {
                   key: "backlink",
                   ok: response.ok,
                   status: response.status,
-                  data: response.ok ? await response.json() : null,
+                  data: response.ok ? await safeParseJson(response, 'BACKLINK') : null,
                   fetchedAt: Date.now(),
                 };
               })
@@ -3543,7 +4599,7 @@ async function fetchDiagnosisMeta(site, seedData, options) {
             range.endDate,
           { credentials: "include", headers: { accept: "application/json" } },
         );
-        diagnosisMeta = response.ok ? await response.json() : null;
+        diagnosisMeta = response.ok ? await safeParseJson(response, 'DIAGNOSIS_META') : null;
         if (response.ok && diagnosisMeta && diagnosisMeta.code === 0) {
           diagnosisMetaFetchState = "success";
         }
@@ -5010,25 +6066,48 @@ if (typeof window !== "undefined") {
     set: function(v) { allViewReqId = v; },
     enumerable: true
   });
+
+  // React 18 호환 상태 관리 노출
+  // React 18 Concurrent Mode에서도 안전하게 상태를 구독할 수 있습니다.
+  window.__SEARCHADVISOR_UI_STATE__ = {
+    getState: function() {
+      return {
+        curMode: curMode,
+        curSite: curSite,
+        curTab: curTab,
+        allSites: [...allSites],
+        rows: window.__sadvRows || [],
+        accountLabel: accountLabel,
+        siteViewReqId: siteViewReqId,
+        allViewReqId: allViewReqId
+      };
+    },
+    subscribe: function(listener) {
+      __sadvListeners.add(listener);
+      // 구독 해제 함수 반환
+      return function unsubscribe() {
+        __sadvListeners.delete(listener);
+      };
+    },
+    // React 18 Concurrent Mode 호환 알림
+    notifyConcurrent: function() {
+      const react18Compat = window.__REACT18_COMPAT__;
+      if (react18Compat && react18Compat.supportsConcurrentFeatures()) {
+        // React 18에서는 다음 타이머 틱에 알림
+        Promise.resolve().then(__sadvNotify);
+      } else {
+        // React 17 이하에서는 즉시 알림
+        __sadvNotify();
+      }
+    }
+  };
 }
 
-  /**
+/**
  * Build renderer functions for all site data tabs
- * Processes expose, crawl, backlink, and diagnosisMeta data to create renderers
- * @param {Object} expose - Expose data with items array
- * @param {Object} crawlData - Crawl data with stats
- * @param {Object} backlinkData - Backlink data with total, domains, countTime
- * @param {Object} diagnosisMeta - Diagnosis metadata with items array
- * @returns {Object} Object with renderer functions for each tab (overview, daily, urls, queries, pattern, crawl, backlink, insight)
- * @example
- * const renderers = buildRenderers(exposeData, crawlData, backlinkData, diagnosisData);
- * renderers.overview(); // Renders overview tab
- * renderers.daily(); // Renders daily tab
- * @see {sparkline}
- * @see {barchart}
- * @see {kpiGrid}
+ * P2-4: Optimized for bundle size reduction
  */
-  function buildRenderers(expose, crawlData, backlinkData, diagnosisMeta) {
+function buildRenderers(expose, crawlData, backlinkData, diagnosisMeta) {
     const item = (expose && expose.items && expose.items[0]) || {};
     const period = item.period || {},
       rawLogs = item.logs || [],
@@ -5051,11 +6130,9 @@ if (typeof window !== "undefined") {
       (a.date || "").localeCompare(b.date || ""),
     );
     const diagnosisLatest = diagnosisLogs.length > 0 ? diagnosisLogs[diagnosisLogs.length - 1] : null;
-    const diagnosisLatestCounts = diagnosisLatest && diagnosisLatest.stateCount ? diagnosisLatest.stateCount : {};
+    const diagnosisLatestCounts = diagnosisLatest?.stateCount || {};
     const diagnosisIndexedCurrent = diagnosisLatestCounts["1"] || 0;
-    const diagnosisIndexedValues = diagnosisLogs.map(function (row) {
-      return (row.stateCount && row.stateCount["1"]) || 0;
-    });
+    const diagnosisIndexedValues = diagnosisLogs.map(r => r.stateCount?.["1"] || 0);
     const diagnosisIndexedSeries = {
       current: diagnosisIndexedCurrent,
       values: diagnosisIndexedValues,
@@ -5083,20 +6160,12 @@ if (typeof window !== "undefined") {
       worstDow = dowRows
         .filter((x) => x.n > 0)
         .reduce((a, b) => (b.avgC < a.avgC ? b : a), dowRows[0]);
-    const crawlStats =
-      (crawlData &&
-        crawlData.items &&
-        crawlData.items[0] &&
-        crawlData.items[0].stats) ||
-      [];
+    const crawlStats = crawlData?.items?.[0]?.stats || [];
     const crawlSorted = [...crawlStats].sort((a, b) =>
       (a.date || "").localeCompare(b.date || ""),
     );
-    const blData =
-      (backlinkData && backlinkData.items && backlinkData.items[0]) || {};
-    const blTime = (blData.countTime || []).sort((a, b) =>
-      a.timeStamp.localeCompare(b.timeStamp),
-    );
+    const blData = backlinkData?.items?.[0] || {};
+    const blTime = (blData.countTime || []).sort((a, b) => a.timeStamp?.localeCompare?.(b.timeStamp) || 0);
     const blTopDomains = blData.topDomain || [];
     return {
       overview: function () {
@@ -7572,9 +8641,22 @@ function savedAtIso(d) {
       "  };",
       "  window.__SEARCHADVISOR_SNAPSHOT_API__ = api;",
       '  const target = document.getElementById("sadv-p") || document.body;',
-      '  if (target && typeof MutationObserver === "function") {',
-      "    const observer = new MutationObserver(function () { scheduleSync(); });",
-      "    observer.observe(target, { subtree: true, childList: true, attributes: true, characterData: true });",
+      '  if (target) {',
+      '    // React 18 호환 가능한 DOM 관찰자 사용',
+      '    if (typeof window.__REACT18_COMPAT__ === "object" && typeof window.__REACT18_COMPAT__.createReact18CompatibleObserver === "function") {',
+      '      const observer = window.__REACT18_COMPAT__.createReact18CompatibleObserver(',
+      '        target,',
+      '        function () { scheduleSync(); },',
+      '        { subtree: true, childList: true, attributes: true, characterData: true }',
+      "      );",
+      '      // Observer는 자동으로 관리되며, 명시적인 정리가 필요한 경우:',
+      '      window.__SEARCHADVISOR_SNAPSHOT_OBSERVER__ = observer;',
+      '    } else if (typeof MutationObserver === "function") {',
+      '      // 폴백: 기존 MutationObserver 사용',
+      "      const observer = new MutationObserver(function () { scheduleSync(); });",
+      "      observer.observe(target, { subtree: true, childList: true, attributes: true, characterData: true });",
+      '      window.__SEARCHADVISOR_SNAPSHOT_OBSERVER__ = observer;',
+      "    }",
       "  }",
       "  syncFromLegacy();",
       "})();",
@@ -7980,58 +9062,80 @@ function renderFailureSummary(stats) {
    */
   (async function() {
     console.log('[Init] Inside async IIFE, calling loadSiteList...');
-    await loadSiteList(false);
-    injectDemoData(); // Inject mock data if on localhost
-    assignColors();
-    const cachedUiState = getCachedUiState();
-    shouldBootstrapFullRefresh() && runFullRefreshPipeline({ trigger: "cache-expiry" });
-    let bootMode = CONFIG.MODE.ALL;
-    let bootSite = null;
-    // In demo mode, default to site mode with first demo site
-    if (IS_DEMO_MODE && allSites.length > 0) {
-      bootMode = CONFIG.MODE.SITE;
-      bootSite = allSites[0];
+
+    // React 18 호환성 확인
+    const react18Compat = typeof window !== 'undefined' && window.__REACT18_COMPAT__;
+    if (react18Compat) {
+      const compatInfo = react18Compat.getReact18CompatibilityInfo();
+      console.log('[Init] React Compatibility Info:', compatInfo);
     }
-    const curSiteMatch = location.search.match(/site=([^&]+)/);
-    if (curSiteMatch) {
-      const cur = decodeURIComponent(curSiteMatch[1]);
-      if (allSites.includes(cur)) {
-        bootSite = cur;
+
+    // React 18 Concurrent Mode에 최적화된 초기화 사용
+    const initTask = async () => {
+      await loadSiteList(false);
+      injectDemoData(); // Inject mock data if on localhost
+      assignColors();
+      const cachedUiState = getCachedUiState();
+      shouldBootstrapFullRefresh() && runFullRefreshPipeline({ trigger: "cache-expiry" });
+      let bootMode = CONFIG.MODE.ALL;
+      let bootSite = null;
+      // In demo mode, default to site mode with first demo site
+      if (IS_DEMO_MODE && allSites.length > 0) {
         bootMode = CONFIG.MODE.SITE;
+        bootSite = allSites[0];
       }
-    } else if (cachedUiState) {
-      if (cachedUiState.site && allSites.includes(cachedUiState.site)) bootSite = cachedUiState.site;
-      if (cachedUiState.mode === CONFIG.MODE.SITE && bootSite) bootMode = CONFIG.MODE.SITE;
-      if (cachedUiState.mode === CONFIG.MODE.ALL) bootMode = CONFIG.MODE.ALL;
-      if (
-        cachedUiState.tab &&
-        TABS.some(function (tab) {
-          return tab.id === cachedUiState.tab;
-        })
-      ) {
-        curTab = cachedUiState.tab;
-        tabsEl.querySelectorAll(".sadv-t").forEach(function (btn) {
-          btn.classList.toggle("on", btn.dataset.t === curTab);
-        });
+      const curSiteMatch = location.search.match(/site=([^&]+)/);
+      if (curSiteMatch) {
+        const cur = decodeURIComponent(curSiteMatch[1]);
+        if (allSites.includes(cur)) {
+          bootSite = cur;
+          bootMode = CONFIG.MODE.SITE;
+        }
+      } else if (cachedUiState) {
+        if (cachedUiState.site && allSites.includes(cachedUiState.site)) bootSite = cachedUiState.site;
+        if (cachedUiState.mode === CONFIG.MODE.SITE && bootSite) bootMode = CONFIG.MODE.SITE;
+        if (cachedUiState.mode === CONFIG.MODE.ALL) bootMode = CONFIG.MODE.ALL;
+        if (
+          cachedUiState.tab &&
+          TABS.some(function (tab) {
+            return tab.id === cachedUiState.tab;
+          })
+        ) {
+          curTab = cachedUiState.tab;
+          tabsEl.querySelectorAll(".sadv-t").forEach(function (btn) {
+            btn.classList.toggle("on", btn.dataset.t === curTab);
+          });
+        }
       }
-    }
-    if (bootSite) curSite = bootSite;
-    ensureCurrentSite();
-    buildCombo(null);
-    if (curSite) setComboSite(curSite);
-    if (bootMode === CONFIG.MODE.SITE && curSite) {
-      curMode = CONFIG.MODE.SITE;
-      modeBar.querySelectorAll(".sadv-mode").forEach((b) => b.classList.remove("on"));
-      modeBar.querySelector('[data-m="site"]').classList.add("on");
-      siteBar.classList.add("show");
-      tabsEl.classList.add("show");
-      loadSiteView(curSite);
+      if (bootSite) curSite = bootSite;
+      ensureCurrentSite();
+      buildCombo(null);
+      if (curSite) setComboSite(curSite);
+      if (bootMode === CONFIG.MODE.SITE && curSite) {
+        curMode = CONFIG.MODE.SITE;
+        modeBar.querySelectorAll(".sadv-mode").forEach((b) => b.classList.remove("on"));
+        modeBar.querySelector('[data-m="site"]').classList.add("on");
+        siteBar.classList.add("show");
+        tabsEl.classList.add("show");
+        loadSiteView(curSite);
+      } else {
+        setAllSitesLabel();
+        renderAllSites();
+      }
+      setCachedUiState();
+      __sadvMarkReady();
+    };
+
+    // React 18 Concurrent Mode 지원 시 사용
+    if (react18Compat && typeof react18Compat.runConcurrentTask === 'function') {
+      await react18Compat.runConcurrentTask(initTask, {
+        priority: 'user-visible',
+        timeout: 10000
+      });
     } else {
-      setAllSitesLabel();
-      renderAllSites();
+      // React 17 이하 또는 호환성 계층 없음
+      await initTask();
     }
-    setCachedUiState();
-    __sadvMarkReady();
   })().catch((e) => {
     console.error('[Init Error]', e);
   });

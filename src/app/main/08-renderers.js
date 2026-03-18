@@ -1,20 +1,8 @@
-  /**
+/**
  * Build renderer functions for all site data tabs
- * Processes expose, crawl, backlink, and diagnosisMeta data to create renderers
- * @param {Object} expose - Expose data with items array
- * @param {Object} crawlData - Crawl data with stats
- * @param {Object} backlinkData - Backlink data with total, domains, countTime
- * @param {Object} diagnosisMeta - Diagnosis metadata with items array
- * @returns {Object} Object with renderer functions for each tab (overview, daily, urls, queries, pattern, crawl, backlink, insight)
- * @example
- * const renderers = buildRenderers(exposeData, crawlData, backlinkData, diagnosisData);
- * renderers.overview(); // Renders overview tab
- * renderers.daily(); // Renders daily tab
- * @see {sparkline}
- * @see {barchart}
- * @see {kpiGrid}
+ * P2-4: Optimized for bundle size reduction
  */
-  function buildRenderers(expose, crawlData, backlinkData, diagnosisMeta) {
+function buildRenderers(expose, crawlData, backlinkData, diagnosisMeta) {
     const item = (expose && expose.items && expose.items[0]) || {};
     const period = item.period || {},
       rawLogs = item.logs || [],
@@ -37,11 +25,9 @@
       (a.date || "").localeCompare(b.date || ""),
     );
     const diagnosisLatest = diagnosisLogs.length > 0 ? diagnosisLogs[diagnosisLogs.length - 1] : null;
-    const diagnosisLatestCounts = diagnosisLatest && diagnosisLatest.stateCount ? diagnosisLatest.stateCount : {};
+    const diagnosisLatestCounts = diagnosisLatest?.stateCount || {};
     const diagnosisIndexedCurrent = diagnosisLatestCounts["1"] || 0;
-    const diagnosisIndexedValues = diagnosisLogs.map(function (row) {
-      return (row.stateCount && row.stateCount["1"]) || 0;
-    });
+    const diagnosisIndexedValues = diagnosisLogs.map(r => r.stateCount?.["1"] || 0);
     const diagnosisIndexedSeries = {
       current: diagnosisIndexedCurrent,
       values: diagnosisIndexedValues,
@@ -69,20 +55,12 @@
       worstDow = dowRows
         .filter((x) => x.n > 0)
         .reduce((a, b) => (b.avgC < a.avgC ? b : a), dowRows[0]);
-    const crawlStats =
-      (crawlData &&
-        crawlData.items &&
-        crawlData.items[0] &&
-        crawlData.items[0].stats) ||
-      [];
+    const crawlStats = crawlData?.items?.[0]?.stats || [];
     const crawlSorted = [...crawlStats].sort((a, b) =>
       (a.date || "").localeCompare(b.date || ""),
     );
-    const blData =
-      (backlinkData && backlinkData.items && backlinkData.items[0]) || {};
-    const blTime = (blData.countTime || []).sort((a, b) =>
-      a.timeStamp.localeCompare(b.timeStamp),
-    );
+    const blData = backlinkData?.items?.[0] || {};
+    const blTime = (blData.countTime || []).sort((a, b) => a.timeStamp?.localeCompare?.(b.timeStamp) || 0);
     const blTopDomains = blData.topDomain || [];
     return {
       overview: function () {

@@ -1,5 +1,101 @@
 // fetchWithRetry function is provided by 00-constants.js
 
+// ============================================================
+// P2-3: API RESPONSE VALIDATION
+// ============================================================
+
+/**
+ * API 응답 스키마 정의 (간소화 버전)
+ * 각 API 엔드포인트의 예상 응답 구조 정의
+ */
+const API_RESPONSE_SCHEMAS = {
+  EXPOSE: {
+    required: ['code'],
+    optional: ['items', 'message']
+  },
+  CRAWL: {
+    required: ['code'],
+    optional: ['items', 'message']
+  },
+  BACKLINK: {
+    required: ['code'],
+    optional: ['items', 'message']
+  },
+  DIAGNOSIS_META: {
+    required: ['code'],
+    optional: ['items', 'message']
+  }
+};
+
+/**
+ * API 응답 기본 검증
+ * @param {object} response - 검증할 API 응답
+ * @param {string} apiType - API 유형
+ * @returns {object} { valid: boolean, errors: string[] }
+ */
+function validateApiResponse(response, apiType) {
+  const schema = API_RESPONSE_SCHEMAS[apiType];
+  if (!schema) {
+    return { valid: true, errors: [] }; // 알 수 없는 타입은 통과
+  }
+
+  const errors = [];
+
+  // null 체크
+  if (!response || typeof response !== 'object') {
+    return { valid: false, errors: ['Response is null or not an object'] };
+  }
+
+  // 필수 필드 검증
+  if (schema.required) {
+    for (const field of schema.required) {
+      if (!(field in response)) {
+        errors.push(`Missing required field: ${field}`);
+      }
+    }
+  }
+
+  // code 필드 검증 (대부분의 API 응답에 있음)
+  if ('code' in response && response.code !== 0) {
+    errors.push(`API returned error code: ${response.code}`);
+  }
+
+  // items 배열 구조 기본 검증
+  if (response.items && !Array.isArray(response.items)) {
+    errors.push('items field is not an array');
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors
+  };
+}
+
+/**
+ * 안전한 JSON 파싱 함수
+ * @param {Response} response - fetch Response 객체
+ * @param {string} apiType - API 유형
+ * @returns {Promise<object|null>} 파싱된 데이터 또는 null
+ */
+async function safeParseJson(response, apiType) {
+  try {
+    const data = await response.json();
+    const validation = validateApiResponse(data, apiType);
+
+    if (!validation.valid) {
+      console.warn(`[API] ${apiType} validation warnings:`, validation.errors.join(', '));
+      // 데이터가 있으면 반환하고, 에러만 기록
+      if (data && typeof data === 'object') {
+        return data;
+      }
+    }
+    return data;
+  } catch (e) {
+    console.error(`[API] ${apiType} JSON parse error:`, e);
+    return null;
+  }
+}
+
 // In-flight request tracking (prevents duplicate concurrent requests)
 const inflightExpose = {};
 const inflightCrawl = {};
@@ -35,7 +131,7 @@ async function fetchExposeData(site, options) {
         base + "/expose/" + encId + "?site=" + enc + "&period=90&device=&topN=50",
         { credentials: "include", headers: { accept: "application/json" } },
       );
-      const expose = exposeRes.ok ? await exposeRes.json() : null;
+      const expose = exposeRes.ok ? await safeParseJson(exposeRes, 'EXPOSE') : null;
       return persistSiteData(site, {
         expose: exposeRes.ok ? expose : null,
         exposeFetchState: exposeRes.ok ? "success" : "failure",
@@ -98,7 +194,7 @@ async function fetchCrawlData(site, options) {
           "&isAlly=false&count=5",
         { credentials: "include", headers: { accept: "application/json" } },
       );
-      const crawl = crawlRes.ok ? await crawlRes.json() : null;
+      const crawl = crawlRes.ok ? await safeParseJson(crawlRes, 'CRAWL') : null;
       return persistSiteData(site, {
         ...baseData,
         crawl: crawlRes.ok ? crawl : null,
@@ -163,7 +259,7 @@ async function fetchBacklinkData(site, options) {
           today,
         { credentials: "include", headers: { accept: "application/json" } },
       );
-      const backlink = backlinkRes.ok ? await backlinkRes.json() : null;
+      const backlink = backlinkRes.ok ? await safeParseJson(backlinkRes, 'BACKLINK') : null;
       return persistSiteData(site, {
         ...baseData,
         backlink: backlinkRes.ok ? backlink : null,
@@ -235,7 +331,7 @@ async function fetchSiteData(site, options) {
                   key: "crawl",
                   ok: response.ok,
                   status: response.status,
-                  data: response.ok ? await response.json() : null,
+                  data: response.ok ? await safeParseJson(response, 'CRAWL') : null,
                   fetchedAt: Date.now(),
                 };
               })
@@ -274,7 +370,7 @@ async function fetchSiteData(site, options) {
                   key: "backlink",
                   ok: response.ok,
                   status: response.status,
-                  data: response.ok ? await response.json() : null,
+                  data: response.ok ? await safeParseJson(response, 'BACKLINK') : null,
                   fetchedAt: Date.now(),
                 };
               })
@@ -350,7 +446,7 @@ async function fetchDiagnosisMeta(site, seedData, options) {
             range.endDate,
           { credentials: "include", headers: { accept: "application/json" } },
         );
-        diagnosisMeta = response.ok ? await response.json() : null;
+        diagnosisMeta = response.ok ? await safeParseJson(response, 'DIAGNOSIS_META') : null;
         if (response.ok && diagnosisMeta && diagnosisMeta.code === 0) {
           diagnosisMetaFetchState = "success";
         }
