@@ -17,6 +17,7 @@ const MODULES = [
   '00-polyfill.js',
   '01-style.js',
   '02-react-bundle.js',
+  'app/main/00-react18-compat.js',  // React 18 compatibility layer
   'app/main/00-constants.js',
   'app/main/01-helpers.js',
   'app/main/02-dom-init.js',

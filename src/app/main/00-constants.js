@@ -43,26 +43,19 @@ const CONFIG = {
 };
 
 // ============================================================
-// ERROR TRACKING SYSTEM
+// ERROR TRACKING SYSTEM (Minimal for bundle size)
 // ============================================================
 const ERROR_TRACKING = {
-  enabled: false, // 기본 비활성, 사용자 설정으로 활성화 가능
-  endpoint: null, // 추후 엔드포인트 설정 시 사용
+  enabled: false,
+  endpoint: null,
   sampleRate: 1.0,
   maxQueueSize: 10,
   errorQueue: [],
-
-  /**
-   * 에러 리포팅 (전송 또는 대기열 저장)
-   * @param {Object} errorContext - 에러 컨텍스트
-   */
   reportError: function(errorContext) {
     if (!this.enabled) {
-      // 비활성 상태에서는 콘솔에만 출력
       console.error('[Error Tracking]', errorContext);
       return;
     }
-
     const enrichedError = {
       ...errorContext,
       timestamp: Date.now(),
@@ -72,30 +65,18 @@ const ERROR_TRACKING = {
       siteCount: window.__sadvInitData?.sites?.length || 0,
       isMultiAccount: window.__sadvAccountState?.isMultiAccount || false
     };
-
-    // 샘플링
-    if (Math.random() > this.sampleRate) {
-      return;
-    }
-
-    // 엔드포인트가 있으면 전송
+    if (Math.random() > this.sampleRate) return;
     if (this.endpoint) {
       this.sendToEndpoint(enrichedError);
     } else {
-      // 대기열에 저장 (최대 크기 제한)
       if (this.errorQueue.length >= this.maxQueueSize) {
-        this.errorQueue.shift(); // 가장 오래된 에러 제거
+        this.errorQueue.shift();
       }
       this.errorQueue.push(enrichedError);
     }
   },
-
-  /**
-   * 엔드포인트로 에러 전송
-   */
   sendToEndpoint: function(errorData) {
     if (!this.endpoint) return;
-
     fetch(this.endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -103,46 +84,29 @@ const ERROR_TRACKING = {
       keepalive: true
     }).catch(err => {
       console.error('[Error Tracking] Failed to report error:', err);
-      // 실패 시 대기열에 저장
       if (this.errorQueue.length < this.maxQueueSize) {
         this.errorQueue.push(errorData);
       }
     });
   },
-
-  /**
-   * 대기열에 있는 에러 모두 전송
-   */
   flushQueue: function() {
     if (!this.endpoint || this.errorQueue.length === 0) return;
-
     const errorsToSend = [...this.errorQueue];
     this.errorQueue = [];
-
     errorsToSend.forEach(error => {
       this.sendToEndpoint(error);
     });
   },
-
-  /**
-   * 에러 추적 활성화 및 엔드포인트 설정
-   */
   enable: function(endpoint) {
     this.enabled = true;
     this.endpoint = endpoint;
     console.log('[Error Tracking] Enabled with endpoint:', endpoint);
   },
-
-  /**
-   * 에러 추적 비활성화
-   */
   disable: function() {
     this.enabled = false;
     console.log('[Error Tracking] Disabled');
   }
 };
-
-// 전역 에러 핸들러 등록
 if (typeof window !== 'undefined') {
   window.addEventListener('error', (event) => {
     ERROR_TRACKING.reportError({
@@ -154,7 +118,6 @@ if (typeof window !== 'undefined') {
       stack: event.error?.stack
     });
   });
-
   window.addEventListener('unhandledrejection', (event) => {
     ERROR_TRACKING.reportError({
       type: 'unhandledRejection',
@@ -172,7 +135,6 @@ const ICONS = {
   calendar: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
   up: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
   down: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>',
-  index: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
   link: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
   search: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
   external: '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>',
@@ -356,13 +318,7 @@ const DATA_TTL = 12 * 60 * 60 * 1000;
 // ============================================================
 // P0-3: ACCOUNT_UTILS - 계정 유틸리티 통합
 // ============================================================
-// 다중 계정 지원을 위한 중앙 집중식 계정 관리 유틸리티
-// 중복 제거: getAccountLabel(), getAccountInfo() 등을 이 객체로 통합
 const ACCOUNT_UTILS = {
-  /**
-   * 현재 사용자의 계정 이메일(라벨)을 반환
-   * @returns {string} 계정 이메일 또는 빈 문자열
-   */
   getAccountLabel: function() {
     try {
       const authUser = window.__NUXT__?.state?.authUser;
@@ -371,11 +327,6 @@ const ACCOUNT_UTILS = {
       return "";
     }
   },
-
-  /**
-   * 현재 사용자의 encId를 반환
-   * @returns {string} encId 또는 빈 문자열
-   */
   getEncId: function() {
     try {
       return window.__NUXT__?.state?.authUser?.encId || "";
@@ -383,11 +334,6 @@ const ACCOUNT_UTILS = {
       return "";
     }
   },
-
-  /**
-   * 계정 정보 전체를 반환 (라벨 + encId)
-   * @returns {Object} { accountLabel, encId }
-   */
   getAccountInfo: function() {
     try {
       const authUser = window.__NUXT__?.state?.authUser;
@@ -399,54 +345,27 @@ const ACCOUNT_UTILS = {
       return { accountLabel: "", encId: "" };
     }
   },
-
-  /**
-   * 다중 계정 모드에서 현재 활성 계정 반환
-   * @returns {string} 현재 계정 이메일
-   */
   getCurrentAccount: function() {
     return window.__sadvAccountState?.currentAccount ||
            ACCOUNT_UTILS.getAccountLabel();
   },
-
-  /**
-   * 다중 계정 모드인지 확인
-   * @returns {boolean} 다중 계정 여부
-   */
   isMultiAccount: function() {
     return window.__sadvAccountState?.isMultiAccount || false;
   },
-
-  /**
-   * 모든 계정 목록 반환
-   * @returns {string[]} 계정 이메일 배열 (복사본)
-   */
   getAllAccounts: function() {
     if (!ACCOUNT_UTILS.isMultiAccount()) {
       const label = ACCOUNT_UTILS.getAccountLabel();
       return label ? [label] : [];
     }
-    // 배열 복사본 반환으로 원본 데이터 보호
     const accounts = window.__sadvAccountState?.allAccounts;
     return accounts ? [...accounts] : [];
   },
-
-  /**
-   * 특정 계정의 데이터를 반환
-   * @param {string} accountEmail - 계정 이메일
-   * @returns {Object|null} 계정 데이터 또는 null
-   */
   getAccountData: function(accountEmail) {
     if (!window.__sadvAccountState?.isMultiAccount) {
       return null;
     }
     return window.__sadvAccountState.accountsData?.[accountEmail] || null;
   },
-
-  /**
-   * 현재 계정 상태 객체 반환 (다중 계정 정보 포함)
-   * @returns {Object|null} 계정 상태 또는 null
-   */
   getAccountState: function() {
     return window.__sadvAccountState || null;
   }
@@ -645,6 +564,23 @@ const ALL_SITES_BATCH = 4;
 const FULL_REFRESH_BATCH_SIZE = 1;
 const FULL_REFRESH_SITE_DELAY_MS = 350;
 const FULL_REFRESH_JITTER_MS = 150;
+
+// ============================================================
+// P2 Issue #2: V1 SCHEMA DEFINITION (Compressed)
+// ============================================================
+const V1_SCHEMA = {
+  FIELDS: ['sites', 'dataBySite', 'siteMeta', 'savedAt', 'encId', '__schema_version'],
+  META: { SCHEMA_VERSION: '__schema_version', EXPORTED_AT: '__exported_at', SOURCE_ACCOUNT: '__source_account', SOURCE_ENC_ID: '__source_enc_id' },
+  DEFAULTS: { SCHEMA_VERSION: '1.0', SAVED_AT: null, SITES: [], DATA_BY_SITE: {}, SITE_META: {} },
+  SITE_FIELDS: ['expose', 'crawl', 'backlink', 'diagnosisMeta', 'detailLoaded', '__cacheSavedAt']
+};
+const V1_MIGRATION = {
+  VERSION: '1.0.0',
+  SUPPORTED_V1_VERSIONS: ['1.0'],
+  MODES: { AUTO: 'auto', MANUAL: 'manual', ROLLBACK: 'rollback' },
+  STATUS: { SUCCESS: 'success', PARTIAL: 'partial', FAILED: 'failed', SKIPPED: 'skipped', INVALID: 'invalid' },
+  LS_KEYS: { V1_BACKUP: 'sadv_v1_backup_', MIGRATION_LOG: 'sadv_migration_log_', LAST_MIGRATION: 'sadv_last_migration' }
+};
 
 // ============================================================
 // P1: USER-FRIENDLY ERROR MESSAGES
