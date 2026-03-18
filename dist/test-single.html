@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>V2 단일 계정 테스트</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      background: #020617;
+      font-family: Pretendard, system-ui, sans-serif;
+      overflow: hidden;
+    }
+    #test-bg {
+      position: fixed; inset: 0;
+      background: radial-gradient(ellipse at 70% 50%, #0f172a 0%, #020617 70%);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 16px;
+    }
+    #test-title {
+      font-size: 28px; font-weight: 900; color: #f8fafc;
+      letter-spacing: -0.03em;
+    }
+    #test-sub { font-size: 14px; color: #64748b; }
+    #test-badge {
+      font-size: 11px; background: #10b98120; border: 1px solid #10b98144;
+      color: #10b981; padding: 4px 12px; border-radius: 999px; font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <div id="test-bg">
+    <div id="test-badge">V2 SINGLE ACCOUNT TEST</div>
+    <div id="test-title">단일 계정 더미 데이터 테스트</div>
+    <div id="test-sub">2개 사이트, 각각 expose/crawl/backlink 데이터 포함</div>
+  </div>
+  <script>
+    // V2 단일 계정 더미 데이터
+    window.__SEARCHADVISOR_EXPORT_PAYLOAD__ = {
+      __meta: {
+        version: "1.0",
+        savedAt: new Date().toISOString(),
+        accountCount: 1
+      },
+      accounts: {
+        "test-single@example.com": {
+          encId: "test-single-enc-id",
+          sites: ["https://site1-example.com", "https://site2-example.com"],
+          siteMeta: {
+            "https://site1-example.com": { label: "사이트 1" },
+            "https://site2-example.com": { label: "사이트 2" }
+          },
+          dataBySite: {
+            "https://site1-example.com": {
+              __meta: {
+                __source: "test-single@example.com",
+                __fetched_at: Date.now(),
+                __schema: "1.0"
+              },
+              expose: {
+                items: [{
+                  period: {
+                    start: "20260301",
+                    end: "20260315",
+                    prevClickRatio: "12.5",
+                    prevExposeRatio: "8.3"
+                  },
+                  logs: Array.from({length: 15}, (_, i) => {
+                    const date = new Date(2026, 2, 1 + i);
+                    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+                    return {
+                      date: dateStr,
+                      clickCount: Math.floor(Math.random() * 400) + 50,
+                      exposeCount: Math.floor(Math.random() * 800) + 100,
+                      ctr: ((Math.random() * 3 + 0.5)).toFixed(2)
+                    };
+                  }),
+                  urls: Array.from({length: 10}, (_, i) => ({
+                    key: `https://site1-example.com/page-${i+1}`,
+                    clickCount: Math.floor(Math.random() * 200) + 10,
+                    exposeCount: Math.floor(Math.random() * 500) + 50,
+                    ctr: (Math.random() * 5 + 0.5).toFixed(2)
+                  })),
+                  querys: Array.from({length: 8}, (_, i) => ({
+                    key: `검색어${i+1}`,
+                    clickCount: Math.floor(Math.random() * 100) + 5,
+                    exposeCount: Math.floor(Math.random() * 300) + 20,
+                    ctr: (Math.random() * 3 + 0.5).toFixed(2)
+                  }))
+                }]
+              },
+              crawl: {
+                items: [{
+                  stats: Array.from({length: 15}, (_, i) => {
+                    const date = new Date(2026, 2, 1 + i);
+                    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+                    return {
+                      date: dateStr,
+                      pageCount: Math.floor(Math.random() * 5000) + 1000,
+                      downloadSize: Math.floor(Math.random() * 50000000) + 10000000,
+                      sumTryCount: Math.floor(Math.random() * 100) + 50,
+                      sumErrorCount: Math.floor(Math.random() * 5),
+                      notFound: Math.floor(Math.random() * 3),
+                      serverError: Math.floor(Math.random() * 2),
+                      connectTimeout: 0
+                    };
+                  })
+                }]
+              },
+              backlink: {
+                items: [{
+                  stats: Array.from({length: 15}, (_, i) => {
+                    const date = new Date(2026, 2, 1 + i);
+                    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+                    return {
+                      date: dateStr,
+                      backlinksCount: Math.floor(Math.random() * 500) + 50,
+                      sumLinkCount: Math.floor(Math.random() * 2000) + 500,
+                      inlinkCount: Math.floor(Math.random() * 1000) + 200
+                    };
+                  })
+                }]
+              },
+              detailLoaded: true
+            },
+            "https://site2-example.com": {
+              __meta: {
+                __source: "test-single@example.com",
+                __fetched_at: Date.now(),
+                __schema: "1.0"
+              },
+              expose: {
+                items: [{
+                  period: {
+                    start: "20260301",
+                    end: "20260315",
+                    prevClickRatio: "15.2",
+                    prevExposeRatio: "9.8"
+                  },
+                  logs: Array.from({length: 15}, (_, i) => {
+                    const date = new Date(2026, 2, 1 + i);
+                    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+                    return {
+                      date: dateStr,
+                      clickCount: Math.floor(Math.random() * 600) + 100,
+                      exposeCount: Math.floor(Math.random() * 1200) + 200,
+                      ctr: ((Math.random() * 4 + 1)).toFixed(2)
+                    };
+                  }),
+                  urls: Array.from({length: 12}, (_, i) => ({
+                    key: `https://site2-example.com/page-${i+1}`,
+                    clickCount: Math.floor(Math.random() * 300) + 20,
+                    exposeCount: Math.floor(Math.random() * 600) + 80,
+                    ctr: (Math.random() * 6 + 1).toFixed(2)
+                  })),
+                  querys: Array.from({length: 10}, (_, i) => ({
+                    key: `검색어B${i+1}`,
+                    clickCount: Math.floor(Math.random() * 150) + 10,
+                    exposeCount: Math.floor(Math.random() * 400) + 30,
+                    ctr: (Math.random() * 4 + 1).toFixed(2)
+                  }))
+                }]
+              },
+              crawl: {
+                items: [{
+                  stats: Array.from({length: 15}, (_, i) => {
+                    const date = new Date(2026, 2, 1 + i);
+                    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+                    return {
+                      date: dateStr,
+                      pageCount: Math.floor(Math.random() * 8000) + 2000,
+                      downloadSize: Math.floor(Math.random() * 80000000) + 20000000,
+                      sumTryCount: Math.floor(Math.random() * 150) + 80,
+                      sumErrorCount: Math.floor(Math.random() * 8),
+                      notFound: Math.floor(Math.random() * 5),
+                      serverError: Math.floor(Math.random() * 3),
+                      connectTimeout: 0
+                    };
+                  })
+                }]
+              },
+              backlink: {
+                items: [{
+                  stats: Array.from({length: 15}, (_, i) => {
+                    const date = new Date(2026, 2, 1 + i);
+                    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+                    return {
+                      date: dateStr,
+                      backlinksCount: Math.floor(Math.random() * 800) + 100,
+                      sumLinkCount: Math.floor(Math.random() * 3000) + 800,
+                      inlinkCount: Math.floor(Math.random() * 1500) + 300
+                    };
+                  })
+                }]
+              },
+              detailLoaded: true
+            }
+          }
+        }
+      },
+      ui: {
+        curMode: "all",
+        curSite: null,
+        curTab: "overview"
+      },
+      summaryRows: [
+        {
+          site: "https://site1-example.com",
+          totalC: 2450,
+          totalE: 8500,
+          ctr: 2.88
+        },
+        {
+          site: "https://site2-example.com",
+          totalC: 3800,
+          totalC: 12500,
+          ctr: 3.04
+        }
+      ],
+      stats: {
+        success: 2,
+        partial: 0,
+        failed: 0,
+        errors: []
+      }
+    };
+  </script>
+  <script src="runtime.js"></script>
+</body>
+</html>

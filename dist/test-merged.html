@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>V2 복합 계정 테스트</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      background: #020617;
+      font-family: Pretendard, system-ui, sans-serif;
+      overflow: hidden;
+    }
+    #test-bg {
+      position: fixed; inset: 0;
+      background: radial-gradient(ellipse at 70% 50%, #0f172a 0%, #020617 70%);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 16px;
+    }
+    #test-title {
+      font-size: 28px; font-weight: 900; color: #f8fafc;
+      letter-spacing: -0.03em;
+    }
+    #test-sub { font-size: 14px; color: #64748b; }
+    #test-badge {
+      font-size: 11px; background: #10b98120; border: 1px solid #10b98144;
+      color: #10b981; padding: 4px 12px; border-radius: 999px; font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <div id="test-bg">
+    <div id="test-badge">V2 MERGED ACCOUNT TEST</div>
+    <div id="test-title">복합 계정 더미 데이터 테스트</div>
+    <div id="test-sub">2개 계정, 일부 사이트 중복 (Merge 테스트)</div>
+  </div>
+  <script>
+    // V2 복합 계정 더미 데이터
+    window.__SEARCHADVISOR_EXPORT_PAYLOAD__ = {
+      __meta: {
+        version: "1.0",
+        savedAt: new Date().toISOString(),
+        accountCount: 2
+      },
+      accounts: {
+        "account1@example.com": {
+          encId: "account1-enc-id",
+          sites: ["https://shared-site.com", "https://account1-exclusive.com"],
+          siteMeta: {
+            "https://shared-site.com": { label: "공유 사이트" },
+            "https://account1-exclusive.com": { label: "계정1 전용" }
+          },
+          dataBySite: {
+            "https://shared-site.com": {
+              __meta: {
+                __source: "account1@example.com",
+                __fetched_at: Date.now(),
+                __schema: "1.0"
+              },
+              expose: {
+                items: [{
+                  period: {
+                    start: "20260301",
+                    end: "20260315",
+                    prevClickRatio: "15.2",
+                    prevExposeRatio: "10.5"
+                  },
+                  logs: Array.from({length: 15}, (_, i) => {
+                    const date = new Date(2026, 2, 1 + i);
+                    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+                    return {
+                      date: dateStr,
+                      clickCount: Math.floor(Math.random() * 400) + 50,
+                      exposeCount: Math.floor(Math.random() * 800) + 100,
+                      ctr: ((Math.random() * 3 + 0.5)).toFixed(2)
+                    };
+                  }),
+                  urls: Array.from({length: 10}, (_, i) => ({
+                    key: `https://shared-site.com/page-${i+1}`,
+                    clickCount: Math.floor(Math.random() * 200) + 10,
+                    exposeCount: Math.floor(Math.random() * 500) + 50,
+                    ctr: (Math.random() * 5 + 0.5).toFixed(2)
+                  })),
+                  querys: Array.from({length: 8}, (_, i) => ({
+                    key: `검색어${i+1}`,
+                    clickCount: Math.floor(Math.random() * 100) + 5,
+                    exposeCount: Math.floor(Math.random() * 300) + 20,
+                    ctr: (Math.random() * 3 + 0.5).toFixed(2)
+                  }))
+                }]
+              },
+              crawl: {
+                items: [{
+                  stats: Array.from({length: 15}, (_, i) => {
+                    const date = new Date(2026, 2, 1 + i);
+                    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+                    return {
+                      date: dateStr,
+                      pageCount: Math.floor(Math.random() * 5000) + 1000,
+                      downloadSize: Math.floor(Math.random() * 50000000) + 10000000,
+                      sumTryCount: Math.floor(Math.random() * 100) + 50,
+                      sumErrorCount: Math.floor(Math.random() * 5),
+                      notFound: Math.floor(Math.random() * 3),
+                      serverError: Math.floor(Math.random() * 2),
+                      connectTimeout: 0
+                    };
+                  }),
+                  sitemaps: [{ url: "https://shared-site.com/sitemap.xml", status: "ok", count: 200 }]
+                }]
+              },
+              backlink: {
+                items: [{
+                  total: Math.floor(Math.random() * 1000) + 200,
+                  domains: Math.floor(Math.random() * 50) + 10,
+                  countTime: Array.from({length: 15}, (_, i) => {
+                    const date = new Date(2026, 2, 1 + i);
+                    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+                    return {
+                      timeStamp: dateStr,
+                      backlinkCnt: Math.floor(Math.random() * 200) + 180
+                    };
+                  }),
+                  topDomain: [
+                    { domain: "backlink-source.com", backlinkCnt: Math.floor(Math.random() * 100) + 50 },
+                    { domain: "partner-site.net", backlinkCnt: Math.floor(Math.random() * 80) + 30 }
+                  ]
+                }]
+              },
+              diagnosisMeta: {
+                code: 0,
+                items: [{
+                  meta: Array.from({length: 15}, (_, i) => {
+                    const date = new Date(2026, 2, 1 + i);
+                    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+                    return {
+                      date: dateStr,
+                      stateCount: {
+                        "1": 1000 + i * 10,
+                        "2": Math.floor(Math.random() * 50) + 10,
+                        "3": Math.floor(Math.random() * 30) + 5,
+                        "4": Math.floor(Math.random() * 20) + 2
+                      }
+                    };
+                  })
+                }]
+              },
+              diagnosisMetaRange: { start: "20260301", end: "20260315" },
+              detailLoaded: true
+            },
+            "https://account1-exclusive.com": {
+              __meta: {
+                __source: "account1@example.com",
+                __fetched_at: Date.now(),
+                __schema: "1.0"
+              },
+              expose: {
+                items: [{
+                  period: {
+                    start: "20260301",
+                    end: "20260315",
+                    prevClickRatio: "8.7",
+                    prevExposeRatio: "12.3"
+                  },
+                  logs: Array.from({length: 15}, (_, i) => {
+                    const date = new Date(2026, 2, 1 + i);
+                    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+                    return {
+                      date: dateStr,
+                      clickCount: Math.floor(Math.random() * 400) + 50,
+                      exposeCount: Math.floor(Math.random() * 800) + 100,
+                      ctr: ((Math.random() * 3 + 0.5)).toFixed(2)
+                    };
+                  }),
+                  urls: Array.from({length: 10}, (_, i) => ({
+                    key: `https://account1-exclusive.com/page-${i+1}`,
+                    clickCount: Math.floor(Math.random() * 200) + 10,
+                    exposeCount: Math.floor(Math.random() * 500) + 50,
+                    ctr: (Math.random() * 5 + 0.5).toFixed(2)
+                  })),
+                  querys: Array.from({length: 8}, (_, i) => ({
+                    key: `검색어${i+1}`,
+                    clickCount: Math.floor(Math.random() * 100) + 5,
+                    exposeCount: Math.floor(Math.random() * 300) + 20,
+                    ctr: (Math.random() * 3 + 0.5).toFixed(2)
+                  }))
+                }]
+              },
+              crawl: {
+                items: [{
+                  stats: Array.from({length: 15}, (_, i) => {
+                    const date = new Date(2026, 2, 1 + i);
+                    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+                    return {
+                      date: dateStr,
+                      pageCount: Math.floor(Math.random() * 5000) + 1000,
+                      downloadSize: Math.floor(Math.random() * 50000000) + 10000000,
+                      sumTryCount: Math.floor(Math.random() * 100) + 50,
+                      sumErrorCount: Math.floor(Math.random() * 5),
+                      notFound: Math.floor(Math.random() * 3),
+                      serverError: Math.floor(Math.random() * 2),
+                      connectTimeout: 0
+                    };
+                  }),
+                  sitemaps: [{ url: "https://account1-exclusive.com/sitemap.xml", status: "ok", count: 120 }]
+                }]
+              },
+              backlink: {
+                items: [{
+                  total: Math.floor(Math.random() * 1000) + 200,
+                  domains: Math.floor(Math.random() * 50) + 10,
+                  countTime: Array.from({length: 15}, (_, i) => {
+                    const date = new Date(2026, 2, 1 + i);
+                    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+                    return {
+                      timeStamp: dateStr,
+                      backlinkCnt: Math.floor(Math.random() * 200) + 180
+                    };
+                  }),
+                  topDomain: [
+                    { domain: "backlink-source.com", backlinkCnt: Math.floor(Math.random() * 100) + 50 },
+                    { domain: "partner-site.net", backlinkCnt: Math.floor(Math.random() * 80) + 30 }
+                  ]
+                }]
+              },
+              diagnosisMeta: {
+                code: 0,
+                items: [{
+                  meta: Array.from({length: 15}, (_, i) => {
+                    const date = new Date(2026, 2, 1 + i);
+                    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+                    return {
+                      date: dateStr,
+                      stateCount: {
+                        "1": 1000 + i * 10,
+                        "2": Math.floor(Math.random() * 50) + 10,
+                        "3": Math.floor(Math.random() * 30) + 5,
+                        "4": Math.floor(Math.random() * 20) + 2
+                      }
+                    };
+                  })
+                }]
+              },
+              diagnosisMetaRange: { start: "20260301", end: "20260315" },
+              detailLoaded: true
+            }
+          }
+        },
+        "account2@example.com": {
+          encId: "account2-enc-id",
+          sites: ["https://shared-site.com", "https://account2-exclusive.com"],
+          siteMeta: {
+            "https://shared-site.com": { label: "공유 사이트" },
+            "https://account2-exclusive.com": { label: "계정2 전용" }
+          },
+          dataBySite: {
+            "https://shared-site.com": {
+              __meta: {
+                __source: "account2@example.com",
+                __fetched_at: Date.now(),
+                __schema: "1.0"
+              },
+              expose: {
+                items: [{
+                  period: {
+                    start: "20260301",
+                    end: "20260315",
+                    prevClickRatio: "12.8",
+                    prevExposeRatio: "9.2"
+                  },
+                  logs: Array.from({length: 15}, (_, i) => {
+                    const date = new Date(2026, 2, 1 + i);
+                    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+                    return {
+                      date: dateStr,
+                      clickCount: Math.floor(Math.random() * 400) + 50,
+                      exposeCount: Math.floor(Math.random() * 800) + 100,
+                      ctr: ((Math.random() * 3 + 0.5)).toFixed(2)
+                    };
+                  }),
+                  urls: Array.from({length: 10}, (_, i) => ({
+                    key: `https://shared-site.com/page-${i+1}`,
+                    clickCount: Math.floor(Math.random() * 200) + 10,
+                    exposeCount: Math.floor(Math.random() * 500) + 50,
+                    ctr: (Math.random() * 5 + 0.5).toFixed(2)
+                  })),
+                  querys: Array.from({length: 8}, (_, i) => ({
+                    key: `검색어B${i+1}`,
+                    clickCount: Math.floor(Math.random() * 100) + 5,
+                    exposeCount: Math.floor(Math.random() * 300) + 20,
+                    ctr: (Math.random() * 3 + 0.5).toFixed(2)
+                  }))
+                }]
+              },
+              crawl: {
+                items: [{
+                  stats: Array.from({length: 15}, (_, i) => {
+                    const date = new Date(2026, 2, 1 + i);
+                    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+                    return {
+                      date: dateStr,
+                      pageCount: Math.floor(Math.random() * 5000) + 1000,
+                      downloadSize: Math.floor(Math.random() * 50000000) + 10000000,
+                      sumTryCount: Math.floor(Math.random() * 100) + 50,
+                      sumErrorCount: Math.floor(Math.random() * 5),
+                      notFound: Math.floor(Math.random() * 3),
+                      serverError: Math.floor(Math.random() * 2),
+                      connectTimeout: 0
+                    };
+                  }),
+                  sitemaps: [{ url: "https://shared-site.com/sitemap2.xml", status: "ok", count: 150 }]
+                }]
+              },
+              backlink: {
+                items: [{
+                  total: Math.floor(Math.random() * 1000) + 200,
+                  domains: Math.floor(Math.random() * 50) + 10,
+                  countTime: Array.from({length: 15}, (_, i) => {
+                    const date = new Date(2026, 2, 1 + i);
+                    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+                    return {
+                      timeStamp: dateStr,
+                      backlinkCnt: Math.floor(Math.random() * 200) + 180
+                    };
+                  }),
+                  topDomain: [
+                    { domain: "backlink2-source.com", backlinkCnt: Math.floor(Math.random() * 100) + 50 },
+                    { domain: "partner2-site.net", backlinkCnt: Math.floor(Math.random() * 80) + 30 }
+                  ]
+                }]
+              },
+              diagnosisMeta: {
+                code: 0,
+                items: [{
+                  meta: Array.from({length: 15}, (_, i) => {
+                    const date = new Date(2026, 2, 1 + i);
+                    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+                    return {
+                      date: dateStr,
+                      stateCount: {
+                        "1": 1000 + i * 10,
+                        "2": Math.floor(Math.random() * 50) + 10,
+                        "3": Math.floor(Math.random() * 30) + 5,
+                        "4": Math.floor(Math.random() * 20) + 2
+                      }
+                    };
+                  })
+                }]
+              },
+              diagnosisMetaRange: { start: "20260301", end: "20260315" },
+              detailLoaded: true
+            },
+            "https://account2-exclusive.com": {
+              __meta: {
+                __source: "account2@example.com",
+                __fetched_at: Date.now(),
+                __schema: "1.0"
+              },
+              expose: {
+                items: [{
+                  period: {
+                    start: "20260301",
+                    end: "20260315",
+                    prevClickRatio: "-2.1",
+                    prevExposeRatio: "6.8"
+                  },
+                  logs: Array.from({length: 15}, (_, i) => {
+                    const date = new Date(2026, 2, 1 + i);
+                    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+                    return {
+                      date: dateStr,
+                      clickCount: Math.floor(Math.random() * 400) + 50,
+                      exposeCount: Math.floor(Math.random() * 800) + 100,
+                      ctr: ((Math.random() * 3 + 0.5)).toFixed(2)
+                    };
+                  }),
+                  urls: Array.from({length: 10}, (_, i) => ({
+                    key: `https://account2-exclusive.com/page-${i+1}`,
+                    clickCount: Math.floor(Math.random() * 200) + 10,
+                    exposeCount: Math.floor(Math.random() * 500) + 50,
+                    ctr: (Math.random() * 5 + 0.5).toFixed(2)
+                  })),
+                  querys: Array.from({length: 8}, (_, i) => ({
+                    key: `검색어${i+1}`,
+                    clickCount: Math.floor(Math.random() * 100) + 5,
+                    exposeCount: Math.floor(Math.random() * 300) + 20,
+                    ctr: (Math.random() * 3 + 0.5).toFixed(2)
+                  }))
+                }]
+              },
+              crawl: {
+                items: [{
+                  stats: Array.from({length: 15}, (_, i) => {
+                    const date = new Date(2026, 2, 1 + i);
+                    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+                    return {
+                      date: dateStr,
+                      pageCount: Math.floor(Math.random() * 5000) + 1000,
+                      downloadSize: Math.floor(Math.random() * 50000000) + 10000000,
+                      sumTryCount: Math.floor(Math.random() * 100) + 50,
+                      sumErrorCount: Math.floor(Math.random() * 5),
+                      notFound: Math.floor(Math.random() * 3),
+                      serverError: Math.floor(Math.random() * 2),
+                      connectTimeout: 0
+                    };
+                  }),
+                  sitemaps: [{ url: "https://account2-exclusive.com/sitemap.xml", status: "ok", count: 180 }]
+                }]
+              },
+              backlink: {
+                items: [{
+                  total: Math.floor(Math.random() * 1000) + 200,
+                  domains: Math.floor(Math.random() * 50) + 10,
+                  countTime: Array.from({length: 15}, (_, i) => {
+                    const date = new Date(2026, 2, 1 + i);
+                    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+                    return {
+                      timeStamp: dateStr,
+                      backlinkCnt: Math.floor(Math.random() * 200) + 180
+                    };
+                  }),
+                  topDomain: [
+                    { domain: "backlink-source.com", backlinkCnt: Math.floor(Math.random() * 100) + 50 },
+                    { domain: "partner-site.net", backlinkCnt: Math.floor(Math.random() * 80) + 30 }
+                  ]
+                }]
+              },
+              diagnosisMeta: {
+                code: 0,
+                items: [{
+                  meta: Array.from({length: 15}, (_, i) => {
+                    const date = new Date(2026, 2, 1 + i);
+                    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+                    return {
+                      date: dateStr,
+                      stateCount: {
+                        "1": 1000 + i * 10,
+                        "2": Math.floor(Math.random() * 50) + 10,
+                        "3": Math.floor(Math.random() * 30) + 5,
+                        "4": Math.floor(Math.random() * 20) + 2
+                      }
+                    };
+                  })
+                }]
+              },
+              diagnosisMetaRange: { start: "20260301", end: "20260315" },
+              detailLoaded: true
+            }
+          }
+        }
+      },
+      ui: {
+        curMode: "all",
+        curSite: null,
+        curTab: "overview"
+      },
+      mergedMeta: {
+        accounts: [
+          { encId: "account1-enc-id", label: "account1@example.com" },
+          { encId: "account2-enc-id", label: "account2@example.com" }
+        ],
+        mergedAt: new Date().toISOString(),
+        naverIds: ["account1@example.com", "account2@example.com"],
+        fileNames: ["test-single.html", "another-test.html"]
+      },
+      summaryRows: [],
+      stats: {
+        success: 2,
+        partial: 0,
+        failed: 0,
+        errors: []
+      }
+    };
+  </script>
+  <script src="runtime.js"></script>
+</body>
+</html>
