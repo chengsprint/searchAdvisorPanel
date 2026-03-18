@@ -55,16 +55,16 @@
       curSite = payload.ui?.curSite || null;
       curTab = payload.ui?.curTab || "overview";
     } else {
-      // Legacy format (should not happen in big bang, but kept for safety)
-      accountLabel = payload.accountLabel || "";
-      allSites = Array.isArray(payload.allSites) ? payload.allSites.slice() : [];
-      dataBySite = payload.dataBySite || {};
-      summaryRows = payload.summaryRows || [];
-      siteMeta = payload.siteMeta || {};
-      savedAt = payload.savedAt;
-      curMode = payload.curMode || "all";
-      curSite = payload.curSite || null;
-      curTab = payload.curTab || "overview";
+      // V2 포맷이 아닌 경우 빈 값 반환
+      accountLabel = "";
+      allSites = [];
+      dataBySite = {};
+      summaryRows = [];
+      siteMeta = {};
+      savedAt = null;
+      curMode = "all";
+      curSite = null;
+      curTab = "overview";
     }
 
     const snapshotTabIds = [
@@ -152,11 +152,11 @@
       const accountKeys = Object.keys(payload.accounts);
       allSites = accountKeys.length > 0 ? (payload.accounts[accountKeys[0]]?.sites || []) : [];
     } else {
-      // Legacy format
-      curMode = payload.curMode || "all";
-      curSite = payload.curSite || null;
-      curTab = payload.curTab || "overview";
-      allSites = payload.allSites || [];
+      // V2 포맷이 아닌 경우 기본값 사용
+      curMode = "all";
+      curSite = null;
+      curTab = "overview";
+      allSites = [];
     }
 
     const modeLabel = curMode === "site" ? "\uc0ac\uc774\ud2b8\ubcc4" : "\uc804\uccb4\ud604\ud669";
@@ -621,7 +621,8 @@
     const p = document.getElementById("sadv-p");
     const modeBar = document.getElementById("sadv-mode-bar");
     const siteBar = document.getElementById("sadv-site-bar");
-    const tabsEl = document.getElementById("sadv-tabs");
+    window.__sadvTabsEl = document.getElementById("sadv-tabs"); // Export to global scope
+    const tabsEl = window.__sadvTabsEl;
     const bdEl = document.getElementById("sadv-bd");
     const labelEl = document.getElementById("sadv-site-label");
     tabsEl.innerHTML = TABS.map(function (t) {

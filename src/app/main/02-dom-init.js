@@ -152,18 +152,9 @@ function accountIdFromLabel(v) {
   return fileSafe(localPart || "unknown");
 }
 
-function getAccountLabel() {
-  try {
-    const authUser =
-      window.__NUXT__ &&
-      window.__NUXT__.state &&
-      window.__NUXT__.state.authUser;
-    return authUser && typeof authUser.email === "string"
-      ? authUser.email
-      : "";
-  } catch (e) {}
-  return "";
-}
+// P0-3: ACCOUNT_UTILS 통합 - 중복 제거
+// 이제 ACCOUNT_UTILS.getAccountLabel()을 사용하세요.
+// getAccountLabel()은 ACCOUNT_UTILS로 이동됨.
 
 function applyAccountBadge(accountLabel) {
   const badge = document.getElementById("sadv-account-badge");
@@ -178,3 +169,6 @@ function applyAccountBadge(accountLabel) {
   badge.textContent = accountLabel;
   badge.title = accountLabel;
 }
+
+// Initialize tabsEl for global access
+window.__sadvTabsEl = document.getElementById("sadv-tabs");

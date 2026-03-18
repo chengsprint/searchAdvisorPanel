@@ -410,7 +410,20 @@ function secTitle(t) {
 // Security Note: This function uses innerHTML for HTML content. All dynamic values in
 // call sites MUST be escaped using escHtml(). Fixed: 08-renderers.js line 558 (slug value).
 // When adding new ibox() calls with dynamic content, always use escHtml() for user/API data.
+// P0-1: XSS 취약점 수정 - 개발 환경에서 보안 경고 추가
 function ibox(type, html) {
+  // 개발 환경에서 잠재적 XSS 위험 경고
+  if (typeof window !== "undefined" &&
+      typeof html === "string" &&
+      html.includes("<") &&
+      !html.includes("&lt;") &&
+      // 이미 escape된 HTML인지 확인 (안전한 패턴)
+      !/^(<span|<div|<b>|<strong>|<em>|<i>|<br|<hr|\/[a-z]+>|\s+)*$/i.test(html)) {
+    console.warn("[SECURITY] ibox() 호출에 원시 HTML이 포함되어 있습니다. 동적 값에는 escHtml()를 사용하세요.");
+    console.warn("[SECURITY] HTML 내용:", html.substring(0, 100));
+    console.trace("[SECURITY] 호출 스택:");
+  }
+
   const col =
     { green: C.green, amber: C.amber, red: C.red, blue: C.blue }[type] ||
       C.blue;

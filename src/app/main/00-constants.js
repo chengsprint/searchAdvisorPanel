@@ -217,6 +217,250 @@ const SITE_LS_KEY = "sadv_sites_v1";
 const DATA_LS_PREFIX = "sadv_data_v2_";
 const UI_STATE_LS_KEY = "sadv_ui_state_v1";
 const DATA_TTL = 12 * 60 * 60 * 1000;
+
+// ============================================================
+// P0-3: ACCOUNT_UTILS - 계정 유틸리티 통합
+// ============================================================
+// 다중 계정 지원을 위한 중앙 집중식 계정 관리 유틸리티
+// 중복 제거: getAccountLabel(), getAccountInfo() 등을 이 객체로 통합
+const ACCOUNT_UTILS = {
+  /**
+   * 현재 사용자의 계정 이메일(라벨)을 반환
+   * @returns {string} 계정 이메일 또는 빈 문자열
+   */
+  getAccountLabel: function() {
+    try {
+      const authUser = window.__NUXT__?.state?.authUser;
+      return authUser?.email || "";
+    } catch (e) {
+      return "";
+    }
+  },
+
+  /**
+   * 현재 사용자의 encId를 반환
+   * @returns {string} encId 또는 빈 문자열
+   */
+  getEncId: function() {
+    try {
+      return window.__NUXT__?.state?.authUser?.encId || "";
+    } catch (e) {
+      return "";
+    }
+  },
+
+  /**
+   * 계정 정보 전체를 반환 (라벨 + encId)
+   * @returns {Object} { accountLabel, encId }
+   */
+  getAccountInfo: function() {
+    try {
+      const authUser = window.__NUXT__?.state?.authUser;
+      return {
+        accountLabel: authUser?.email || "",
+        encId: authUser?.encId || ""
+      };
+    } catch (e) {
+      return { accountLabel: "", encId: "" };
+    }
+  },
+
+  /**
+   * 다중 계정 모드에서 현재 활성 계정 반환
+   * @returns {string} 현재 계정 이메일
+   */
+  getCurrentAccount: function() {
+    return window.__sadvAccountState?.currentAccount ||
+           ACCOUNT_UTILS.getAccountLabel();
+  },
+
+  /**
+   * 다중 계정 모드인지 확인
+   * @returns {boolean} 다중 계정 여부
+   */
+  isMultiAccount: function() {
+    return window.__sadvAccountState?.isMultiAccount || false;
+  },
+
+  /**
+   * 모든 계정 목록 반환
+   * @returns {string[]} 계정 이메일 배열
+   */
+  getAllAccounts: function() {
+    if (!ACCOUNT_UTILS.isMultiAccount()) {
+      const label = ACCOUNT_UTILS.getAccountLabel();
+      return label ? [label] : [];
+    }
+    return window.__sadvAccountState?.allAccounts || [];
+  },
+
+  /**
+   * 특정 계정의 데이터를 반환
+   * @param {string} accountEmail - 계정 이메일
+   * @returns {Object|null} 계정 데이터 또는 null
+   */
+  getAccountData: function(accountEmail) {
+    if (!window.__sadvAccountState?.isMultiAccount) {
+      return null;
+    }
+    return window.__sadvAccountState.accountsData?.[accountEmail] || null;
+  },
+
+  /**
+   * 현재 계정 상태 객체 반환 (다중 계정 정보 포함)
+   * @returns {Object|null} 계정 상태 또는 null
+   */
+  getAccountState: function() {
+    return window.__sadvAccountState || null;
+  }
+};
+
+// ============================================================
+// P1: V2 DATA VALIDATION CONSTANTS
+// ============================================================
+const DATA_VALIDATION = {
+  /**
+   * 객체 타입 검증
+   */
+  isObject: function(value) {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+  },
+
+  /**
+   * 비어있지 않은 배열 검증
+   */
+  isNonEmptyArray: function(value) {
+    return Array.isArray(value) && value.length > 0;
+  },
+
+  /**
+   * 유효한 이메일 검증
+   */
+  isValidEmail: function(email) {
+    return typeof email === 'string' && email.includes('@');
+  },
+
+  /**
+   * 유효한 타임스탬프 검증
+   */
+  isValidTimestamp: function(ts) {
+    return typeof ts === 'number' && ts > 0;
+  },
+
+  /**
+   * V2 payload 기본 검증
+   */
+  isValidV2Payload: function(payload) {
+    if (!DATA_VALIDATION.isObject(payload)) return false;
+    if (!payload.__meta || !payload.accounts) return false;
+    if (!DATA_VALIDATION.isObject(payload.__meta)) return false;
+    if (!DATA_VALIDATION.isObject(payload.accounts)) return false;
+    return true;
+  },
+
+  /**
+   * 계정 구조 검증
+   */
+  isValidAccount: function(account) {
+    if (!DATA_VALIDATION.isObject(account)) return false;
+    if (!account.encId || typeof account.encId !== 'string') return false;
+    if (!Array.isArray(account.sites)) return false;
+    return true;
+  },
+
+  /**
+   * 계정 데이터 일관성 검증
+   * sites 배열과 dataBySite 키 불일치 감지
+   */
+  validateAccountData: function(account) {
+    const sites = account?.sites || [];
+    const dataBySite = account?.dataBySite || {};
+
+    const missingData = [];
+    for (const site of sites) {
+      if (!dataBySite[site]) {
+        missingData.push(site);
+      }
+    }
+
+    const orphanSites = Object.keys(dataBySite).filter(url => !sites.includes(url));
+
+    return {
+      valid: missingData.length === 0 && orphanSites.length === 0,
+      missingData,
+      orphanSites,
+      sitesCount: sites.length,
+      dataCount: Object.keys(dataBySite).length
+    };
+  }
+};
+
+// ============================================================
+// P1: V2 SCHEMA VERSION CONSTANTS
+// ============================================================
+const SCHEMA_VERSIONS = {
+  // 현재 지원하는 스키마 버전
+  CURRENT: '1.0',
+
+  // 지원 가능한 버전 목록
+  SUPPORTED: ['1.0'],
+
+  /**
+   * 버전이 지원되는지 확인
+   */
+  isSupported: function(version) {
+    return SCHEMA_VERSIONS.SUPPORTED.includes(version);
+  },
+
+  /**
+   * 버전 비교
+   * @returns {number} -1: v1 < v2, 0: v1 == v2, 1: v1 > v2
+   */
+  compare: function(v1, v2) {
+    const parts1 = v1.split('.').map(Number);
+    const parts2 = v2.split('.').map(Number);
+    for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+      const p1 = parts1[i] || 0;
+      const p2 = parts2[i] || 0;
+      if (p1 < p2) return -1;
+      if (p1 > p2) return 1;
+    }
+    return 0;
+  }
+};
+
+// ============================================================
+// P1: V2 MERGE STRATEGY CONSTANTS
+// ============================================================
+const MERGE_STRATEGIES = {
+  // 전략 유형
+  NEWER: 'newer',      // 최신 데이터 우선
+  ALL: 'all',          // 모든 데이터 병합
+  SOURCE: 'source',    // 소스 데이터 우선
+  TARGET: 'target',    // 타겟 데이터 우선
+
+  // 기본 전략
+  DEFAULT: 'newer',
+
+  /**
+   * 전략 유효성 검증
+   */
+  isValid: function(strategy) {
+    const validStrategies = [MERGE_STRATEGIES.NEWER, MERGE_STRATEGIES.ALL, MERGE_STRATEGIES.SOURCE, MERGE_STRATEGIES.TARGET];
+    return validStrategies.includes(strategy);
+  },
+
+  /**
+   * 전략별 설명
+   */
+  DESCRIPTIONS: {
+    newer: '가장 최신 데이터(__fetched_at 기준)를 사용합니다',
+    all: '모든 데이터를 병합하여 중복을 제거합니다',
+    source: '가져오는 데이터를 우선 적용합니다',
+    target: '기존 데이터를 유지합니다'
+  }
+};
+
 const ALL_SITES_BATCH = 4;
 const FULL_REFRESH_BATCH_SIZE = 1;
 const FULL_REFRESH_SITE_DELAY_MS = 350;

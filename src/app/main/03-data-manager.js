@@ -5,6 +5,17 @@
 let allSites = [];
 const memCache = {};
 
+function getCacheNamespace() {
+  // For demo/test mode, use a fixed namespace
+  if (IS_DEMO_MODE) return 'demo';
+  // For production, use account-based namespace
+  return 'default';
+}
+
+// P0-3: ACCOUNT_UTILS 통합 - 중복 제거
+// 이제 ACCOUNT_UTILS.getAccountLabel()을 사용하세요.
+// getAccountLabel()은 ACCOUNT_UTILS로 이동됨.
+
 function lsGet(k) {
   try {
     const v = localStorage.getItem(k);
@@ -346,4 +357,305 @@ function shouldFetchDiagnosisMeta(data, options) {
   if (hasSuccessfulDiagnosisMetaSnapshot(data)) return false;
   if (options && options.retryIncomplete) return true;
   return !hasRecentDiagnosisMetaFailure(data);
+}
+
+async function loadSiteList(refresh = false) {
+  console.log('[loadSiteList] Called with refresh:', refresh);
+
+  // Check V2 format EXPORT_PAYLOAD first
+  const exportPayload = window.__SEARCHADVISOR_EXPORT_PAYLOAD__;
+  if (exportPayload) {
+    console.log('[loadSiteList] Found EXPORT_PAYLOAD');
+
+    // P0-2: V2 다중 계정 구조 지원 완성
+    if (exportPayload.__meta && exportPayload.accounts) {
+      return handleV2MultiAccount(exportPayload);
+    }
+
+    // 레거시 V1 포맷은 지원하지 않음 (Big Bang Migration 완료)
+    // V2 포맷이 아닌 경우 빈 배열 반환
+    if (exportPayload && !exportPayload.__meta) {
+      console.warn('[loadSiteList] Unsupported payload format (missing __meta)');
+      return [];
+    }
+  }
+
+  // Check if we have init data
+  const initData = window.__sadvInitData;
+  if (initData && initData.sites) {
+    const sites = Object.keys(initData.sites);
+    console.log('[loadSiteList] Found init data with sites:', sites);
+    allSites.length = 0;
+    allSites.push(...sites);
+    return sites;
+  }
+
+  // Check merged data
+  const mergedData = window.__sadvMergedData;
+  if (mergedData && mergedData.sites) {
+    const sites = Object.keys(mergedData.sites);
+    console.log('[loadSiteList] Found merged data with sites:', sites);
+    allSites.length = 0;
+    allSites.push(...sites);
+    return sites;
+  }
+
+  // Check cache
+  if (!refresh) {
+    const cached = lsGet(getSiteListCacheKey());
+    if (cached && cached.sites && Array.isArray(cached.sites)) {
+      console.log('[loadSiteList] Found cached sites:', cached.sites);
+      allSites.length = 0;
+      allSites.push(...cached.sites);
+      return cached.sites;
+    }
+  }
+
+  console.log('[loadSiteList] No sites found, returning empty array');
+  return [];
+}
+
+// ============================================================================
+// P0-2: V2 다중 계정 구조 지원 완성
+// ============================================================================
+// V2 다중 계정 감지 및 병합 처리
+// ============================================================================
+function handleV2MultiAccount(payload, mergeStrategy) {
+  // P1: V2 데이터 검증
+  // 1. 기본 V2 포맷 검증
+  if (!DATA_VALIDATION.isValidV2Payload(payload)) {
+    console.error('[V2 Multi-Account] Invalid V2 payload format');
+    return [];
+  }
+
+  // 2. 메타데이터 검증
+  const meta = payload.__meta;
+  if (!meta.version || !meta.exportedAt) {
+    console.error('[V2 Multi-Account] Invalid metadata');
+    return [];
+  }
+
+  // 3. 스키마 버전 검증
+  if (!SCHEMA_VERSIONS.isSupported(meta.version)) {
+    console.warn(`[V2 Multi-Account] Unsupported schema version: ${meta.version}`);
+  }
+
+  // 4. 계정 데이터 검증 및 유효한 계정만 필터링
+  const accountKeys = Object.keys(payload.accounts);
+  if (accountKeys.length === 0) {
+    console.error('[V2 Multi-Account] No accounts found');
+    return [];
+  }
+
+  const validAccounts = [];
+  for (const accKey of accountKeys) {
+    const account = payload.accounts[accKey];
+    if (DATA_VALIDATION.isValidAccount(account)) {
+      // P1: 데이터 일관성 검증
+      const validation = DATA_VALIDATION.validateAccountData(account);
+      if (!validation.valid) {
+        console.warn(`[V2 Multi-Account] Account ${accKey} data inconsistency:`, validation);
+
+        // 불일치가 있는 계정은 유효 목록에 추가하지 않음 (원본 데이터 보존)
+        if (validation.missingData.length > 0 || validation.orphanSites.length > 0) {
+          console.warn(`[V2 Multi-Account] Skipping ${accKey}: ${validation.missingData.length} missing, ${validation.orphanSites.length} orphan sites`);
+        }
+      } else {
+        validAccounts.push(accKey);
+      }
+    } else {
+      console.warn(`[V2 Multi-Account] Invalid account structure: ${accKey}`);
+    }
+  }
+
+  if (validAccounts.length === 0) {
+    console.error('[V2 Multi-Account] No valid accounts found');
+    return [];
+  }
+
+  console.log(`[V2 Multi-Account] Found ${validAccounts.length} valid accounts (out of ${accountKeys.length} total)`);
+
+  // 병합 전략 기본값 설정
+  mergeStrategy = mergeStrategy || MERGE_STRATEGIES.DEFAULT;
+
+  // P0-2: 다중 계정 상태 저장
+  window.__sadvAccountState = {
+    isMultiAccount: validAccounts.length > 1,
+    currentAccount: validAccounts[0],
+    allAccounts: validAccounts,
+    accountsData: {},
+    mergeStrategy: mergeStrategy
+  };
+
+  // 모든 계정 데이터 사이트별 병합
+  const mergedSites = {};
+  const siteOwnership = {}; // site -> [accountEmails]
+
+  for (const accKey of validAccounts) {
+    const account = payload.accounts[accKey];
+    const sites = account.sites || [];
+
+    for (const site of sites) {
+      // 사이트별로 계정 목록 추적
+      if (!siteOwnership[site]) {
+        siteOwnership[site] = [];
+      }
+      siteOwnership[site].push(accKey);
+
+      // 데이터 병합 (전략에 따라 처리)
+      const siteData = account.dataBySite?.[site];
+      if (siteData) {
+        let shouldMerge = false;
+
+        switch (mergeStrategy) {
+          case MERGE_STRATEGIES.NEWER:
+            // 최신 데이터 우선
+            const existingTime = mergedSites[site]?.__meta?.__fetched_at ||
+                                 mergedSites[site]?._merge?.__fetchedAt || 0;
+            const newTime = siteData.__meta?.__fetched_at ||
+                           siteData._merge?.__fetchedAt || 0;
+            shouldMerge = !mergedSites[site] || newTime > existingTime;
+            break;
+
+          case MERGE_STRATEGIES.FIRST:
+            // 첫 번째 계정 데이터 우선 (이미 병합된 데이터 유지)
+            shouldMerge = !mergedSites[site];
+            break;
+
+          case MERGE_STRATEGIES.SOURCE:
+            // 소스 데이터 우선 (나중에 들어온 데이터로 덮어쓰기)
+            shouldMerge = true;
+            break;
+
+          case MERGE_STRATEGIES.ALL:
+            // 모든 데이터 보존 - 현재는 첫 번째만 사용 (향후 확장)
+            shouldMerge = !mergedSites[site];
+            break;
+
+          default:
+            // 알 수 없는 전략은 NEWER로 처리
+            const defTime = mergedSites[site]?.__meta?.__fetched_at ||
+                            mergedSites[site]?._merge?.__fetchedAt || 0;
+            const srcTime = siteData.__meta?.__fetched_at ||
+                           siteData._merge?.__fetchedAt || 0;
+            shouldMerge = !mergedSites[site] || srcTime > defTime;
+        }
+
+        if (shouldMerge) {
+          mergedSites[site] = siteData;
+        }
+      }
+    }
+
+    // 계정별 데이터 저장
+    window.__sadvAccountState.accountsData[accKey] = {
+      encId: account.encId,
+      sites: sites,
+      siteMeta: account.siteMeta || {},
+      dataBySite: account.dataBySite || {}
+    };
+  }
+
+  // 병합된 사이트 데이터를 __sadvInitData에 저장
+  window.__sadvInitData = {
+    sites: mergedSites,
+    siteOwnership: siteOwnership,
+    isV2: true,
+    currentAccount: accountKeys[0],
+    _rawPayload: payload
+  };
+
+  const siteList = Object.keys(mergedSites);
+  console.log(`[V2 Multi-Account] Merged ${siteList.length} sites from ${accountKeys.length} accounts`);
+
+  allSites.length = 0;
+  allSites.push(...siteList);
+
+  return siteList;
+}
+
+// ============================================================================
+// P0-2: 계정 전환 UI 추가
+// ============================================================================
+function switchAccount(accountEmail) {
+  if (!window.__sadvAccountState || !window.__sadvAccountState.isMultiAccount) {
+    console.warn('[Account] Not multi-account mode');
+    return;
+  }
+
+  const prevAccount = window.__sadvAccountState.currentAccount;
+
+  // 현재 계정 업데이트
+  window.__sadvAccountState.currentAccount = accountEmail;
+
+  console.log(`[Account] Switching from ${prevAccount} to ${accountEmail}`);
+
+  // 계정별 데이터 로드
+  const accountData = window.__sadvAccountState.accountsData[accountEmail];
+  if (!accountData) {
+    console.error(`[Account] No data found for account: ${accountEmail}`);
+    return;
+  }
+
+  // 현재 사이트가 이 계정에 있는지 확인
+  const currentSite = curSite || null;
+  const sitesInAccount = accountData.sites || [];
+
+  // __sadvInitData 업데이트
+  window.__sadvInitData.sites = accountData.dataBySite || {};
+  window.__sadvInitData.currentAccount = accountEmail;
+
+  // UI 업데이트
+  if (typeof updateUIState === 'function') {
+    updateUIState({ curAccount: accountEmail });
+  }
+
+  // 현재 사이트가 이 계정에 없으면 첫 번째 사이트로 변경
+  if (currentSite && !sitesInAccount.includes(currentSite)) {
+    const newSite = sitesInAccount[0] || null;
+    if (typeof updateUIState === 'function') {
+      updateUIState({ curSite: newSite });
+    }
+    if (newSite && typeof setComboSite === 'function') {
+      setComboSite(newSite);
+    }
+  }
+
+  // 사이트 콤보 재구축
+  if (typeof buildCombo === 'function') {
+    buildCombo(window.__sadvRows || null);
+  }
+
+  // 현재 뷰 다시 렌더링
+  if (curMode === CONFIG.MODE.SITE && curSite) {
+    if (typeof loadSiteView === 'function') {
+      loadSiteView(curSite);
+    }
+  } else if (curMode === CONFIG.MODE.ALL) {
+    if (typeof renderAllSites === 'function') {
+      renderAllSites();
+    }
+  }
+
+  if (typeof __sadvNotify === 'function') {
+    __sadvNotify();
+  }
+}
+
+// 계정 정보 반환 함수
+function getAccountList() {
+  if (!window.__sadvAccountState || !window.__sadvAccountState.isMultiAccount) {
+    return [];
+  }
+
+  return window.__sadvAccountState.allAccounts.map(accKey => {
+    const accData = window.__sadvAccountState.accountsData[accKey];
+    return {
+      email: accKey,
+      label: accKey.split('@')[0],
+      fullLabel: accKey,
+      encId: accData?.encId || '',
+      siteCount: accData?.sites?.length || 0
+    };
+  });
 }

@@ -1,81 +1,17 @@
-  function validateDataSchema(data) {
-    const result = { valid: true, version: null, errors: [] };
+  // ============================================================================
+  // CONSTANTS & CONFIGURATION
+  // ============================================================================
+  const SCHEMA_VERSION = "1.0";
+  const MERGE_REGISTRY_KEY = "sadv_merge_registry";
 
-    if (!data || typeof data !== 'object') {
-      result.valid = false;
-      result.errors.push('Data is not an object');
-      return result;
-    }
+  // P0-3: ACCOUNT_UTILS 통합 - 중복 제거
+  // 이제 ACCOUNT_UTILS.getAccountInfo()을 사용하세요.
+  // getAccountInfo()는 ACCOUNT_UTILS로 이동됨.
 
-    // Check schema version
-    if (data.__schema_version) {
-      result.version = data.__schema_version;
-      const supportedVersions = ['1.0', '1'];
-      if (!supportedVersions.includes(result.version)) {
-        result.valid = false;
-        result.errors.push(`Unsupported schema version: ${result.version}`);
-      }
-    } else {
-      // Legacy data (no version) - treat as v1.0
-      result.version = '1.0';
-    }
-
-    // Check required metadata fields
-    const isSingleExport = data.exportFormat === "snapshot-v2" || (data.__exported_at && data.__source_enc_id);
-    const isMerged = data.__merged_at && data.accounts_merged;
-
-    if (!isSingleExport && !isMerged) {
-      result.valid = false;
-      result.errors.push('Missing required export/merge metadata fields');
-    }
-
-    // Validate sites object
-    if (data.sites && typeof data.sites === 'object') {
-      for (const [site, siteData] of Object.entries(data.sites)) {
-        if (!site.startsWith('http')) {
-          result.valid = false;
-          result.errors.push(`Invalid site URL: ${site}`);
-        }
-        if (siteData && typeof siteData === 'object') {
-          // Site data must have at least expose field
-          if (!siteData.expose && !siteData.crawl && !siteData.backlink) {
-            result.valid = false;
-            result.errors.push(`Site ${site} has no data fields`);
-          }
-        }
-      }
-    }
-
-    return result;
-  }
-
-  /**
-   * Migrate data to target schema version
-   * @param {Object} data - Data to migrate
-   * @param {string} targetVersion - Target version (e.g., "1.0")
-   * @returns {Object} Migrated data
-   */
-  function migrateSchema(data, targetVersion = SCHEMA_VERSION) {
-    if (!data) return null;
-
-    const validation = validateDataSchema(data);
-    let currentVersion = validation.version || '1.0';
-
-    // Add version if missing (must be before version check for legacy data)
-    if (!data.__schema_version) {
-      data.__schema_version = currentVersion;
-    }
-
-    // If already at target version, return as-is
-    if (currentVersion === targetVersion) {
-      return data;
-    }
-
-    // Future migrations will go here
-    // Example: if (currentVersion === '1.0' && targetVersion === '2.0') { ... }
-
-    return data;
-  }
+  // ============================================================================
+  // P1: V2 레거시 제거 - validateDataSchema, migrateSchema 함수 제거됨
+  // V2 포맷만 지원하며 레거시 마이그레이션은 불필요
+  // ============================================================================
 
   /**
    * Detect conflicts between multiple accounts
@@ -336,66 +272,123 @@
   }
 
   /**
-   * Export current account data with full metadata
+   * P0-4: Export current account data with multi-account support
+   * @param {Object} options - Export options { mode: 'current'|'all', includeAll: boolean }
    * @returns {Object} Exportable data object
    */
-  function exportCurrentAccountData() {
+  function exportCurrentAccountData(options = {}) {
+    const { mode = 'current', includeAll = false } = options;
     const now = new Date().toISOString();
+    // P0-3: ACCOUNT_UTILS 사용
+    const { accountLabel, encId } = ACCOUNT_UTILS.getAccountInfo();
 
-    // Collect all site data from localStorage
-    const sites = {};
-    const keysToCheck = Object.keys(localStorage);
+    // 다중 계정 확인
+    const isMultiAccount = window.__sadvAccountState?.isMultiAccount || false;
 
-    for (const key of keysToCheck) {
-      if (!key.startsWith(DATA_LS_PREFIX)) continue;
-      if (!key.includes(getCacheNamespace())) continue;
+    // 다중 계정 모드에서 includeAll이 true면 모든 계정 내보내기
+    if (isMultiAccount && includeAll) {
+      return exportSingleAccount(null, encId, now, true);
+    }
 
-      try {
-        const value = localStorage.getItem(key);
-        if (!value) continue;
+    // 단일 계정 모드이거나 현재 계정만 내보내기
+    const currentAcc = isMultiAccount
+      ? (window.__sadvAccountState?.currentAccount || accountLabel)
+      : accountLabel;
+    return exportSingleAccount(currentAcc, encId, now, false);
+  }
 
-        const data = JSON.parse(value);
+  /**
+   * P0-4: Export single account data
+   * @param {string} accountEmail - Account email to export
+   * @param {string} encId - Encrypted ID
+   * @param {string} now - ISO timestamp
+   * @param {boolean} includeAll - Whether to include all accounts
+   * @returns {Object} Exportable V2 payload
+   */
+  function exportSingleAccount(accountEmail, encId, now, includeAll) {
+    let sites = {};
+    let sitesList = [];
+    let siteMeta = {};
 
-        // Extract site from key
-        const match = key.match(/_([^_]+)$/);
-        if (!match) continue;
+    if (includeAll && window.__sadvAccountState?.isMultiAccount) {
+      // 모든 계정 내보내기
+      const allAccounts = window.__sadvAccountState.allAccounts;
 
-        const site = atob(match[1]);
+      for (const accKey of allAccounts) {
+        const accData = window.__sadvAccountState.accountsData[accKey];
+        const accSites = accData?.sites || [];
+        sitesList.push(...accSites);
 
-        // Structure site data
-        const fetchedAt = data.__cacheSavedAt || data.__fetched_at || Date.now();
-        sites[site] = {
-          // Current format (__meta)
-          __meta: {
-            __source: encId || 'unknown',
-            __fetched_at: fetchedAt,
-            __schema: SCHEMA_VERSION,
-            __namespace: getCacheNamespace()
-          },
-          // Legacy format (_merge) for test compatibility
-          _merge: {
-            __source: accountLabel || 'unknown',
-            __accountId: encId || 'unknown',
-            __fetchedAt: fetchedAt,
-            __version: 1
-          },
-          expose: data.expose || null,
-          crawl: data.crawl || null,
-          backlink: data.backlink || null,
-          diagnosisMeta: data.diagnosisMeta || null,
-          diagnosisMetaRange: data.diagnosisMetaRange || null,
-          detailLoaded: data.detailLoaded || false
-        };
-      } catch (e) {
-        console.error('[Export] Error processing key:', key, e);
+        if (accData?.dataBySite) {
+          Object.assign(sites, accData.dataBySite);
+        }
+
+        if (accData?.siteMeta) {
+          Object.assign(siteMeta, accData.siteMeta);
+        }
       }
+    } else {
+      // 현재 계정만 내보내기 (localStorage에서 데이터 수집)
+      const keysToCheck = Object.keys(localStorage);
+
+      for (const key of keysToCheck) {
+        if (!key.startsWith(DATA_LS_PREFIX)) continue;
+        if (!key.includes(getCacheNamespace())) continue;
+
+        try {
+          const value = localStorage.getItem(key);
+          if (!value) continue;
+
+          const data = JSON.parse(value);
+
+          // Extract site from key
+          const match = key.match(/_([^_]+)$/);
+          if (!match) continue;
+
+          const site = atob(match[1]);
+
+          // Structure site data
+          const fetchedAt = data.__cacheSavedAt || data.__fetched_at || Date.now();
+          sites[site] = {
+            // Current format (__meta)
+            __meta: {
+              __source: encId || 'unknown',
+              __fetched_at: fetchedAt,
+              __schema: SCHEMA_VERSION,
+              __namespace: getCacheNamespace()
+            },
+            // Legacy format (_merge) for test compatibility
+            _merge: {
+              __source: accountEmail || 'unknown',
+              __accountId: encId || 'unknown',
+              __fetchedAt: fetchedAt,
+              __version: 1
+            },
+            expose: data.expose || null,
+            crawl: data.crawl || null,
+            backlink: data.backlink || null,
+            diagnosisMeta: data.diagnosisMeta || null,
+            diagnosisMetaRange: data.diagnosisMetaRange || null,
+            detailLoaded: data.detailLoaded || false
+          };
+        } catch (e) {
+          console.error('[Export] Error processing key:', key, e);
+        }
+      }
+
+      sitesList = Object.keys(sites);
+      siteMeta = typeof getSiteMetaMap === "function" ? getSiteMetaMap() : {};
     }
 
     // V2: Nested accounts structure
-    const accountEmail = (accountLabel && accountLabel.includes('@'))
-      ? accountLabel
+    const validAccountEmail = (accountEmail && accountEmail.includes('@'))
+      ? accountEmail
       : 'unknown@naver.com';
-    const siteList = Object.keys(sites);
+
+    // Get current UI state for V2 payload
+    const currentCurMode = (typeof curMode !== "undefined") ? curMode : "all";
+    const currentCurSite = (typeof curSite !== "undefined") ? curSite : null;
+    const currentCurTab = (typeof curTab !== "undefined") ? curTab : "overview";
 
     return {
       __meta: {
@@ -403,16 +396,31 @@
         exportedAt: now,
         generator: 'SearchAdvisor Runtime',
         generatorVersion: window.__SEARCHADVISOR_RUNTIME_VERSION__ || 'unknown',
-        accountCount: 1
+        accountCount: includeAll ? (window.__sadvAccountState?.allAccounts?.length || 1) : 1
       },
-      accounts: {
-        [accountEmail]: {
+      accounts: includeAll ? window.__sadvAccountState?.accountsData : {
+        [validAccountEmail]: {
           encId: encId || 'unknown',
-          sites: siteList,
-          siteMeta: typeof getSiteMetaMap === "function" ? getSiteMetaMap() : {},
+          sites: sitesList,
+          siteMeta: siteMeta,
           dataBySite: sites
         }
-      }
+      },
+      ui: {
+        curMode: currentCurMode,
+        curSite: currentCurSite,
+        curTab: currentCurTab,
+        curAccount: (typeof window.__sadvAccountState?.currentAccount !== "undefined")
+          ? window.__sadvAccountState.currentAccount
+          : validAccountEmail
+      },
+      stats: {
+        success: sitesList.length,
+        partial: 0,
+        failed: 0,
+        errors: []
+      },
+      _siteOwnership: window.__sadvInitData?.siteOwnership || {}
     };
   }
 
@@ -452,26 +460,11 @@
       sourceEncId = account.encId || 'unknown';
       sitesToImport = account.dataBySite || {};
     } else {
-      // Legacy format
-      data = exportData;
-
-      // Validate schema if requested
-      if (validate) {
-        const validation = validateDataSchema(exportData);
-        if (!validation.valid) {
-          return {
-            success: false,
-            error: 'Schema validation failed',
-            errors: validation.errors
-          };
-        }
-      }
-
-      // Migrate to current schema if needed
-      const migrated = migrateSchema(exportData);
-      sourceAccount = migrated.__source_account || 'unknown';
-      sourceEncId = migrated.__source_enc_id || 'unknown';
-      sitesToImport = migrated.sites || {};
+      // V2 포맷이 아닌 레거시 데이터는 지원하지 않음
+      return {
+        success: false,
+        error: 'Unsupported data format. Please use V2 format with __meta and accounts fields.'
+      };
     }
 
     const registry = getMergeRegistry();
