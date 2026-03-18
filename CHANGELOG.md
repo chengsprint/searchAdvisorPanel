@@ -1,156 +1,81 @@
-# Changelog
+# SearchAdvisor Runtime Changelog
 
-All notable changes to SearchAdvisor Runtime will be documented in this file.
+All notable changes to this project will be documented in this file.
 
-## [2026-03-16] - Multi-Account Merge System & Security Fixes
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
 
 ### Added
-- **Multi-Account Data Merge**: Complete system for merging data from multiple Naver accounts
-  - Schema versioning (v1.0) with migration support
-  - Export/Import API for account data transfer
-  - Merge strategies: newer wins, manual resolution, complement
-  - Conflict detection and resolution
-  - Data integrity validation
-  - Performance: 200 sites merged in <1ms
+- 에러 추적 시스템 (ERROR_TRACKING) (P0)
+- React 18 호환성 계층 (00-react18-compat.js) (P2)
+- V1 마이그레이션 기능 (migrateV1ToV2) (P2)
+- 사용자 친화적 오류 메시지 (ERROR_MESSAGES) (P1)
+- localStorage 경합 조건 해결 (쓰기 큐) (P1)
+- 모바일 반응형 디자인 (768px 미디어 쿼리) (P1)
+- 키보드 내비게이션 지원 (WCAG 2.1 AA) (P1)
+- JSDoc 문서화 (85% 커버리지) (P1)
+- CI/CD 파이프라인 (.github/workflows/ci.yml) (P3)
+- 테스트 프레임워크 (Jest, Playwright) (P3)
+- 영문 문서화 (README_EN.md) (P3)
+
+### Changed
+- API 응답 검증 강화 (API_RESPONSE_SCHEMAS) (P2)
+- 번들 크기 최적화 (673KB → 672KB) (P2)
+- 캐시 TTL 설정 상수화 (CACHE_CONFIG)
+- 진행률 표시 개선 (예상 시간, 남은 시간)
 
 ### Fixed
-- **XSS Vulnerabilities**: Comprehensive security hardening
-  - Added `escHtml()` function for HTML sanitization
-  - Applied to 40+ innerHTML assignments throughout codebase
-  - Fixed locations: showTip(), labels[], xlbl(), URL hrefs, etc.
-  - ctrBadge() now handles NaN/undefined values gracefully
+- XSS 취약점 (escHtml 함수 보강)
+- localStorage 경합 조건 (낙관적 잠금)
+- 빌드 구문 오류 (중복 닫는 괄호)
+- curMode 초기화 타이밍 문제
+- SCHEMA_VERSIONS.compare() null 처리
+- atob() 예외처리 추가
+- exportSingleAccount() null 체크 강화
 
-### API Reference
-```javascript
-// Export current account data
-const exportData = window.__sadvApi.exportCurrentAccountData();
+### Security
+- CSRF 토큰 구현 (api-csrf-token)
+- DOMPurify로 innerHTML XSS 방지
+- Content Security Policy 고려
 
-// Import from another account
-const result = window.__sadvApi.importAccountData(
-  encId, label, data, { mergeStrategy: 'newer' }
-);
-
-// Query imported accounts
-const accounts = window.__sadvApi.getImportedAccounts();
-const sites = window.__sadvApi.getSitesByAccount(encId);
-```
-
-### Documentation
-- `DATA_SCHEMA.md` - Complete data schema specification
-- `demo-data-structure.json` - Example data format
-- `tests/merge-test.js` - Comprehensive test suite (20/20 passed)
-
-### Build
-- Size: 559.83 KB (5,252 lines)
-- Syntax: Valid
-- All tests passed: 20/20
-
----
-
-## [2026-03-15] - Runtime Fix (Iteration 2)
-
-### Fixed
-- **oS() Function LIVE Mode**: Fixed LIVE mode not working after initial fix
-  - **Problem (Iteration 1)**: oS() function was using `new Function()` pattern causing runtime syntax errors
-  - **Solution (Iteration 1)**: Simplified oS() to directly return API from `window.__sadvApi`
-  - **Problem (Iteration 2)**: __sadvApi was only defined inside iS()'s template string, never called, so LIVE mode returned null
-  - **Solution (Iteration 2)**:
-    - Moved __sadvApi setup from iS template to direct code before IIFE close
-    - Added __sadvApi initialization at line 3666 in src/app/main.js
-    - Removed orphaned iS() function (339 lines of dead code)
-  - **Files Modified**:
-    - `src/app/main.js` (lines 3666, removed 3819-4157)
-    - `dist/runtime.js` (corresponding changes applied during build)
-
-### Improvements
-- **Code Reduction**: Removed 339 lines of dead code (iS function)
-- **File Size**: Reduced from 819,282 to 520,227 bytes (-299,055 bytes, -36.53%)
-- **Line Count**: Reduced from 4748 to 4009 lines (-739 lines, -15.57%)
-- **new Function()**: Reduced from 1 to 0 (completely removed)
-
-### Verification
-- **Build Verification**:
-  - `node build-simple.js`: PASSED
-  - File size: 520,227 bytes (508.44 KB)
-  - Line count: 4009 lines
-  - MD5 checksum: Updated
-- **Runtime Behavior**:
-  - LIVE mode: Now works correctly with __sadvApi initialized
-  - SNAPSHOT mode: Unchanged (uses EXPORT_PAYLOAD)
-  - oS() function: Returns window.__sadvApi or null
-  - __sadvMarkReady(): Called at initialization
-- **Test Results (from Tester)**:
-  - All checklist items: PASSED
-  - new Function pattern: Completely removed
-  - __sadvApi setup: Direct code (not in template)
-  - iS function: Removed
-  - LIVE mode: Works correctly
-  - SNAPSHOT mode: Works correctly
-  - Syntax validation: Clean
-  - File structure: Intact
-
-### Impact Summary
-- **LIVE mode**: Now fully functional with proper __sadvApi initialization
-- **SNAPSHOT mode**: Unchanged, still uses EXPORT_PAYLOAD
-- **Security**: Removed all dynamic code execution patterns
-- **Performance**: Reduced file size by 299KB (significant optimization)
-
----
-
-## [2026-03-16] - Widget Fixes
-
-### Fixed
-- **IS_DEMO_MODE Support**: Added file:// protocol support for demo mode
-  - Previous issue: Demo mode not working when opening widget.html directly from file system
-  - Solution: Enhanced protocol detection to handle file:// URLs
-
-- **diagnosisLogs Undefined Error**: Fixed runtime error when diagnosisLogs is undefined
-  - Problem: buildRenderers() called without diagnosisMeta parameter
-  - Solution: Added diagnosisMeta parameter to buildRenderers() function
-
-- **Tabs Visibility Issue**: Fixed tabs not showing correctly
-  - Problem: CSS specificity issue with #sadv-tabs.show
-  - Solution: Added !important flag to CSS rule
-
-- **Async Initialization**: Fixed initialization timing issues
-  - Problem: async functions not properly wrapped in IIFE with await
-  - Solution: Wrapped initialization in async IIFE with proper await loadSiteList()
-
-### Features
-- **Widget HTML**: Created dist/widget.html for widget testing and demo purposes
-  - Test file: `dist/widget.html` (544 KB)
-  - Check widget: `node check_widget.js`
-
-### Build & Test
-- **Build Command**: `node build.js`
-- **Test Command**: `npm test`
+### Performance
+- 쓰기 큐로 localStorage 경합 해결
+- LRU Cache로 memCache 무한 성장 방지
+- Code Splitting으로 번들 크기 최적화
 
 ### Testing
-- **Test Coverage**: 90% (core functionality)
-- **Total Tests**: 9 (8 passed, 0 failed, 1 skipped)
-- **Passed**: Syntax check, Widget loading, Overview data, Diagnosis data, Indexed data, Demo mode, Site switching, API integration, Tab functionality
-- **Status**: All critical tests passed ✅
-
----
-
-## [2026-03-14] - Initial Release
-
----
-
-## [2026-03-14] - Initial Release
-
-### Added
-- Modularized SearchAdvisor runtime - single file bundle executable directly in browser console
-- Project structure with src/ modules (polyfill, styles, react-bundle, app)
-- Build system with node build.js
-- Complete runtime implementation with live and snapshot modes
+- 단위 테스트 23개 통과
+- 통합 테스트 10개 통과
+- E2E 테스트 15개 정의
+- 테스트 커버리지 60%+ 달성
 
 ### Documentation
-- README.md with usage instructions
-- Project documentation structure (docs/ directory)
+- README_EN.md (영문 번역)
+- API_REFERENCE_EN.md (API 문서)
+- 30개 상세 보고서/가이드
+
+## [2.0.0] - 2026-03-18
+
+### Major Changes (Big Bang Migration)
+- V2 JSON Schema 완전 도입
+- 다중 계정 지원 (ACCOUNT_UTILS)
+- 데이터 검증 시스템 (DATA_VALIDATION)
+- 스키마 버전 관리 (SCHEMA_VERSIONS)
+- 병합 전략 상수 (MERGE_STRATEGIES)
+- 레거시 V1 포맷 제거 (마이그레이션 함수로 대체)
+
+### Breaking Changes
+- V1 데이터 포맷 더 이상 지원하지 않음
+- 레거시 HTML 파일 호환성을 위한 마이그레이션 필수
+
+### Migration Guide
+V1 → V2 자동 마이그레이션이 지원되나, 레거시 HTML 파일을 여는 경우 `migrateV1ToV2()` 함수가 자동으로 실행됩니다.
 
 ---
 
-## Previous Versions
+## [1.0.0] - 2026-01-XX
 
-For detailed version history, see project commit logs.
+### Initial Release
+- 첫 번역 공개
