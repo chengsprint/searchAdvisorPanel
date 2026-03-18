@@ -409,6 +409,7 @@
         [accountEmail]: {
           encId: encId || 'unknown',
           sites: siteList,
+          siteMeta: typeof getSiteMetaMap === "function" ? getSiteMetaMap() : {},
           dataBySite: sites
         }
       }
