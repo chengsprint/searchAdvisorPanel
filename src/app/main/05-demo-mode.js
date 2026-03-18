@@ -5,6 +5,12 @@
 // running on localhost, local networks, or file:// protocol.
 // ============================================================
 
+/**
+ * Demo mode detection flag
+ * Automatically enabled when running on localhost, local networks, or file:// protocol
+ * @type {boolean}
+ * @constant
+ */
 const IS_DEMO_MODE = (function() {
   try {
     const protocol = (location && location.protocol) || "";
@@ -213,8 +219,16 @@ if (IS_DEMO_MODE) {
   };
 }
 
-
-// Demo mode: inject mock data when running on localhost or file://
+/**
+ * Inject demo mode mock data into the application
+ * This function populates memCache with realistic mock data for all demo sites
+ * It supports both built-in DEMO_SITES and custom injected data from __sadvInitData
+ * @returns {boolean} True if demo data was injected, false otherwise
+ * @example
+ * // In demo mode, this is called during initialization
+ * injectDemoData(); // returns true and populates memCache
+ * @see {DEMO_SITES}
+ */
 function injectDemoData() {
   const protocol = (location && location.protocol) || "";
   const host = (location && location.hostname) || "";

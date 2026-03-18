@@ -1,8 +1,24 @@
+  /**
+ * Assign colors to all sites from the color palette
+ * Each site gets a consistent color based on its index
+ * @returns {void}
+ * @example
+ * assignColors();
+ * console.log(SITE_COLORS_MAP['https://example.com']); // "#10b981"
+ */
   function assignColors() {
     allSites.forEach((s, i) => {
       if (!SITE_COLORS_MAP[s]) SITE_COLORS_MAP[s] = COLORS[i % COLORS.length];
     });
   }
+  /**
+ * Ensure curSite is set to a valid site from allSites
+ * If curSite is null or invalid, sets it to the first site
+ * @returns {string|null} The current site URL or null if no sites available
+ * @example
+ * const site = ensureCurrentSite();
+ * console.log(site); // "https://example.com" or null
+ */
   function ensureCurrentSite() {
     if (!allSites.length) {
       curSite = null;
@@ -11,6 +27,13 @@
     if (!curSite || !allSites.includes(curSite)) curSite = allSites[0];
     return curSite;
   }
+  /**
+ * Update the all sites label text in the header
+ * Shows site count and merge information if applicable
+ * @returns {void}
+ * @example
+ * setAllSitesLabel(); // Updates header label
+ */
   function setAllSitesLabel() {
     const mergedMeta = getMergedMetaState();
     const summary = isMergedReport() && mergedMeta && mergedMeta.sourceCount
@@ -18,6 +41,15 @@
       : `${allSites.length}개 사이트 등록됨`;
     labelEl.textContent = summary;
   }
+  /**
+ * Build the site selector combo box dropdown
+ * Creates clickable items for each site with search functionality
+ * @param {Array|null} rows - Optional array of site summary rows for ordering
+ * @returns {void}
+ * @example
+ * buildCombo(summaryRows); // Builds combo with sites ordered by clicks
+ * @see {setComboSite}
+ */
   function buildCombo(rows) {
     console.log('[buildCombo] Called, allSites:', allSites, 'rows:', rows);
     const drop = document.getElementById("sadv-combo-drop");
@@ -40,17 +72,25 @@
 
     // Create search container
     const searchDiv = document.createElement("div");
-    searchDiv.style.cssText = "padding:6px 6px 4px;position:relative";
+    const isMobile = window.innerWidth <= 768;
+    searchDiv.style.cssText = isMobile
+      ? "padding:8px 8px 6px;position:relative"
+      : "padding:6px 6px 4px;position:relative";
 
     const input = document.createElement("input");
     input.id = "sadv-combo-search";
     input.placeholder = "사이트 검색...";
+    if (isMobile) {
+      input.style.cssText = "width:100%;padding:10px 12px;font-size:14px;min-height:44px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#f8fafc;box-sizing:border-box";
+    }
 
     searchDiv.appendChild(input);
 
     // Create count display
     const countDiv = document.createElement("div");
-    countDiv.style.cssText = "font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#3d5a78;padding:3px 9px 6px;border-bottom:1px solid #1a2d45;margin-bottom:3px";
+    countDiv.style.cssText = isMobile
+      ? "font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#3d5a78;padding:4px 12px 8px;border-bottom:1px solid #1a2d45;margin-bottom:4px"
+      : "font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#3d5a78;padding:3px 9px 6px;border-bottom:1px solid #1a2d45;margin-bottom:3px";
     countDiv.textContent = "전체 " + orderedSites.length + " 개 · 클릭증은순";
 
     drop.replaceChildren(searchDiv, countDiv);
@@ -63,6 +103,10 @@
       const item = document.createElement("div");
       item.className = "sadv-copt" + (s === curSite ? " active" : "");
       item.dataset.site = s;
+      item.setAttribute("tabindex", "0");
+      item.setAttribute("role", "option");
+      item.setAttribute("aria-selected", s === curSite);
+      item.style.cursor = "pointer";
       item.innerHTML = `<div class="sadv-combo-item-dot" style="background:${col}"></div><div class="sadv-combo-item-info"><div class="sadv-combo-item-name">${escHtml(shortName.split("/")[0])}</div><div class="sadv-combo-item-url">${escHtml(shortName)}</div></div><div class="sadv-combo-item-click" style="color:${clickCol}">${escHtml(clickStr)}</div>`;
       item.addEventListener("click", function () {
         setComboSite(s);
@@ -70,10 +114,64 @@
         wrap.classList.remove("open");
         wrap.setAttribute("aria-expanded", "false");
       });
+      // Keyboard navigation for combo items
+      item.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          setComboSite(s);
+          const wrap = document.getElementById("sadv-combo-wrap");
+          wrap.classList.remove("open");
+          wrap.setAttribute("aria-expanded", "false");
+          // Return focus to combo button
+          document.getElementById("sadv-combo-btn").focus();
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          const wrap = document.getElementById("sadv-combo-wrap");
+          wrap.classList.remove("open");
+          wrap.setAttribute("aria-expanded", "false");
+          document.getElementById("sadv-combo-btn").focus();
+        }
+        // Arrow key navigation
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          const items = Array.from(drop.querySelectorAll('.sadv-combo-item'));
+          const currentIndex = items.indexOf(item);
+          const nextIndex = e.key === 'ArrowDown'
+            ? Math.min(currentIndex + 1, items.length - 1)
+            : Math.max(currentIndex - 1, 0);
+          items[nextIndex].focus();
+        }
+      });
       drop.appendChild(item);
     });
     console.log('[buildCombo] Built', orderedSites.length, 'combo items');
   }
+  function setComboSite(site) {
+    if (!site || !allSites.includes(site)) return;
+    const sameSite = curSite === site;
+    curSite = site;
+    const col = SITE_COLORS_MAP[site] || C.muted,
+      shortName = getSiteLabel(site);
+    document.getElementById("sadv-combo-dot").style.background = col;
+    document.getElementById("sadv-combo-label").textContent = shortName;
+    document.querySelectorAll(".sadv-combo-item").forEach((el) => {
+      el.classList.toggle("active", el.dataset.site === site);
+    });
+    setCachedUiState();
+    if (typeof notifySnapshotShellState === "function") notifySnapshotShellState();
+    if (curMode === CONFIG.MODE.SITE && !sameSite) loadSiteView(site);
+    __sadvNotify();
+  }
+  /**
+ * Set the currently selected site in the combo box
+ * Updates the combo button, highlights the active item, and loads site view if needed
+ * @param {string} site - Site URL to select
+ * @returns {void}
+ * @example
+ * setComboSite('https://example.com');
+ * @see {buildCombo}
+ */
   function setComboSite(site) {
     if (!site || !allSites.includes(site)) return;
     const sameSite = curSite === site;
@@ -126,11 +224,42 @@
         }, 50);
       }
     });
+  // Keyboard support for combo button
+  document.getElementById("sadv-combo-btn").addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      this.click();
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      const wrap = document.getElementById("sadv-combo-wrap");
+      if (wrap.classList.contains("open")) {
+        wrap.classList.remove("open");
+        wrap.setAttribute("aria-expanded", "false");
+      }
+    }
+    if (e.key === 'ArrowDown' && this.getAttribute("aria-expanded") === "true") {
+      e.preventDefault();
+      const firstItem = document.querySelector(".sadv-combo-item:not([style*='display: none'])");
+      if (firstItem) firstItem.focus();
+    }
+  });
   document.addEventListener("click", function (e) {
     const wrap = document.getElementById("sadv-combo-wrap");
     if (wrap && !wrap.contains(e.target)) {
       wrap.classList.remove("open");
       wrap.setAttribute("aria-expanded", "false");
+    }
+  });
+  // ESC key to close combo dropdown
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      const wrap = document.getElementById("sadv-combo-wrap");
+      if (wrap && wrap.classList.contains("open")) {
+        wrap.classList.remove("open");
+        wrap.setAttribute("aria-expanded", "false");
+        document.getElementById("sadv-combo-btn").focus();
+      }
     }
   });
   const TABS = [
@@ -170,6 +299,34 @@
     if (window.__sadvR) renderTab(window.__sadvR);
     __sadvNotify();
   });
+  // Keyboard navigation for tabs
+  tabsEl.addEventListener('keydown', function(e) {
+    const tab = e.target.closest('.sadv-t');
+    if (!tab) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      tab.click();
+    }
+    // Arrow key navigation
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      const tabs = Array.from(tabsEl.querySelectorAll('.sadv-t'));
+      const currentIndex = tabs.indexOf(tab);
+      const nextIndex = e.key === 'ArrowRight'
+        ? Math.min(currentIndex + 1, tabs.length - 1)
+        : Math.max(currentIndex - 1, 0);
+      tabs[nextIndex].focus();
+      tabs[nextIndex].click();
+    }
+  });
+  /**
+ * Render the current tab content using the provided renderers
+ * @param {Object} R - Renderers object with functions for each tab
+ * @returns {void}
+ * @example
+ * renderTab(buildRenderers(expose, crawl, backlink, diagnosisMeta));
+ * @see {buildRenderers}
+ */
   function renderTab(R) {
     bdEl.setAttribute("role", "tabpanel");
     bdEl.id = "sadv-tabpanel";
@@ -182,6 +339,37 @@
     if (!m) return;
     switchMode(m.dataset.m);
   });
+  // Keyboard navigation for mode buttons
+  modeBar.addEventListener('keydown', function(e) {
+    const modeBtn = e.target.closest('.sadv-mode');
+    if (!modeBtn) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      modeBtn.click();
+    }
+    // Arrow key navigation
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      const modeButtons = Array.from(modeBar.querySelectorAll('.sadv-mode'));
+      const currentIndex = modeButtons.indexOf(modeBtn);
+      const nextIndex = e.key === 'ArrowRight'
+        ? Math.min(currentIndex + 1, modeButtons.length - 1)
+        : Math.max(currentIndex - 1, 0);
+      modeButtons[nextIndex].focus();
+      modeButtons[nextIndex].click();
+    }
+  });
+  /**
+ * Switch between 'all' and 'site' view modes
+ * Updates UI visibility and loads appropriate view
+ * @param {string} mode - Mode to switch to ('all' or 'site')
+ * @returns {void}
+ * @example
+ * switchMode('all'); // Shows all sites overview
+ * switchMode('site'); // Shows current site detail
+ * @see {renderAllSites}
+ * @see {loadSiteView}
+ */
   function switchMode(mode) {
     if (mode === curMode) return;
     curMode = mode;
