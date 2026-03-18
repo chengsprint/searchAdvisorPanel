@@ -38,7 +38,8 @@ function getCachedData(site) {
   const d = lsGet(getSiteDataCacheKey(site));
   if (!d) return null;
   if (!d.data || typeof d.data !== "object") return null;
-  if (d.ts && Date.now() - d.ts > DATA_TTL) return null; // TTL 검증 추가
+  // TTL 검증 (타입 체크 추가)
+  if (d.ts && typeof d.ts === "number" && Date.now() - d.ts > DATA_TTL) return null;
   return {
     ...d.data,
     __cacheSavedAt: typeof d.ts === "number" ? d.ts : null,
@@ -65,7 +66,15 @@ function getSiteListCacheKey() {
 }
 
 function getSiteDataCacheKey(site) {
-  return DATA_LS_PREFIX + getCacheNamespace() + "_" + btoa(site).replace(/=/g, "");
+  try {
+    // 유니코드 지원을 위해 encodeURIComponent 후 인코딩
+    const encoded = btoa(encodeURIComponent(site));
+    return DATA_LS_PREFIX + getCacheNamespace() + "_" + encoded.replace(/=/g, "");
+  } catch (e) {
+    console.error('[getSiteDataCacheKey] Encoding error for site:', site, e);
+    // 실패 시 타임스탬프 기반 폴백 키 사용
+    return DATA_LS_PREFIX + getCacheNamespace() + "_" + Date.now();
+  }
 }
 
 function getSiteListCacheStamp() {
@@ -420,7 +429,7 @@ async function loadSiteList(refresh = false) {
 // ============================================================================
 // V2 다중 계정 감지 및 병합 처리
 // ============================================================================
-function handleV2MultiAccount(payload, mergeStrategy) {
+function handleV2MultiAccount(payload, mergeStrategy = MERGE_STRATEGIES.DEFAULT) {
   // P1: V2 데이터 검증
   // 1. 기본 V2 포맷 검증
   if (!DATA_VALIDATION.isValidV2Payload(payload)) {
@@ -474,9 +483,6 @@ function handleV2MultiAccount(payload, mergeStrategy) {
   }
 
   console.log(`[V2 Multi-Account] Found ${validAccounts.length} valid accounts (out of ${accountKeys.length} total)`);
-
-  // 병합 전략 기본값 설정
-  mergeStrategy = mergeStrategy || MERGE_STRATEGIES.DEFAULT;
 
   // P0-2: 다중 계정 상태 저장
   window.__sadvAccountState = {

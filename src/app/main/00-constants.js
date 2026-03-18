@@ -284,14 +284,16 @@ const ACCOUNT_UTILS = {
 
   /**
    * 모든 계정 목록 반환
-   * @returns {string[]} 계정 이메일 배열
+   * @returns {string[]} 계정 이메일 배열 (복사본)
    */
   getAllAccounts: function() {
     if (!ACCOUNT_UTILS.isMultiAccount()) {
       const label = ACCOUNT_UTILS.getAccountLabel();
       return label ? [label] : [];
     }
-    return window.__sadvAccountState?.allAccounts || [];
+    // 배열 복사본 반환으로 원본 데이터 보호
+    const accounts = window.__sadvAccountState?.allAccounts;
+    return accounts ? [...accounts] : [];
   },
 
   /**
@@ -335,16 +337,27 @@ const DATA_VALIDATION = {
 
   /**
    * 유효한 이메일 검증
+   * @param {string} email - 검증할 이메일 주소
+   * @returns {boolean} 유효함 여부
    */
   isValidEmail: function(email) {
-    return typeof email === 'string' && email.includes('@');
+    if (typeof email !== 'string') return false;
+    // 기본 형식: local@domain.tld
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
   },
 
   /**
    * 유효한 타임스탬프 검증
+   * @param {number} ts - 검증할 타임스탬프 (밀리초)
+   * @returns {boolean} 유효함 여부
    */
   isValidTimestamp: function(ts) {
-    return typeof ts === 'number' && ts > 0;
+    if (typeof ts !== 'number') return false;
+    // 2000년 이후, 현재로부터 1년 후까지
+    const minTimestamp = 946684800000; // 2000-01-01
+    const maxTimestamp = Date.now() + 31536000000; // 현재 + 1년
+    return ts > minTimestamp && ts < maxTimestamp;
   },
 
   /**
@@ -376,6 +389,9 @@ const DATA_VALIDATION = {
     const sites = account?.sites || [];
     const dataBySite = account?.dataBySite || {};
 
+    // 성능 최적화: Set을 사용하여 O(1) 조회
+    const sitesSet = new Set(sites);
+
     const missingData = [];
     for (const site of sites) {
       if (!dataBySite[site]) {
@@ -383,7 +399,7 @@ const DATA_VALIDATION = {
       }
     }
 
-    const orphanSites = Object.keys(dataBySite).filter(url => !sites.includes(url));
+    const orphanSites = Object.keys(dataBySite).filter(url => !sitesSet.has(url));
 
     return {
       valid: missingData.length === 0 && orphanSites.length === 0,
@@ -414,11 +430,38 @@ const SCHEMA_VERSIONS = {
 
   /**
    * 버전 비교
+   * @param {string} v1 - 첫 번째 버전
+   * @param {string} v2 - 두 번째 버전
    * @returns {number} -1: v1 < v2, 0: v1 == v2, 1: v1 > v2
    */
   compare: function(v1, v2) {
-    const parts1 = v1.split('.').map(Number);
-    const parts2 = v2.split('.').map(Number);
+    // 명시적인 null/undefined 체크 (빈 문자열과 구분)
+    if (v1 == null && v2 == null) return 0;
+    if (v1 == null) return -1;
+    if (v2 == null) return 1;
+
+    // 타입 검증
+    if (typeof v1 !== 'string' || typeof v2 !== 'string') {
+      console.warn('[SCHEMA_VERSIONS.compare] Invalid version types:', v1, v2);
+      return 0;
+    }
+
+    // 빈 문자열 체크
+    const t1 = v1.trim();
+    const t2 = v2.trim();
+    if (!t1 && !t2) return 0;
+    if (!t1) return -1;
+    if (!t2) return 1;
+
+    const parts1 = t1.split('.').map(p => {
+      const num = parseInt(p, 10);
+      return isNaN(num) ? 0 : num;
+    });
+    const parts2 = t2.split('.').map(p => {
+      const num = parseInt(p, 10);
+      return isNaN(num) ? 0 : num;
+    });
+
     for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
       const p1 = parts1[i] || 0;
       const p2 = parts2[i] || 0;
@@ -435,6 +478,7 @@ const SCHEMA_VERSIONS = {
 const MERGE_STRATEGIES = {
   // 전략 유형
   NEWER: 'newer',      // 최신 데이터 우선
+  FIRST: 'first',      // 첫 번째 계정 데이터 우선
   ALL: 'all',          // 모든 데이터 병합
   SOURCE: 'source',    // 소스 데이터 우선
   TARGET: 'target',    // 타겟 데이터 우선
@@ -446,7 +490,7 @@ const MERGE_STRATEGIES = {
    * 전략 유효성 검증
    */
   isValid: function(strategy) {
-    const validStrategies = [MERGE_STRATEGIES.NEWER, MERGE_STRATEGIES.ALL, MERGE_STRATEGIES.SOURCE, MERGE_STRATEGIES.TARGET];
+    const validStrategies = [MERGE_STRATEGIES.NEWER, MERGE_STRATEGIES.FIRST, MERGE_STRATEGIES.ALL, MERGE_STRATEGIES.SOURCE, MERGE_STRATEGIES.TARGET];
     return validStrategies.includes(strategy);
   },
 
@@ -455,6 +499,7 @@ const MERGE_STRATEGIES = {
    */
   DESCRIPTIONS: {
     newer: '가장 최신 데이터(__fetched_at 기준)를 사용합니다',
+    first: '첫 번째 계정의 데이터를 우선 사용합니다',
     all: '모든 데이터를 병합하여 중복을 제거합니다',
     source: '가져오는 데이터를 우선 적용합니다',
     target: '기존 데이터를 유지합니다'

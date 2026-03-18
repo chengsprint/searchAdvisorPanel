@@ -392,6 +392,295 @@ const SITE_LS_KEY = "sadv_sites_v1";
 const DATA_LS_PREFIX = "sadv_data_v2_";
 const UI_STATE_LS_KEY = "sadv_ui_state_v1";
 const DATA_TTL = 12 * 60 * 60 * 1000;
+
+// ============================================================
+// P0-3: ACCOUNT_UTILS - 계정 유틸리티 통합
+// ============================================================
+// 다중 계정 지원을 위한 중앙 집중식 계정 관리 유틸리티
+// 중복 제거: getAccountLabel(), getAccountInfo() 등을 이 객체로 통합
+const ACCOUNT_UTILS = {
+  /**
+   * 현재 사용자의 계정 이메일(라벨)을 반환
+   * @returns {string} 계정 이메일 또는 빈 문자열
+   */
+  getAccountLabel: function() {
+    try {
+      const authUser = window.__NUXT__?.state?.authUser;
+      return authUser?.email || "";
+    } catch (e) {
+      return "";
+    }
+  },
+
+  /**
+   * 현재 사용자의 encId를 반환
+   * @returns {string} encId 또는 빈 문자열
+   */
+  getEncId: function() {
+    try {
+      return window.__NUXT__?.state?.authUser?.encId || "";
+    } catch (e) {
+      return "";
+    }
+  },
+
+  /**
+   * 계정 정보 전체를 반환 (라벨 + encId)
+   * @returns {Object} { accountLabel, encId }
+   */
+  getAccountInfo: function() {
+    try {
+      const authUser = window.__NUXT__?.state?.authUser;
+      return {
+        accountLabel: authUser?.email || "",
+        encId: authUser?.encId || ""
+      };
+    } catch (e) {
+      return { accountLabel: "", encId: "" };
+    }
+  },
+
+  /**
+   * 다중 계정 모드에서 현재 활성 계정 반환
+   * @returns {string} 현재 계정 이메일
+   */
+  getCurrentAccount: function() {
+    return window.__sadvAccountState?.currentAccount ||
+           ACCOUNT_UTILS.getAccountLabel();
+  },
+
+  /**
+   * 다중 계정 모드인지 확인
+   * @returns {boolean} 다중 계정 여부
+   */
+  isMultiAccount: function() {
+    return window.__sadvAccountState?.isMultiAccount || false;
+  },
+
+  /**
+   * 모든 계정 목록 반환
+   * @returns {string[]} 계정 이메일 배열 (복사본)
+   */
+  getAllAccounts: function() {
+    if (!ACCOUNT_UTILS.isMultiAccount()) {
+      const label = ACCOUNT_UTILS.getAccountLabel();
+      return label ? [label] : [];
+    }
+    // 배열 복사본 반환으로 원본 데이터 보호
+    const accounts = window.__sadvAccountState?.allAccounts;
+    return accounts ? [...accounts] : [];
+  },
+
+  /**
+   * 특정 계정의 데이터를 반환
+   * @param {string} accountEmail - 계정 이메일
+   * @returns {Object|null} 계정 데이터 또는 null
+   */
+  getAccountData: function(accountEmail) {
+    if (!window.__sadvAccountState?.isMultiAccount) {
+      return null;
+    }
+    return window.__sadvAccountState.accountsData?.[accountEmail] || null;
+  },
+
+  /**
+   * 현재 계정 상태 객체 반환 (다중 계정 정보 포함)
+   * @returns {Object|null} 계정 상태 또는 null
+   */
+  getAccountState: function() {
+    return window.__sadvAccountState || null;
+  }
+};
+
+// ============================================================
+// P1: V2 DATA VALIDATION CONSTANTS
+// ============================================================
+const DATA_VALIDATION = {
+  /**
+   * 객체 타입 검증
+   */
+  isObject: function(value) {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+  },
+
+  /**
+   * 비어있지 않은 배열 검증
+   */
+  isNonEmptyArray: function(value) {
+    return Array.isArray(value) && value.length > 0;
+  },
+
+  /**
+   * 유효한 이메일 검증
+   * @param {string} email - 검증할 이메일 주소
+   * @returns {boolean} 유효함 여부
+   */
+  isValidEmail: function(email) {
+    if (typeof email !== 'string') return false;
+    // 기본 형식: local@domain.tld
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  },
+
+  /**
+   * 유효한 타임스탬프 검증
+   * @param {number} ts - 검증할 타임스탬프 (밀리초)
+   * @returns {boolean} 유효함 여부
+   */
+  isValidTimestamp: function(ts) {
+    if (typeof ts !== 'number') return false;
+    // 2000년 이후, 현재로부터 1년 후까지
+    const minTimestamp = 946684800000; // 2000-01-01
+    const maxTimestamp = Date.now() + 31536000000; // 현재 + 1년
+    return ts > minTimestamp && ts < maxTimestamp;
+  },
+
+  /**
+   * V2 payload 기본 검증
+   */
+  isValidV2Payload: function(payload) {
+    if (!DATA_VALIDATION.isObject(payload)) return false;
+    if (!payload.__meta || !payload.accounts) return false;
+    if (!DATA_VALIDATION.isObject(payload.__meta)) return false;
+    if (!DATA_VALIDATION.isObject(payload.accounts)) return false;
+    return true;
+  },
+
+  /**
+   * 계정 구조 검증
+   */
+  isValidAccount: function(account) {
+    if (!DATA_VALIDATION.isObject(account)) return false;
+    if (!account.encId || typeof account.encId !== 'string') return false;
+    if (!Array.isArray(account.sites)) return false;
+    return true;
+  },
+
+  /**
+   * 계정 데이터 일관성 검증
+   * sites 배열과 dataBySite 키 불일치 감지
+   */
+  validateAccountData: function(account) {
+    const sites = account?.sites || [];
+    const dataBySite = account?.dataBySite || {};
+
+    // 성능 최적화: Set을 사용하여 O(1) 조회
+    const sitesSet = new Set(sites);
+
+    const missingData = [];
+    for (const site of sites) {
+      if (!dataBySite[site]) {
+        missingData.push(site);
+      }
+    }
+
+    const orphanSites = Object.keys(dataBySite).filter(url => !sitesSet.has(url));
+
+    return {
+      valid: missingData.length === 0 && orphanSites.length === 0,
+      missingData,
+      orphanSites,
+      sitesCount: sites.length,
+      dataCount: Object.keys(dataBySite).length
+    };
+  }
+};
+
+// ============================================================
+// P1: V2 SCHEMA VERSION CONSTANTS
+// ============================================================
+const SCHEMA_VERSIONS = {
+  // 현재 지원하는 스키마 버전
+  CURRENT: '1.0',
+
+  // 지원 가능한 버전 목록
+  SUPPORTED: ['1.0'],
+
+  /**
+   * 버전이 지원되는지 확인
+   */
+  isSupported: function(version) {
+    return SCHEMA_VERSIONS.SUPPORTED.includes(version);
+  },
+
+  /**
+   * 버전 비교
+   * @param {string} v1 - 첫 번째 버전
+   * @param {string} v2 - 두 번째 버전
+   * @returns {number} -1: v1 < v2, 0: v1 == v2, 1: v1 > v2
+   */
+  compare: function(v1, v2) {
+    // 명시적인 null/undefined 체크 (빈 문자열과 구분)
+    if (v1 == null && v2 == null) return 0;
+    if (v1 == null) return -1;
+    if (v2 == null) return 1;
+
+    // 타입 검증
+    if (typeof v1 !== 'string' || typeof v2 !== 'string') {
+      console.warn('[SCHEMA_VERSIONS.compare] Invalid version types:', v1, v2);
+      return 0;
+    }
+
+    // 빈 문자열 체크
+    const t1 = v1.trim();
+    const t2 = v2.trim();
+    if (!t1 && !t2) return 0;
+    if (!t1) return -1;
+    if (!t2) return 1;
+
+    const parts1 = t1.split('.').map(p => {
+      const num = parseInt(p, 10);
+      return isNaN(num) ? 0 : num;
+    });
+    const parts2 = t2.split('.').map(p => {
+      const num = parseInt(p, 10);
+      return isNaN(num) ? 0 : num;
+    });
+
+    for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+      const p1 = parts1[i] || 0;
+      const p2 = parts2[i] || 0;
+      if (p1 < p2) return -1;
+      if (p1 > p2) return 1;
+    }
+    return 0;
+  }
+};
+
+// ============================================================
+// P1: V2 MERGE STRATEGY CONSTANTS
+// ============================================================
+const MERGE_STRATEGIES = {
+  // 전략 유형
+  NEWER: 'newer',      // 최신 데이터 우선
+  FIRST: 'first',      // 첫 번째 계정 데이터 우선
+  ALL: 'all',          // 모든 데이터 병합
+  SOURCE: 'source',    // 소스 데이터 우선
+  TARGET: 'target',    // 타겟 데이터 우선
+
+  // 기본 전략
+  DEFAULT: 'newer',
+
+  /**
+   * 전략 유효성 검증
+   */
+  isValid: function(strategy) {
+    const validStrategies = [MERGE_STRATEGIES.NEWER, MERGE_STRATEGIES.FIRST, MERGE_STRATEGIES.ALL, MERGE_STRATEGIES.SOURCE, MERGE_STRATEGIES.TARGET];
+    return validStrategies.includes(strategy);
+  },
+
+  /**
+   * 전략별 설명
+   */
+  DESCRIPTIONS: {
+    newer: '가장 최신 데이터(__fetched_at 기준)를 사용합니다',
+    first: '첫 번째 계정의 데이터를 우선 사용합니다',
+    all: '모든 데이터를 병합하여 중복을 제거합니다',
+    source: '가져오는 데이터를 우선 적용합니다',
+    target: '기존 데이터를 유지합니다'
+  }
+};
+
 const ALL_SITES_BATCH = 4;
 const FULL_REFRESH_BATCH_SIZE = 1;
 const FULL_REFRESH_SITE_DELAY_MS = 350;
@@ -839,7 +1128,20 @@ function secTitle(t) {
 // Security Note: This function uses innerHTML for HTML content. All dynamic values in
 // call sites MUST be escaped using escHtml(). Fixed: 08-renderers.js line 558 (slug value).
 // When adding new ibox() calls with dynamic content, always use escHtml() for user/API data.
+// P0-1: XSS 취약점 수정 - 개발 환경에서 보안 경고 추가
 function ibox(type, html) {
+  // 개발 환경에서 잠재적 XSS 위험 경고
+  if (typeof window !== "undefined" &&
+      typeof html === "string" &&
+      html.includes("<") &&
+      !html.includes("&lt;") &&
+      // 이미 escape된 HTML인지 확인 (안전한 패턴)
+      !/^(<span|<div|<b>|<strong>|<em>|<i>|<br|<hr|\/[a-z]+>|\s+)*$/i.test(html)) {
+    console.warn("[SECURITY] ibox() 호출에 원시 HTML이 포함되어 있습니다. 동적 값에는 escHtml()를 사용하세요.");
+    console.warn("[SECURITY] HTML 내용:", html.substring(0, 100));
+    console.trace("[SECURITY] 호출 스택:");
+  }
+
   const col =
     { green: C.green, amber: C.amber, red: C.red, blue: C.blue }[type] ||
       C.blue;
@@ -1578,18 +1880,9 @@ function accountIdFromLabel(v) {
   return fileSafe(localPart || "unknown");
 }
 
-function getAccountLabel() {
-  try {
-    const authUser =
-      window.__NUXT__ &&
-      window.__NUXT__.state &&
-      window.__NUXT__.state.authUser;
-    return authUser && typeof authUser.email === "string"
-      ? authUser.email
-      : "";
-  } catch (e) {}
-  return "";
-}
+// P0-3: ACCOUNT_UTILS 통합 - 중복 제거
+// 이제 ACCOUNT_UTILS.getAccountLabel()을 사용하세요.
+// getAccountLabel()은 ACCOUNT_UTILS로 이동됨.
 
 function applyAccountBadge(accountLabel) {
   const badge = document.getElementById("sadv-account-badge");
@@ -1614,7 +1907,6 @@ window.__sadvTabsEl = document.getElementById("sadv-tabs");
 
 let allSites = [];
 const memCache = {};
-let accountLabel = "";
 
 function getCacheNamespace() {
   // For demo/test mode, use a fixed namespace
@@ -1623,21 +1915,9 @@ function getCacheNamespace() {
   return 'default';
 }
 
-function getAccountLabel() {
-  try {
-    const authUser =
-      window.__NUXT__ &&
-      window.__NUXT__.state &&
-      window.__NUXT__.state.authUser;
-    return authUser && typeof authUser.email === "string"
-      ? authUser.email
-      : "";
-  } catch (e) {}
-  return "";
-}
-
-// Initialize account label
-accountLabel = getAccountLabel();
+// P0-3: ACCOUNT_UTILS 통합 - 중복 제거
+// 이제 ACCOUNT_UTILS.getAccountLabel()을 사용하세요.
+// getAccountLabel()은 ACCOUNT_UTILS로 이동됨.
 
 function lsGet(k) {
   try {
@@ -1661,7 +1941,8 @@ function getCachedData(site) {
   const d = lsGet(getSiteDataCacheKey(site));
   if (!d) return null;
   if (!d.data || typeof d.data !== "object") return null;
-  if (d.ts && Date.now() - d.ts > DATA_TTL) return null; // TTL 검증 추가
+  // TTL 검증 (타입 체크 추가)
+  if (d.ts && typeof d.ts === "number" && Date.now() - d.ts > DATA_TTL) return null;
   return {
     ...d.data,
     __cacheSavedAt: typeof d.ts === "number" ? d.ts : null,
@@ -1688,7 +1969,15 @@ function getSiteListCacheKey() {
 }
 
 function getSiteDataCacheKey(site) {
-  return DATA_LS_PREFIX + getCacheNamespace() + "_" + btoa(site).replace(/=/g, "");
+  try {
+    // 유니코드 지원을 위해 encodeURIComponent 후 인코딩
+    const encoded = btoa(encodeURIComponent(site));
+    return DATA_LS_PREFIX + getCacheNamespace() + "_" + encoded.replace(/=/g, "");
+  } catch (e) {
+    console.error('[getSiteDataCacheKey] Encoding error for site:', site, e);
+    // 실패 시 타임스탬프 기반 폴백 키 사용
+    return DATA_LS_PREFIX + getCacheNamespace() + "_" + Date.now();
+  }
 }
 
 function getSiteListCacheStamp() {
@@ -1985,6 +2274,24 @@ function shouldFetchDiagnosisMeta(data, options) {
 async function loadSiteList(refresh = false) {
   console.log('[loadSiteList] Called with refresh:', refresh);
 
+  // Check V2 format EXPORT_PAYLOAD first
+  const exportPayload = window.__SEARCHADVISOR_EXPORT_PAYLOAD__;
+  if (exportPayload) {
+    console.log('[loadSiteList] Found EXPORT_PAYLOAD');
+
+    // P0-2: V2 다중 계정 구조 지원 완성
+    if (exportPayload.__meta && exportPayload.accounts) {
+      return handleV2MultiAccount(exportPayload);
+    }
+
+    // 레거시 V1 포맷은 지원하지 않음 (Big Bang Migration 완료)
+    // V2 포맷이 아닌 경우 빈 배열 반환
+    if (exportPayload && !exportPayload.__meta) {
+      console.warn('[loadSiteList] Unsupported payload format (missing __meta)');
+      return [];
+    }
+  }
+
   // Check if we have init data
   const initData = window.__sadvInitData;
   if (initData && initData.sites) {
@@ -2018,6 +2325,248 @@ async function loadSiteList(refresh = false) {
 
   console.log('[loadSiteList] No sites found, returning empty array');
   return [];
+}
+
+// ============================================================================
+// P0-2: V2 다중 계정 구조 지원 완성
+// ============================================================================
+// V2 다중 계정 감지 및 병합 처리
+// ============================================================================
+function handleV2MultiAccount(payload, mergeStrategy = MERGE_STRATEGIES.DEFAULT) {
+  // P1: V2 데이터 검증
+  // 1. 기본 V2 포맷 검증
+  if (!DATA_VALIDATION.isValidV2Payload(payload)) {
+    console.error('[V2 Multi-Account] Invalid V2 payload format');
+    return [];
+  }
+
+  // 2. 메타데이터 검증
+  const meta = payload.__meta;
+  if (!meta.version || !meta.exportedAt) {
+    console.error('[V2 Multi-Account] Invalid metadata');
+    return [];
+  }
+
+  // 3. 스키마 버전 검증
+  if (!SCHEMA_VERSIONS.isSupported(meta.version)) {
+    console.warn(`[V2 Multi-Account] Unsupported schema version: ${meta.version}`);
+  }
+
+  // 4. 계정 데이터 검증 및 유효한 계정만 필터링
+  const accountKeys = Object.keys(payload.accounts);
+  if (accountKeys.length === 0) {
+    console.error('[V2 Multi-Account] No accounts found');
+    return [];
+  }
+
+  const validAccounts = [];
+  for (const accKey of accountKeys) {
+    const account = payload.accounts[accKey];
+    if (DATA_VALIDATION.isValidAccount(account)) {
+      // P1: 데이터 일관성 검증
+      const validation = DATA_VALIDATION.validateAccountData(account);
+      if (!validation.valid) {
+        console.warn(`[V2 Multi-Account] Account ${accKey} data inconsistency:`, validation);
+
+        // 불일치가 있는 계정은 유효 목록에 추가하지 않음 (원본 데이터 보존)
+        if (validation.missingData.length > 0 || validation.orphanSites.length > 0) {
+          console.warn(`[V2 Multi-Account] Skipping ${accKey}: ${validation.missingData.length} missing, ${validation.orphanSites.length} orphan sites`);
+        }
+      } else {
+        validAccounts.push(accKey);
+      }
+    } else {
+      console.warn(`[V2 Multi-Account] Invalid account structure: ${accKey}`);
+    }
+  }
+
+  if (validAccounts.length === 0) {
+    console.error('[V2 Multi-Account] No valid accounts found');
+    return [];
+  }
+
+  console.log(`[V2 Multi-Account] Found ${validAccounts.length} valid accounts (out of ${accountKeys.length} total)`);
+
+  // P0-2: 다중 계정 상태 저장
+  window.__sadvAccountState = {
+    isMultiAccount: validAccounts.length > 1,
+    currentAccount: validAccounts[0],
+    allAccounts: validAccounts,
+    accountsData: {},
+    mergeStrategy: mergeStrategy
+  };
+
+  // 모든 계정 데이터 사이트별 병합
+  const mergedSites = {};
+  const siteOwnership = {}; // site -> [accountEmails]
+
+  for (const accKey of validAccounts) {
+    const account = payload.accounts[accKey];
+    const sites = account.sites || [];
+
+    for (const site of sites) {
+      // 사이트별로 계정 목록 추적
+      if (!siteOwnership[site]) {
+        siteOwnership[site] = [];
+      }
+      siteOwnership[site].push(accKey);
+
+      // 데이터 병합 (전략에 따라 처리)
+      const siteData = account.dataBySite?.[site];
+      if (siteData) {
+        let shouldMerge = false;
+
+        switch (mergeStrategy) {
+          case MERGE_STRATEGIES.NEWER:
+            // 최신 데이터 우선
+            const existingTime = mergedSites[site]?.__meta?.__fetched_at ||
+                                 mergedSites[site]?._merge?.__fetchedAt || 0;
+            const newTime = siteData.__meta?.__fetched_at ||
+                           siteData._merge?.__fetchedAt || 0;
+            shouldMerge = !mergedSites[site] || newTime > existingTime;
+            break;
+
+          case MERGE_STRATEGIES.FIRST:
+            // 첫 번째 계정 데이터 우선 (이미 병합된 데이터 유지)
+            shouldMerge = !mergedSites[site];
+            break;
+
+          case MERGE_STRATEGIES.SOURCE:
+            // 소스 데이터 우선 (나중에 들어온 데이터로 덮어쓰기)
+            shouldMerge = true;
+            break;
+
+          case MERGE_STRATEGIES.ALL:
+            // 모든 데이터 보존 - 현재는 첫 번째만 사용 (향후 확장)
+            shouldMerge = !mergedSites[site];
+            break;
+
+          default:
+            // 알 수 없는 전략은 NEWER로 처리
+            const defTime = mergedSites[site]?.__meta?.__fetched_at ||
+                            mergedSites[site]?._merge?.__fetchedAt || 0;
+            const srcTime = siteData.__meta?.__fetched_at ||
+                           siteData._merge?.__fetchedAt || 0;
+            shouldMerge = !mergedSites[site] || srcTime > defTime;
+        }
+
+        if (shouldMerge) {
+          mergedSites[site] = siteData;
+        }
+      }
+    }
+
+    // 계정별 데이터 저장
+    window.__sadvAccountState.accountsData[accKey] = {
+      encId: account.encId,
+      sites: sites,
+      siteMeta: account.siteMeta || {},
+      dataBySite: account.dataBySite || {}
+    };
+  }
+
+  // 병합된 사이트 데이터를 __sadvInitData에 저장
+  window.__sadvInitData = {
+    sites: mergedSites,
+    siteOwnership: siteOwnership,
+    isV2: true,
+    currentAccount: accountKeys[0],
+    _rawPayload: payload
+  };
+
+  const siteList = Object.keys(mergedSites);
+  console.log(`[V2 Multi-Account] Merged ${siteList.length} sites from ${accountKeys.length} accounts`);
+
+  allSites.length = 0;
+  allSites.push(...siteList);
+
+  return siteList;
+}
+
+// ============================================================================
+// P0-2: 계정 전환 UI 추가
+// ============================================================================
+function switchAccount(accountEmail) {
+  if (!window.__sadvAccountState || !window.__sadvAccountState.isMultiAccount) {
+    console.warn('[Account] Not multi-account mode');
+    return;
+  }
+
+  const prevAccount = window.__sadvAccountState.currentAccount;
+
+  // 현재 계정 업데이트
+  window.__sadvAccountState.currentAccount = accountEmail;
+
+  console.log(`[Account] Switching from ${prevAccount} to ${accountEmail}`);
+
+  // 계정별 데이터 로드
+  const accountData = window.__sadvAccountState.accountsData[accountEmail];
+  if (!accountData) {
+    console.error(`[Account] No data found for account: ${accountEmail}`);
+    return;
+  }
+
+  // 현재 사이트가 이 계정에 있는지 확인
+  const currentSite = curSite || null;
+  const sitesInAccount = accountData.sites || [];
+
+  // __sadvInitData 업데이트
+  window.__sadvInitData.sites = accountData.dataBySite || {};
+  window.__sadvInitData.currentAccount = accountEmail;
+
+  // UI 업데이트
+  if (typeof updateUIState === 'function') {
+    updateUIState({ curAccount: accountEmail });
+  }
+
+  // 현재 사이트가 이 계정에 없으면 첫 번째 사이트로 변경
+  if (currentSite && !sitesInAccount.includes(currentSite)) {
+    const newSite = sitesInAccount[0] || null;
+    if (typeof updateUIState === 'function') {
+      updateUIState({ curSite: newSite });
+    }
+    if (newSite && typeof setComboSite === 'function') {
+      setComboSite(newSite);
+    }
+  }
+
+  // 사이트 콤보 재구축
+  if (typeof buildCombo === 'function') {
+    buildCombo(window.__sadvRows || null);
+  }
+
+  // 현재 뷰 다시 렌더링
+  if (curMode === CONFIG.MODE.SITE && curSite) {
+    if (typeof loadSiteView === 'function') {
+      loadSiteView(curSite);
+    }
+  } else if (curMode === CONFIG.MODE.ALL) {
+    if (typeof renderAllSites === 'function') {
+      renderAllSites();
+    }
+  }
+
+  if (typeof __sadvNotify === 'function') {
+    __sadvNotify();
+  }
+}
+
+// 계정 정보 반환 함수
+function getAccountList() {
+  if (!window.__sadvAccountState || !window.__sadvAccountState.isMultiAccount) {
+    return [];
+  }
+
+  return window.__sadvAccountState.allAccounts.map(accKey => {
+    const accData = window.__sadvAccountState.accountsData[accKey];
+    return {
+      email: accKey,
+      label: accKey.split('@')[0],
+      fullLabel: accKey,
+      encId: accData?.encId || '',
+      siteCount: accData?.sites?.length || 0
+    };
+  });
 }
 
 // fetchWithRetry function is provided by 00-constants.js
@@ -2724,8 +3273,10 @@ function injectDemoData() {
         const accountsMerged = customMergedData.accounts_merged || [];
         const sourceCount = accountsMerged.length || 1;
 
+        // Preserve existing EXPORT_PAYLOAD structure, only add mergedMeta
+        const existingPayload = window.__SEARCHADVISOR_EXPORT_PAYLOAD__ || {};
         window.__SEARCHADVISOR_EXPORT_PAYLOAD__ = {
-          siteMeta: {},
+          ...existingPayload,
           mergedMeta: {
             isMerged: true,
             sourceCount: sourceCount,
@@ -2894,84 +3445,20 @@ function injectDemoData() {
   return true;
 }
 
-  function validateDataSchema(data) {
-    const result = { valid: true, version: null, errors: [] };
+  // ============================================================================
+  // CONSTANTS & CONFIGURATION
+  // ============================================================================
+  const SCHEMA_VERSION = "1.0";
+  const MERGE_REGISTRY_KEY = "sadv_merge_registry";
 
-    if (!data || typeof data !== 'object') {
-      result.valid = false;
-      result.errors.push('Data is not an object');
-      return result;
-    }
+  // P0-3: ACCOUNT_UTILS 통합 - 중복 제거
+  // 이제 ACCOUNT_UTILS.getAccountInfo()을 사용하세요.
+  // getAccountInfo()는 ACCOUNT_UTILS로 이동됨.
 
-    // Check schema version
-    if (data.__schema_version) {
-      result.version = data.__schema_version;
-      const supportedVersions = ['1.0', '1'];
-      if (!supportedVersions.includes(result.version)) {
-        result.valid = false;
-        result.errors.push(`Unsupported schema version: ${result.version}`);
-      }
-    } else {
-      // Legacy data (no version) - treat as v1.0
-      result.version = '1.0';
-    }
-
-    // Check required metadata fields
-    const isSingleExport = data.exportFormat === "snapshot-v2" || (data.__exported_at && data.__source_enc_id);
-    const isMerged = data.__merged_at && data.accounts_merged;
-
-    if (!isSingleExport && !isMerged) {
-      result.valid = false;
-      result.errors.push('Missing required export/merge metadata fields');
-    }
-
-    // Validate sites object
-    if (data.sites && typeof data.sites === 'object') {
-      for (const [site, siteData] of Object.entries(data.sites)) {
-        if (!site.startsWith('http')) {
-          result.valid = false;
-          result.errors.push(`Invalid site URL: ${site}`);
-        }
-        if (siteData && typeof siteData === 'object') {
-          // Site data must have at least expose field
-          if (!siteData.expose && !siteData.crawl && !siteData.backlink) {
-            result.valid = false;
-            result.errors.push(`Site ${site} has no data fields`);
-          }
-        }
-      }
-    }
-
-    return result;
-  }
-
-  /**
-   * Migrate data to target schema version
-   * @param {Object} data - Data to migrate
-   * @param {string} targetVersion - Target version (e.g., "1.0")
-   * @returns {Object} Migrated data
-   */
-  function migrateSchema(data, targetVersion = SCHEMA_VERSION) {
-    if (!data) return null;
-
-    const validation = validateDataSchema(data);
-    let currentVersion = validation.version || '1.0';
-
-    // Add version if missing (must be before version check for legacy data)
-    if (!data.__schema_version) {
-      data.__schema_version = currentVersion;
-    }
-
-    // If already at target version, return as-is
-    if (currentVersion === targetVersion) {
-      return data;
-    }
-
-    // Future migrations will go here
-    // Example: if (currentVersion === '1.0' && targetVersion === '2.0') { ... }
-
-    return data;
-  }
+  // ============================================================================
+  // P1: V2 레거시 제거 - validateDataSchema, migrateSchema 함수 제거됨
+  // V2 포맷만 지원하며 레거시 마이그레이션은 불필요
+  // ============================================================================
 
   /**
    * Detect conflicts between multiple accounts
@@ -3232,66 +3719,162 @@ function injectDemoData() {
   }
 
   /**
-   * Export current account data with full metadata
+   * P0-4: Export current account data with multi-account support
+   * @param {Object} options - Export options { mode: 'current'|'all', includeAll: boolean }
    * @returns {Object} Exportable data object
    */
-  function exportCurrentAccountData() {
+  function exportCurrentAccountData(options = {}) {
+    const { mode = 'current', includeAll = false } = options;
     const now = new Date().toISOString();
+    // P0-3: ACCOUNT_UTILS 사용
+    const { accountLabel, encId } = ACCOUNT_UTILS.getAccountInfo();
 
-    // Collect all site data from localStorage
-    const sites = {};
-    const keysToCheck = Object.keys(localStorage);
+    // 다중 계정 확인
+    const isMultiAccount = window.__sadvAccountState?.isMultiAccount || false;
 
-    for (const key of keysToCheck) {
-      if (!key.startsWith(DATA_LS_PREFIX)) continue;
-      if (!key.includes(getCacheNamespace())) continue;
+    // 다중 계정 모드에서 includeAll이 true면 모든 계정 내보내기
+    if (isMultiAccount && includeAll) {
+      return exportSingleAccount(null, encId, now, true);
+    }
 
-      try {
-        const value = localStorage.getItem(key);
-        if (!value) continue;
+    // 단일 계정 모드이거나 현재 계정만 내보내기
+    const currentAcc = isMultiAccount
+      ? (window.__sadvAccountState?.currentAccount || accountLabel)
+      : accountLabel;
+    return exportSingleAccount(currentAcc, encId, now, false);
+  }
 
-        const data = JSON.parse(value);
+  /**
+   * P0-4: Export single account data
+   * @param {string} accountEmail - Account email to export
+   * @param {string} encId - Encrypted ID
+   * @param {string} now - ISO timestamp
+   * @param {boolean} includeAll - Whether to include all accounts
+   * @returns {Object} Exportable V2 payload
+   */
+  function exportSingleAccount(accountEmail, encId, now, includeAll) {
+    // 파라미터 검증 및 기본값 설정
+    if (!now) {
+      now = new Date().toISOString();
+    }
+    if (!encId) {
+      encId = 'unknown';
+    }
 
-        // Extract site from key
-        const match = key.match(/_([^_]+)$/);
-        if (!match) continue;
+    let sites = {};
+    let sitesList = [];
+    let siteMeta = {};
 
-        const site = atob(match[1]);
+    // 다중 계정 모드에서 includeAll이 true면 모든 계정 내보내기
+    const shouldExportAll = includeAll && window.__sadvAccountState?.isMultiAccount;
 
-        // Structure site data
-        const fetchedAt = data.__cacheSavedAt || data.__fetched_at || Date.now();
-        sites[site] = {
-          // Current format (__meta)
-          __meta: {
-            __source: encId || 'unknown',
-            __fetched_at: fetchedAt,
-            __schema: SCHEMA_VERSION,
-            __namespace: getCacheNamespace()
-          },
-          // Legacy format (_merge) for test compatibility
-          _merge: {
-            __source: accountLabel || 'unknown',
-            __accountId: encId || 'unknown',
-            __fetchedAt: fetchedAt,
-            __version: 1
-          },
-          expose: data.expose || null,
-          crawl: data.crawl || null,
-          backlink: data.backlink || null,
-          diagnosisMeta: data.diagnosisMeta || null,
-          diagnosisMetaRange: data.diagnosisMetaRange || null,
-          detailLoaded: data.detailLoaded || false
-        };
-      } catch (e) {
-        console.error('[Export] Error processing key:', key, e);
+    if (shouldExportAll) {
+      // 모든 계정 내보내기
+      const allAccounts = window.__sadvAccountState.allAccounts;
+
+      // null 체크 및 유효성 검증
+      if (!allAccounts || !Array.isArray(allAccounts) || allAccounts.length === 0) {
+        console.warn('[exportSingleAccount] No valid accounts for export, falling back to single account mode');
+        // 단일 계정 모드로 폴백
+      } else {
+        for (const accKey of allAccounts) {
+          const accData = window.__sadvAccountState.accountsData[accKey];
+          if (!accData) {
+            console.warn(`[exportSingleAccount] Missing data for account: ${accKey}`);
+            continue;
+          }
+          const accSites = accData?.sites || [];
+          sitesList.push(...accSites);
+
+          if (accData?.dataBySite) {
+            Object.assign(sites, accData.dataBySite);
+          }
+
+          if (accData?.siteMeta) {
+            Object.assign(siteMeta, accData.siteMeta);
+          }
+        }
+        // 모든 계정 처리 성공
+        if (sitesList.length > 0) {
+          siteMeta = typeof getSiteMetaMap === "function" ? getSiteMetaMap() : {};
+          return buildExportPayload(accountEmail, encId, now, sitesList, sites, siteMeta, true);
+        } else {
+          console.warn('[exportSingleAccount] No sites found in any account, falling back to single account mode');
+        }
       }
     }
 
+    // 단일 계정 모드이거나 다중 계정 모드 실패 시 폴백
+    if (!shouldExportAll || sitesList.length === 0) {
+      // 현재 계정만 내보내기 (localStorage에서 데이터 수집)
+      const keysToCheck = Object.keys(localStorage);
+
+      for (const key of keysToCheck) {
+        if (!key.startsWith(DATA_LS_PREFIX)) continue;
+        if (!key.includes(getCacheNamespace())) continue;
+
+        try {
+          const value = localStorage.getItem(key);
+          if (!value) continue;
+
+          const data = JSON.parse(value);
+
+          // Extract site from key
+          const match = key.match(/_([^_]+)$/);
+          if (!match) continue;
+
+          let site;
+          try {
+            site = atob(match[1]);
+          } catch (decodeError) {
+            console.error('[Export] Invalid Base64 encoding in key:', key, decodeError);
+            continue;
+          }
+
+          // Structure site data
+          const fetchedAt = data.__cacheSavedAt || data.__fetched_at || Date.now();
+          sites[site] = {
+            // Current format (__meta)
+            __meta: {
+              __source: encId || 'unknown',
+              __fetched_at: fetchedAt,
+              __schema: SCHEMA_VERSION,
+              __namespace: getCacheNamespace()
+            },
+            // Legacy format (_merge) for test compatibility
+            _merge: {
+              __source: accountEmail || 'unknown',
+              __accountId: encId || 'unknown',
+              __fetchedAt: fetchedAt,
+              __version: 1
+            },
+            expose: data.expose || null,
+            crawl: data.crawl || null,
+            backlink: data.backlink || null,
+            diagnosisMeta: data.diagnosisMeta || null,
+            diagnosisMetaRange: data.diagnosisMetaRange || null,
+            detailLoaded: data.detailLoaded || false
+          };
+        } catch (e) {
+          console.error('[Export] Error processing key:', key, e);
+        }
+      }
+
+      sitesList = Object.keys(sites);
+      siteMeta = typeof getSiteMetaMap === "function" ? getSiteMetaMap() : {};
+    }
+
     // V2: Nested accounts structure
-    const accountEmail = (accountLabel && accountLabel.includes('@'))
-      ? accountLabel
+    // 계정 이메일 검증 강화 (공백 문자열, null, undefined 체크)
+    const validAccountEmail = (accountEmail && typeof accountEmail === 'string' &&
+                          accountEmail.trim() && accountEmail.includes('@'))
+      ? accountEmail.trim()
       : 'unknown@naver.com';
-    const siteList = Object.keys(sites);
+
+    // Get current UI state for V2 payload
+    const currentCurMode = (typeof curMode !== "undefined") ? curMode : "all";
+    const currentCurSite = (typeof curSite !== "undefined") ? curSite : null;
+    const currentCurTab = (typeof curTab !== "undefined") ? curTab : "overview";
 
     return {
       __meta: {
@@ -3299,16 +3882,31 @@ function injectDemoData() {
         exportedAt: now,
         generator: 'SearchAdvisor Runtime',
         generatorVersion: window.__SEARCHADVISOR_RUNTIME_VERSION__ || 'unknown',
-        accountCount: 1
+        accountCount: includeAll ? (window.__sadvAccountState?.allAccounts?.length || 1) : 1
       },
-      accounts: {
-        [accountEmail]: {
+      accounts: includeAll ? window.__sadvAccountState?.accountsData : {
+        [validAccountEmail]: {
           encId: encId || 'unknown',
-          sites: siteList,
-          siteMeta: typeof getSiteMetaMap === "function" ? getSiteMetaMap() : {},
+          sites: sitesList,
+          siteMeta: siteMeta,
           dataBySite: sites
         }
-      }
+      },
+      ui: {
+        curMode: currentCurMode,
+        curSite: currentCurSite,
+        curTab: currentCurTab,
+        curAccount: (typeof window.__sadvAccountState?.currentAccount !== "undefined")
+          ? window.__sadvAccountState.currentAccount
+          : validAccountEmail
+      },
+      stats: {
+        success: sitesList.length,
+        partial: 0,
+        failed: 0,
+        errors: []
+      },
+      _siteOwnership: window.__sadvInitData?.siteOwnership || {}
     };
   }
 
@@ -3348,26 +3946,11 @@ function injectDemoData() {
       sourceEncId = account.encId || 'unknown';
       sitesToImport = account.dataBySite || {};
     } else {
-      // Legacy format
-      data = exportData;
-
-      // Validate schema if requested
-      if (validate) {
-        const validation = validateDataSchema(exportData);
-        if (!validation.valid) {
-          return {
-            success: false,
-            error: 'Schema validation failed',
-            errors: validation.errors
-          };
-        }
-      }
-
-      // Migrate to current schema if needed
-      const migrated = migrateSchema(exportData);
-      sourceAccount = migrated.__source_account || 'unknown';
-      sourceEncId = migrated.__source_enc_id || 'unknown';
-      sitesToImport = migrated.sites || {};
+      // V2 포맷이 아닌 레거시 데이터는 지원하지 않음
+      return {
+        success: false,
+        error: 'Unsupported data format. Please use V2 format with __meta and accounts fields.'
+      };
     }
 
     const registry = getMergeRegistry();
@@ -3581,16 +4164,16 @@ function buildSnapshotShellState(payload) {
     curSite = payload.ui?.curSite || null;
     curTab = payload.ui?.curTab || "overview";
   } else {
-    // Legacy format (should not happen in big bang, but kept for safety)
-    accountLabel = payload.accountLabel || "";
-    allSites = Array.isArray(payload.allSites) ? payload.allSites.slice() : [];
-    dataBySite = payload.dataBySite || {};
-    summaryRows = payload.summaryRows || [];
-    siteMeta = payload.siteMeta || {};
-    savedAt = payload.savedAt;
-    curMode = payload.curMode || CONFIG.MODE.ALL;
-    curSite = payload.curSite || null;
-    curTab = payload.curTab || "overview";
+    // V2 포맷이 아닌 경우 빈 값 반환
+    accountLabel = "";
+    allSites = [];
+    dataBySite = {};
+    summaryRows = [];
+    siteMeta = {};
+    savedAt = null;
+    curMode = CONFIG.MODE.ALL;
+    curSite = null;
+    curTab = "overview";
   }
 
   const snapshotTabIds = [
@@ -3687,6 +4270,38 @@ function getMergedMetaState() {
       ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__
       : null;
   return payload && payload.mergedMeta ? payload.mergedMeta : null;
+}
+
+// ============================================================================
+// 전역 노출 (IIFE로 감싸진 환경에서도 접근 가능하도록)
+// ============================================================================
+if (typeof window !== "undefined") {
+  // UI 상태 변수들을 window 객체에 노출
+  Object.defineProperty(window, "curMode", {
+    get: function() { return curMode; },
+    set: function(v) { curMode = v; },
+    enumerable: true
+  });
+  Object.defineProperty(window, "curSite", {
+    get: function() { return curSite; },
+    set: function(v) { curSite = v; },
+    enumerable: true
+  });
+  Object.defineProperty(window, "curTab", {
+    get: function() { return curTab; },
+    set: function(v) { curTab = v; },
+    enumerable: true
+  });
+  Object.defineProperty(window, "siteViewReqId", {
+    get: function() { return siteViewReqId; },
+    set: function(v) { siteViewReqId = v; },
+    enumerable: true
+  });
+  Object.defineProperty(window, "allViewReqId", {
+    get: function() { return allViewReqId; },
+    set: function(v) { allViewReqId = v; },
+    enumerable: true
+  });
 }
 
   function buildRenderers(expose, crawlData, backlinkData, diagnosisMeta) {
@@ -4488,8 +5103,13 @@ function getMergedMetaState() {
     console.log('[buildCombo] Built', orderedSites.length, 'combo items');
   }
   function setComboSite(site) {
-    if (!site || !allSites.includes(site)) return;
+    console.log('[setComboSite] Called with site:', site, 'curMode:', curMode, 'curSite:', curSite);
+    if (!site || !allSites.includes(site)) {
+      console.log('[setComboSite] Returning early - site:', site, 'allSites.includes:', allSites.includes(site));
+      return;
+    }
     const sameSite = curSite === site;
+    console.log('[setComboSite] sameSite:', sameSite, 'curMode:', curMode, 'CONFIG.MODE.SITE:', CONFIG.MODE.SITE);
     curSite = site;
     const col = SITE_COLORS_MAP[site] || C.muted,
       shortName = getSiteLabel(site);
@@ -4500,7 +5120,14 @@ function getMergedMetaState() {
     });
     setCachedUiState();
     if (typeof notifySnapshotShellState === "function") notifySnapshotShellState();
-    if (curMode === CONFIG.MODE.SITE && !sameSite) loadSiteView(site);
+    // Always call loadSiteView when in SITE mode, even if sameSite=true
+    // This ensures the initial site view loads correctly on startup
+    if (curMode === CONFIG.MODE.SITE) {
+      console.log('[setComboSite] Calling loadSiteView for:', site);
+      loadSiteView(site);
+    } else {
+      console.log('[setComboSite] Not calling loadSiteView - curMode:', curMode);
+    }
     __sadvNotify();
   }
   const comboWrapMain = document.getElementById("sadv-combo-wrap");
@@ -4593,12 +5220,23 @@ function getMergedMetaState() {
     });
   }
   function renderTab(R) {
+    console.log('[renderTab] Called with curTab:', curTab);
     const bdEl = document.getElementById("sadv-bd");
-    if (!bdEl) return;
+    console.log('[renderTab] bdEl found:', !!bdEl);
+    if (!bdEl) {
+      console.error('[renderTab] sadv-bd element not found!');
+      return;
+    }
+    if (!R || !R[curTab]) {
+      console.error('[renderTab] No renderer for curTab:', curTab, 'Available tabs:', R ? Object.keys(R) : 'R is null');
+      return;
+    }
+    console.log('[renderTab] Rendering tab:', curTab);
     bdEl.setAttribute("role", "tabpanel");
     bdEl.id = "sadv-tabpanel";
     bdEl.replaceChildren(R[curTab]());
     bdEl.scrollTop = 0;
+    console.log('[renderTab] Done rendering tab');
   }
   const modeBar = document.getElementById("sadv-mode-bar");
   if (modeBar) {
@@ -4992,103 +5630,6 @@ function savedAtIso(d) {
   );
 }
 
-  async function loadSiteView(site) {
-    if (!site) return;
-    const requestId = ++siteViewReqId;
-    labelEl.innerHTML = `<span>${escHtml(getSiteLabel(site))}</span>`;
-    bdEl.innerHTML = `<div style="padding:50px 20px;text-align:center;color:#64748b"><div style="display:inline-flex;align-items:center;gap:8px">${ICONS.refresh.replace('width="13" height="13"','width="16" height="16"')} 로딩 중...</div></div>`;
-    const d = await fetchSiteData(site);
-    if (requestId !== siteViewReqId || site !== curSite) return;
-    if (!d || !d.expose || !d.expose.items || !d.expose.items.length) {
-      bdEl.innerHTML =
-        `<div style="padding:40px 20px;text-align:center"><div style="display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;background:#0f172a;border:1px solid #334155;border-radius:12px;margin-bottom:16px;color:#ef4444">${ICONS.xMark.replace('width="14" height="14"','width="22" height="22"')}</div><div style="color:#f8fafc;font-weight:700;font-size:14px;margin-bottom:6px">데이터 없음</div><div style="color:#64748b;font-size:12px">이 사이트의 데이터가 없습니다</div></div>`;
-      return;
-    }
-    const R = buildRenderers(d.expose, d.crawl, d.backlink, d.diagnosisMeta);
-    window.__sadvR = R;
-    renderTab(R);
-    if (typeof notifySnapshotShellState === "function") notifySnapshotShellState();
-  }
-
-  function buildSiteSummaryRow(site, data) {
-    const item = (data && data.expose && data.expose.items && data.expose.items[0]) || {};
-    const logs = (item.logs || []).sort((a, b) => (a.date || "").localeCompare(b.date || ""));
-    const clicks = logs.map((r) => Number(r.clickCount) || 0);
-    const exposes = logs.map((r) => Number(r.exposeCount) || 0);
-    const totalC = clicks.reduce((a, b) => a + b, 0);
-    const totalE = exposes.reduce((a, b) => a + b, 0);
-    const avgCtr = totalE ? (totalC / totalE) * 100 : 0;
-    const cSt = st(clicks);
-    const period = item.period || {};
-    const diagnosisItem =
-      (data && data.diagnosisMeta && data.diagnosisMeta.items && data.diagnosisMeta.items[0]) || {};
-    const diagnosisLogs = [...(diagnosisItem.meta || [])].sort((a, b) =>
-      (a.date || "").localeCompare(b.date || ""),
-    );
-
-    // Debug logging for diagnosis data
-    if (diagnosisLogs.length > 0) {
-      }
-    const diagnosisLatest =
-      diagnosisLogs.length > 0 ? diagnosisLogs[diagnosisLogs.length - 1] : null;
-    const diagnosisLatestCounts =
-      diagnosisLatest && diagnosisLatest.stateCount ? diagnosisLatest.stateCount : {};
-    const diagnosisIndexedValues = diagnosisLogs.map(function (row) {
-      return (row.stateCount && row.stateCount["1"]) || 0;
-    });
-    const diagnosisIndexedDates = diagnosisLogs.map(function (row) {
-      const digits = String(row.date || "").replace(/[^\d]/g, "");
-      return digits.length === 8 ? fmtB(digits) : row.date || "";
-    });
-    // Get source account from active payload/merge metadata
-    const initSiteData =
-      (typeof window !== "undefined" && window.__sadvMergedData && window.__sadvMergedData.sites
-        ? window.__sadvMergedData.sites[site]
-        : null) ||
-      (typeof window !== "undefined" && window.__sadvInitData && window.__sadvInitData.sites
-        ? window.__sadvInitData.sites[site]
-        : null) ||
-      (typeof window !== "undefined" && window.__SEARCHADVISOR_EXPORT_PAYLOAD__ && window.__SEARCHADVISOR_EXPORT_PAYLOAD__.siteData
-        ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__.siteData[site]
-        : null);
-    const sourceAccount =
-      (data && data._merge && data._merge.__source) ||
-      (data && data.__meta && data.__meta.__source) ||
-      (data && data.__source) ||
-      (initSiteData && initSiteData._merge && initSiteData._merge.__source) ||
-      (initSiteData && initSiteData.__meta && initSiteData.__meta.__source) ||
-      null;
-
-    return {
-      site,
-      totalC,
-      totalE,
-      avgCtr: +avgCtr.toFixed(2),
-      trend: cSt.slope || 0,
-      latestClick: clicks.slice(-7).reduce((a, b) => a + b, 0),
-      prevClickRatio: period.prevClickRatio != null && Number.isFinite(parseFloat(period.prevClickRatio)) ? parseFloat(period.prevClickRatio) : undefined,
-      logs,
-      clicks,
-      diagnosisIndexedCurrent: diagnosisLatestCounts["1"] || 0,
-      diagnosisIndexedValues,
-      diagnosisIndexedDates,
-      diagnosisLatestDate: diagnosisLatest && diagnosisLatest.date ? diagnosisLatest.date : "-",
-      diagnosisMetaCode:
-        data && data.diagnosisMeta && typeof data.diagnosisMeta.code !== "undefined"
-          ? data.diagnosisMeta.code
-          : null,
-      diagnosisMetaStatus:
-        data && typeof data.diagnosisMetaStatus !== "undefined"
-          ? data.diagnosisMetaStatus
-          : null,
-      diagnosisMetaRange:
-        data && typeof data.diagnosisMetaRange !== "undefined"
-          ? data.diagnosisMetaRange
-          : null,
-      sourceAccount: sourceAccount,
-    };
-  }
-
   async function downloadSnapshot() {
     const btn = document.getElementById("sadv-save-btn");
     const originalText = btn.textContent;
@@ -5146,16 +5687,16 @@ function savedAtIso(d) {
       curSite = payload.ui?.curSite || null;
       curTab = payload.ui?.curTab || "overview";
     } else {
-      // Legacy format (should not happen in big bang, but kept for safety)
-      accountLabel = payload.accountLabel || "";
-      allSites = Array.isArray(payload.allSites) ? payload.allSites.slice() : [];
-      dataBySite = payload.dataBySite || {};
-      summaryRows = payload.summaryRows || [];
-      siteMeta = payload.siteMeta || {};
-      savedAt = payload.savedAt;
-      curMode = payload.curMode || "all";
-      curSite = payload.curSite || null;
-      curTab = payload.curTab || "overview";
+      // V2 포맷이 아닌 경우 빈 값 반환
+      accountLabel = "";
+      allSites = [];
+      dataBySite = {};
+      summaryRows = [];
+      siteMeta = {};
+      savedAt = null;
+      curMode = "all";
+      curSite = null;
+      curTab = "overview";
     }
 
     const snapshotTabIds = [
@@ -5243,11 +5784,11 @@ function savedAtIso(d) {
       const accountKeys = Object.keys(payload.accounts);
       allSites = accountKeys.length > 0 ? (payload.accounts[accountKeys[0]]?.sites || []) : [];
     } else {
-      // Legacy format
-      curMode = payload.curMode || "all";
-      curSite = payload.curSite || null;
-      curTab = payload.curTab || "overview";
-      allSites = payload.allSites || [];
+      // V2 포맷이 아닌 경우 기본값 사용
+      curMode = "all";
+      curSite = null;
+      curTab = "overview";
+      allSites = [];
     }
 
     const modeLabel = curMode === "site" ? "\uc0ac\uc774\ud2b8\ubcc4" : "\uc804\uccb4\ud604\ud669";
@@ -6043,6 +6584,168 @@ function savedAtIso(d) {
     return mergedInfo;
   }
 
+  async function loadSiteView(site) {
+    console.log('[loadSiteView] Called with site:', site);
+    if (!site) return;
+
+    // Get DOM elements
+    const labelEl = document.getElementById('sadv-site-label');
+    const bdEl = document.getElementById('sadv-bd');
+    if (!labelEl || !bdEl) {
+      console.error('[loadSiteView] DOM elements not found!');
+      return;
+    }
+
+    // Use window-level counter for request cancellation
+    if (typeof window.__siteViewReqId === 'undefined') window.__siteViewReqId = 0;
+    const requestId = ++window.__siteViewReqId;
+    labelEl.innerHTML = `<span>${escHtml(getSiteLabel(site))}</span>`;
+    bdEl.innerHTML = `<div style="padding:50px 20px;text-align:center;color:#64748b"><div style="display:inline-flex;align-items:center;gap:8px">${ICONS.refresh.replace('width="13" height="13"','width="16" height="16"')} 로딩 중...</div></div>`;
+
+    // Fetch site data - try multiple sources
+    console.log('[loadSiteView] Fetching data for:', site);
+    let d = null;
+
+    // Try __sadvInitData first (set by loadSiteList for V2 format)
+    if (window.__sadvInitData && window.__sadvInitData.sites && window.__sadvInitData.sites[site]) {
+      d = window.__sadvInitData.sites[site];
+      console.log('[loadSiteView] Found data in __sadvInitData');
+    }
+    // Try __sadvMergedData
+    else if (window.__sadvMergedData && window.__sadvMergedData.sites && window.__sadvMergedData.sites[site]) {
+      d = window.__sadvMergedData.sites[site];
+      console.log('[loadSiteView] Found data in __sadvMergedData');
+    }
+    // Try EXPORT_PAYLOAD
+    else if (window.__SEARCHADVISOR_EXPORT_PAYLOAD__) {
+      const payload = window.__SEARCHADVISOR_EXPORT_PAYLOAD__;
+      // Handle V2 format
+      if (payload.__meta && payload.accounts) {
+        const accountKeys = Object.keys(payload.accounts);
+        for (const accKey of accountKeys) {
+          const account = payload.accounts[accKey];
+          if (account.dataBySite && account.dataBySite[site]) {
+            d = account.dataBySite[site];
+            console.log('[loadSiteView] Found data in V2 EXPORT_PAYLOAD');
+            break;
+          }
+        }
+      }
+      // Handle legacy format
+      else if (payload.dataBySite && payload.dataBySite[site]) {
+        d = payload.dataBySite[site];
+        console.log('[loadSiteView] Found data in legacy EXPORT_PAYLOAD');
+      }
+    }
+    // Try memCache
+    else if (typeof memCache !== 'undefined' && memCache && memCache[site]) {
+      d = memCache[site];
+      console.log('[loadSiteView] Found data in memCache');
+    }
+
+    console.log('[loadSiteView] Data result:', d ? 'has data' : 'null', 'expose:', d?.expose?.items?.length);
+
+    // Get current curSite from window or module scope
+    const curSite = typeof window.curSite !== 'undefined' ? window.curSite : site;
+
+    if (requestId !== window.__siteViewReqId || site !== curSite) {
+      console.log('[loadSiteView] Returning early - requestId mismatch or site changed');
+      return;
+    }
+    if (!d || !d.expose || !d.expose.items || !d.expose.items.length) {
+      console.log('[loadSiteView] No expose data, showing error');
+      bdEl.innerHTML =
+        `<div style="padding:40px 20px;text-align:center"><div style="display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;background:#0f172a;border:1px solid #334155;border-radius:12px;margin-bottom:16px;color:#ef4444">${ICONS.xMark.replace('width="14" height="14"','width="22" height="22"')}</div><div style="color:#f8fafc;font-weight:700;font-size:14px;margin-bottom:6px">데이터 없음</div><div style="color:#64748b;font-size:12px">이 사이트의 데이터가 없습니다</div></div>`;
+      return;
+    }
+    console.log('[loadSiteView] Building renderers...');
+    const R = buildRenderers(d.expose, d.crawl, d.backlink, d.diagnosisMeta);
+    window.__sadvR = R;
+    console.log('[loadSiteView] Calling renderTab...');
+    renderTab(R);
+    if (typeof notifySnapshotShellState === "function") notifySnapshotShellState();
+    console.log('[loadSiteView] Done');
+  }
+
+  function buildSiteSummaryRow(site, data) {
+    const item = (data && data.expose && data.expose.items && data.expose.items[0]) || {};
+    const logs = (item.logs || []).sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+    const clicks = logs.map((r) => Number(r.clickCount) || 0);
+    const exposes = logs.map((r) => Number(r.exposeCount) || 0);
+    const totalC = clicks.reduce((a, b) => a + b, 0);
+    const totalE = exposes.reduce((a, b) => a + b, 0);
+    const avgCtr = totalE ? (totalC / totalE) * 100 : 0;
+    const cSt = st(clicks);
+    const period = item.period || {};
+    const diagnosisItem =
+      (data && data.diagnosisMeta && data.diagnosisMeta.items && data.diagnosisMeta.items[0]) || {};
+    const diagnosisLogs = [...(diagnosisItem.meta || [])].sort((a, b) =>
+      (a.date || "").localeCompare(b.date || ""),
+    );
+
+    // Debug logging for diagnosis data
+    if (diagnosisLogs.length > 0) {
+      }
+    const diagnosisLatest =
+      diagnosisLogs.length > 0 ? diagnosisLogs[diagnosisLogs.length - 1] : null;
+    const diagnosisLatestCounts =
+      diagnosisLatest && diagnosisLatest.stateCount ? diagnosisLatest.stateCount : {};
+    const diagnosisIndexedValues = diagnosisLogs.map(function (row) {
+      return (row.stateCount && row.stateCount["1"]) || 0;
+    });
+    const diagnosisIndexedDates = diagnosisLogs.map(function (row) {
+      const digits = String(row.date || "").replace(/[^\d]/g, "");
+      return digits.length === 8 ? fmtB(digits) : row.date || "";
+    });
+    // Get source account from active payload/merge metadata
+    const initSiteData =
+      (typeof window !== "undefined" && window.__sadvMergedData && window.__sadvMergedData.sites
+        ? window.__sadvMergedData.sites[site]
+        : null) ||
+      (typeof window !== "undefined" && window.__sadvInitData && window.__sadvInitData.sites
+        ? window.__sadvInitData.sites[site]
+        : null) ||
+      (typeof window !== "undefined" && window.__SEARCHADVISOR_EXPORT_PAYLOAD__ && window.__SEARCHADVISOR_EXPORT_PAYLOAD__.siteData
+        ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__.siteData[site]
+        : null);
+    const sourceAccount =
+      (data && data._merge && data._merge.__source) ||
+      (data && data.__meta && data.__meta.__source) ||
+      (data && data.__source) ||
+      (initSiteData && initSiteData._merge && initSiteData._merge.__source) ||
+      (initSiteData && initSiteData.__meta && initSiteData.__meta.__source) ||
+      null;
+
+    return {
+      site,
+      totalC,
+      totalE,
+      avgCtr: +avgCtr.toFixed(2),
+      trend: cSt.slope || 0,
+      latestClick: clicks.slice(-7).reduce((a, b) => a + b, 0),
+      prevClickRatio: period.prevClickRatio != null && Number.isFinite(parseFloat(period.prevClickRatio)) ? parseFloat(period.prevClickRatio) : undefined,
+      logs,
+      clicks,
+      diagnosisIndexedCurrent: diagnosisLatestCounts["1"] || 0,
+      diagnosisIndexedValues,
+      diagnosisIndexedDates,
+      diagnosisLatestDate: diagnosisLatest && diagnosisLatest.date ? diagnosisLatest.date : "-",
+      diagnosisMetaCode:
+        data && data.diagnosisMeta && typeof data.diagnosisMeta.code !== "undefined"
+          ? data.diagnosisMeta.code
+          : null,
+      diagnosisMetaStatus:
+        data && typeof data.diagnosisMetaStatus !== "undefined"
+          ? data.diagnosisMetaStatus
+          : null,
+      diagnosisMetaRange:
+        data && typeof data.diagnosisMetaRange !== "undefined"
+          ? data.diagnosisMetaRange
+          : null,
+      sourceAccount: sourceAccount,
+    };
+  }
+
 function renderFullRefreshProgress(label, detail, progress, stats) {
   const ratio =
     typeof progress === "number" && isFinite(progress)
@@ -6206,13 +6909,17 @@ function renderFailureSummary(stats) {
     injectDemoData(); // Inject mock data if on localhost
     assignColors();
     const cachedUiState = getCachedUiState();
-    shouldBootstrapFullRefresh() && runFullRefreshPipeline({ trigger: "cache-expiry" });
+    // Skip full refresh in demo mode - we already have the data
+    if (!IS_DEMO_MODE) {
+      shouldBootstrapFullRefresh() && runFullRefreshPipeline({ trigger: "cache-expiry" });
+    }
     let bootMode = CONFIG.MODE.ALL;
     let bootSite = null;
     // In demo mode, default to site mode with first demo site
     if (IS_DEMO_MODE && allSites.length > 0) {
       bootMode = CONFIG.MODE.SITE;
       bootSite = allSites[0];
+      console.log('[Init] Demo mode: setting bootMode to SITE, bootSite to', bootSite);
     }
     const curSiteMatch = location.search.match(/site=([^&]+)/);
     if (curSiteMatch) {
@@ -6237,13 +6944,16 @@ function renderFailureSummary(stats) {
         });
       }
     }
-    if (bootSite) curSite = bootSite;
+    // Don't set curSite here - let setComboSite do it to avoid sameSite=true issue
+    console.log('[Init] bootSite:', bootSite, 'bootMode:', bootMode);
     ensureCurrentSite();
     buildCombo(null);
-    if (curSite) setComboSite(curSite);
+
     const modeBar = document.getElementById("sadv-mode-bar");
     const siteBar = document.getElementById("sadv-site-bar");
-    if (bootMode === CONFIG.MODE.SITE && curSite) {
+    console.log('[Init] bootMode:', bootMode, 'CONFIG.MODE.SITE:', CONFIG.MODE.SITE, 'bootSite:', bootSite);
+    if (bootMode === CONFIG.MODE.SITE && bootSite) {
+      console.log('[Init] Entering SITE mode setup');
       curMode = CONFIG.MODE.SITE;
       if (modeBar) {
         modeBar.querySelectorAll(".sadv-mode").forEach((b) => b.classList.remove("on"));
@@ -6252,8 +6962,13 @@ function renderFailureSummary(stats) {
       }
       if (siteBar) siteBar.classList.add("show");
       if (window.__sadvTabsEl) window.__sadvTabsEl.classList.add("show");
-      loadSiteView(curSite);
+      // Set combo site AFTER curMode is set to SITE (curSite not set yet, so sameSite=false)
+      console.log('[Init] Calling setComboSite with:', bootSite);
+      setComboSite(bootSite);
+      // loadSiteView will be called by setComboSite
     } else {
+      console.log('[Init] Entering ALL mode setup');
+      if (bootSite) setComboSite(bootSite);
       setAllSitesLabel();
       renderAllSites();
     }
