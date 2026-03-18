@@ -306,28 +306,59 @@
    * @returns {Object} Exportable V2 payload
    */
   function exportSingleAccount(accountEmail, encId, now, includeAll) {
+    // 파라미터 검증 및 기본값 설정
+    if (!now) {
+      now = new Date().toISOString();
+    }
+    if (!encId) {
+      encId = 'unknown';
+    }
+
     let sites = {};
     let sitesList = [];
     let siteMeta = {};
 
-    if (includeAll && window.__sadvAccountState?.isMultiAccount) {
+    // 다중 계정 모드에서 includeAll이 true면 모든 계정 내보내기
+    const shouldExportAll = includeAll && window.__sadvAccountState?.isMultiAccount;
+
+    if (shouldExportAll) {
       // 모든 계정 내보내기
       const allAccounts = window.__sadvAccountState.allAccounts;
 
-      for (const accKey of allAccounts) {
-        const accData = window.__sadvAccountState.accountsData[accKey];
-        const accSites = accData?.sites || [];
-        sitesList.push(...accSites);
+      // null 체크 및 유효성 검증
+      if (!allAccounts || !Array.isArray(allAccounts) || allAccounts.length === 0) {
+        console.warn('[exportSingleAccount] No valid accounts for export, falling back to single account mode');
+        // 단일 계정 모드로 폴백
+      } else {
+        for (const accKey of allAccounts) {
+          const accData = window.__sadvAccountState.accountsData[accKey];
+          if (!accData) {
+            console.warn(`[exportSingleAccount] Missing data for account: ${accKey}`);
+            continue;
+          }
+          const accSites = accData?.sites || [];
+          sitesList.push(...accSites);
 
-        if (accData?.dataBySite) {
-          Object.assign(sites, accData.dataBySite);
+          if (accData?.dataBySite) {
+            Object.assign(sites, accData.dataBySite);
+          }
+
+          if (accData?.siteMeta) {
+            Object.assign(siteMeta, accData.siteMeta);
+          }
         }
-
-        if (accData?.siteMeta) {
-          Object.assign(siteMeta, accData.siteMeta);
+        // 모든 계정 처리 성공
+        if (sitesList.length > 0) {
+          siteMeta = typeof getSiteMetaMap === "function" ? getSiteMetaMap() : {};
+          return buildExportPayload(accountEmail, encId, now, sitesList, sites, siteMeta, true);
+        } else {
+          console.warn('[exportSingleAccount] No sites found in any account, falling back to single account mode');
         }
       }
-    } else {
+    }
+
+    // 단일 계정 모드이거나 다중 계정 모드 실패 시 폴백
+    if (!shouldExportAll || sitesList.length === 0) {
       // 현재 계정만 내보내기 (localStorage에서 데이터 수집)
       const keysToCheck = Object.keys(localStorage);
 
@@ -345,7 +376,13 @@
           const match = key.match(/_([^_]+)$/);
           if (!match) continue;
 
-          const site = atob(match[1]);
+          let site;
+          try {
+            site = atob(match[1]);
+          } catch (decodeError) {
+            console.error('[Export] Invalid Base64 encoding in key:', key, decodeError);
+            continue;
+          }
 
           // Structure site data
           const fetchedAt = data.__cacheSavedAt || data.__fetched_at || Date.now();
@@ -381,8 +418,10 @@
     }
 
     // V2: Nested accounts structure
-    const validAccountEmail = (accountEmail && accountEmail.includes('@'))
-      ? accountEmail
+    // 계정 이메일 검증 강화 (공백 문자열, null, undefined 체크)
+    const validAccountEmail = (accountEmail && typeof accountEmail === 'string' &&
+                          accountEmail.trim() && accountEmail.includes('@'))
+      ? accountEmail.trim()
       : 'unknown@naver.com';
 
     // Get current UI state for V2 payload

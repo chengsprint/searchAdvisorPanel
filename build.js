@@ -28,8 +28,8 @@ const MODULES = [
   'app/main/08-renderers.js',
   'app/main/09-ui-controls.js',
   'app/main/10-all-sites-view.js',
+  'app/main/12-snapshot.js',  // Must be before 11-site-view.js (provides fetchSiteData)
   'app/main/11-site-view.js',
-  'app/main/12-snapshot.js',
   'app/main/13-refresh.js',
   'app/main/14-init.js'
 ];
