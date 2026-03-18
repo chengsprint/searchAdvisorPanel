@@ -1,0 +1,50 @@
+{
+  "siteId": "test-site-123",
+  "siteName": "Test Site",
+  "exposeData": {
+    "totalClicks": 1250,
+    "totalImpressions": 45000,
+    "avgCTR": 2.78,
+    "avgPosition": 12.5,
+    "clicks": [
+      { "date": "2026-03-18", "clicks": 150, "impressions": 5000 },
+      { "date": "2026-03-17", "clicks": 140, "impressions": 4800 },
+      { "date": "2026-03-16", "clicks": 130, "impressions": 4600 }
+    ]
+  },
+  "diagnosisData": {
+    "indexedCount": 1250,
+    "notIndexedCount": 150,
+    "errorCount": 25,
+    "warningCount": 75,
+    "lastCrawled": "2026-03-18"
+  },
+  "crawlData": {
+    "crawledCount": 1400,
+    "notCrawledCount": 200,
+    "errorCount": 50,
+    "lastCrawlDate": "2026-03-18",
+    "crawlStatus": "completed"
+  },
+  "backlinkData": {
+    "totalBacklinks": 3500,
+    "uniqueDomains": 450,
+    "newBacklinks": 125,
+    "lostBacklinks": 25,
+    "avgDomainAuthority": 45
+  },
+  "queryData": {
+    "topQueries": [
+      { "query": "test query 1", "clicks": 500, "impressions": 10000, "position": 5.2 },
+      { "query": "test query 2", "clicks": 350, "impressions": 8000, "position": 8.1 },
+      { "query": "test query 3", "clicks": 200, "impressions": 6000, "position": 12.5 }
+    ]
+  },
+  "urlData": {
+    "topUrls": [
+      { "url": "/page1", "clicks": 400, "impressions": 8000, "position": 6.5 },
+      { "url": "/page2", "clicks": 300, "impressions": 7000, "position": 9.2 },
+      { "url": "/page3", "clicks": 200, "impressions": 5000, "position": 11.8 }
+    ]
+  }
+}
