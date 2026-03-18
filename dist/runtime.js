@@ -1605,12 +1605,39 @@ function applyAccountBadge(accountLabel) {
   badge.title = accountLabel;
 }
 
+// Initialize tabsEl for global access
+window.__sadvTabsEl = document.getElementById("sadv-tabs");
+
 // ============================================================
 // DATA-MANAGER - Data storage and caching utilities
 // ============================================================
 
 let allSites = [];
 const memCache = {};
+let accountLabel = "";
+
+function getCacheNamespace() {
+  // For demo/test mode, use a fixed namespace
+  if (IS_DEMO_MODE) return 'demo';
+  // For production, use account-based namespace
+  return 'default';
+}
+
+function getAccountLabel() {
+  try {
+    const authUser =
+      window.__NUXT__ &&
+      window.__NUXT__.state &&
+      window.__NUXT__.state.authUser;
+    return authUser && typeof authUser.email === "string"
+      ? authUser.email
+      : "";
+  } catch (e) {}
+  return "";
+}
+
+// Initialize account label
+accountLabel = getAccountLabel();
 
 function lsGet(k) {
   try {
@@ -1953,6 +1980,44 @@ function shouldFetchDiagnosisMeta(data, options) {
   if (hasSuccessfulDiagnosisMetaSnapshot(data)) return false;
   if (options && options.retryIncomplete) return true;
   return !hasRecentDiagnosisMetaFailure(data);
+}
+
+async function loadSiteList(refresh = false) {
+  console.log('[loadSiteList] Called with refresh:', refresh);
+
+  // Check if we have init data
+  const initData = window.__sadvInitData;
+  if (initData && initData.sites) {
+    const sites = Object.keys(initData.sites);
+    console.log('[loadSiteList] Found init data with sites:', sites);
+    allSites.length = 0;
+    allSites.push(...sites);
+    return sites;
+  }
+
+  // Check merged data
+  const mergedData = window.__sadvMergedData;
+  if (mergedData && mergedData.sites) {
+    const sites = Object.keys(mergedData.sites);
+    console.log('[loadSiteList] Found merged data with sites:', sites);
+    allSites.length = 0;
+    allSites.push(...sites);
+    return sites;
+  }
+
+  // Check cache
+  if (!refresh) {
+    const cached = lsGet(getSiteListCacheKey());
+    if (cached && cached.sites && Array.isArray(cached.sites)) {
+      console.log('[loadSiteList] Found cached sites:', cached.sites);
+      allSites.length = 0;
+      allSites.push(...cached.sites);
+      return cached.sites;
+    }
+  }
+
+  console.log('[loadSiteList] No sites found, returning empty array');
+  return [];
 }
 
 // fetchWithRetry function is provided by 00-constants.js
@@ -4492,66 +4557,85 @@ function getMergedMetaState() {
     { id: "pattern", label: "패턴", icon: ICONS.barChart },
     { id: "insight", label: "인사이트", icon: ICONS.lightbulb },
   ];
-  tabsEl.setAttribute("role", "tablist");
-  tabsEl.replaceChildren(...TABS.map((t) => {
-    const btn = document.createElement("button");
-    btn.className = `sadv-t${t.id === curTab ? " on" : ""}`;
-    btn.dataset.t = t.id;
-    btn.setAttribute("role", "tab");
-    btn.setAttribute("aria-selected", t.id === curTab);
-    btn.setAttribute("aria-controls", "sadv-tabpanel");
-    btn.style.cssText = "display:inline-flex;align-items:center;gap:5px";
-    btn.innerHTML = `${t.icon}${escHtml(t.label)}`;
-    return btn;
-  }));
-  tabsEl.addEventListener("click", function (e) {
-    const t = e.target.closest("[data-t]");
-    if (!t || t.dataset.t === curTab) return;
-    curTab = t.dataset.t;
-    tabsEl.querySelectorAll(".sadv-t").forEach((b) => {
-      b.classList.remove("on");
-      b.setAttribute("aria-selected", "false");
+  const tabsEl = window.__sadvTabsEl;
+  const bdEl = document.getElementById("sadv-bd");
+  if (tabsEl) {
+    tabsEl.setAttribute("role", "tablist");
+    tabsEl.replaceChildren(...TABS.map((t) => {
+      const btn = document.createElement("button");
+      btn.className = `sadv-t${t.id === curTab ? " on" : ""}`;
+      btn.dataset.t = t.id;
+      btn.setAttribute("role", "tab");
+      btn.setAttribute("aria-selected", t.id === curTab);
+      btn.setAttribute("aria-controls", "sadv-tabpanel");
+      btn.style.cssText = "display:inline-flex;align-items:center;gap:5px";
+      btn.innerHTML = `${t.icon}${escHtml(t.label)}`;
+      return btn;
+    }));
+    tabsEl.addEventListener("click", function (e) {
+      const t = e.target.closest("[data-t]");
+      if (!t || t.dataset.t === curTab) return;
+      curTab = t.dataset.t;
+      tabsEl.querySelectorAll(".sadv-t").forEach((b) => {
+        b.classList.remove("on");
+        b.setAttribute("aria-selected", "false");
+      });
+      t.classList.add("on");
+      t.setAttribute("aria-selected", "true");
+      setCachedUiState();
+      if (window.__sadvR && bdEl) {
+        bdEl.setAttribute("role", "tabpanel");
+        bdEl.id = "sadv-tabpanel";
+        bdEl.replaceChildren(window.__sadvR[curTab]());
+        bdEl.scrollTop = 0;
+      }
+      __sadvNotify();
     });
-    t.classList.add("on");
-    t.setAttribute("aria-selected", "true");
-    setCachedUiState();
-    if (window.__sadvR) renderTab(window.__sadvR);
-    __sadvNotify();
-  });
+  }
   function renderTab(R) {
+    const bdEl = document.getElementById("sadv-bd");
+    if (!bdEl) return;
     bdEl.setAttribute("role", "tabpanel");
     bdEl.id = "sadv-tabpanel";
     bdEl.replaceChildren(R[curTab]());
     bdEl.scrollTop = 0;
   }
-  modeBar.setAttribute("role", "tablist");
-  modeBar.addEventListener("click", function (e) {
-    const m = e.target.closest("[data-m]");
-    if (!m) return;
-    switchMode(m.dataset.m);
-  });
+  const modeBar = document.getElementById("sadv-mode-bar");
+  if (modeBar) {
+    modeBar.setAttribute("role", "tablist");
+    modeBar.addEventListener("click", function (e) {
+      const m = e.target.closest("[data-m]");
+      if (!m) return;
+      switchMode(m.dataset.m);
+    });
+  }
   function switchMode(mode) {
     if (mode === curMode) return;
     curMode = mode;
-    modeBar
-      .querySelectorAll(".sadv-mode")
-      .forEach((b) => {
-        b.classList.remove("on");
-        b.setAttribute("aria-selected", "false");
-      });
-    const targetBtn = modeBar.querySelector(`[data-m="${mode}"]`);
-    if (targetBtn) {
-      targetBtn.classList.add("on");
-      targetBtn.setAttribute("aria-selected", "true");
+    const siteBar = document.getElementById("sadv-site-bar");
+    const tabsEl = window.__sadvTabsEl;
+    const modeBar = document.getElementById("sadv-mode-bar");
+    if (modeBar) {
+      modeBar
+        .querySelectorAll(".sadv-mode")
+        .forEach((b) => {
+          b.classList.remove("on");
+          b.setAttribute("aria-selected", "false");
+        });
+      const targetBtn = modeBar.querySelector(`[data-m="${mode}"]`);
+      if (targetBtn) {
+        targetBtn.classList.add("on");
+        targetBtn.setAttribute("aria-selected", "true");
+      }
     }
     if (mode === CONFIG.MODE.ALL) {
-      siteBar.classList.remove("show");
-      tabsEl.classList.remove("show");
+      if (siteBar) siteBar.classList.remove("show");
+      if (tabsEl) tabsEl.classList.remove("show");
       setAllSitesLabel();
       renderAllSites();
     } else {
-      siteBar.classList.add("show");
-      tabsEl.classList.add("show");
+      if (siteBar) siteBar.classList.add("show");
+      if (tabsEl) tabsEl.classList.add("show");
       ensureCurrentSite();
       if (curSite) loadSiteView(curSite);
     }
@@ -4559,6 +4643,7 @@ function getMergedMetaState() {
     if (typeof notifySnapshotShellState === "function") notifySnapshotShellState();
     __sadvNotify();
   }
+
 
 // ============================================================
 // ALL-SITES-VIEW - All sites view rendering and export
@@ -5627,7 +5712,8 @@ function savedAtIso(d) {
     const p = document.getElementById("sadv-p");
     const modeBar = document.getElementById("sadv-mode-bar");
     const siteBar = document.getElementById("sadv-site-bar");
-    const tabsEl = document.getElementById("sadv-tabs");
+    window.__sadvTabsEl = document.getElementById("sadv-tabs"); // Export to global scope
+    const tabsEl = window.__sadvTabsEl;
     const bdEl = document.getElementById("sadv-bd");
     const labelEl = document.getElementById("sadv-site-label");
     tabsEl.innerHTML = TABS.map(function (t) {
@@ -6146,7 +6232,7 @@ function renderFailureSummary(stats) {
         })
       ) {
         curTab = cachedUiState.tab;
-        tabsEl.querySelectorAll(".sadv-t").forEach(function (btn) {
+        window.__sadvTabsEl.querySelectorAll(".sadv-t").forEach(function (btn) {
           btn.classList.toggle("on", btn.dataset.t === curTab);
         });
       }
@@ -6155,12 +6241,17 @@ function renderFailureSummary(stats) {
     ensureCurrentSite();
     buildCombo(null);
     if (curSite) setComboSite(curSite);
+    const modeBar = document.getElementById("sadv-mode-bar");
+    const siteBar = document.getElementById("sadv-site-bar");
     if (bootMode === CONFIG.MODE.SITE && curSite) {
       curMode = CONFIG.MODE.SITE;
-      modeBar.querySelectorAll(".sadv-mode").forEach((b) => b.classList.remove("on"));
-      modeBar.querySelector('[data-m="site"]').classList.add("on");
-      siteBar.classList.add("show");
-      tabsEl.classList.add("show");
+      if (modeBar) {
+        modeBar.querySelectorAll(".sadv-mode").forEach((b) => b.classList.remove("on"));
+        const siteBtn = modeBar.querySelector('[data-m="site"]');
+        if (siteBtn) siteBtn.classList.add("on");
+      }
+      if (siteBar) siteBar.classList.add("show");
+      if (window.__sadvTabsEl) window.__sadvTabsEl.classList.add("show");
       loadSiteView(curSite);
     } else {
       setAllSitesLabel();
