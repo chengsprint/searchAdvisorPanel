@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-03-18
+
+### Fixed
+- `sadv-combo-btn` 등 runtime shell DOM이 누락된 상태에서 `addEventListener`가 호출되던 오류 수정
+- DOMPurify 로드 실패 시 HTML이 문자열로 escape되어 UI shell이 깨지던 문제 수정
+- built-in fallback sanitizer를 도입해 DOMPurify 비가용 환경에서도 shell DOM이 정상 생성되도록 개선
+- `tabsEl`, `modeBar`, `siteBar`, `labelEl`, `bdEl` 등 주요 DOM 참조의 null 방어 및 초기화 가드 추가
+- modular runtime 경로에서 누락되던 `isMergedReport()` helper 추가
+- `accountLabel` TDZ/전역 참조 문제로 인한 초기화 단계 runtime error 수정
+
+### Changed
+- DOMPurify CDN 로딩 경로를 정리하고 SRI 의존으로 인한 차단 이슈를 제거
+- fallback sanitizer 경고를 1회만 출력하도록 조정하여 콘솔 노이즈 감소
+
+### Testing
+- Chromium 실검증에서 `#sadv-combo-btn`, `#sadv-tabs`, `#sadv-bd` 생성 확인
+- 실제 페이지 컨텍스트 주입 테스트에서 console error 0건 확인
+- `npm run build` 통과
+
+### Documentation
+- runtime shell 초기화/DOMPurify fallback 관련 릴리즈 노트 추가
+
 ### Added
 - 에러 추적 시스템 (ERROR_TRACKING) (P0)
 - React 18 호환성 계층 (00-react18-compat.js) (P2)
@@ -55,6 +77,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - README_EN.md (영문 번역)
 - API_REFERENCE_EN.md (API 문서)
 - 30개 상세 보고서/가이드
+
+## [2.0.1] - 2026-03-18
+
+### Fixed
+- `Cannot read properties of null (reading 'addEventListener')` 오류 수정
+- DOMPurify 로드 실패 시 UI shell HTML이 텍스트로 escape되던 문제 수정
+- `sadv-combo-btn`, `sadv-tabs`, `sadv-bd` 등 shell DOM 누락 시 발생하던 연쇄 초기화 오류 방어
+- modular runtime에서 누락되어 발생하던 `isMergedReport` 런타임 오류 수정
+- TDZ/전역 참조 문제로 발생하던 `accountLabel is not defined` 런타임 오류 수정
+
+### Changed
+- DOMPurify fallback을 built-in sanitizer 방식으로 강화
+- shell 초기화 시 필수 DOM scaffold 검증 및 조기 중단 로직 추가
+- combo/tabs/mode UI 바인딩에 null-safe guard 추가
+
+### Validation
+- `npm run build` 통과
+- Chromium 기반 런타임 검증에서 shell DOM 정상 생성 확인
+- 실페이지 컨텍스트 기준 console error 0건 확인
+
+### Documentation
+- `docs/RELEASE_NOTES_v2.0.1_20260318.md` 추가
 
 ## [2.0.0] - 2026-03-18
 
