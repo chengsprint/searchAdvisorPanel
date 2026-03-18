@@ -6,7 +6,19 @@
   "scripts": {
     "build": "node build.js",
     "check": "node --check dist/runtime.js",
-    "test": "node build.js && node --check dist/runtime.js"
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "jest --testPathPattern=tests/unit",
+    "test:integration": "jest --testPathPattern=tests/integration",
+    "test:e2e": "playwright test",
+    "test:coverage": "jest --coverage",
+    "test:watch": "jest --watch",
+    "test:ci": "jest --ci --coverage --maxWorkers=2",
+    "lint": "eslint src/**/*.js tests/**/*.js",
+    "lint:fix": "eslint src/**/*.js tests/**/*.js --fix",
+    "format": "prettier --write \"src/**/*.js\" \"tests/**/*.js\"",
+    "format:check": "prettier --check \"src/**/*.js\" \"tests/**/*.js\"",
+    "validate": "npm run build && npm run check && npm run lint && npm run test",
+    "prepare": "husky install || true"
   },
   "keywords": [
     "searchadvisor",
@@ -16,9 +28,24 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "playwright": "^1.58.2"
+    "@playwright/test": "^1.48.0",
+    "@types/jest": "^29.5.12",
+    "audit-ci": "^7.1.0",
+    "eslint": "^8.57.0",
+    "husky": "^9.0.11",
+    "jest": "^29.7.0",
+    "lint-staged": "^15.2.2",
+    "playwright": "^1.48.0",
+    "prettier": "^3.2.5",
+    "serve": "^14.2.3"
   },
   "dependencies": {
     "puppeteer": "^24.39.1"
+  },
+  "lint-staged": {
+    "*.{js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
   }
 }
