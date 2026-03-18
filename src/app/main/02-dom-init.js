@@ -250,16 +250,17 @@ p.appendChild(siteUiStyle);
 
 // Setup close button handler with keyboard support
 const closeBtn = document.getElementById("sadv-x");
-closeBtn.onclick = function () {
-  p.remove();
-  document.getElementById("sadv-inj") &&
-    document.getElementById("sadv-inj").remove();
-  if (TIP) {
-    TIP.remove();
-    TIP = null;
-  }
-};
-closeBtn.addEventListener('keydown', (e) => {
+if (closeBtn) {
+  closeBtn.onclick = function () {
+    p.remove();
+    document.getElementById("sadv-inj") &&
+      document.getElementById("sadv-inj").remove();
+    if (TIP) {
+      TIP.remove();
+      TIP = null;
+    }
+  };
+  closeBtn.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' || e.key === ' ') {
     e.preventDefault();
     closeBtn.click();
@@ -268,7 +269,8 @@ closeBtn.addEventListener('keydown', (e) => {
     e.preventDefault();
     closeBtn.click();
   }
-});
+  });
+}
 
 // Helper functions
 // Note: escHtml() is provided by 01-helpers.js
