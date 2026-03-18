@@ -652,21 +652,27 @@
     let siteViewReqId = 0;
     let allViewReqId = 0;
     const p = document.getElementById("sadv-p");
-    const modeBar = document.getElementById("sadv-mode-bar");
-    const siteBar = document.getElementById("sadv-site-bar");
+    const snapshotModeBar = document.getElementById("sadv-mode-bar");
+    const snapshotSiteBar = document.getElementById("sadv-site-bar");
     window.__sadvTabsEl = document.getElementById("sadv-tabs"); // Export to global scope
-    const tabsEl = window.__sadvTabsEl;
-    const bdEl = document.getElementById("sadv-bd");
-    const labelEl = document.getElementById("sadv-site-label");
-    tabsEl.innerHTML = TABS.map(function (t) {
-      return '<button class="sadv-t' + (t.id === curTab ? " on" : "") + '" data-t="' + t.id + '">' + t.label + "</button>";
-    }).join("");
+    const snapshotTabsEl = window.__sadvTabsEl;
+    const snapshotBdEl = document.getElementById("sadv-bd");
+    const snapshotLabelEl = document.getElementById("sadv-site-label");
+    const snapshotUiReady = !!(p && snapshotModeBar && snapshotSiteBar && snapshotTabsEl && snapshotBdEl && snapshotLabelEl);
+    if (!snapshotUiReady) {
+      console.error("[Snapshot] Required UI scaffold is incomplete.");
+    }
+    if (snapshotTabsEl) {
+      snapshotTabsEl.innerHTML = TABS.map(function (t) {
+        return '<button class="sadv-t' + (t.id === curTab ? " on" : "") + '" data-t="' + t.id + '">' + t.label + "</button>";
+      }).join("");
+    }
     function setTab(tab) {
-      if (!tab || tab === curTab) return;
-      const t = tabsEl.querySelector('[data-t="' + tab + '"]');
+      if (!snapshotTabsEl || !tab || tab === curTab) return;
+      const t = snapshotTabsEl.querySelector('[data-t="' + tab + '"]');
       if (!t) return;
       curTab = tab;
-      tabsEl.querySelectorAll(".sadv-t").forEach(function (b) {
+      snapshotTabsEl.querySelectorAll(".sadv-t").forEach(function (b) {
         b.classList.remove("on");
       });
       t.classList.add("on");
@@ -674,49 +680,59 @@
       setCachedUiState();
       notifySnapshotShellState();
     }
-    tabsEl.addEventListener("click", function (e) {
-      const t = e.target.closest("[data-t]");
-      if (!t) return;
-      setTab(t.dataset.t);
-    });
-    document.getElementById("sadv-combo-btn").addEventListener("click", function (e) {
-      e.stopPropagation();
-      const wrap = document.getElementById("sadv-combo-wrap");
-      wrap.classList.toggle("open");
-      if (wrap.classList.contains("open")) {
-        setTimeout(function () {
-          const inp = document.getElementById("sadv-combo-search");
-          if (inp) {
-            inp.style.display = "block";
-            inp.value = "";
-            inp.focus();
-            inp.oninput = function () {
-              const q = inp.value.toLowerCase();
-              document.querySelectorAll(".sadv-combo-item").forEach(function (el) {
-                const searchTarget = ((el.dataset.site || "") + " " + getSiteLabel(el.dataset.site || "")).toLowerCase();
-                el.style.display = !q || searchTarget.includes(q) ? "flex" : "none";
-              });
-            };
-          }
-        }, 50);
-      }
-    });
+    if (snapshotTabsEl) {
+      snapshotTabsEl.addEventListener("click", function (e) {
+        const t = e.target.closest("[data-t]");
+        if (!t) return;
+        setTab(t.dataset.t);
+      });
+    }
+    const snapshotComboBtn = document.getElementById("sadv-combo-btn");
+    if (snapshotComboBtn) {
+      snapshotComboBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        const wrap = document.getElementById("sadv-combo-wrap");
+        if (!wrap) return;
+        wrap.classList.toggle("open");
+        if (wrap.classList.contains("open")) {
+          setTimeout(function () {
+            const inp = document.getElementById("sadv-combo-search");
+            if (inp) {
+              inp.style.display = "block";
+              inp.value = "";
+              inp.focus();
+              inp.oninput = function () {
+                const q = inp.value.toLowerCase();
+                document.querySelectorAll(".sadv-combo-item[data-site]").forEach(function (el) {
+                  const searchTarget = ((el.dataset.site || "") + " " + getSiteLabel(el.dataset.site || "")).toLowerCase();
+                  el.style.display = !q || searchTarget.includes(q) ? "flex" : "none";
+                });
+              };
+            }
+          }, 50);
+        }
+      });
+    } else {
+      console.warn("[Snapshot] #sadv-combo-btn not found during initialization");
+    }
     document.addEventListener("click", function (e) {
       const wrap = document.getElementById("sadv-combo-wrap");
       if (wrap && !wrap.contains(e.target)) wrap.classList.remove("open");
     });
-    modeBar.addEventListener("click", function (e) {
-      const m = e.target.closest("[data-m]");
-      if (!m) return;
-      switchMode(m.dataset.m);
-    });
+    if (snapshotModeBar) {
+      snapshotModeBar.addEventListener("click", function (e) {
+        const m = e.target.closest("[data-m]");
+        if (!m) return;
+        switchMode(m.dataset.m);
+      });
+    }
     window.__SEARCHADVISOR_SNAPSHOT_API__ = {
       getState: cloneSnapshotShellState,
       isReady: function () {
-        return true;
+        return snapshotUiReady;
       },
       waitUntilReady: function () {
-        return Promise.resolve(true);
+        return Promise.resolve(snapshotUiReady);
       },
       subscribe: function (listener) {
         SNAPSHOT_SHELL_LISTENERS.add(listener);
@@ -759,17 +775,19 @@
         delete window.__SEARCHADVISOR_SNAPSHOT_SHELL_ROOT__;
       },
     };
-    assignColors();
-    window.__sadvRows = (EXPORT_PAYLOAD.summaryRows || []).filter(function (row) {
-      return row && allSites.includes(row.site);
-    });
-    ensureCurrentSite();
-    buildCombo(window.__sadvRows.length ? window.__sadvRows : null);
-    if (curSite) setComboSite(curSite);
-    setAllSitesLabel();
-    switchMode(INITIAL_MODE);
-    applySnapshotReportDecorations();
-    notifySnapshotShellState();
+    if (snapshotUiReady) {
+      assignColors();
+      window.__sadvRows = (EXPORT_PAYLOAD.summaryRows || []).filter(function (row) {
+        return row && allSites.includes(row.site);
+      });
+      ensureCurrentSite();
+      buildCombo(window.__sadvRows.length ? window.__sadvRows : null);
+      if (curSite) setComboSite(curSite);
+      setAllSitesLabel();
+      switchMode(INITIAL_MODE);
+      applySnapshotReportDecorations();
+      notifySnapshotShellState();
+    }
   <\/script>
 </body>
 </html>`;

@@ -37,6 +37,11 @@ console.log('[Init] Starting async initialization...');
 
     // React 18 Concurrent Mode에 최적화된 초기화 사용
     const initTask = async () => {
+      if (!modeBar || !siteBar || !tabsEl || !bdEl || !labelEl) {
+        console.error('[Init] Required shell elements are missing. Aborting interactive initialization.');
+        return;
+      }
+
       await loadSiteList(false);
       injectDemoData(); // Inject mock data if on localhost
       assignColors();
@@ -67,23 +72,29 @@ console.log('[Init] Starting async initialization...');
           })
         ) {
           curTab = cachedUiState.tab;
-          tabsEl.querySelectorAll(".sadv-t").forEach(function (btn) {
-            btn.classList.toggle("on", btn.dataset.t === curTab);
-          });
+          if (tabsEl) {
+            tabsEl.querySelectorAll(".sadv-t").forEach(function (btn) {
+              btn.classList.toggle("on", btn.dataset.t === curTab);
+            });
+          }
         }
       }
       if (bootSite) curSite = bootSite;
       ensureCurrentSite();
       buildCombo(null);
       if (curSite) setComboSite(curSite);
-      if (bootMode === CONFIG.MODE.SITE && curSite) {
+      if (bootMode === CONFIG.MODE.SITE && curSite && modeBar && siteBar && tabsEl) {
         curMode = CONFIG.MODE.SITE;
         modeBar.querySelectorAll(".sadv-mode").forEach((b) => b.classList.remove("on"));
-        modeBar.querySelector('[data-m="site"]').classList.add("on");
+        const siteModeBtn = modeBar.querySelector('[data-m="site"]');
+        if (siteModeBtn) siteModeBtn.classList.add("on");
         siteBar.classList.add("show");
         tabsEl.classList.add("show");
         loadSiteView(curSite);
       } else {
+        if (bootMode === CONFIG.MODE.SITE && curSite && (!modeBar || !siteBar || !tabsEl)) {
+          console.error("[Init] Site mode UI scaffold missing, falling back to all-sites view.");
+        }
         setAllSitesLabel();
         renderAllSites();
       }
