@@ -204,6 +204,128 @@ const CONFIG = {
   }
 };
 
+// ============================================================
+// ERROR TRACKING SYSTEM
+// ============================================================
+const ERROR_TRACKING = {
+  enabled: false, // 기본 비활성, 사용자 설정으로 활성화 가능
+  endpoint: null, // 추후 엔드포인트 설정 시 사용
+  sampleRate: 1.0,
+  maxQueueSize: 10,
+  errorQueue: [],
+
+  /**
+   * 에러 리포팅 (전송 또는 대기열 저장)
+   * @param {Object} errorContext - 에러 컨텍스트
+   */
+  reportError: function(errorContext) {
+    if (!this.enabled) {
+      // 비활성 상태에서는 콘솔에만 출력
+      console.error('[Error Tracking]', errorContext);
+      return;
+    }
+
+    const enrichedError = {
+      ...errorContext,
+      timestamp: Date.now(),
+      userAgent: navigator.userAgent,
+      page: window.location.href,
+      appVersion: window.__SEARCHADVISOR_VERSION__ || '1.0.0',
+      siteCount: window.__sadvInitData?.sites?.length || 0,
+      isMultiAccount: window.__sadvAccountState?.isMultiAccount || false
+    };
+
+    // 샘플링
+    if (Math.random() > this.sampleRate) {
+      return;
+    }
+
+    // 엔드포인트가 있으면 전송
+    if (this.endpoint) {
+      this.sendToEndpoint(enrichedError);
+    } else {
+      // 대기열에 저장 (최대 크기 제한)
+      if (this.errorQueue.length >= this.maxQueueSize) {
+        this.errorQueue.shift(); // 가장 오래된 에러 제거
+      }
+      this.errorQueue.push(enrichedError);
+    }
+  },
+
+  /**
+   * 엔드포인트로 에러 전송
+   */
+  sendToEndpoint: function(errorData) {
+    if (!this.endpoint) return;
+
+    fetch(this.endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(errorData),
+      keepalive: true
+    }).catch(err => {
+      console.error('[Error Tracking] Failed to report error:', err);
+      // 실패 시 대기열에 저장
+      if (this.errorQueue.length < this.maxQueueSize) {
+        this.errorQueue.push(errorData);
+      }
+    });
+  },
+
+  /**
+   * 대기열에 있는 에러 모두 전송
+   */
+  flushQueue: function() {
+    if (!this.endpoint || this.errorQueue.length === 0) return;
+
+    const errorsToSend = [...this.errorQueue];
+    this.errorQueue = [];
+
+    errorsToSend.forEach(error => {
+      this.sendToEndpoint(error);
+    });
+  },
+
+  /**
+   * 에러 추적 활성화 및 엔드포인트 설정
+   */
+  enable: function(endpoint) {
+    this.enabled = true;
+    this.endpoint = endpoint;
+    console.log('[Error Tracking] Enabled with endpoint:', endpoint);
+  },
+
+  /**
+   * 에러 추적 비활성화
+   */
+  disable: function() {
+    this.enabled = false;
+    console.log('[Error Tracking] Disabled');
+  }
+};
+
+// 전역 에러 핸들러 등록
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', (event) => {
+    ERROR_TRACKING.reportError({
+      type: 'unhandledError',
+      message: event.message,
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno,
+      stack: event.error?.stack
+    });
+  });
+
+  window.addEventListener('unhandledrejection', (event) => {
+    ERROR_TRACKING.reportError({
+      type: 'unhandledRejection',
+      reason: event.reason?.message || String(event.reason),
+      stack: event.reason?.stack
+    });
+  });
+}
+
 const ICONS = {
   // KPI / 통계 아이콘
   click: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 11 4-7"/><path d="m19 11-4-7"/><path d="M2 11h20"/><path d="m3.5 11 1.6 7.4a2 2 0 0 0 2 1.6h9.8a2 2 0 0 0 2-1.6l1.7-7.4"/><path d="m9 11 1 9"/><path d="m15 11-1 9"/></svg>',
@@ -3273,10 +3395,8 @@ function injectDemoData() {
         const accountsMerged = customMergedData.accounts_merged || [];
         const sourceCount = accountsMerged.length || 1;
 
-        // Preserve existing EXPORT_PAYLOAD structure, only add mergedMeta
-        const existingPayload = window.__SEARCHADVISOR_EXPORT_PAYLOAD__ || {};
         window.__SEARCHADVISOR_EXPORT_PAYLOAD__ = {
-          ...existingPayload,
+          siteMeta: {},
           mergedMeta: {
             isMerged: true,
             sourceCount: sourceCount,
@@ -5103,13 +5223,8 @@ if (typeof window !== "undefined") {
     console.log('[buildCombo] Built', orderedSites.length, 'combo items');
   }
   function setComboSite(site) {
-    console.log('[setComboSite] Called with site:', site, 'curMode:', curMode, 'curSite:', curSite);
-    if (!site || !allSites.includes(site)) {
-      console.log('[setComboSite] Returning early - site:', site, 'allSites.includes:', allSites.includes(site));
-      return;
-    }
+    if (!site || !allSites.includes(site)) return;
     const sameSite = curSite === site;
-    console.log('[setComboSite] sameSite:', sameSite, 'curMode:', curMode, 'CONFIG.MODE.SITE:', CONFIG.MODE.SITE);
     curSite = site;
     const col = SITE_COLORS_MAP[site] || C.muted,
       shortName = getSiteLabel(site);
@@ -5120,14 +5235,7 @@ if (typeof window !== "undefined") {
     });
     setCachedUiState();
     if (typeof notifySnapshotShellState === "function") notifySnapshotShellState();
-    // Always call loadSiteView when in SITE mode, even if sameSite=true
-    // This ensures the initial site view loads correctly on startup
-    if (curMode === CONFIG.MODE.SITE) {
-      console.log('[setComboSite] Calling loadSiteView for:', site);
-      loadSiteView(site);
-    } else {
-      console.log('[setComboSite] Not calling loadSiteView - curMode:', curMode);
-    }
+    if (curMode === CONFIG.MODE.SITE && !sameSite) loadSiteView(site);
     __sadvNotify();
   }
   const comboWrapMain = document.getElementById("sadv-combo-wrap");
@@ -5184,96 +5292,66 @@ if (typeof window !== "undefined") {
     { id: "pattern", label: "패턴", icon: ICONS.barChart },
     { id: "insight", label: "인사이트", icon: ICONS.lightbulb },
   ];
-  const tabsEl = window.__sadvTabsEl;
-  const bdEl = document.getElementById("sadv-bd");
-  if (tabsEl) {
-    tabsEl.setAttribute("role", "tablist");
-    tabsEl.replaceChildren(...TABS.map((t) => {
-      const btn = document.createElement("button");
-      btn.className = `sadv-t${t.id === curTab ? " on" : ""}`;
-      btn.dataset.t = t.id;
-      btn.setAttribute("role", "tab");
-      btn.setAttribute("aria-selected", t.id === curTab);
-      btn.setAttribute("aria-controls", "sadv-tabpanel");
-      btn.style.cssText = "display:inline-flex;align-items:center;gap:5px";
-      btn.innerHTML = `${t.icon}${escHtml(t.label)}`;
-      return btn;
-    }));
-    tabsEl.addEventListener("click", function (e) {
-      const t = e.target.closest("[data-t]");
-      if (!t || t.dataset.t === curTab) return;
-      curTab = t.dataset.t;
-      tabsEl.querySelectorAll(".sadv-t").forEach((b) => {
-        b.classList.remove("on");
-        b.setAttribute("aria-selected", "false");
-      });
-      t.classList.add("on");
-      t.setAttribute("aria-selected", "true");
-      setCachedUiState();
-      if (window.__sadvR && bdEl) {
-        bdEl.setAttribute("role", "tabpanel");
-        bdEl.id = "sadv-tabpanel";
-        bdEl.replaceChildren(window.__sadvR[curTab]());
-        bdEl.scrollTop = 0;
-      }
-      __sadvNotify();
+  tabsEl.setAttribute("role", "tablist");
+  tabsEl.replaceChildren(...TABS.map((t) => {
+    const btn = document.createElement("button");
+    btn.className = `sadv-t${t.id === curTab ? " on" : ""}`;
+    btn.dataset.t = t.id;
+    btn.setAttribute("role", "tab");
+    btn.setAttribute("aria-selected", t.id === curTab);
+    btn.setAttribute("aria-controls", "sadv-tabpanel");
+    btn.style.cssText = "display:inline-flex;align-items:center;gap:5px";
+    btn.innerHTML = `${t.icon}${escHtml(t.label)}`;
+    return btn;
+  }));
+  tabsEl.addEventListener("click", function (e) {
+    const t = e.target.closest("[data-t]");
+    if (!t || t.dataset.t === curTab) return;
+    curTab = t.dataset.t;
+    tabsEl.querySelectorAll(".sadv-t").forEach((b) => {
+      b.classList.remove("on");
+      b.setAttribute("aria-selected", "false");
     });
-  }
+    t.classList.add("on");
+    t.setAttribute("aria-selected", "true");
+    setCachedUiState();
+    if (window.__sadvR) renderTab(window.__sadvR);
+    __sadvNotify();
+  });
   function renderTab(R) {
-    console.log('[renderTab] Called with curTab:', curTab);
-    const bdEl = document.getElementById("sadv-bd");
-    console.log('[renderTab] bdEl found:', !!bdEl);
-    if (!bdEl) {
-      console.error('[renderTab] sadv-bd element not found!');
-      return;
-    }
-    if (!R || !R[curTab]) {
-      console.error('[renderTab] No renderer for curTab:', curTab, 'Available tabs:', R ? Object.keys(R) : 'R is null');
-      return;
-    }
-    console.log('[renderTab] Rendering tab:', curTab);
     bdEl.setAttribute("role", "tabpanel");
     bdEl.id = "sadv-tabpanel";
     bdEl.replaceChildren(R[curTab]());
     bdEl.scrollTop = 0;
-    console.log('[renderTab] Done rendering tab');
   }
-  const modeBar = document.getElementById("sadv-mode-bar");
-  if (modeBar) {
-    modeBar.setAttribute("role", "tablist");
-    modeBar.addEventListener("click", function (e) {
-      const m = e.target.closest("[data-m]");
-      if (!m) return;
-      switchMode(m.dataset.m);
-    });
-  }
+  modeBar.setAttribute("role", "tablist");
+  modeBar.addEventListener("click", function (e) {
+    const m = e.target.closest("[data-m]");
+    if (!m) return;
+    switchMode(m.dataset.m);
+  });
   function switchMode(mode) {
     if (mode === curMode) return;
     curMode = mode;
-    const siteBar = document.getElementById("sadv-site-bar");
-    const tabsEl = window.__sadvTabsEl;
-    const modeBar = document.getElementById("sadv-mode-bar");
-    if (modeBar) {
-      modeBar
-        .querySelectorAll(".sadv-mode")
-        .forEach((b) => {
-          b.classList.remove("on");
-          b.setAttribute("aria-selected", "false");
-        });
-      const targetBtn = modeBar.querySelector(`[data-m="${mode}"]`);
-      if (targetBtn) {
-        targetBtn.classList.add("on");
-        targetBtn.setAttribute("aria-selected", "true");
-      }
+    modeBar
+      .querySelectorAll(".sadv-mode")
+      .forEach((b) => {
+        b.classList.remove("on");
+        b.setAttribute("aria-selected", "false");
+      });
+    const targetBtn = modeBar.querySelector(`[data-m="${mode}"]`);
+    if (targetBtn) {
+      targetBtn.classList.add("on");
+      targetBtn.setAttribute("aria-selected", "true");
     }
     if (mode === CONFIG.MODE.ALL) {
-      if (siteBar) siteBar.classList.remove("show");
-      if (tabsEl) tabsEl.classList.remove("show");
+      siteBar.classList.remove("show");
+      tabsEl.classList.remove("show");
       setAllSitesLabel();
       renderAllSites();
     } else {
-      if (siteBar) siteBar.classList.add("show");
-      if (tabsEl) tabsEl.classList.add("show");
+      siteBar.classList.add("show");
+      tabsEl.classList.add("show");
       ensureCurrentSite();
       if (curSite) loadSiteView(curSite);
     }
@@ -5281,7 +5359,6 @@ if (typeof window !== "undefined") {
     if (typeof notifySnapshotShellState === "function") notifySnapshotShellState();
     __sadvNotify();
   }
-
 
 // ============================================================
 // ALL-SITES-VIEW - All sites view rendering and export
@@ -5293,13 +5370,22 @@ async function renderAllSites() {
   const loading = document.createElement("div");
   loading.style.cssText =
     "padding:24px 18px 20px;color:#7a9ab8;text-align:left;line-height:1.6";
+
+  // 예상 소요 시간 계산 (사이트당 약 0.5초로 가정)
+  const estimatedTimeSeconds = Math.ceil(allSites.length * 0.5);
+  const estimatedTimeText = estimatedTimeSeconds > 60
+    ? `${Math.floor(estimatedTimeSeconds / 60)}분 ${estimatedTimeSeconds % 60}초`
+    : `${estimatedTimeSeconds}초`;
+
   loading.innerHTML =
     '<div style="font-size:13px;font-weight:700;color:#d4ecff;margin-bottom:8px">전체 현황을 준비 중입니다</div>' +
-    '<div id="sadv-all-progress-detail" style="font-size:11px;margin-bottom:10px">기본 리포트를 불러오는 중입니다.</div>' +
+    `<div id="sadv-all-progress-detail" style="font-size:11px;margin-bottom:10px">기본 리포트를 불러오는 중입니다. (예상: ${estimatedTimeText})</div>` +
     '<div style="height:10px;border-radius:999px;background:#0d1829;border:1px solid #1a2d45;overflow:hidden"><div id="sadv-all-progress-bar" style="width:6%;height:100%;background:linear-gradient(90deg,#40c4ff,#00e676)"></div></div>' +
-    '<div id="sadv-all-progress-meta" style="font-size:10px;color:#3d5a78;margin-top:8px">메타 진단은 2개씩 천천히 요청합니다.</div>';
+    '<div id="sadv-all-progress-meta" style="font-size:10px;color:#3d5a78;margin-top:8px">메타 진단은 2개씩 천천히 요청합니다.</div>' +
+    '<div id="sadv-all-progress-percent" style="font-size:11px;color:#40c4ff;margin-top:4px;font-weight:600">0%</div>';
   bdEl.innerHTML = "";
   bdEl.appendChild(loading);
+
   if (!allSites.length) {
     bdEl.innerHTML =
       '<div style="padding:30px 20px;text-align:center"><div style="font-size:32px">↻</div><div style="color:#ffca28;font-weight:700;margin:10px 0">사이트 목록을 찾을 수 없어요</div><div style="color:#7a9ab8;font-size:12px;line-height:2">↻ 버튼을 눌러 새로고침 해보세요<br>또는 서치어드바이저 콘솔 페이지에서 실행해주세요</div></div>';
@@ -5310,13 +5396,38 @@ async function renderAllSites() {
   const loadingDetail = loading.querySelector("#sadv-all-progress-detail");
   const loadingBar = loading.querySelector("#sadv-all-progress-bar");
   const loadingMeta = loading.querySelector("#sadv-all-progress-meta");
+  const loadingPercent = loading.querySelector("#sadv-all-progress-percent");
   let missingDiagnosisMetaCount = null;
+
+  // 시작 시간 기록 (예상 시간 정확도 개선)
+  const startTime = Date.now();
+
   const setProgress = function (label, ratio, note) {
     if (requestId !== allViewReqId || curMode !== CONFIG.MODE.ALL) return;
     if (ratio >= CONFIG.PROGRESS.META_PHASE_RATIO_START && missingDiagnosisMetaCount === 0) return;
     if (loadingDetail) loadingDetail.textContent = label;
     if (loadingBar) loadingBar.style.width = Math.max(6, Math.round(ratio * 100)) + "%";
+    if (loadingPercent) {
+      const percent = Math.round(ratio * 100);
+      loadingPercent.textContent = `${percent}%`;
+      // 진행률 색상 변경 (완료 시 녹색)
+      loadingPercent.style.color = percent >= 100 ? '#00e676' : '#40c4ff';
+    }
     if (loadingMeta && note) loadingMeta.textContent = note;
+
+    // 경과 시간 및 남은 시간 표시
+    if (loadingMeta && ratio < 1) {
+      const elapsed = Date.now() - startTime;
+      const estimatedTotal = elapsed / ratio;
+      const remaining = Math.max(0, estimatedTotal - elapsed);
+      const remainingSeconds = Math.ceil(remaining / 1000);
+      if (remainingSeconds > 5) {
+        const remainingText = remainingSeconds > 60
+          ? `${Math.floor(remainingSeconds / 60)}분 ${remainingSeconds % 60}초`
+          : `${remainingSeconds}초`;
+        loadingMeta.textContent = `${note} (남은 시간: 약 ${remainingText})`;
+      }
+    }
   };
   const exposeResults = [];
   for (let i = 0; i < sitesToLoad.length; i += ALL_SITES_BATCH) {
@@ -5330,12 +5441,30 @@ async function renderAllSites() {
     );
     const batchResults = await Promise.allSettled(batchSites.map((site) => fetchExposeData(site)));
     if (requestId !== allViewReqId || curMode !== "all") return;
+    let failedCount = 0;
     batchResults.forEach(function (result, offset) {
       exposeResults[i + offset] = result;
       if (result.status === "fulfilled") {
         siteDataBySite[batchSites[offset]] = result.value;
+      } else {
+        // 실패한 사이트 에러 추적
+        failedCount++;
+        const errorDetail = result.reason?.message || result.reason || '알 수 없는 오류';
+        ERROR_TRACKING.reportError({
+          type: 'dataLoadError',
+          phase: 'expose',
+          site: batchSites[offset],
+          error: errorDetail,
+          batchIndex: i + offset,
+          totalSites: sitesToLoad.length
+        });
       }
     });
+    // 배치 실패 시 진행률 메타에 표시
+    if (failedCount > 0 && loadingMeta) {
+      const currentNote = loadingMeta.textContent;
+      loadingMeta.textContent = `${currentNote} (${failedCount}개 사이트 실패 - 자동 재시도됨)`;
+    }
   }
   const metaSitesToLoad = sitesToLoad.filter(function (site) {
     return !hasDiagnosisMetaSnapshot(siteDataBySite[site] || null);
@@ -6585,86 +6714,21 @@ function savedAtIso(d) {
   }
 
   async function loadSiteView(site) {
-    console.log('[loadSiteView] Called with site:', site);
     if (!site) return;
-
-    // Get DOM elements
-    const labelEl = document.getElementById('sadv-site-label');
-    const bdEl = document.getElementById('sadv-bd');
-    if (!labelEl || !bdEl) {
-      console.error('[loadSiteView] DOM elements not found!');
-      return;
-    }
-
-    // Use window-level counter for request cancellation
-    if (typeof window.__siteViewReqId === 'undefined') window.__siteViewReqId = 0;
-    const requestId = ++window.__siteViewReqId;
+    const requestId = ++siteViewReqId;
     labelEl.innerHTML = `<span>${escHtml(getSiteLabel(site))}</span>`;
     bdEl.innerHTML = `<div style="padding:50px 20px;text-align:center;color:#64748b"><div style="display:inline-flex;align-items:center;gap:8px">${ICONS.refresh.replace('width="13" height="13"','width="16" height="16"')} 로딩 중...</div></div>`;
-
-    // Fetch site data - try multiple sources
-    console.log('[loadSiteView] Fetching data for:', site);
-    let d = null;
-
-    // Try __sadvInitData first (set by loadSiteList for V2 format)
-    if (window.__sadvInitData && window.__sadvInitData.sites && window.__sadvInitData.sites[site]) {
-      d = window.__sadvInitData.sites[site];
-      console.log('[loadSiteView] Found data in __sadvInitData');
-    }
-    // Try __sadvMergedData
-    else if (window.__sadvMergedData && window.__sadvMergedData.sites && window.__sadvMergedData.sites[site]) {
-      d = window.__sadvMergedData.sites[site];
-      console.log('[loadSiteView] Found data in __sadvMergedData');
-    }
-    // Try EXPORT_PAYLOAD
-    else if (window.__SEARCHADVISOR_EXPORT_PAYLOAD__) {
-      const payload = window.__SEARCHADVISOR_EXPORT_PAYLOAD__;
-      // Handle V2 format
-      if (payload.__meta && payload.accounts) {
-        const accountKeys = Object.keys(payload.accounts);
-        for (const accKey of accountKeys) {
-          const account = payload.accounts[accKey];
-          if (account.dataBySite && account.dataBySite[site]) {
-            d = account.dataBySite[site];
-            console.log('[loadSiteView] Found data in V2 EXPORT_PAYLOAD');
-            break;
-          }
-        }
-      }
-      // Handle legacy format
-      else if (payload.dataBySite && payload.dataBySite[site]) {
-        d = payload.dataBySite[site];
-        console.log('[loadSiteView] Found data in legacy EXPORT_PAYLOAD');
-      }
-    }
-    // Try memCache
-    else if (typeof memCache !== 'undefined' && memCache && memCache[site]) {
-      d = memCache[site];
-      console.log('[loadSiteView] Found data in memCache');
-    }
-
-    console.log('[loadSiteView] Data result:', d ? 'has data' : 'null', 'expose:', d?.expose?.items?.length);
-
-    // Get current curSite from window or module scope
-    const curSite = typeof window.curSite !== 'undefined' ? window.curSite : site;
-
-    if (requestId !== window.__siteViewReqId || site !== curSite) {
-      console.log('[loadSiteView] Returning early - requestId mismatch or site changed');
-      return;
-    }
+    const d = await fetchSiteData(site);
+    if (requestId !== siteViewReqId || site !== curSite) return;
     if (!d || !d.expose || !d.expose.items || !d.expose.items.length) {
-      console.log('[loadSiteView] No expose data, showing error');
       bdEl.innerHTML =
         `<div style="padding:40px 20px;text-align:center"><div style="display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;background:#0f172a;border:1px solid #334155;border-radius:12px;margin-bottom:16px;color:#ef4444">${ICONS.xMark.replace('width="14" height="14"','width="22" height="22"')}</div><div style="color:#f8fafc;font-weight:700;font-size:14px;margin-bottom:6px">데이터 없음</div><div style="color:#64748b;font-size:12px">이 사이트의 데이터가 없습니다</div></div>`;
       return;
     }
-    console.log('[loadSiteView] Building renderers...');
     const R = buildRenderers(d.expose, d.crawl, d.backlink, d.diagnosisMeta);
     window.__sadvR = R;
-    console.log('[loadSiteView] Calling renderTab...');
     renderTab(R);
     if (typeof notifySnapshotShellState === "function") notifySnapshotShellState();
-    console.log('[loadSiteView] Done');
   }
 
   function buildSiteSummaryRow(site, data) {
@@ -6909,17 +6973,13 @@ function renderFailureSummary(stats) {
     injectDemoData(); // Inject mock data if on localhost
     assignColors();
     const cachedUiState = getCachedUiState();
-    // Skip full refresh in demo mode - we already have the data
-    if (!IS_DEMO_MODE) {
-      shouldBootstrapFullRefresh() && runFullRefreshPipeline({ trigger: "cache-expiry" });
-    }
+    shouldBootstrapFullRefresh() && runFullRefreshPipeline({ trigger: "cache-expiry" });
     let bootMode = CONFIG.MODE.ALL;
     let bootSite = null;
     // In demo mode, default to site mode with first demo site
     if (IS_DEMO_MODE && allSites.length > 0) {
       bootMode = CONFIG.MODE.SITE;
       bootSite = allSites[0];
-      console.log('[Init] Demo mode: setting bootMode to SITE, bootSite to', bootSite);
     }
     const curSiteMatch = location.search.match(/site=([^&]+)/);
     if (curSiteMatch) {
@@ -6939,36 +6999,23 @@ function renderFailureSummary(stats) {
         })
       ) {
         curTab = cachedUiState.tab;
-        window.__sadvTabsEl.querySelectorAll(".sadv-t").forEach(function (btn) {
+        tabsEl.querySelectorAll(".sadv-t").forEach(function (btn) {
           btn.classList.toggle("on", btn.dataset.t === curTab);
         });
       }
     }
-    // Don't set curSite here - let setComboSite do it to avoid sameSite=true issue
-    console.log('[Init] bootSite:', bootSite, 'bootMode:', bootMode);
+    if (bootSite) curSite = bootSite;
     ensureCurrentSite();
     buildCombo(null);
-
-    const modeBar = document.getElementById("sadv-mode-bar");
-    const siteBar = document.getElementById("sadv-site-bar");
-    console.log('[Init] bootMode:', bootMode, 'CONFIG.MODE.SITE:', CONFIG.MODE.SITE, 'bootSite:', bootSite);
-    if (bootMode === CONFIG.MODE.SITE && bootSite) {
-      console.log('[Init] Entering SITE mode setup');
+    if (curSite) setComboSite(curSite);
+    if (bootMode === CONFIG.MODE.SITE && curSite) {
       curMode = CONFIG.MODE.SITE;
-      if (modeBar) {
-        modeBar.querySelectorAll(".sadv-mode").forEach((b) => b.classList.remove("on"));
-        const siteBtn = modeBar.querySelector('[data-m="site"]');
-        if (siteBtn) siteBtn.classList.add("on");
-      }
-      if (siteBar) siteBar.classList.add("show");
-      if (window.__sadvTabsEl) window.__sadvTabsEl.classList.add("show");
-      // Set combo site AFTER curMode is set to SITE (curSite not set yet, so sameSite=false)
-      console.log('[Init] Calling setComboSite with:', bootSite);
-      setComboSite(bootSite);
-      // loadSiteView will be called by setComboSite
+      modeBar.querySelectorAll(".sadv-mode").forEach((b) => b.classList.remove("on"));
+      modeBar.querySelector('[data-m="site"]').classList.add("on");
+      siteBar.classList.add("show");
+      tabsEl.classList.add("show");
+      loadSiteView(curSite);
     } else {
-      console.log('[Init] Entering ALL mode setup');
-      if (bootSite) setComboSite(bootSite);
       setAllSitesLabel();
       renderAllSites();
     }

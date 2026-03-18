@@ -29,6 +29,128 @@ const CONFIG = {
   }
 };
 
+// ============================================================
+// ERROR TRACKING SYSTEM
+// ============================================================
+const ERROR_TRACKING = {
+  enabled: false, // 기본 비활성, 사용자 설정으로 활성화 가능
+  endpoint: null, // 추후 엔드포인트 설정 시 사용
+  sampleRate: 1.0,
+  maxQueueSize: 10,
+  errorQueue: [],
+
+  /**
+   * 에러 리포팅 (전송 또는 대기열 저장)
+   * @param {Object} errorContext - 에러 컨텍스트
+   */
+  reportError: function(errorContext) {
+    if (!this.enabled) {
+      // 비활성 상태에서는 콘솔에만 출력
+      console.error('[Error Tracking]', errorContext);
+      return;
+    }
+
+    const enrichedError = {
+      ...errorContext,
+      timestamp: Date.now(),
+      userAgent: navigator.userAgent,
+      page: window.location.href,
+      appVersion: window.__SEARCHADVISOR_VERSION__ || '1.0.0',
+      siteCount: window.__sadvInitData?.sites?.length || 0,
+      isMultiAccount: window.__sadvAccountState?.isMultiAccount || false
+    };
+
+    // 샘플링
+    if (Math.random() > this.sampleRate) {
+      return;
+    }
+
+    // 엔드포인트가 있으면 전송
+    if (this.endpoint) {
+      this.sendToEndpoint(enrichedError);
+    } else {
+      // 대기열에 저장 (최대 크기 제한)
+      if (this.errorQueue.length >= this.maxQueueSize) {
+        this.errorQueue.shift(); // 가장 오래된 에러 제거
+      }
+      this.errorQueue.push(enrichedError);
+    }
+  },
+
+  /**
+   * 엔드포인트로 에러 전송
+   */
+  sendToEndpoint: function(errorData) {
+    if (!this.endpoint) return;
+
+    fetch(this.endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(errorData),
+      keepalive: true
+    }).catch(err => {
+      console.error('[Error Tracking] Failed to report error:', err);
+      // 실패 시 대기열에 저장
+      if (this.errorQueue.length < this.maxQueueSize) {
+        this.errorQueue.push(errorData);
+      }
+    });
+  },
+
+  /**
+   * 대기열에 있는 에러 모두 전송
+   */
+  flushQueue: function() {
+    if (!this.endpoint || this.errorQueue.length === 0) return;
+
+    const errorsToSend = [...this.errorQueue];
+    this.errorQueue = [];
+
+    errorsToSend.forEach(error => {
+      this.sendToEndpoint(error);
+    });
+  },
+
+  /**
+   * 에러 추적 활성화 및 엔드포인트 설정
+   */
+  enable: function(endpoint) {
+    this.enabled = true;
+    this.endpoint = endpoint;
+    console.log('[Error Tracking] Enabled with endpoint:', endpoint);
+  },
+
+  /**
+   * 에러 추적 비활성화
+   */
+  disable: function() {
+    this.enabled = false;
+    console.log('[Error Tracking] Disabled');
+  }
+};
+
+// 전역 에러 핸들러 등록
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', (event) => {
+    ERROR_TRACKING.reportError({
+      type: 'unhandledError',
+      message: event.message,
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno,
+      stack: event.error?.stack
+    });
+  });
+
+  window.addEventListener('unhandledrejection', (event) => {
+    ERROR_TRACKING.reportError({
+      type: 'unhandledRejection',
+      reason: event.reason?.message || String(event.reason),
+      stack: event.reason?.stack
+    });
+  });
+}
+
 const ICONS = {
   // KPI / 통계 아이콘
   click: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 11 4-7"/><path d="m19 11-4-7"/><path d="M2 11h20"/><path d="m3.5 11 1.6 7.4a2 2 0 0 0 2 1.6h9.8a2 2 0 0 0 2-1.6l1.7-7.4"/><path d="m9 11 1 9"/><path d="m15 11-1 9"/></svg>',
