@@ -2,6 +2,65 @@
 'use strict';
 var process=globalThis.process||{env:{NODE_ENV:"production"}};
 
+// ============================================================
+// P0 SECURITY: DOMPurify Integration
+// This section loads DOMPurify for XSS prevention
+// ============================================================
+
+(function() {
+  'use strict';
+
+  // DOMPurify will be loaded from CDN if not already available
+  if (typeof DOMPurify === 'undefined') {
+    // Attempt to load from CDN (will be used in browser environment)
+    if (typeof document !== 'undefined') {
+      var script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/dompurify@3.3.3/dist/purify.min.js';
+      script.integrity = 'sha512-iHT6/YuqYMFeG5+JT0DqY2to8PyUGeTVG2XvrUQDCQr0OVA4rqXiPGsVMGpK2w+fW6ulWzTd8o1MN6/EfwM2WA==';
+      script.crossOrigin = 'anonymous';
+      script.async = false; // Load synchronously to ensure availability
+
+      // Store pending callbacks
+      var pendingCallbacks = [];
+
+      // Make DOMPurify available when loaded
+      script.onload = function() {
+        window.__DOMPurifyLoaded = true;
+        pendingCallbacks.forEach(function(cb) { cb(); });
+        pendingCallbacks = [];
+      };
+
+      // Fallback if CDN fails
+      script.onerror = function() {
+        console.warn('[SECURITY] Failed to load DOMPurify from CDN. Falling back to basic HTML escaping.');
+        window.__DOMPurifyLoaded = false;
+        window.__DOMPurifyFailed = true;
+      };
+
+      document.head.insertBefore(script, document.head.firstChild);
+    }
+  } else {
+    window.__DOMPurifyLoaded = true;
+  }
+
+  // Helper to check if DOMPurify is ready
+  window.isDOMPurifyReady = function() {
+    return typeof DOMPurify !== 'undefined' && DOMPurify.sanitize;
+  };
+
+  // Helper to wait for DOMPurify to be ready
+  window.waitForDOMPurify = function(callback) {
+    if (window.isDOMPurifyReady()) {
+      callback();
+    } else if (window.__DOMPurifyFailed) {
+      callback(); // Proceed with fallback
+    } else {
+      pendingCallbacks.push(callback);
+    }
+  };
+})();
+
+
 (function(){var styleId="sadv-react-style";var style=document.getElementById(styleId);if(!style){style=document.createElement("style");style.id=styleId;style.textContent="/*! tailwindcss v4.2.1 | MIT License | https://tailwindcss.com */@layer properties{@supports (((-webkit-hyphens:none)) and (not (margin-trim:inline))) or ((-moz-orient:inline) and (not (color:rgb(from red r g b)))){*,:before,:after,::backdrop{--tw-translate-x:0;--tw-translate-y:0;--tw-translate-z:0;--tw-scale-x:1;--tw-scale-y:1;--tw-scale-z:1;--tw-rotate-x:initial;--tw-rotate-y:initial;--tw-rotate-z:initial;--tw-skew-x:initial;--tw-skew-y:initial;--tw-pan-x:initial;--tw-pan-y:initial;--tw-pinch-zoom:initial;--tw-space-y-reverse:0;--tw-space-x-reverse:0;--tw-divide-x-reverse:0;--tw-border-style:solid;--tw-divide-y-reverse:0;--tw-gradient-position:initial;--tw-gradient-from:#0000;--tw-gradient-via:#0000;--tw-gradient-to:#0000;--tw-gradient-stops:initial;--tw-gradient-via-stops:initial;--tw-gradient-from-position:0%;--tw-gradient-via-position:50%;--tw-gradient-to-position:100%;--tw-leading:initial;--tw-font-weight:initial;--tw-tracking:initial;--tw-ordinal:initial;--tw-slashed-zero:initial;--tw-numeric-figure:initial;--tw-numeric-spacing:initial;--tw-numeric-fraction:initial;--tw-shadow:0 0 #0000;--tw-shadow-color:initial;--tw-shadow-alpha:100%;--tw-inset-shadow:0 0 #0000;--tw-inset-shadow-color:initial;--tw-inset-shadow-alpha:100%;--tw-ring-color:initial;--tw-ring-shadow:0 0 #0000;--tw-inset-ring-color:initial;--tw-inset-ring-shadow:0 0 #0000;--tw-ring-inset:initial;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-offset-shadow:0 0 #0000;--tw-outline-style:solid;--tw-blur:initial;--tw-brightness:initial;--tw-contrast:initial;--tw-grayscale:initial;--tw-hue-rotate:initial;--tw-invert:initial;--tw-opacity:initial;--tw-saturate:initial;--tw-sepia:initial;--tw-drop-shadow:initial;--tw-drop-shadow-color:initial;--tw-drop-shadow-alpha:100%;--tw-drop-shadow-size:initial;--tw-backdrop-blur:initial;--tw-backdrop-brightness:initial;--tw-backdrop-contrast:initial;--tw-backdrop-grayscale:initial;--tw-backdrop-hue-rotate:initial;--tw-backdrop-invert:initial;--tw-backdrop-opacity:initial;--tw-backdrop-saturate:initial;--tw-backdrop-sepia:initial}}}@layer theme{:root,:host{--font-sans:ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\";--font-mono:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace;--color-emerald-400:oklch(76.5% .177 163.223);--color-sky-50:oklch(97.7% .013 236.62);--color-sky-100:oklch(95.1% .026 236.824);--color-sky-200:oklch(90.1% .058 230.902);--color-sky-300:oklch(82.8% .111 230.318);--color-sky-400:oklch(74.6% .16 232.661);--color-sky-500:oklch(68.5% .169 237.323);--color-slate-50:oklch(98.4% .003 247.858);--color-slate-100:oklch(96.8% .007 247.896);--color-slate-300:oklch(86.9% .022 252.894);--color-slate-400:oklch(70.4% .04 256.788);--color-slate-500:oklch(55.4% .046 257.417);--color-slate-950:oklch(12.9% .042 264.695);--color-black:#000;--color-white:#fff;--spacing:.25rem;--text-xs:.75rem;--text-xs--line-height:calc(1 / .75);--text-sm:.875rem;--text-sm--line-height:calc(1.25 / .875);--font-weight-medium:500;--font-weight-semibold:600;--radius-md:.375rem;--radius-lg:.5rem;--radius-xl:.75rem;--radius-2xl:1rem;--default-transition-duration:.15s;--default-transition-timing-function:cubic-bezier(.4, 0, .2, 1);--default-font-family:var(--font-sans);--default-mono-font-family:var(--font-mono)}}@layer base{*,:after,:before,::backdrop{box-sizing:border-box;border:0 solid;margin:0;padding:0}::file-selector-button{box-sizing:border-box;border:0 solid;margin:0;padding:0}html,:host{-webkit-text-size-adjust:100%;tab-size:4;line-height:1.5;font-family:var(--default-font-family,ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\");font-feature-settings:var(--default-font-feature-settings,normal);font-variation-settings:var(--default-font-variation-settings,normal);-webkit-tap-highlight-color:transparent}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;-webkit-text-decoration:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,samp,pre{font-family:var(--default-mono-font-family,ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace);font-feature-settings:var(--default-mono-font-feature-settings,normal);font-variation-settings:var(--default-mono-font-variation-settings,normal);font-size:1em}small{font-size:80%}sub,sup{vertical-align:baseline;font-size:75%;line-height:0;position:relative}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}:-moz-focusring{outline:auto}progress{vertical-align:baseline}summary{display:list-item}ol,ul,menu{list-style:none}img,svg,video,canvas,audio,iframe,embed,object{vertical-align:middle;display:block}img,video{max-width:100%;height:auto}button,input,select,optgroup,textarea{font:inherit;font-feature-settings:inherit;font-variation-settings:inherit;letter-spacing:inherit;color:inherit;opacity:1;background-color:#0000;border-radius:0}::file-selector-button{font:inherit;font-feature-settings:inherit;font-variation-settings:inherit;letter-spacing:inherit;color:inherit;opacity:1;background-color:#0000;border-radius:0}:where(select:is([multiple],[size])) optgroup{font-weight:bolder}:where(select:is([multiple],[size])) optgroup option{padding-inline-start:20px}::file-selector-button{margin-inline-end:4px}::placeholder{opacity:1}@supports (not ((-webkit-appearance:-apple-pay-button))) or (contain-intrinsic-size:1px){::placeholder{color:currentColor}@supports (color:color-mix(in lab,red,red)){::placeholder{color:color-mix(in oklab,currentcolor 50%,transparent)}}}textarea{resize:vertical}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-date-and-time-value{min-height:1lh;text-align:inherit}::-webkit-datetime-edit{display:inline-flex}::-webkit-datetime-edit-fields-wrapper{padding:0}::-webkit-datetime-edit{padding-block:0}::-webkit-datetime-edit-year-field{padding-block:0}::-webkit-datetime-edit-month-field{padding-block:0}::-webkit-datetime-edit-day-field{padding-block:0}::-webkit-datetime-edit-hour-field{padding-block:0}::-webkit-datetime-edit-minute-field{padding-block:0}::-webkit-datetime-edit-second-field{padding-block:0}::-webkit-datetime-edit-millisecond-field{padding-block:0}::-webkit-datetime-edit-meridiem-field{padding-block:0}::-webkit-calendar-picker-indicator{line-height:1}:-moz-ui-invalid{box-shadow:none}button,input:where([type=button],[type=reset],[type=submit]){appearance:button}::file-selector-button{appearance:button}::-webkit-inner-spin-button{height:auto}::-webkit-outer-spin-button{height:auto}[hidden]:where(:not([hidden=until-found])){display:none!important}}@layer components;@layer utilities{.pointer-events-none{pointer-events:none}.collapse{visibility:collapse}.invisible{visibility:hidden}.visible{visibility:visible}.sr-only{clip-path:inset(50%);white-space:nowrap;border-width:0;width:1px;height:1px;margin:-1px;padding:0;position:absolute;overflow:hidden}.not-sr-only{clip-path:none;white-space:normal;width:auto;height:auto;margin:0;padding:0;position:static;overflow:visible}.absolute{position:absolute}.fixed{position:fixed}.relative{position:relative}.static{position:static}.sticky{position:sticky}.start{inset-inline-start:var(--spacing)}.end{inset-inline-end:var(--spacing)}.top-1{top:calc(var(--spacing) * 1)}.top-1\\/2{top:50%}.top-\\[calc\\(100\\%\\+8px\\)\\]{top:calc(100% + 8px)}.right-0{right:calc(var(--spacing) * 0)}.right-4{right:calc(var(--spacing) * 4)}.right-5{right:calc(var(--spacing) * 5)}.bottom-4{bottom:calc(var(--spacing) * 4)}.bottom-5{bottom:calc(var(--spacing) * 5)}.left-0{left:calc(var(--spacing) * 0)}.left-3{left:calc(var(--spacing) * 3)}.isolate{isolation:isolate}.isolation-auto{isolation:auto}.z-\\[10000001\\]{z-index:10000001}.z-\\[10000012\\]{z-index:10000012}.col-span-2{grid-column:span 2/span 2}.container{width:100%}@media(min-width:40rem){.container{max-width:40rem}}@media(min-width:48rem){.container{max-width:48rem}}@media(min-width:64rem){.container{max-width:64rem}}@media(min-width:80rem){.container{max-width:80rem}}@media(min-width:96rem){.container{max-width:96rem}}.mt-1{margin-top:calc(var(--spacing) * 1)}.mt-2{margin-top:calc(var(--spacing) * 2)}.mt-2\\.5{margin-top:calc(var(--spacing) * 2.5)}.mt-3{margin-top:calc(var(--spacing) * 3)}.mt-4{margin-top:calc(var(--spacing) * 4)}.ml-auto{margin-left:auto}.block{display:block}.contents{display:contents}.flex{display:flex}.flow-root{display:flow-root}.grid{display:grid}.hidden{display:none}.inline{display:inline}.inline-block{display:inline-block}.inline-flex{display:inline-flex}.inline-grid{display:inline-grid}.inline-table{display:inline-table}.list-item{display:list-item}.table{display:table}.table-caption{display:table-caption}.table-cell{display:table-cell}.table-column{display:table-column}.table-column-group{display:table-column-group}.table-footer-group{display:table-footer-group}.table-header-group{display:table-header-group}.table-row{display:table-row}.table-row-group{display:table-row-group}.h-2{height:calc(var(--spacing) * 2)}.h-2\\.5{height:calc(var(--spacing) * 2.5)}.h-3{height:calc(var(--spacing) * 3)}.h-3\\.5{height:calc(var(--spacing) * 3.5)}.h-4{height:calc(var(--spacing) * 4)}.h-8{height:calc(var(--spacing) * 8)}.h-8\\.5{height:calc(var(--spacing) * 8.5)}.h-9{height:calc(var(--spacing) * 9)}.h-9\\.5{height:calc(var(--spacing) * 9.5)}.h-10{height:calc(var(--spacing) * 10)}.h-11{height:calc(var(--spacing) * 11)}.h-\\[280px\\]{height:280px}.h-full{height:100%}.max-h-\\[280px\\]{max-height:280px}.min-h-4{min-height:calc(var(--spacing) * 4)}.w-2{width:calc(var(--spacing) * 2)}.w-2\\.5{width:calc(var(--spacing) * 2.5)}.w-3{width:calc(var(--spacing) * 3)}.w-3\\.5{width:calc(var(--spacing) * 3.5)}.w-4{width:calc(var(--spacing) * 4)}.w-8{width:calc(var(--spacing) * 8)}.w-9{width:calc(var(--spacing) * 9)}.w-10{width:calc(var(--spacing) * 10)}.w-\\[min\\(var\\(--radix-popover-trigger-width\\)\\,448px\\)\\]{width:min(var(--radix-popover-trigger-width),448px)}.w-full{width:100%}.max-w-\\[150px\\]{max-width:150px}.max-w-\\[calc\\(100vw-32px\\)\\]{max-width:calc(100vw - 32px)}.min-w-0{min-width:calc(var(--spacing) * 0)}.min-w-\\[min\\(var\\(--radix-popover-trigger-width\\)\\,448px\\)\\]{min-width:min(var(--radix-popover-trigger-width),448px)}.min-w-max{min-width:max-content}.flex-1{flex:1}.shrink{flex-shrink:1}.shrink-0{flex-shrink:0}.grow{flex-grow:1}.border-collapse{border-collapse:collapse}.-translate-y-1{--tw-translate-y:calc(var(--spacing) * -1);translate:var(--tw-translate-x) var(--tw-translate-y)}.-translate-y-1\\/2{--tw-translate-y: -50% ;translate:var(--tw-translate-x) var(--tw-translate-y)}.translate-none{translate:none}.scale-3d{scale:var(--tw-scale-x) var(--tw-scale-y) var(--tw-scale-z)}.transform{transform:var(--tw-rotate-x,) var(--tw-rotate-y,) var(--tw-rotate-z,) var(--tw-skew-x,) var(--tw-skew-y,)}.touch-pinch-zoom{--tw-pinch-zoom:pinch-zoom;touch-action:var(--tw-pan-x,) var(--tw-pan-y,) var(--tw-pinch-zoom,)}.resize{resize:both}.grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-cols-\\[minmax\\(0\\,1fr\\)_auto\\]{grid-template-columns:minmax(0,1fr) auto}.flex-wrap{flex-wrap:wrap}.items-center{align-items:center}.items-start{align-items:flex-start}.justify-between{justify-content:space-between}.justify-center{justify-content:center}.justify-end{justify-content:flex-end}.gap-1{gap:calc(var(--spacing) * 1)}.gap-1\\.5{gap:calc(var(--spacing) * 1.5)}.gap-2{gap:calc(var(--spacing) * 2)}.gap-3{gap:calc(var(--spacing) * 3)}:where(.space-y-1>:not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing) * 1) * var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing) * 1) * calc(1 - var(--tw-space-y-reverse)))}:where(.space-y-reverse>:not(:last-child)){--tw-space-y-reverse:1}.gap-x-2{column-gap:calc(var(--spacing) * 2)}:where(.space-x-reverse>:not(:last-child)){--tw-space-x-reverse:1}.gap-y-1{row-gap:calc(var(--spacing) * 1)}.gap-y-1\\.5{row-gap:calc(var(--spacing) * 1.5)}:where(.divide-x>:not(:last-child)){--tw-divide-x-reverse:0;border-inline-style:var(--tw-border-style);border-inline-start-width:calc(1px * var(--tw-divide-x-reverse));border-inline-end-width:calc(1px * calc(1 - var(--tw-divide-x-reverse)))}:where(.divide-y>:not(:last-child)){--tw-divide-y-reverse:0;border-bottom-style:var(--tw-border-style);border-top-style:var(--tw-border-style);border-top-width:calc(1px * var(--tw-divide-y-reverse));border-bottom-width:calc(1px * calc(1 - var(--tw-divide-y-reverse)))}:where(.divide-y-reverse>:not(:last-child)){--tw-divide-y-reverse:1}.truncate{text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.overflow-auto{overflow:auto}.overflow-hidden{overflow:hidden}.rounded-2xl{border-radius:var(--radius-2xl)}.rounded-full{border-radius:3.40282e38px}.rounded-lg{border-radius:var(--radius-lg)}.rounded-md{border-radius:var(--radius-md)}.rounded-xl{border-radius:var(--radius-xl)}.rounded-s{border-start-start-radius:.25rem;border-end-start-radius:.25rem}.rounded-ss{border-start-start-radius:.25rem}.rounded-e{border-start-end-radius:.25rem;border-end-end-radius:.25rem}.rounded-se{border-start-end-radius:.25rem}.rounded-ee{border-end-end-radius:.25rem}.rounded-es{border-end-start-radius:.25rem}.rounded-t{border-top-left-radius:.25rem;border-top-right-radius:.25rem}.rounded-l{border-top-left-radius:.25rem;border-bottom-left-radius:.25rem}.rounded-tl{border-top-left-radius:.25rem}.rounded-r{border-top-right-radius:.25rem;border-bottom-right-radius:.25rem}.rounded-tr{border-top-right-radius:.25rem}.rounded-b{border-bottom-right-radius:.25rem;border-bottom-left-radius:.25rem}.rounded-br{border-bottom-right-radius:.25rem}.rounded-bl{border-bottom-left-radius:.25rem}.border{border-style:var(--tw-border-style);border-width:1px}.border-x{border-inline-style:var(--tw-border-style);border-inline-width:1px}.border-y{border-block-style:var(--tw-border-style);border-block-width:1px}.border-s{border-inline-start-style:var(--tw-border-style);border-inline-start-width:1px}.border-e{border-inline-end-style:var(--tw-border-style);border-inline-end-width:1px}.border-bs{border-block-start-style:var(--tw-border-style);border-block-start-width:1px}.border-be{border-block-end-style:var(--tw-border-style);border-block-end-width:1px}.border-t{border-top-style:var(--tw-border-style);border-top-width:1px}.border-r{border-right-style:var(--tw-border-style);border-right-width:1px}.border-b{border-bottom-style:var(--tw-border-style);border-bottom-width:1px}.border-l{border-left-style:var(--tw-border-style);border-left-width:1px}.border-sky-300{border-color:var(--color-sky-300)}.border-sky-300\\/45{border-color:#77d4ff73}@supports (color:color-mix(in lab,red,red)){.border-sky-300\\/45{border-color:color-mix(in oklab,var(--color-sky-300) 45%,transparent)}}.border-sky-400{border-color:var(--color-sky-400)}.border-sky-400\\/15{border-color:#00bcfe26}@supports (color:color-mix(in lab,red,red)){.border-sky-400\\/15{border-color:color-mix(in oklab,var(--color-sky-400) 15%,transparent)}}.border-sky-400\\/18{border-color:#00bcfe2e}@supports (color:color-mix(in lab,red,red)){.border-sky-400\\/18{border-color:color-mix(in oklab,var(--color-sky-400) 18%,transparent)}}.border-sky-400\\/35{border-color:#00bcfe59}@supports (color:color-mix(in lab,red,red)){.border-sky-400\\/35{border-color:color-mix(in oklab,var(--color-sky-400) 35%,transparent)}}.border-transparent{border-color:#0000}.border-white{border-color:var(--color-white)}.border-white\\/6{border-color:#ffffff0f}@supports (color:color-mix(in lab,red,red)){.border-white\\/6{border-color:color-mix(in oklab,var(--color-white) 6%,transparent)}}.border-white\\/8{border-color:#ffffff14}@supports (color:color-mix(in lab,red,red)){.border-white\\/8{border-color:color-mix(in oklab,var(--color-white) 8%,transparent)}}.border-white\\/10{border-color:#ffffff1a}@supports (color:color-mix(in lab,red,red)){.border-white\\/10{border-color:color-mix(in oklab,var(--color-white) 10%,transparent)}}.bg-black{background-color:var(--color-black)}.bg-black\\/10{background-color:#0000001a}@supports (color:color-mix(in lab,red,red)){.bg-black\\/10{background-color:color-mix(in oklab,var(--color-black) 10%,transparent)}}.bg-emerald-400{background-color:var(--color-emerald-400)}.bg-emerald-400\\/90{background-color:#00d294e6}@supports (color:color-mix(in lab,red,red)){.bg-emerald-400\\/90{background-color:color-mix(in oklab,var(--color-emerald-400) 90%,transparent)}}.bg-sky-400{background-color:var(--color-sky-400)}.bg-sky-400\\/\\[0\\.08\\]{background-color:#00bcfe14}@supports (color:color-mix(in lab,red,red)){.bg-sky-400\\/\\[0\\.08\\]{background-color:color-mix(in oklab,var(--color-sky-400) 8%,transparent)}}.bg-slate-500{background-color:var(--color-slate-500)}.bg-slate-950{background-color:var(--color-slate-950)}.bg-slate-950\\/60{background-color:#02061899}@supports (color:color-mix(in lab,red,red)){.bg-slate-950\\/60{background-color:color-mix(in oklab,var(--color-slate-950) 60%,transparent)}}.bg-slate-950\\/96{background-color:#020618f5}@supports (color:color-mix(in lab,red,red)){.bg-slate-950\\/96{background-color:color-mix(in oklab,var(--color-slate-950) 96%,transparent)}}.bg-transparent{background-color:#0000}.bg-white{background-color:var(--color-white)}.bg-white\\/10{background-color:#ffffff1a}@supports (color:color-mix(in lab,red,red)){.bg-white\\/10{background-color:color-mix(in oklab,var(--color-white) 10%,transparent)}}.bg-white\\/\\[0\\.02\\]{background-color:#ffffff05}@supports (color:color-mix(in lab,red,red)){.bg-white\\/\\[0\\.02\\]{background-color:color-mix(in oklab,var(--color-white) 2%,transparent)}}.bg-white\\/\\[0\\.03\\]{background-color:#ffffff08}@supports (color:color-mix(in lab,red,red)){.bg-white\\/\\[0\\.03\\]{background-color:color-mix(in oklab,var(--color-white) 3%,transparent)}}.bg-white\\/\\[0\\.04\\]{background-color:#ffffff0a}@supports (color:color-mix(in lab,red,red)){.bg-white\\/\\[0\\.04\\]{background-color:color-mix(in oklab,var(--color-white) 4%,transparent)}}.bg-linear-to-b{--tw-gradient-position:to bottom}@supports (background-image:linear-gradient(in lab,red,red)){.bg-linear-to-b{--tw-gradient-position:to bottom in oklab}}.bg-linear-to-b{background-image:linear-gradient(var(--tw-gradient-stops))}.from-sky-300{--tw-gradient-from:var(--color-sky-300);--tw-gradient-stops:var(--tw-gradient-via-stops,var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position))}.to-sky-500{--tw-gradient-to:var(--color-sky-500);--tw-gradient-stops:var(--tw-gradient-via-stops,var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position))}.bg-repeat{background-repeat:repeat}.mask-no-clip{-webkit-mask-clip:no-clip;mask-clip:no-clip}.mask-repeat{-webkit-mask-repeat:repeat;mask-repeat:repeat}.p-2{padding:calc(var(--spacing) * 2)}.p-\\[1px\\]{padding:1px}.px-2{padding-inline:calc(var(--spacing) * 2)}.px-2\\.5{padding-inline:calc(var(--spacing) * 2.5)}.px-3{padding-inline:calc(var(--spacing) * 3)}.px-3\\.5{padding-inline:calc(var(--spacing) * 3.5)}.px-4{padding-inline:calc(var(--spacing) * 4)}.py-1{padding-block:calc(var(--spacing) * 1)}.py-2{padding-block:calc(var(--spacing) * 2)}.py-2\\.5{padding-block:calc(var(--spacing) * 2.5)}.pt-0{padding-top:calc(var(--spacing) * 0)}.pt-1{padding-top:calc(var(--spacing) * 1)}.pt-1\\.5{padding-top:calc(var(--spacing) * 1.5)}.pt-2{padding-top:calc(var(--spacing) * 2)}.pt-2\\.5{padding-top:calc(var(--spacing) * 2.5)}.pt-3{padding-top:calc(var(--spacing) * 3)}.pt-4{padding-top:calc(var(--spacing) * 4)}.pr-1{padding-right:calc(var(--spacing) * 1)}.pr-3{padding-right:calc(var(--spacing) * 3)}.pb-2{padding-bottom:calc(var(--spacing) * 2)}.pb-2\\.5{padding-bottom:calc(var(--spacing) * 2.5)}.pb-3{padding-bottom:calc(var(--spacing) * 3)}.pl-9{padding-left:calc(var(--spacing) * 9)}.text-left{text-align:left}.text-sm{font-size:var(--text-sm);line-height:var(--tw-leading,var(--text-sm--line-height))}.text-xs{font-size:var(--text-xs);line-height:var(--tw-leading,var(--text-xs--line-height))}.text-\\[9px\\]{font-size:9px}.text-\\[10px\\]{font-size:10px}.text-\\[11px\\]{font-size:11px}.text-\\[12px\\]{font-size:12px}.text-\\[16px\\]{font-size:16px}.leading-4{--tw-leading:calc(var(--spacing) * 4);line-height:calc(var(--spacing) * 4)}.leading-none{--tw-leading:1;line-height:1}.font-medium{--tw-font-weight:var(--font-weight-medium);font-weight:var(--font-weight-medium)}.font-semibold{--tw-font-weight:var(--font-weight-semibold);font-weight:var(--font-weight-semibold)}.tracking-\\[-0\\.01em\\]{--tw-tracking:-.01em;letter-spacing:-.01em}.tracking-\\[-0\\.025em\\]{--tw-tracking:-.025em;letter-spacing:-.025em}.tracking-\\[0\\.14em\\]{--tw-tracking:.14em;letter-spacing:.14em}.text-wrap{text-wrap:wrap}.text-clip{text-overflow:clip}.text-ellipsis{text-overflow:ellipsis}.whitespace-nowrap{white-space:nowrap}.text-emerald-400{color:var(--color-emerald-400)}.text-sky-50{color:var(--color-sky-50)}.text-sky-100{color:var(--color-sky-100)}.text-slate-50{color:var(--color-slate-50)}.text-slate-100{color:var(--color-slate-100)}.text-slate-300{color:var(--color-slate-300)}.text-slate-400{color:var(--color-slate-400)}.text-slate-500{color:var(--color-slate-500)}.text-slate-950{color:var(--color-slate-950)}.capitalize{text-transform:capitalize}.lowercase{text-transform:lowercase}.normal-case{text-transform:none}.uppercase{text-transform:uppercase}.italic{font-style:italic}.not-italic{font-style:normal}.diagonal-fractions{--tw-numeric-fraction:diagonal-fractions;font-variant-numeric:var(--tw-ordinal,) var(--tw-slashed-zero,) var(--tw-numeric-figure,) var(--tw-numeric-spacing,) var(--tw-numeric-fraction,)}.lining-nums{--tw-numeric-figure:lining-nums;font-variant-numeric:var(--tw-ordinal,) var(--tw-slashed-zero,) var(--tw-numeric-figure,) var(--tw-numeric-spacing,) var(--tw-numeric-fraction,)}.oldstyle-nums{--tw-numeric-figure:oldstyle-nums;font-variant-numeric:var(--tw-ordinal,) var(--tw-slashed-zero,) var(--tw-numeric-figure,) var(--tw-numeric-spacing,) var(--tw-numeric-fraction,)}.ordinal{--tw-ordinal:ordinal;font-variant-numeric:var(--tw-ordinal,) var(--tw-slashed-zero,) var(--tw-numeric-figure,) var(--tw-numeric-spacing,) var(--tw-numeric-fraction,)}.proportional-nums{--tw-numeric-spacing:proportional-nums;font-variant-numeric:var(--tw-ordinal,) var(--tw-slashed-zero,) var(--tw-numeric-figure,) var(--tw-numeric-spacing,) var(--tw-numeric-fraction,)}.slashed-zero{--tw-slashed-zero:slashed-zero;font-variant-numeric:var(--tw-ordinal,) var(--tw-slashed-zero,) var(--tw-numeric-figure,) var(--tw-numeric-spacing,) var(--tw-numeric-fraction,)}.stacked-fractions{--tw-numeric-fraction:stacked-fractions;font-variant-numeric:var(--tw-ordinal,) var(--tw-slashed-zero,) var(--tw-numeric-figure,) var(--tw-numeric-spacing,) var(--tw-numeric-fraction,)}.tabular-nums{--tw-numeric-spacing:tabular-nums;font-variant-numeric:var(--tw-ordinal,) var(--tw-slashed-zero,) var(--tw-numeric-figure,) var(--tw-numeric-spacing,) var(--tw-numeric-fraction,)}.normal-nums{font-variant-numeric:normal}.line-through{text-decoration-line:line-through}.no-underline{text-decoration-line:none}.overline{text-decoration-line:overline}.underline{text-decoration-line:underline}.antialiased{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}.subpixel-antialiased{-webkit-font-smoothing:auto;-moz-osx-font-smoothing:auto}.shadow{--tw-shadow:0 1px 3px 0 var(--tw-shadow-color,#0000001a), 0 1px 2px -1px var(--tw-shadow-color,#0000001a);box-shadow:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)}.shadow-\\[0_0_0_4px_rgba\\(16\\,185\\,129\\,0\\.12\\)\\]{--tw-shadow:0 0 0 4px var(--tw-shadow-color,#10b9811f);box-shadow:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)}.shadow-\\[0_14px_32px_rgba\\(56\\,189\\,248\\,0\\.35\\)\\]{--tw-shadow:0 14px 32px var(--tw-shadow-color,#38bdf859);box-shadow:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)}.shadow-\\[0_24px_80px_rgba\\(0\\,0\\,0\\,0\\.45\\)\\]{--tw-shadow:0 24px 80px var(--tw-shadow-color,#00000073);box-shadow:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)}.shadow-\\[inset_0_1px_0_rgba\\(255\\,255\\,255\\,0\\.04\\)\\]{--tw-shadow:inset 0 1px 0 var(--tw-shadow-color,#ffffff0a);box-shadow:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)}.inset-ring{--tw-inset-ring-shadow:inset 0 0 0 1px var(--tw-inset-ring-color,currentcolor);box-shadow:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)}.outline{outline-style:var(--tw-outline-style);outline-width:1px}.blur{--tw-blur:blur(8px);filter:var(--tw-blur,) var(--tw-brightness,) var(--tw-contrast,) var(--tw-grayscale,) var(--tw-hue-rotate,) var(--tw-invert,) var(--tw-saturate,) var(--tw-sepia,) var(--tw-drop-shadow,)}.drop-shadow{--tw-drop-shadow-size:drop-shadow(0 1px 2px var(--tw-drop-shadow-color,#0000001a)) drop-shadow(0 1px 1px var(--tw-drop-shadow-color,#0000000f));--tw-drop-shadow:drop-shadow(0 1px 2px #0000001a) drop-shadow(0 1px 1px #0000000f);filter:var(--tw-blur,) var(--tw-brightness,) var(--tw-contrast,) var(--tw-grayscale,) var(--tw-hue-rotate,) var(--tw-invert,) var(--tw-saturate,) var(--tw-sepia,) var(--tw-drop-shadow,)}.filter{filter:var(--tw-blur,) var(--tw-brightness,) var(--tw-contrast,) var(--tw-grayscale,) var(--tw-hue-rotate,) var(--tw-invert,) var(--tw-saturate,) var(--tw-sepia,) var(--tw-drop-shadow,)}.backdrop-blur{--tw-backdrop-blur:blur(8px);-webkit-backdrop-filter:var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,);backdrop-filter:var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,)}.backdrop-grayscale{--tw-backdrop-grayscale:grayscale(100%);-webkit-backdrop-filter:var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,);backdrop-filter:var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,)}.backdrop-invert{--tw-backdrop-invert:invert(100%);-webkit-backdrop-filter:var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,);backdrop-filter:var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,)}.backdrop-sepia{--tw-backdrop-sepia:sepia(100%);-webkit-backdrop-filter:var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,);backdrop-filter:var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,)}.backdrop-filter{-webkit-backdrop-filter:var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,);backdrop-filter:var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,)}.transition{transition-property:color,background-color,border-color,outline-color,text-decoration-color,fill,stroke,--tw-gradient-from,--tw-gradient-via,--tw-gradient-to,opacity,box-shadow,transform,translate,scale,rotate,filter,-webkit-backdrop-filter,backdrop-filter,display,content-visibility,overlay,pointer-events;transition-timing-function:var(--tw-ease,var(--default-transition-timing-function));transition-duration:var(--tw-duration,var(--default-transition-duration))}.transition-all{transition-property:all;transition-timing-function:var(--tw-ease,var(--default-transition-timing-function));transition-duration:var(--tw-duration,var(--default-transition-duration))}.transition-colors{transition-property:color,background-color,border-color,outline-color,text-decoration-color,fill,stroke,--tw-gradient-from,--tw-gradient-via,--tw-gradient-to;transition-timing-function:var(--tw-ease,var(--default-transition-timing-function));transition-duration:var(--tw-duration,var(--default-transition-duration))}.outline-none{--tw-outline-style:none;outline-style:none}:where(.divide-x-reverse>:not(:last-child)){--tw-divide-x-reverse:1}.ring-inset{--tw-ring-inset:inset}.placeholder\\:text-slate-500::placeholder{color:var(--color-slate-500)}@media(hover:hover){.hover\\:-translate-y-0\\.5:hover{--tw-translate-y:calc(var(--spacing) * -.5);translate:var(--tw-translate-x) var(--tw-translate-y)}.hover\\:border-sky-400\\/25:hover{border-color:#00bcfe40}@supports (color:color-mix(in lab,red,red)){.hover\\:border-sky-400\\/25:hover{border-color:color-mix(in oklab,var(--color-sky-400) 25%,transparent)}}.hover\\:border-sky-400\\/30:hover{border-color:#00bcfe4d}@supports (color:color-mix(in lab,red,red)){.hover\\:border-sky-400\\/30:hover{border-color:color-mix(in oklab,var(--color-sky-400) 30%,transparent)}}.hover\\:border-sky-400\\/40:hover{border-color:#00bcfe66}@supports (color:color-mix(in lab,red,red)){.hover\\:border-sky-400\\/40:hover{border-color:color-mix(in oklab,var(--color-sky-400) 40%,transparent)}}.hover\\:border-white\\/10:hover{border-color:#ffffff1a}@supports (color:color-mix(in lab,red,red)){.hover\\:border-white\\/10:hover{border-color:color-mix(in oklab,var(--color-white) 10%,transparent)}}.hover\\:bg-white\\/\\[0\\.04\\]:hover{background-color:#ffffff0a}@supports (color:color-mix(in lab,red,red)){.hover\\:bg-white\\/\\[0\\.04\\]:hover{background-color:color-mix(in oklab,var(--color-white) 4%,transparent)}}.hover\\:bg-white\\/\\[0\\.05\\]:hover{background-color:#ffffff0d}@supports (color:color-mix(in lab,red,red)){.hover\\:bg-white\\/\\[0\\.05\\]:hover{background-color:color-mix(in oklab,var(--color-white) 5%,transparent)}}.hover\\:bg-white\\/\\[0\\.07\\]:hover{background-color:#ffffff12}@supports (color:color-mix(in lab,red,red)){.hover\\:bg-white\\/\\[0\\.07\\]:hover{background-color:color-mix(in oklab,var(--color-white) 7%,transparent)}}.hover\\:from-sky-200:hover{--tw-gradient-from:var(--color-sky-200);--tw-gradient-stops:var(--tw-gradient-via-stops,var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position))}.hover\\:to-sky-400:hover{--tw-gradient-to:var(--color-sky-400);--tw-gradient-stops:var(--tw-gradient-via-stops,var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position))}.hover\\:text-slate-50:hover{color:var(--color-slate-50)}.hover\\:text-slate-100:hover{color:var(--color-slate-100)}.hover\\:shadow-\\[0_18px_38px_rgba\\(56\\,189\\,248\\,0\\.42\\)\\]:hover{--tw-shadow:0 18px 38px var(--tw-shadow-color,#38bdf86b);box-shadow:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)}}.focus\\:border-sky-400\\/30:focus{border-color:#00bcfe4d}@supports (color:color-mix(in lab,red,red)){.focus\\:border-sky-400\\/30:focus{border-color:color-mix(in oklab,var(--color-sky-400) 30%,transparent)}}.focus\\:outline-none:focus{--tw-outline-style:none;outline-style:none}.disabled\\:pointer-events-none:disabled{pointer-events:none}.disabled\\:opacity-50:disabled{opacity:.5}.data-\\[active\\=true\\]\\:border-sky-400\\/35[data-active=true]{border-color:#00bcfe59}@supports (color:color-mix(in lab,red,red)){.data-\\[active\\=true\\]\\:border-sky-400\\/35[data-active=true]{border-color:color-mix(in oklab,var(--color-sky-400) 35%,transparent)}}.data-\\[active\\=true\\]\\:bg-sky-400\\/\\[0\\.08\\][data-active=true]{background-color:#00bcfe14}@supports (color:color-mix(in lab,red,red)){.data-\\[active\\=true\\]\\:bg-sky-400\\/\\[0\\.08\\][data-active=true]{background-color:color-mix(in oklab,var(--color-sky-400) 8%,transparent)}}.data-\\[active\\=true\\]\\:text-sky-50[data-active=true]{color:var(--color-sky-50)}.data-\\[mode\\=all\\]\\:hidden[data-mode=all]{display:none}.data-\\[state\\=active\\]\\:border-sky-400\\/30[data-state=active]{border-color:#00bcfe4d}@supports (color:color-mix(in lab,red,red)){.data-\\[state\\=active\\]\\:border-sky-400\\/30[data-state=active]{border-color:color-mix(in oklab,var(--color-sky-400) 30%,transparent)}}.data-\\[state\\=active\\]\\:bg-sky-400\\/\\[0\\.08\\][data-state=active]{background-color:#00bcfe14}@supports (color:color-mix(in lab,red,red)){.data-\\[state\\=active\\]\\:bg-sky-400\\/\\[0\\.08\\][data-state=active]{background-color:color-mix(in oklab,var(--color-sky-400) 8%,transparent)}}.data-\\[state\\=active\\]\\:text-slate-50[data-state=active]{color:var(--color-slate-50)}}:root{color-scheme:dark}#sadv-react-shell-root{isolation:isolate;contain:layout paint style;flex-shrink:0;font-family:Pretendard Variable,SUIT Variable,Apple SD Gothic Neo,Noto Sans KR,sans-serif;position:relative;width:100%!important;padding:10px 14px 0!important;display:block!important}#sadv-react-shell-root,#sadv-react-shell-root *,#sadv-react-shell-root :before,#sadv-react-shell-root :after{box-sizing:border-box}#sadv-react-shell-root:before{display:none}#sadv-react-shell-root button,#sadv-react-shell-root input,#sadv-react-shell-root [role=tab],#sadv-react-shell-root [role=tablist]{font:inherit!important;letter-spacing:inherit!important;text-transform:none!important}#sadv-react-shell-root button,#sadv-react-shell-root input{appearance:none!important;margin:0!important}#sadv-react-shell-root svg{flex-shrink:0}#sadv-p{overflow:hidden}#sadv-bd{padding-top:10px!important}.sadvx-shell{background:linear-gradient(#060b14fb,#070d16f4),radial-gradient(circle at 0 0,#40c4ff14,#0000 42%);border:1px solid #ffffff14;border-radius:18px;width:100%;position:relative;overflow:hidden;box-shadow:inset 0 -1px #0a121fb8,0 14px 34px #0003}.sadvx-shell:before{content:\"\";pointer-events:none;background:linear-gradient(90deg,#0000,#38bdf86b,#0000);height:1px;position:absolute;inset:0 0 auto}@property --tw-translate-x{syntax:\"*\";inherits:false;initial-value:0}@property --tw-translate-y{syntax:\"*\";inherits:false;initial-value:0}@property --tw-translate-z{syntax:\"*\";inherits:false;initial-value:0}@property --tw-scale-x{syntax:\"*\";inherits:false;initial-value:1}@property --tw-scale-y{syntax:\"*\";inherits:false;initial-value:1}@property --tw-scale-z{syntax:\"*\";inherits:false;initial-value:1}@property --tw-rotate-x{syntax:\"*\";inherits:false}@property --tw-rotate-y{syntax:\"*\";inherits:false}@property --tw-rotate-z{syntax:\"*\";inherits:false}@property --tw-skew-x{syntax:\"*\";inherits:false}@property --tw-skew-y{syntax:\"*\";inherits:false}@property --tw-pan-x{syntax:\"*\";inherits:false}@property --tw-pan-y{syntax:\"*\";inherits:false}@property --tw-pinch-zoom{syntax:\"*\";inherits:false}@property --tw-space-y-reverse{syntax:\"*\";inherits:false;initial-value:0}@property --tw-space-x-reverse{syntax:\"*\";inherits:false;initial-value:0}@property --tw-divide-x-reverse{syntax:\"*\";inherits:false;initial-value:0}@property --tw-border-style{syntax:\"*\";inherits:false;initial-value:solid}@property --tw-divide-y-reverse{syntax:\"*\";inherits:false;initial-value:0}@property --tw-gradient-position{syntax:\"*\";inherits:false}@property --tw-gradient-from{syntax:\"<color>\";inherits:false;initial-value:#0000}@property --tw-gradient-via{syntax:\"<color>\";inherits:false;initial-value:#0000}@property --tw-gradient-to{syntax:\"<color>\";inherits:false;initial-value:#0000}@property --tw-gradient-stops{syntax:\"*\";inherits:false}@property --tw-gradient-via-stops{syntax:\"*\";inherits:false}@property --tw-gradient-from-position{syntax:\"<length-percentage>\";inherits:false;initial-value:0%}@property --tw-gradient-via-position{syntax:\"<length-percentage>\";inherits:false;initial-value:50%}@property --tw-gradient-to-position{syntax:\"<length-percentage>\";inherits:false;initial-value:100%}@property --tw-leading{syntax:\"*\";inherits:false}@property --tw-font-weight{syntax:\"*\";inherits:false}@property --tw-tracking{syntax:\"*\";inherits:false}@property --tw-ordinal{syntax:\"*\";inherits:false}@property --tw-slashed-zero{syntax:\"*\";inherits:false}@property --tw-numeric-figure{syntax:\"*\";inherits:false}@property --tw-numeric-spacing{syntax:\"*\";inherits:false}@property --tw-numeric-fraction{syntax:\"*\";inherits:false}@property --tw-shadow{syntax:\"*\";inherits:false;initial-value:0 0 #0000}@property --tw-shadow-color{syntax:\"*\";inherits:false}@property --tw-shadow-alpha{syntax:\"<percentage>\";inherits:false;initial-value:100%}@property --tw-inset-shadow{syntax:\"*\";inherits:false;initial-value:0 0 #0000}@property --tw-inset-shadow-color{syntax:\"*\";inherits:false}@property --tw-inset-shadow-alpha{syntax:\"<percentage>\";inherits:false;initial-value:100%}@property --tw-ring-color{syntax:\"*\";inherits:false}@property --tw-ring-shadow{syntax:\"*\";inherits:false;initial-value:0 0 #0000}@property --tw-inset-ring-color{syntax:\"*\";inherits:false}@property --tw-inset-ring-shadow{syntax:\"*\";inherits:false;initial-value:0 0 #0000}@property --tw-ring-inset{syntax:\"*\";inherits:false}@property --tw-ring-offset-width{syntax:\"<length>\";inherits:false;initial-value:0}@property --tw-ring-offset-color{syntax:\"*\";inherits:false;initial-value:#fff}@property --tw-ring-offset-shadow{syntax:\"*\";inherits:false;initial-value:0 0 #0000}@property --tw-outline-style{syntax:\"*\";inherits:false;initial-value:solid}@property --tw-blur{syntax:\"*\";inherits:false}@property --tw-brightness{syntax:\"*\";inherits:false}@property --tw-contrast{syntax:\"*\";inherits:false}@property --tw-grayscale{syntax:\"*\";inherits:false}@property --tw-hue-rotate{syntax:\"*\";inherits:false}@property --tw-invert{syntax:\"*\";inherits:false}@property --tw-opacity{syntax:\"*\";inherits:false}@property --tw-saturate{syntax:\"*\";inherits:false}@property --tw-sepia{syntax:\"*\";inherits:false}@property --tw-drop-shadow{syntax:\"*\";inherits:false}@property --tw-drop-shadow-color{syntax:\"*\";inherits:false}@property --tw-drop-shadow-alpha{syntax:\"<percentage>\";inherits:false;initial-value:100%}@property --tw-drop-shadow-size{syntax:\"*\";inherits:false}@property --tw-backdrop-blur{syntax:\"*\";inherits:false}@property --tw-backdrop-brightness{syntax:\"*\";inherits:false}@property --tw-backdrop-contrast{syntax:\"*\";inherits:false}@property --tw-backdrop-grayscale{syntax:\"*\";inherits:false}@property --tw-backdrop-hue-rotate{syntax:\"*\";inherits:false}@property --tw-backdrop-invert{syntax:\"*\";inherits:false}@property --tw-backdrop-opacity{syntax:\"*\";inherits:false}@property --tw-backdrop-saturate{syntax:\"*\";inherits:false}@property --tw-backdrop-sepia{syntax:\"*\";inherits:false}\n";document.head.appendChild(style);}})();
 
 (function(){"use strict";function hy(a,s){for(var f=0;f<s.length;f++){const v=s[f];if(typeof v!="string"&&!Array.isArray(v)){for(const p in v)if(p!=="default"&&!(p in a)){const S=Object.getOwnPropertyDescriptor(v,p);S&&Object.defineProperty(a,p,S.get?S:{enumerable:!0,get:()=>v[p]})}}}return Object.freeze(Object.defineProperty(a,Symbol.toStringTag,{value:"Module"}))}function Yv(a){return a&&a.__esModule&&Object.prototype.hasOwnProperty.call(a,"default")?a.default:a}var ah={exports:{}},ks={};/**
@@ -1365,7 +1424,75 @@ async function fetchWithRetry(url, options, maxRetries = 2) {
   throw new Error(ERROR_MESSAGES.MAX_RETRIES_EXCEEDED);
 }
 
+// ============================================================
+// P0 SECURITY: DOMPurify Integration for XSS Prevention
+// ============================================================
+
+/**
+ * DOMPurify sanitizer for HTML content
+ * Prevents XSS attacks by sanitizing HTML before injection
+ * @param {string} dirty - Untrusted HTML string
+ * @param {Object} options - DOMPurify configuration options
+ * @returns {string} Sanitized HTML safe for innerHTML use
+ */
+function sanitizeHTML(dirty, options = {}) {
+  // Check if DOMPurify is available
+  if (typeof DOMPurify !== 'undefined' && DOMPurify.sanitize) {
+    const defaultOptions = {
+      ALLOWED_TAGS: [
+        'div', 'span', 'p', 'a', 'strong', 'em', 'i', 'b',
+        'br', 'hr', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+        'table', 'thead', 'tbody', 'tr', 'td', 'th',
+        'svg', 'path', 'line', 'circle', 'rect', 'defs', 'linearGradient',
+        'text', 'g', 'stop', 'style'
+      ],
+      ALLOWED_ATTR: [
+        'class', 'style', 'href', 'data-*', 'id', 'title',
+        'width', 'height', 'viewBox', 'preserveAspectRatio', 'cx', 'cy',
+        'r', 'x', 'x1', 'x2', 'y', 'y1', 'y2', 'fill', 'stroke',
+        'stroke-width', 'stroke-dasharray', 'opacity', 'stop-color',
+        'stop-opacity', 'offset', 'd', 'text-anchor', 'dominant-baseline',
+        'font-size', 'font-weight', 'letter-spacing', 'paint-order',
+        'stroke-linejoin', 'stroke-linecap', 'rx', 'ry', 'transform',
+        'color', 'background', 'border', 'padding', 'margin', 'display',
+        'align-items', 'justify-content', 'gap', 'flex', 'grid',
+        'border-radius', 'box-shadow', 'transition', 'white-space',
+        'overflow', 'text-overflow', 'line-height', 'visibility',
+        'word-break', 'text-align', 'vertical-align', 'position',
+        'top', 'left', 'right', 'bottom', 'z-index', 'cursor',
+        'pointer-events', 'backdrop-filter', 'max-width', 'min-width',
+        'min-height', 'max-height', 'transform-origin', 'filter'
+      ],
+      ALLOW_DATA_ATTR: true,
+      SAFE_FOR_TEMPLATES: true,
+      ADD_ATTR: ['data-*'],
+      FORBID_TAGS: ['script', 'object', 'embed', 'iframe', 'form', 'input', 'button'],
+      FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur']
+    };
+
+    const mergedOptions = { ...defaultOptions, ...options };
+    return DOMPurify.sanitize(dirty, mergedOptions);
+  }
+
+  // Fallback: if DOMPurify is not available, log warning and use escHtml
+  if (typeof window !== 'undefined') {
+    console.warn('[SECURITY] DOMPurify not available. Using basic HTML escaping. This is less secure.');
+    console.warn('[SECURITY] Please ensure DOMPurify is loaded before this script.');
+  }
+
+  // Basic escape as fallback
+  return String(dirty || '')
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+// ============================================================
 // Tooltip helper functions
+// ============================================================
+
 let TIP = null;
 function tip() {
   if (!TIP) {
@@ -1378,7 +1505,7 @@ function tip() {
 }
 function showTip(e, h) {
   const t = tip();
-  t.innerHTML = escHtml(h);
+  t.innerHTML = sanitizeHTML(escHtml(h));
   t.style.display = "block";
   moveTip(e);
 }
@@ -1516,7 +1643,7 @@ function sparkline(vals, labels, H, col, unit, opts) {
   svg.setAttribute("viewBox", "0 0 " + W2 + " " + H);
   svg.setAttribute("preserveAspectRatio", "none");
   svg.style.cssText = "display:block;width:100%;height:auto;cursor:crosshair";
-  svg.innerHTML =
+  svg.innerHTML = sanitizeHTML(
 
     '<defs><linearGradient id="' +
 
@@ -1524,11 +1651,11 @@ function sparkline(vals, labels, H, col, unit, opts) {
 
     '" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="' +
 
-    col +
+    escHtml(col) +
 
     '" stop-opacity="0.22"/><stop offset="100%" stop-color="' +
 
-    col +
+    escHtml(col) +
 
     '" stop-opacity="0.01"/></linearGradient></defs>' +
 
@@ -1536,37 +1663,38 @@ function sparkline(vals, labels, H, col, unit, opts) {
 
     '<path d="' +
 
-    area +
+    escHtml(area) +
 
     '" fill="url(#' +
 
-    uid +
+    escHtml(uid) +
 
     ')"/><path d="' +
 
-    path +
+    escHtml(path) +
 
     '" fill="none" stroke="' +
 
-    col +
+    escHtml(col) +
 
     '" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/><line id="' +
 
-    wid +
+    escHtml(wid) +
 
     '" x1="0" y1="0" x2="0" y2="' +
 
-    H +
+    escHtml(H) +
 
     '" stroke="#3d5a78" stroke-width="1" stroke-dasharray="3,2" opacity="0"/><circle id="' +
 
-    cid +
+    escHtml(cid) +
 
     '" cx="0" cy="0" r="3.5" fill="' +
 
-    col +
+    escHtml(col) +
 
-    '" stroke="#060b14" stroke-width="1.5" opacity="0"/>';
+    '" stroke="#060b14" stroke-width="1.5" opacity="0"/>'
+  );
 
   svg.addEventListener("mousemove", function (e) {
     const rect = svg.getBoundingClientRect(),
@@ -1669,7 +1797,7 @@ function barchart(vals, labels, H, col, unit) {
         })
         .join("")
       : "";
-  svg.innerHTML = `<defs><linearGradient id="${uid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${col}" stop-opacity="0.9"/><stop offset="100%" stop-color="${col}" stop-opacity="0.35"/></linearGradient></defs>${guideMarkup}`;
+  svg.innerHTML = sanitizeHTML(`<defs><linearGradient id="${escHtml(uid)}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${escHtml(col)}" stop-opacity="0.9"/><stop offset="100%" stop-color="${escHtml(col)}" stop-opacity="0.35"/></linearGradient></defs>${guideMarkup}`);
   vals.forEach(function (v, i) {
     const bh = Math.max(2, (v / mx) * (H - 4)),
       x = gap + i * (bw + gap),
@@ -1736,12 +1864,12 @@ function chartCard(title, valueStr, valueCol, svgEl, labelsArr) {
   const hd = document.createElement("div");
   hd.style.cssText =
     "display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px";
-  hd.innerHTML = `<span style="font-size:12px;line-height:1.4;color:#94a3b8;font-weight:600">${escHtml(title)}</span><span style="font-size:14px;line-height:1.2;font-weight:800;color:${valueCol};text-align:right;letter-spacing:-0.01em">${escHtml(valueStr)}</span>`;
+  hd.innerHTML = sanitizeHTML(`<span style="font-size:12px;line-height:1.4;color:#94a3b8;font-weight:600">${escHtml(title)}</span><span style="font-size:14px;line-height:1.2;font-weight:800;color:${valueCol};text-align:right;letter-spacing:-0.01em">${escHtml(valueStr)}</span>`);
   wrap.appendChild(hd);
   wrap.appendChild(svgEl);
   if (labelsArr) {
     const lbl = document.createElement("div");
-    lbl.innerHTML = xlbl(labelsArr);
+    lbl.innerHTML = sanitizeHTML(xlbl(labelsArr));
     wrap.appendChild(lbl);
   }
   return wrap;
@@ -1756,7 +1884,7 @@ function kpiGrid(items) {
     d.style.cssText =
       "background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px 8px;text-align:center;min-width:0;min-height:90px;display:flex;flex-direction:column;justify-content:center;align-items:center;transition:all 0.2s;box-shadow:0 1px 2px rgba(0,0,0,0.05)";
     const iconHtml = it.icon ? `<div style="margin-bottom:8px;color:${it.color || '#94a3b8'};opacity:0.8">${it.icon}</div>` : "";
-    d.innerHTML = `${iconHtml}<div style="font-size:16px;font-weight:800;color:${it.color || C.text};line-height:1.1;letter-spacing:-0.02em;word-break:keep-all">${escHtml(it.value)}</div><div style="font-size:10px;color:#64748b;line-height:1.4;margin-top:4px;visibility:${it.sub ? "visible" : "hidden"}">${escHtml(it.sub || "&nbsp;")}</div><div style="font-size:10px;color:#94a3b8;line-height:1.4;margin-top:6px;word-break:keep-all;font-weight:500">${escHtml(it.label)}</div>`;
+    d.innerHTML = sanitizeHTML(`${iconHtml}<div style="font-size:16px;font-weight:800;color:${it.color || C.text};line-height:1.1;letter-spacing:-0.02em;word-break:keep-all">${escHtml(it.value)}</div><div style="font-size:10px;color:#64748b;line-height:1.4;margin-top:4px;visibility:${it.sub ? "visible" : "hidden"}">${escHtml(it.sub || "&nbsp;")}</div><div style="font-size:10px;color:#94a3b8;line-height:1.4;margin-top:6px;word-break:keep-all;font-weight:500">${escHtml(it.label)}</div>`);
     g.appendChild(d);
   });
   return g;
@@ -1767,36 +1895,25 @@ function secTitle(t) {
   const d = document.createElement("div");
   d.style.cssText =
     "font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#64748b;margin:24px 0 12px;display:flex;align-items:center;gap:10px";
-  d.innerHTML =
+  d.innerHTML = sanitizeHTML(
     escHtml(t) +
-    ' <span style="flex:1;height:1px;background:#334155;display:inline-block;opacity:0.3"></span>';
+    ' <span style="flex:1;height:1px;background:#334155;display:inline-block;opacity:0.3"></span>'
+  );
   return d;
 }
 
 // Info box function
 // Security Note: This function uses innerHTML for HTML content. All dynamic values in
-// call sites MUST be escaped using escHtml(). Fixed: 08-renderers.js line 558 (slug value).
-// When adding new ibox() calls with dynamic content, always use escHtml() for user/API data.
-// P0-1: XSS 취약점 수정 - 개발 환경에서 보안 경고 추가
+// call sites MUST be escaped using escHtml() AND sanitized with sanitizeHTML().
+// P0 SECURITY: XSS Prevention - DOMPurify is now applied automatically
 function ibox(type, html) {
-  // 개발 환경에서 잠재적 XSS 위험 경고
-  if (typeof window !== "undefined" &&
-      typeof html === "string" &&
-      html.includes("<") &&
-      !html.includes("&lt;") &&
-      // 이미 escape된 HTML인지 확인 (안전한 패턴)
-      !/^(<span|<div|<b>|<strong>|<em>|<i>|<br|<hr|\/[a-z]+>|\s+)*$/i.test(html)) {
-    console.warn("[SECURITY] ibox() 호출에 원시 HTML이 포함되어 있습니다. 동적 값에는 escHtml()를 사용하세요.");
-    console.warn("[SECURITY] HTML 내용:", html.substring(0, 100));
-    console.trace("[SECURITY] 호출 스택:");
-  }
-
   const col =
     { green: C.green, amber: C.amber, red: C.red, blue: C.blue }[type] ||
       C.blue;
   const d = document.createElement("div");
   d.style.cssText = `border-left:3px solid ${col};background:${col}0d;border-radius:12px;padding:16px;margin-bottom:12px;font-size:12px;line-height:1.6;color:#94a3b8;border:1px solid ${col}22`;
-  d.innerHTML = html; // SECURITY WARNING: Ensure html parameter is sanitized before use
+  // P0 SECURITY: Apply DOMPurify sanitization
+  d.innerHTML = sanitizeHTML(html);
   return d;
 }
 
@@ -2377,7 +2494,8 @@ function cloneV2Payload(payload) {
 
 // DOM Initialization Module
 // This module handles the creation and initialization of the SearchAdvisor UI DOM elements
-// Note: escHtml() function is provided by 01-helpers.js
+// P0 SECURITY: All innerHTML usage now uses sanitizeHTML() for XSS prevention
+// Note: escHtml() and sanitizeHTML() functions are provided by 01-helpers.js
 
 // Remove old panel if it exists
 const old = document.getElementById("sadv-p");
@@ -2398,7 +2516,7 @@ document.head.appendChild(inj);
 const p = document.createElement("div");
 p.id = "sadv-p";
 p.style.cssText = `position:fixed;top:0;right:0;width:min(${PNL}px,100vw);max-width:100vw;height:100vh;display:flex;flex-direction:column;background:#020617;z-index:9999999;font-family:Pretendard,system-ui,sans-serif;font-size:13px;color:#f8fafc;border-left:1px solid #334155;box-sizing:border-box;box-shadow:-10px 0 15px -3px rgba(0,0,0,0.1)`;
-p.innerHTML = `<style>#sadv-p *{box-sizing:border-box}#sadv-p ::-webkit-scrollbar{width:6px}#sadv-p ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}#sadv-header{padding:20px;border-bottom:1px solid #1e293b;background:rgba(2,6,23,0.8);backdrop-filter:blur(12px)}#sadv-mode-bar{display:flex;gap:4px;margin-top:16px;background:#0f172a;padding:4px;border-radius:12px;border:1px solid #334155}.sadv-mode{flex:1;background:transparent;border:none;color:#94a3b8;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}.sadv-mode.on{background:#1e293b;color:#0ea5e9;box-shadow:0 4px 6px -1px rgba(0,0,0,0.2)}#sadv-site-bar{margin-top:12px;position:relative;display:none}#sadv-site-bar.show{display:block}#sadv-combo-wrap{position:relative}#sadv-combo-btn{width:100%;background:#0f172a;border:1px solid #334155;color:#f8fafc;border-radius:10px;padding:10px 36px 10px 12px;font-size:13px;cursor:pointer;text-align:left;font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:10px}#sadv-combo-btn:hover{border-color:#0ea5e9;background:#1e293b}#sadv-combo-btn:focus-visible{outline:2px solid #0ea5e9;outline-offset:2px;box-shadow:0 0 0 4px rgba(14, 165, 233, 0.1)}#sadv-combo-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#64748b}#sadv-combo-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:500}#sadv-combo-arrow{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#64748b;font-size:12px;pointer-events:none;transition:transform .2s}#sadv-combo-wrap.open #sadv-combo-arrow{transform:translateY(-50%) rotate(180deg)}#sadv-combo-drop{display:none;position:absolute;top:calc(100% + 8px);left:0;right:0;background:#0f172a;border:1px solid #334155;border-radius:12px;padding:6px;z-index:100;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);max-height:300px;overflow-y:auto}#sadv-combo-wrap.open #sadv-combo-drop{display:block}.sadv-combo-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;cursor:pointer;transition:all .1s;border:1px solid transparent}.sadv-combo-item:hover{background:#1e293b}.sadv-combo-item:focus-visible{outline:2px solid #0ea5e9;outline-offset:-2px}.sadv-combo-item.active{background:#1e293b;border-color:#334155;color:#0ea5e9}#sadv-tabs{display:none;flex-wrap:wrap;gap:6px;padding:12px 20px;background:#020617;border-bottom:1px solid #1e293b;justify-content:center}#sadv-tabs.show{display:flex;justify-content:center}#sadv-tabs::-webkit-scrollbar{display:none}.sadv-t{background:transparent;border:1px solid transparent;color:#64748b;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}.sadv-t:hover{color:#f8fafc;background:#1e293b}.sadv-t.on{background:rgba(14,165,233,0.1);border-color:rgba(14,165,233,0.2);color:#0ea5e9}#sadv-refresh-btn{display:inline-flex;align-items:center;gap:6px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s}#sadv-refresh-btn:hover{border-color:#0ea5e9;color:#0ea5e9;background:#1e293b}#sadv-refresh-btn:focus-visible{outline:2px solid #0ea5e9;outline-offset:2px;box-shadow:0 0 0 4px rgba(14, 165, 233, 0.1)}#sadv-bd{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px}#sadv-tabpanel{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px}.sadv-allcard{background:#0f172a;border:1px solid #1e293b;border-radius:16px;padding:20px;margin-bottom:16px;cursor:pointer;transition:all .2s}.sadv-allcard:hover{border-color:#334155;transform:translateY(-2px)}</style><div id="sadv-header"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:7px;font-size:18px;font-weight:800;letter-spacing:-0.03em"><span style="display:inline-flex;opacity:0.95">${ICONS.logoSearch}</span>Search<span style="color:#10b981">Advisor</span></div><div id="sadv-account-badge" style="display:none;padding:4px 12px;border-radius:999px;border:1px solid #1e293b;color:#0ea5e9;background:rgba(15,23,42,0.6);font-size:11px;font-weight:600;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div></div><div id="sadv-site-label" style="font-size:11px;color:#64748b;margin-top:4px;display:flex;align-items:center;gap:4px">\ub85c\ub529 \uc911...</div></div><div style="display:flex;gap:8px;align-items:center"><button id="sadv-refresh-btn" class="sadv-btn" title="새로고침" style="display:inline-flex;align-items:center;gap:5px">${ICONS.refresh} 새로고침</button><button id="sadv-save-btn" class="sadv-btn" title="현재 화면 저장" style="display:inline-flex;align-items:center;gap:5px">${ICONS.save} 저장</button><button id="sadv-x" style="background:none;border:1px solid #1e293b;color:#475569;width:32px;height:32px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s">${ICONS.xMark}</button></div></div><div id="sadv-mode-bar"><button class="sadv-mode on" data-m="all" style="display:inline-flex;align-items:center;justify-content:center;gap:5px">${ICONS.globe} 전체현황</button><button class="sadv-mode" data-m="site" style="display:inline-flex;align-items:center;justify-content:center;gap:5px">${ICONS.layers} 사이트별</button></div><div id="sadv-site-bar"><div id="sadv-combo-wrap"><button id="sadv-combo-btn"><span id="sadv-combo-dot"></span><span id="sadv-combo-label">\uc0ac\uc774\ud2b8 \uc120\ud0dd</span></button><span id="sadv-combo-arrow" style="display:inline-flex;align-items:center">${ICONS.chevronDown}</span><div id="sadv-combo-drop"></div></div></div></div><div id="sadv-tabs"></div><div id="sadv-bd"><div style="padding:60px 20px;text-align:center;color:#64748b">⏳ \ub85c\ub529 \uc911...</div></div>`;
+p.innerHTML = sanitizeHTML(`<style>#sadv-p *{box-sizing:border-box}#sadv-p ::-webkit-scrollbar{width:6px}#sadv-p ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}#sadv-header{padding:20px;border-bottom:1px solid #1e293b;background:rgba(2,6,23,0.8);backdrop-filter:blur(12px)}#sadv-mode-bar{display:flex;gap:4px;margin-top:16px;background:#0f172a;padding:4px;border-radius:12px;border:1px solid #334155}.sadv-mode{flex:1;background:transparent;border:none;color:#94a3b8;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}.sadv-mode.on{background:#1e293b;color:#0ea5e9;box-shadow:0 4px 6px -1px rgba(0,0,0,0.2)}#sadv-site-bar{margin-top:12px;position:relative;display:none}#sadv-site-bar.show{display:block}#sadv-combo-wrap{position:relative}#sadv-combo-btn{width:100%;background:#0f172a;border:1px solid #334155;color:#f8fafc;border-radius:10px;padding:10px 36px 10px 12px;font-size:13px;cursor:pointer;text-align:left;font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:10px}#sadv-combo-btn:hover{border-color:#0ea5e9;background:#1e293b}#sadv-combo-btn:focus-visible{outline:2px solid #0ea5e9;outline-offset:2px;box-shadow:0 0 0 4px rgba(14, 165, 233, 0.1)}#sadv-combo-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#64748b}#sadv-combo-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:500}#sadv-combo-arrow{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#64748b;font-size:12px;pointer-events:none;transition:transform .2s}#sadv-combo-wrap.open #sadv-combo-arrow{transform:translateY(-50%) rotate(180deg)}#sadv-combo-drop{display:none;position:absolute;top:calc(100% + 8px);left:0;right:0;background:#0f172a;border:1px solid #334155;border-radius:12px;padding:6px;z-index:100;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);max-height:300px;overflow-y:auto}#sadv-combo-wrap.open #sadv-combo-drop{display:block}.sadv-combo-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;cursor:pointer;transition:all .1s;border:1px solid transparent}.sadv-combo-item:hover{background:#1e293b}.sadv-combo-item:focus-visible{outline:2px solid #0ea5e9;outline-offset:-2px}.sadv-combo-item.active{background:#1e293b;border-color:#334155;color:#0ea5e9}#sadv-tabs{display:none;flex-wrap:wrap;gap:6px;padding:12px 20px;background:#020617;border-bottom:1px solid #1e293b;justify-content:center}#sadv-tabs.show{display:flex;justify-content:center}#sadv-tabs::-webkit-scrollbar{display:none}.sadv-t{background:transparent;border:1px solid transparent;color:#64748b;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}.sadv-t:hover{color:#f8fafc;background:#1e293b}.sadv-t.on{background:rgba(14,165,233,0.1);border-color:rgba(14,165,233,0.2);color:#0ea5e9}#sadv-refresh-btn{display:inline-flex;align-items:center;gap:6px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s}#sadv-refresh-btn:hover{border-color:#0ea5e9;color:#0ea5e9;background:#1e293b}#sadv-refresh-btn:focus-visible{outline:2px solid #0ea5e9;outline-offset:2px;box-shadow:0 0 0 4px rgba(14, 165, 233, 0.1)}#sadv-bd{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px}#sadv-tabpanel{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px}.sadv-allcard{background:#0f172a;border:1px solid #1e293b;border-radius:16px;padding:20px;margin-bottom:16px;cursor:pointer;transition:all .2s}.sadv-allcard:hover{border-color:#334155;transform:translateY(-2px)}</style><div id="sadv-header"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:7px;font-size:18px;font-weight:800;letter-spacing:-0.03em"><span style="display:inline-flex;opacity:0.95">${ICONS.logoSearch}</span>Search<span style="color:#10b981">Advisor</span></div><div id="sadv-account-badge" style="display:none;padding:4px 12px;border-radius:999px;border:1px solid #1e293b;color:#0ea5e9;background:rgba(15,23,42,0.6);font-size:11px;font-weight:600;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div></div><div id="sadv-site-label" style="font-size:11px;color:#64748b;margin-top:4px;display:flex;align-items:center;gap:4px">\ub85c\ub529 \uc911...</div></div><div style="display:flex;gap:8px;align-items:center"><button id="sadv-refresh-btn" class="sadv-btn" title="새로고침" style="display:inline-flex;align-items:center;gap:5px">${ICONS.refresh} 새로고침</button><button id="sadv-save-btn" class="sadv-btn" title="현재 화면 저장" style="display:inline-flex;align-items:center;gap:5px">${ICONS.save} 저장</button><button id="sadv-x" style="background:none;border:1px solid #1e293b;color:#475569;width:32px;height:32px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s">${ICONS.xMark}</button></div></div><div id="sadv-mode-bar"><button class="sadv-mode on" data-m="all" style="display:inline-flex;align-items:center;justify-content:center;gap:5px">${ICONS.globe} 전체현황</button><button class="sadv-mode" data-m="site" style="display:inline-flex;align-items:center;justify-content:center;gap:5px">${ICONS.layers} 사이트별</button></div><div id="sadv-site-bar"><div id="sadv-combo-wrap"><button id="sadv-combo-btn"><span id="sadv-combo-dot"></span><span id="sadv-combo-label">\uc0ac\uc774\ud2b8 \uc120\ud0dd</span></button><span id="sadv-combo-arrow" style="display:inline-flex;align-items:center">${ICONS.chevronDown}</span><div id="sadv-combo-drop"></div></div></div></div><div id="sadv-tabs"></div><div id="sadv-bd"><div style="padding:60px 20px;text-align:center;color:#64748b">⏳ \ub85c\ub529 \uc911...</div></div>`);
 document.body.appendChild(p);
 
 // Add additional UI styles
@@ -2759,7 +2877,7 @@ function applyAccountBadge(accountLabel) {
 window.__sadvTabsEl = document.getElementById("sadv-tabs");
 
 // ============================================================
-// DATA-MANAGER - Data storage and caching utilities
+// DATA-CACHE - Cache management utilities
 // ============================================================
 
 let allSites = [];
@@ -2917,10 +3035,6 @@ function getCacheNamespace() {
   return 'default';
 }
 
-// P0-3: ACCOUNT_UTILS 통합 - 중복 제거
-// 이제 ACCOUNT_UTILS.getAccountLabel()을 사용하세요.
-// getAccountLabel()은 ACCOUNT_UTILS로 이동됨.
-
 /**
  * P1: Safe localStorage get with error handling
  * @param {string} k - Key to retrieve
@@ -2955,6 +3069,11 @@ function lsSet(k, v) {
   });
 }
 
+/**
+ * Get cached data for a site
+ * @param {string} site - Site identifier
+ * @returns {Object|null} Cached data or null if not found/expired
+ */
 function getCachedData(site) {
   const d = lsGet(getSiteDataCacheKey(site));
   if (!d) return null;
@@ -2991,10 +3110,19 @@ function clearCachedData(site) {
   });
 }
 
+/**
+ * Get site list cache key
+ * @returns {string} Cache key for site list
+ */
 function getSiteListCacheKey() {
   return SITE_LS_KEY + "_" + getCacheNamespace();
 }
 
+/**
+ * Get site data cache key
+ * @param {string} site - Site identifier
+ * @returns {string} Cache key for site data
+ */
 function getSiteDataCacheKey(site) {
   try {
     // 유니코드 지원을 위해 encodeURIComponent 후 인코딩
@@ -3007,20 +3135,37 @@ function getSiteDataCacheKey(site) {
   }
 }
 
+/**
+ * Get site list cache timestamp
+ * @returns {number|null} Timestamp or null
+ */
 function getSiteListCacheStamp() {
   const cached = lsGet(getSiteListCacheKey());
   return cached && typeof cached.ts === "number" ? cached.ts : null;
 }
 
+/**
+ * Get site data cache timestamp
+ * @param {string} site - Site identifier
+ * @returns {number|null} Timestamp or null
+ */
 function getSiteDataCacheStamp(site) {
   const cached = lsGet(getSiteDataCacheKey(site));
   return cached && typeof cached.ts === "number" ? cached.ts : null;
 }
 
+/**
+ * Get UI state cache key
+ * @returns {string} Cache key for UI state
+ */
 function getUiStateCacheKey() {
   return UI_STATE_LS_KEY + "_" + getCacheNamespace();
 }
 
+/**
+ * Get cached UI state
+ * @returns {Object|null} Cached UI state or null
+ */
 function getCachedUiState() {
   const cached = lsGet(getUiStateCacheKey());
   if (!cached || typeof cached !== "object") return null;
@@ -3049,390 +3194,45 @@ function setCachedUiState() {
   });
 }
 
-const FIELD_FAILURE_RETRY_MS = 5 * 60 * 1000;
-const FIELD_SUCCESS_TTL_MS = DATA_TTL;
-
-function hasOwnDataField(data, key) {
-  return !!data && Object.prototype.hasOwnProperty.call(data, key);
-}
-
-function getFieldSnapshotFetchedAt(data, key) {
-  if (!data) return null;
-  const fetchedAt = data[key + "FetchedAt"];
-  if (typeof fetchedAt === "number") return fetchedAt;
-  return typeof data.__cacheSavedAt === "number" ? data.__cacheSavedAt : null;
-}
-
-function hasFreshFieldSnapshot(data, key, ttlMs = FIELD_SUCCESS_TTL_MS) {
-  const fetchedAt = getFieldSnapshotFetchedAt(data, key);
-  return typeof fetchedAt === "number" && Date.now() - fetchedAt < ttlMs;
-}
-
-function hasLegacySuccessfulFieldSnapshot(data, key) {
-  if (!data) return false;
-  if (key === "expose") return data.expose != null;
-  if ((key === "crawl" || key === "backlink") && data.detailLoaded === true) {
-    return data[key] != null;
-  }
-  return false;
-}
-
-function hasSuccessfulFieldSnapshot(data, key) {
-  return !!(
-    data &&
-    hasFreshFieldSnapshot(data, key) &&
-    hasOwnDataField(data, key) &&
-    (data[key + "FetchState"] === "success" ||
-      hasLegacySuccessfulFieldSnapshot(data, key))
-  );
-}
-
-function hasRecentFieldFailure(data, key, cooldownMs = FIELD_FAILURE_RETRY_MS) {
-  return !!(
-    data &&
-    data[key + "FetchState"] === "failure" &&
-    typeof data[key + "FetchedAt"] === "number" &&
-    Date.now() - data[key + "FetchedAt"] < cooldownMs
-  );
-}
-
-function shouldFetchField(data, key, options) {
-  if (options && options.force) return true;
-  if (hasSuccessfulFieldSnapshot(data, key)) return false;
-  if (options && options.retryIncomplete) return true;
-  return !hasRecentFieldFailure(data, key);
-}
-
-function hasDetailSnapshot(data) {
-  return hasSuccessfulFieldSnapshot(data, "crawl") && hasSuccessfulFieldSnapshot(data, "backlink");
-}
-
-function normalizeSiteData(data) {
-  if (!data) return null;
-  const normalized = {
-    expose: hasOwnDataField(data, "expose") ? data.expose ?? null : null,
-    crawl: hasOwnDataField(data, "crawl") ? data.crawl ?? null : null,
-    backlink: hasOwnDataField(data, "backlink") ? data.backlink ?? null : null,
-    detailLoaded:
-      typeof data.detailLoaded === "boolean"
-        ? data.detailLoaded || hasDetailSnapshot(data)
-        : hasDetailSnapshot(data),
-  };
-  if (hasOwnDataField(data, "diagnosisMeta")) normalized.diagnosisMeta = data.diagnosisMeta ?? null;
-  if (hasOwnDataField(data, "diagnosisMetaStatus"))
-    normalized.diagnosisMetaStatus = data.diagnosisMetaStatus ?? null;
-  if (hasOwnDataField(data, "diagnosisMetaRange"))
-    normalized.diagnosisMetaRange = data.diagnosisMetaRange ?? null;
-  if (hasOwnDataField(data, "diagnosisMetaFetchState"))
-    normalized.diagnosisMetaFetchState = data.diagnosisMetaFetchState ?? null;
-  if (hasOwnDataField(data, "diagnosisMetaFetchedAt"))
-    normalized.diagnosisMetaFetchedAt = data.diagnosisMetaFetchedAt ?? null;
-  if (hasOwnDataField(data, "exposeFetchState")) normalized.exposeFetchState = data.exposeFetchState ?? null;
-  if (hasOwnDataField(data, "exposeFetchedAt")) normalized.exposeFetchedAt = data.exposeFetchedAt ?? null;
-  if (hasOwnDataField(data, "exposeStatus")) normalized.exposeStatus = data.exposeStatus ?? null;
-  if (hasOwnDataField(data, "crawlFetchState")) normalized.crawlFetchState = data.crawlFetchState ?? null;
-  if (hasOwnDataField(data, "crawlFetchedAt")) normalized.crawlFetchedAt = data.crawlFetchedAt ?? null;
-  if (hasOwnDataField(data, "crawlStatus")) normalized.crawlStatus = data.crawlStatus ?? null;
-  if (hasOwnDataField(data, "backlinkFetchState"))
-    normalized.backlinkFetchState = data.backlinkFetchState ?? null;
-  if (hasOwnDataField(data, "backlinkFetchedAt"))
-    normalized.backlinkFetchedAt = data.backlinkFetchedAt ?? null;
-  if (hasOwnDataField(data, "backlinkStatus")) normalized.backlinkStatus = data.backlinkStatus ?? null;
-  if (hasOwnDataField(data, "__cacheSavedAt")) normalized.__cacheSavedAt = data.__cacheSavedAt ?? null;
-
-  // Merge metadata for multi-account support
-  normalized.__source = hasOwnDataField(data, "__source") ? data.__source : null;
-  normalized.__fetchedAt = hasOwnDataField(data, "__fetchedAt") ? data.__fetchedAt : null;
-  normalized.__version = hasOwnDataField(data, "__version") ? data.__version : 1;
-  normalized.__accountId = hasOwnDataField(data, "__accountId") ? data.__accountId : null;
-  normalized.__importedFrom = hasOwnDataField(data, "__importedFrom") ? data.__importedFrom : null;
-  normalized.__importedAt = hasOwnDataField(data, "__importedAt") ? data.__importedAt : null;
-
-  return normalized;
+/**
+ * Get memory cache reference (read-only access)
+ * @returns {Object} Reference to memory cache
+ */
+function getMemCache() {
+  return memCache;
 }
 
 /**
- * Merge data from multiple accounts into a single dataset
- * @param {Object} target - Target memCache object
- * @param {Object} source - Source data to merge
- * @param {Object} options - Merge options { overwrite: boolean, mergeStrategy: 'newer'|'all' }
- * @returns {Object} Merged data
+ * Get all sites list (read-only access)
+ * @returns {Array} Reference to all sites array
  */
-function mergeSiteData(target, source, options = {}) {
-  const { overwrite = false, mergeStrategy = 'newer' } = options;
-
-  if (!source) return target;
-  if (!target) return source;
-
-  const result = { ...target };
-
-  for (const site of Object.keys(source)) {
-    const sourceData = source[site];
-    const targetData = result[site];
-
-    if (!targetData) {
-      // New site - just add it
-      result[site] = sourceData;
-    } else {
-      // Existing site - merge based on strategy
-      const shouldOverwrite = overwrite ||
-        (mergeStrategy === 'newer' &&
-         (sourceData.__fetchedAt || 0) > (targetData.__fetchedAt || 0));
-
-      if (shouldOverwrite) {
-        result[site] = sourceData;
-      } else {
-        // Merge individual fields
-        for (const key of Object.keys(sourceData)) {
-          if (!targetData[key] || overwrite) {
-            result[site][key] = sourceData[key];
-          }
-        }
-      }
-    }
-  }
-
-  return result;
+function getAllSites() {
+  return allSites;
 }
 
 /**
- * Export data for backup/transfer
- * @param {Object} memCache - Memory cache to export
- * @returns {Object} Exportable data with metadata
+ * Set all sites list
+ * @param {Array} sites - Sites array to set
  */
-function exportSiteData(memCache) {
-  return {
-    __exportVersion: 1,
-    __exportedAt: Date.now(),
-    __exportSource: 'SearchAdvisor Runtime',
-    sites: Object.keys(memCache).reduce((acc, site) => {
-      acc[site] = { ...memCache[site] };
-      return acc;
-    }, {})
-  };
+function setAllSites(sites) {
+  allSites.length = 0;
+  allSites.push(...sites);
 }
 
-/**
- * Import data from export
- * @param {Object} memCache - Target memory cache
- * @param {Object} exportData - Data to import
- * @param {Object} options - Import options
- * @returns {Object} Merged memCache
- */
-function importSiteData(memCache, exportData, options = {}) {
-  if (!exportData || !exportData.sites) return memCache;
-
-  const importedCache = { ...memCache };
-
-  // Add import metadata
-  for (const site of Object.keys(exportData.sites)) {
-    const data = exportData.sites[site];
-    data.__importedFrom = exportData.__exportSource || 'unknown';
-    data.__importedAt = Date.now();
-
-    if (!importedCache[site]) {
-      importedCache[site] = data;
-    } else {
-      // Use merge function
-      importedCache[site] = mergeSiteData(
-        { [site]: importedCache[site] },
-        { [site]: data },
-        options
-      )[site];
-    }
-  }
-
-  return importedCache;
-}
-
-function getCachedSiteSnapshot(site) {
-  const cached = normalizeSiteData(getCachedData(site));
-  const live = normalizeSiteData(memCache[site]);
-  if (!cached && !live) return null;
-  return normalizeSiteData({ ...(cached || {}), ...(live || {}) });
-}
-
-function emptySiteData() {
-  return {
-    expose: null,
-    crawl: null,
-    backlink: null,
-    detailLoaded: false,
-  };
-}
-
-/**
- * P1: Persist site data with queue serialization
- * @param {string} site - Site identifier
- * @param {Object} data - Data to persist
- * @returns {Promise<Object>} Promise that resolves with persisted data
- */
-function persistSiteData(site, data) {
-  const next =
-    normalizeSiteData({ ...(getCachedSiteSnapshot(site) || emptySiteData()), ...(data || {}) }) ||
-    emptySiteData();
-  memCache[site] = next;
-
-  // Return promise for async write
-  return setCachedData(site, next).then(() => next);
-}
-
-function hasSuccessfulDiagnosisMetaSnapshot(data) {
-  return !!(
-    data &&
-    hasFreshFieldSnapshot(data, "diagnosisMeta") &&
-    ((data.diagnosisMeta && data.diagnosisMeta.code === 0 && data.diagnosisMetaRange) ||
-      data.diagnosisMetaFetchState === "success")
-  );
-}
-
-function hasRecentDiagnosisMetaFailure(
-  data,
-  cooldownMs = FIELD_FAILURE_RETRY_MS,
-) {
-  return !!(
-    data &&
-    data.diagnosisMetaFetchState === "failure" &&
-    typeof data.diagnosisMetaFetchedAt === "number" &&
-    Date.now() - data.diagnosisMetaFetchedAt < cooldownMs
-  );
-}
-
-function hasDiagnosisMetaSnapshot(data) {
-  return hasSuccessfulDiagnosisMetaSnapshot(data) || hasRecentDiagnosisMetaFailure(data);
-}
-
-function shouldFetchDiagnosisMeta(data, options) {
-  if (options && options.force) return true;
-  if (hasSuccessfulDiagnosisMetaSnapshot(data)) return false;
-  if (options && options.retryIncomplete) return true;
-  return !hasRecentDiagnosisMetaFailure(data);
-}
-
-async function loadSiteList(refresh = false) {
-  console.log('[loadSiteList] Called with refresh:', refresh);
-
-  // Check V2 format EXPORT_PAYLOAD first
-  const exportPayload = window.__SEARCHADVISOR_EXPORT_PAYLOAD__;
-  if (exportPayload) {
-    console.log('[loadSiteList] Found EXPORT_PAYLOAD');
-
-    // P0-2: V2 다중 계정 구조 지원 완성
-    if (exportPayload.__meta && exportPayload.accounts) {
-      return handleV2MultiAccount(exportPayload);
-    }
-
-    // P2 Issue #2: V1 마이그레이션 지원
-    // V1 페이로드 감지 및 자동 마이그레이션
-    if (canMigrateV1(exportPayload)) {
-      console.log('[loadSiteList] Detected V1 payload, attempting migration...');
-
-      try {
-        // V1 데이터 백업
-        const backupKey = backupV1Data(exportPayload);
-
-        // V1 → V2 마이그레이션
-        const v2Payload = migrateV1ToV2(exportPayload, {
-          accountEmail: ACCOUNT_UTILS.getAccountLabel(),
-          encId: ACCOUNT_UTILS.getEncId(),
-          validate: true
-        });
-
-        // 마이그레이션된 V2 페이로드 처리
-        if (v2Payload.__meta && v2Payload.accounts) {
-          console.log('[loadSiteList] V1 → V2 migration successful');
-
-          // 마이그레이션된 데이터로 전역 변수 업데이트
-          window.__SEARCHADVISOR_EXPORT_PAYLOAD__ = v2Payload;
-
-          // 사용자에게 마이그레이션 알림 (선택사항)
-          if (typeof __sadvNotify === 'function') {
-            __sadvNotify('V1 데이터가 V2 형식으로 자동 마이그레이션되었습니다');
-          }
-
-          return handleV2MultiAccount(v2Payload);
-        }
-      } catch (e) {
-        console.error('[loadSiteList] V1 migration failed:', e);
-
-        // 마이그레이션 실패 시 사용자에게 알림
-        if (typeof showError === 'function') {
-          showError(
-            'V1 데이터 마이그레이션에 실패했습니다',
-            e,
-            'V1_Migration'
-          );
-        }
-
-        return [];
-      }
-    }
-
-    // V2 포맷이 아닌 경우 빈 배열 반환
-    if (exportPayload && !exportPayload.__meta) {
-      console.warn('[loadSiteList] Unsupported payload format (missing __meta)');
-      return [];
-    }
-  }
-
-  // Check if we have init data
-  const initData = window.__sadvInitData;
-  if (initData && initData.sites) {
-    const sites = Object.keys(initData.sites);
-    console.log('[loadSiteList] Found init data with sites:', sites);
-    allSites.length = 0;
-    allSites.push(...sites);
-    return sites;
-  }
-
-  // Check merged data
-  const mergedData = window.__sadvMergedData;
-  if (mergedData && mergedData.sites) {
-    const sites = Object.keys(mergedData.sites);
-    console.log('[loadSiteList] Found merged data with sites:', sites);
-    allSites.length = 0;
-    allSites.push(...sites);
-    return sites;
-  }
-
-  // Check cache
-  if (!refresh) {
-    const cached = lsGet(getSiteListCacheKey());
-    if (cached && cached.sites && Array.isArray(cached.sites)) {
-      console.log('[loadSiteList] Found cached sites:', cached.sites);
-      allSites.length = 0;
-      allSites.push(...cached.sites);
-      return cached.sites;
-    }
-  }
-
-  console.log('[loadSiteList] No sites found, returning empty array');
-
-  // P2 Issue #2: 레거시 캐시에서 V1 데이터 탐지 시도
-  if (!refresh) {
-    try {
-      const migrationResult = detectAndMigrateV1Data();
-      if (migrationResult.detected && migrationResult.migrated && migrationResult.payload) {
-        console.log('[loadSiteList] V1 data detected and migrated from cache');
-
-        // 마이그레이션된 데이터 처리
-        window.__SEARCHADVISOR_EXPORT_PAYLOAD__ = migrationResult.payload;
-
-        return handleV2MultiAccount(migrationResult.payload);
-      }
-    } catch (e) {
-      console.warn('[loadSiteList] V1 cache migration failed:', e);
-    }
-  }
-
-  return [];
-}
+// ============================================================
+// DATA-V2 - V2 multi-account support and migration
+// ============================================================
 
 // ============================================================================
-// P0-2: V2 다중 계정 구조 지원 완성
+// V2 다중 계정 구조 지원 완성
 // ============================================================================
-// V2 다중 계정 감지 및 병합 처리
-// ============================================================================
+
+/**
+ * Handle V2 multi-account payload
+ * @param {Object} payload - V2 export payload
+ * @param {string} mergeStrategy - Merge strategy (NEWER, FIRST, SOURCE, ALL)
+ * @returns {Array} List of site URLs
+ */
 function handleV2MultiAccount(payload, mergeStrategy = MERGE_STRATEGIES.DEFAULT) {
   // P1: V2 데이터 검증
   // 1. 기본 V2 포맷 검증
@@ -3578,6 +3378,8 @@ function handleV2MultiAccount(payload, mergeStrategy = MERGE_STRATEGIES.DEFAULT)
   const siteList = Object.keys(mergedSites);
   console.log(`[V2 Multi-Account] Merged ${siteList.length} sites from ${accountKeys.length} accounts`);
 
+  // Update allSites array through cache module
+  const allSites = getAllSites();
   allSites.length = 0;
   allSites.push(...siteList);
 
@@ -3585,94 +3387,8 @@ function handleV2MultiAccount(payload, mergeStrategy = MERGE_STRATEGIES.DEFAULT)
 }
 
 // ============================================================================
-// P0-2: 계정 전환 UI 추가
+// V1 MIGRATION FUNCTIONS
 // ============================================================================
-function switchAccount(accountEmail) {
-  if (!window.__sadvAccountState || !window.__sadvAccountState.isMultiAccount) {
-    console.warn('[Account] Not multi-account mode');
-    return;
-  }
-
-  const prevAccount = window.__sadvAccountState.currentAccount;
-
-  // 현재 계정 업데이트
-  window.__sadvAccountState.currentAccount = accountEmail;
-
-  console.log(`[Account] Switching from ${prevAccount} to ${accountEmail}`);
-
-  // 계정별 데이터 로드
-  const accountData = window.__sadvAccountState.accountsData[accountEmail];
-  if (!accountData) {
-    console.error(`[Account] No data found for account: ${accountEmail}`);
-    return;
-  }
-
-  // 현재 사이트가 이 계정에 있는지 확인
-  const currentSite = curSite || null;
-  const sitesInAccount = accountData.sites || [];
-
-  // __sadvInitData 업데이트
-  window.__sadvInitData.sites = accountData.dataBySite || {};
-  window.__sadvInitData.currentAccount = accountEmail;
-
-  // UI 업데이트
-  if (typeof updateUIState === 'function') {
-    updateUIState({ curAccount: accountEmail });
-  }
-
-  // 현재 사이트가 이 계정에 없으면 첫 번째 사이트로 변경
-  if (currentSite && !sitesInAccount.includes(currentSite)) {
-    const newSite = sitesInAccount[0] || null;
-    if (typeof updateUIState === 'function') {
-      updateUIState({ curSite: newSite });
-    }
-    if (newSite && typeof setComboSite === 'function') {
-      setComboSite(newSite);
-    }
-  }
-
-  // 사이트 콤보 재구축
-  if (typeof buildCombo === 'function') {
-    buildCombo(window.__sadvRows || null);
-  }
-
-  // 현재 뷰 다시 렌더링
-  if (curMode === CONFIG.MODE.SITE && curSite) {
-    if (typeof loadSiteView === 'function') {
-      loadSiteView(curSite);
-    }
-  } else if (curMode === CONFIG.MODE.ALL) {
-    if (typeof renderAllSites === 'function') {
-      renderAllSites();
-    }
-  }
-
-  if (typeof __sadvNotify === 'function') {
-    __sadvNotify();
-  }
-}
-
-// 계정 정보 반환 함수
-function getAccountList() {
-  if (!window.__sadvAccountState || !window.__sadvAccountState.isMultiAccount) {
-    return [];
-  }
-
-  return window.__sadvAccountState.allAccounts.map(accKey => {
-    const accData = window.__sadvAccountState.accountsData[accKey];
-    return {
-      email: accKey,
-      label: accKey.split('@')[0],
-      fullLabel: accKey,
-      encId: accData?.encId || '',
-      siteCount: accData?.sites?.length || 0
-    };
-  });
-}
-
-// ============================================================
-// P2 Issue #2: V1 MIGRATION FUNCTIONS
-// ============================================================
 
 /**
  * V1 페이로드 유효성 검증
@@ -4149,6 +3865,917 @@ function getMigrationStats() {
     status: null,
     siteCount: 0
   };
+}
+
+// ============================================================
+// DATA-API - API calls and data fetching
+// ============================================================
+
+const FIELD_FAILURE_RETRY_MS = 5 * 60 * 1000;
+const FIELD_SUCCESS_TTL_MS = DATA_TTL;
+
+/**
+ * Check if data has own property
+ * @param {Object} data - Data object
+ * @param {string} key - Property key
+ * @returns {boolean} True if has own property
+ */
+function hasOwnDataField(data, key) {
+  return !!data && Object.prototype.hasOwnProperty.call(data, key);
+}
+
+/**
+ * Get field snapshot fetched timestamp
+ * @param {Object} data - Data object
+ * @param {string} key - Field key
+ * @returns {number|null} Timestamp or null
+ */
+function getFieldSnapshotFetchedAt(data, key) {
+  if (!data) return null;
+  const fetchedAt = data[key + "FetchedAt"];
+  if (typeof fetchedAt === "number") return fetchedAt;
+  return typeof data.__cacheSavedAt === "number" ? data.__cacheSavedAt : null;
+}
+
+/**
+ * Check if has fresh field snapshot
+ * @param {Object} data - Data object
+ * @param {string} key - Field key
+ * @param {number} ttlMs - TTL in milliseconds
+ * @returns {boolean} True if has fresh snapshot
+ */
+function hasFreshFieldSnapshot(data, key, ttlMs = FIELD_SUCCESS_TTL_MS) {
+  const fetchedAt = getFieldSnapshotFetchedAt(data, key);
+  return typeof fetchedAt === "number" && Date.now() - fetchedAt < ttlMs;
+}
+
+/**
+ * Check if has legacy successful field snapshot
+ * @param {Object} data - Data object
+ * @param {string} key - Field key
+ * @returns {boolean} True if has legacy snapshot
+ */
+function hasLegacySuccessfulFieldSnapshot(data, key) {
+  if (!data) return false;
+  if (key === "expose") return data.expose != null;
+  if ((key === "crawl" || key === "backlink") && data.detailLoaded === true) {
+    return data[key] != null;
+  }
+  return false;
+}
+
+/**
+ * Check if has successful field snapshot
+ * @param {Object} data - Data object
+ * @param {string} key - Field key
+ * @returns {boolean} True if has successful snapshot
+ */
+function hasSuccessfulFieldSnapshot(data, key) {
+  return !!(
+    data &&
+    hasFreshFieldSnapshot(data, key) &&
+    hasOwnDataField(data, key) &&
+    (data[key + "FetchState"] === "success" ||
+      hasLegacySuccessfulFieldSnapshot(data, key))
+  );
+}
+
+/**
+ * Check if has recent field failure
+ * @param {Object} data - Data object
+ * @param {string} key - Field key
+ * @param {number} cooldownMs - Cooldown in milliseconds
+ * @returns {boolean} True if has recent failure
+ */
+function hasRecentFieldFailure(data, key, cooldownMs = FIELD_FAILURE_RETRY_MS) {
+  return !!(
+    data &&
+    data[key + "FetchState"] === "failure" &&
+    typeof data[key + "FetchedAt"] === "number" &&
+    Date.now() - data[key + "FetchedAt"] < cooldownMs
+  );
+}
+
+/**
+ * Check if should fetch field
+ * @param {Object} data - Data object
+ * @param {string} key - Field key
+ * @param {Object} options - Options { force, retryIncomplete }
+ * @returns {boolean} True if should fetch
+ */
+function shouldFetchField(data, key, options) {
+  if (options && options.force) return true;
+  if (hasSuccessfulFieldSnapshot(data, key)) return false;
+  if (options && options.retryIncomplete) return true;
+  return !hasRecentFieldFailure(data, key);
+}
+
+/**
+ * Check if has detail snapshot
+ * @param {Object} data - Data object
+ * @returns {boolean} True if has detail snapshot
+ */
+function hasDetailSnapshot(data) {
+  return hasSuccessfulFieldSnapshot(data, "crawl") && hasSuccessfulFieldSnapshot(data, "backlink");
+}
+
+/**
+ * Check if has successful diagnosis meta snapshot
+ * @param {Object} data - Data object
+ * @returns {boolean} True if has successful diagnosis meta
+ */
+function hasSuccessfulDiagnosisMetaSnapshot(data) {
+  return !!(
+    data &&
+    hasFreshFieldSnapshot(data, "diagnosisMeta") &&
+    ((data.diagnosisMeta && data.diagnosisMeta.code === 0 && data.diagnosisMetaRange) ||
+      data.diagnosisMetaFetchState === "success")
+  );
+}
+
+/**
+ * Check if has recent diagnosis meta failure
+ * @param {Object} data - Data object
+ * @param {number} cooldownMs - Cooldown in milliseconds
+ * @returns {boolean} True if has recent failure
+ */
+function hasRecentDiagnosisMetaFailure(
+  data,
+  cooldownMs = FIELD_FAILURE_RETRY_MS,
+) {
+  return !!(
+    data &&
+    data.diagnosisMetaFetchState === "failure" &&
+    typeof data.diagnosisMetaFetchedAt === "number" &&
+    Date.now() - data.diagnosisMetaFetchedAt < cooldownMs
+  );
+}
+
+/**
+ * Check if has diagnosis meta snapshot
+ * @param {Object} data - Data object
+ * @returns {boolean} True if has diagnosis meta snapshot
+ */
+function hasDiagnosisMetaSnapshot(data) {
+  return hasSuccessfulDiagnosisMetaSnapshot(data) || hasRecentDiagnosisMetaFailure(data);
+}
+
+/**
+ * Check if should fetch diagnosis meta
+ * @param {Object} data - Data object
+ * @param {Object} options - Options
+ * @returns {boolean} True if should fetch
+ */
+function shouldFetchDiagnosisMeta(data, options) {
+  if (options && options.force) return true;
+  if (hasSuccessfulDiagnosisMetaSnapshot(data)) return false;
+  if (options && options.retryIncomplete) return true;
+  return !hasRecentDiagnosisMetaFailure(data);
+}
+
+/**
+ * Normalize site data
+ * @param {Object} data - Raw site data
+ * @returns {Object|null} Normalized site data
+ */
+function normalizeSiteData(data) {
+  if (!data) return null;
+  const normalized = {
+    expose: hasOwnDataField(data, "expose") ? data.expose ?? null : null,
+    crawl: hasOwnDataField(data, "crawl") ? data.crawl ?? null : null,
+    backlink: hasOwnDataField(data, "backlink") ? data.backlink ?? null : null,
+    detailLoaded:
+      typeof data.detailLoaded === "boolean"
+        ? data.detailLoaded || hasDetailSnapshot(data)
+        : hasDetailSnapshot(data),
+  };
+  if (hasOwnDataField(data, "diagnosisMeta")) normalized.diagnosisMeta = data.diagnosisMeta ?? null;
+  if (hasOwnDataField(data, "diagnosisMetaStatus"))
+    normalized.diagnosisMetaStatus = data.diagnosisMetaStatus ?? null;
+  if (hasOwnDataField(data, "diagnosisMetaRange"))
+    normalized.diagnosisMetaRange = data.diagnosisMetaRange ?? null;
+  if (hasOwnDataField(data, "diagnosisMetaFetchState"))
+    normalized.diagnosisMetaFetchState = data.diagnosisMetaFetchState ?? null;
+  if (hasOwnDataField(data, "diagnosisMetaFetchedAt"))
+    normalized.diagnosisMetaFetchedAt = data.diagnosisMetaFetchedAt ?? null;
+  if (hasOwnDataField(data, "exposeFetchState")) normalized.exposeFetchState = data.exposeFetchState ?? null;
+  if (hasOwnDataField(data, "exposeFetchedAt")) normalized.exposeFetchedAt = data.exposeFetchedAt ?? null;
+  if (hasOwnDataField(data, "exposeStatus")) normalized.exposeStatus = data.exposeStatus ?? null;
+  if (hasOwnDataField(data, "crawlFetchState")) normalized.crawlFetchState = data.crawlFetchState ?? null;
+  if (hasOwnDataField(data, "crawlFetchedAt")) normalized.crawlFetchedAt = data.crawlFetchedAt ?? null;
+  if (hasOwnDataField(data, "crawlStatus")) normalized.crawlStatus = data.crawlStatus ?? null;
+  if (hasOwnDataField(data, "backlinkFetchState"))
+    normalized.backlinkFetchState = data.backlinkFetchState ?? null;
+  if (hasOwnDataField(data, "backlinkFetchedAt"))
+    normalized.backlinkFetchedAt = data.backlinkFetchedAt ?? null;
+  if (hasOwnDataField(data, "backlinkStatus")) normalized.backlinkStatus = data.backlinkStatus ?? null;
+  if (hasOwnDataField(data, "__cacheSavedAt")) normalized.__cacheSavedAt = data.__cacheSavedAt ?? null;
+
+  // Merge metadata for multi-account support
+  normalized.__source = hasOwnDataField(data, "__source") ? data.__source : null;
+  normalized.__fetchedAt = hasOwnDataField(data, "__fetchedAt") ? data.__fetchedAt : null;
+  normalized.__version = hasOwnDataField(data, "__version") ? data.__version : 1;
+  normalized.__accountId = hasOwnDataField(data, "__accountId") ? data.__accountId : null;
+  normalized.__importedFrom = hasOwnDataField(data, "__importedFrom") ? data.__importedFrom : null;
+  normalized.__importedAt = hasOwnDataField(data, "__importedAt") ? data.__importedAt : null;
+
+  return normalized;
+}
+
+/**
+ * Get cached site snapshot
+ * @param {string} site - Site URL
+ * @returns {Object|null} Site snapshot
+ */
+function getCachedSiteSnapshot(site) {
+  const cached = normalizeSiteData(getCachedData(site));
+  const memCache = getMemCache();
+  const live = normalizeSiteData(memCache[site]);
+  if (!cached && !live) return null;
+  return normalizeSiteData({ ...(cached || {}), ...(live || {}) });
+}
+
+/**
+ * Create empty site data object
+ * @returns {Object} Empty site data
+ */
+function emptySiteData() {
+  return {
+    expose: null,
+    crawl: null,
+    backlink: null,
+    detailLoaded: false,
+  };
+}
+
+/**
+ * Persist site data
+ * @param {string} site - Site URL
+ * @param {Object} data - Site data to persist
+ * @returns {Promise<Object>} Persisted data
+ */
+function persistSiteData(site, data) {
+  const memCache = getMemCache();
+  const next =
+    normalizeSiteData({ ...(getCachedSiteSnapshot(site) || emptySiteData()), ...(data || {}) }) ||
+    emptySiteData();
+  memCache[site] = next;
+
+  // Return promise for async write
+  return setCachedData(site, next).then(() => next);
+}
+
+/**
+ * Merge data from multiple accounts into a single dataset
+ * @param {Object} target - Target memCache object
+ * @param {Object} source - Source data to merge
+ * @param {Object} options - Merge options { overwrite: boolean, mergeStrategy: 'newer'|'all' }
+ * @returns {Object} Merged data
+ */
+function mergeSiteData(target, source, options = {}) {
+  const { overwrite = false, mergeStrategy = 'newer' } = options;
+
+  if (!source) return target;
+  if (!target) return source;
+
+  const result = { ...target };
+
+  for (const site of Object.keys(source)) {
+    const sourceData = source[site];
+    const targetData = result[site];
+
+    if (!targetData) {
+      // New site - just add it
+      result[site] = sourceData;
+    } else {
+      // Existing site - merge based on strategy
+      const shouldOverwrite = overwrite ||
+        (mergeStrategy === 'newer' &&
+         (sourceData.__fetchedAt || 0) > (targetData.__fetchedAt || 0));
+
+      if (shouldOverwrite) {
+        result[site] = sourceData;
+      } else {
+        // Merge individual fields
+        for (const key of Object.keys(sourceData)) {
+          if (!targetData[key] || overwrite) {
+            result[site][key] = sourceData[key];
+          }
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Export data for backup/transfer
+ * @param {Object} memCache - Memory cache to export
+ * @returns {Object} Exportable data with metadata
+ */
+function exportSiteData(memCache) {
+  return {
+    __exportVersion: 1,
+    __exportedAt: Date.now(),
+    __exportSource: 'SearchAdvisor Runtime',
+    sites: Object.keys(memCache).reduce((acc, site) => {
+      acc[site] = { ...memCache[site] };
+      return acc;
+    }, {})
+  };
+}
+
+/**
+ * Import data from export
+ * @param {Object} memCache - Target memory cache
+ * @param {Object} exportData - Data to import
+ * @param {Object} options - Import options
+ * @returns {Object} Merged memCache
+ */
+function importSiteData(memCache, exportData, options = {}) {
+  if (!exportData || !exportData.sites) return memCache;
+
+  const importedCache = { ...memCache };
+
+  // Add import metadata
+  for (const site of Object.keys(exportData.sites)) {
+    const data = exportData.sites[site];
+    data.__importedFrom = exportData.__exportSource || 'unknown';
+    data.__importedAt = Date.now();
+
+    if (!importedCache[site]) {
+      importedCache[site] = data;
+    } else {
+      // Use merge function
+      importedCache[site] = mergeSiteData(
+        { [site]: importedCache[site] },
+        { [site]: data },
+        options
+      )[site];
+    }
+  }
+
+  return importedCache;
+}
+
+/**
+ * Fetch expose data from API
+ * @param {string} site - Site URL
+ * @param {Object} options - Fetch options
+ * @returns {Promise<Object>} Fetch result
+ */
+async function fetchExposeData(site, options = {}) {
+  try {
+    const apiUrl = `${API.BASE_URL}${API.ENDPOINTS.EXPOSE}`;
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        site: site,
+        encId: ACCOUNT_UTILS.getEncId(),
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    // Validate response
+    if (!DATA_VALIDATION.isValidExposeResponse(data)) {
+      throw new Error('Invalid expose response format');
+    }
+
+    // Update site data with fetched data
+    const memCache = getMemCache();
+    const siteData = memCache[site] || emptySiteData();
+
+    siteData.expose = data;
+    siteData.exposeFetchState = 'success';
+    siteData.exposeFetchedAt = Date.now();
+    siteData.exposeStatus = data.code === 0 ? 'success' : 'error';
+
+    // Persist to cache
+    await persistSiteData(site, siteData);
+
+    return {
+      success: true,
+      data: data,
+      cached: false,
+    };
+  } catch (error) {
+    console.error('[fetchExposeData] Error:', error);
+
+    // Update failure state
+    const memCache = getMemCache();
+    const siteData = memCache[site] || emptySiteData();
+    siteData.exposeFetchState = 'failure';
+    siteData.exposeFetchedAt = Date.now();
+    siteData.exposeStatus = 'error';
+
+    await persistSiteData(site, siteData);
+
+    return {
+      success: false,
+      error: error.message,
+      cached: false,
+    };
+  }
+}
+
+/**
+ * Fetch crawl data from API
+ * @param {string} site - Site URL
+ * @param {Object} options - Fetch options
+ * @returns {Promise<Object>} Fetch result
+ */
+async function fetchCrawlData(site, options = {}) {
+  try {
+    const apiUrl = `${API.BASE_URL}${API.ENDPOINTS.CRAWL}`;
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        site: site,
+        encId: ACCOUNT_UTILS.getEncId(),
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    // Validate response
+    if (!DATA_VALIDATION.isValidCrawlResponse(data)) {
+      throw new Error('Invalid crawl response format');
+    }
+
+    // Update site data with fetched data
+    const memCache = getMemCache();
+    const siteData = memCache[site] || emptySiteData();
+
+    siteData.crawl = data;
+    siteData.crawlFetchState = 'success';
+    siteData.crawlFetchedAt = Date.now();
+    siteData.crawlStatus = data.code === 0 ? 'success' : 'error';
+    siteData.detailLoaded = true;
+
+    // Persist to cache
+    await persistSiteData(site, siteData);
+
+    return {
+      success: true,
+      data: data,
+      cached: false,
+    };
+  } catch (error) {
+    console.error('[fetchCrawlData] Error:', error);
+
+    // Update failure state
+    const memCache = getMemCache();
+    const siteData = memCache[site] || emptySiteData();
+    siteData.crawlFetchState = 'failure';
+    siteData.crawlFetchedAt = Date.now();
+    siteData.crawlStatus = 'error';
+
+    await persistSiteData(site, siteData);
+
+    return {
+      success: false,
+      error: error.message,
+      cached: false,
+    };
+  }
+}
+
+/**
+ * Fetch backlink data from API
+ * @param {string} site - Site URL
+ * @param {Object} options - Fetch options
+ * @returns {Promise<Object>} Fetch result
+ */
+async function fetchBacklinkData(site, options = {}) {
+  try {
+    const apiUrl = `${API.BASE_URL}${API.ENDPOINTS.BACKLINK}`;
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        site: site,
+        encId: ACCOUNT_UTILS.getEncId(),
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    // Validate response
+    if (!DATA_VALIDATION.isValidBacklinkResponse(data)) {
+      throw new Error('Invalid backlink response format');
+    }
+
+    // Update site data with fetched data
+    const memCache = getMemCache();
+    const siteData = memCache[site] || emptySiteData();
+
+    siteData.backlink = data;
+    siteData.backlinkFetchState = 'success';
+    siteData.backlinkFetchedAt = Date.now();
+    siteData.backlinkStatus = data.code === 0 ? 'success' : 'error';
+    siteData.detailLoaded = true;
+
+    // Persist to cache
+    await persistSiteData(site, siteData);
+
+    return {
+      success: true,
+      data: data,
+      cached: false,
+    };
+  } catch (error) {
+    console.error('[fetchBacklinkData] Error:', error);
+
+    // Update failure state
+    const memCache = getMemCache();
+    const siteData = memCache[site] || emptySiteData();
+    siteData.backlinkFetchState = 'failure';
+    siteData.backlinkFetchedAt = Date.now();
+    siteData.backlinkStatus = 'error';
+
+    await persistSiteData(site, siteData);
+
+    return {
+      success: false,
+      error: error.message,
+      cached: false,
+    };
+  }
+}
+
+// ============================================================
+// DATA-STATE - State management and account switching
+// ============================================================
+
+/**
+ * Load site list from various sources
+ * @param {boolean} refresh - Force refresh from cache
+ * @returns {Promise<Array>} List of site URLs
+ */
+async function loadSiteList(refresh = false) {
+  console.log('[loadSiteList] Called with refresh:', refresh);
+
+  // Check V2 format EXPORT_PAYLOAD first
+  const exportPayload = window.__SEARCHADVISOR_EXPORT_PAYLOAD__;
+  if (exportPayload) {
+    console.log('[loadSiteList] Found EXPORT_PAYLOAD');
+
+    // P0-2: V2 다중 계정 구조 지원 완성
+    if (exportPayload.__meta && exportPayload.accounts) {
+      return handleV2MultiAccount(exportPayload);
+    }
+
+    // P2 Issue #2: V1 마이그레이션 지원
+    // V1 페이로드 감지 및 자동 마이그레이션
+    if (canMigrateV1(exportPayload)) {
+      console.log('[loadSiteList] Detected V1 payload, attempting migration...');
+
+      try {
+        // V1 데이터 백업
+        const backupKey = backupV1Data(exportPayload);
+
+        // V1 → V2 마이그레이션
+        const v2Payload = migrateV1ToV2(exportPayload, {
+          accountEmail: ACCOUNT_UTILS.getAccountLabel(),
+          encId: ACCOUNT_UTILS.getEncId(),
+          validate: true
+        });
+
+        // 마이그레이션된 V2 페이로드 처리
+        if (v2Payload.__meta && v2Payload.accounts) {
+          console.log('[loadSiteList] V1 → V2 migration successful');
+
+          // 마이그레이션된 데이터로 전역 변수 업데이트
+          window.__SEARCHADVISOR_EXPORT_PAYLOAD__ = v2Payload;
+
+          // 사용자에게 마이그레이션 알림 (선택사항)
+          if (typeof __sadvNotify === 'function') {
+            __sadvNotify('V1 데이터가 V2 형식으로 자동 마이그레이션되었습니다');
+          }
+
+          return handleV2MultiAccount(v2Payload);
+        }
+      } catch (e) {
+        console.error('[loadSiteList] V1 migration failed:', e);
+
+        // 마이그레이션 실패 시 사용자에게 알림
+        if (typeof showError === 'function') {
+          showError(
+            'V1 데이터 마이그레이션에 실패했습니다',
+            e,
+            'V1_Migration'
+          );
+        }
+
+        return [];
+      }
+    }
+
+    // V2 포맷이 아닌 경우 빈 배열 반환
+    if (exportPayload && !exportPayload.__meta) {
+      console.warn('[loadSiteList] Unsupported payload format (missing __meta)');
+      return [];
+    }
+  }
+
+  // Check if we have init data
+  const initData = window.__sadvInitData;
+  if (initData && initData.sites) {
+    const sites = Object.keys(initData.sites);
+    console.log('[loadSiteList] Found init data with sites:', sites);
+    const allSites = getAllSites();
+    allSites.length = 0;
+    allSites.push(...sites);
+    return sites;
+  }
+
+  // Check merged data
+  const mergedData = window.__sadvMergedData;
+  if (mergedData && mergedData.sites) {
+    const sites = Object.keys(mergedData.sites);
+    console.log('[loadSiteList] Found merged data with sites:', sites);
+    const allSites = getAllSites();
+    allSites.length = 0;
+    allSites.push(...sites);
+    return sites;
+  }
+
+  // Check cache
+  if (!refresh) {
+    const cached = lsGet(getSiteListCacheKey());
+    if (cached && cached.sites && Array.isArray(cached.sites)) {
+      console.log('[loadSiteList] Found cached sites:', cached.sites);
+      const allSites = getAllSites();
+      allSites.length = 0;
+      allSites.push(...cached.sites);
+      return cached.sites;
+    }
+  }
+
+  console.log('[loadSiteList] No sites found, returning empty array');
+
+  // P2 Issue #2: 레거시 캐시에서 V1 데이터 탐지 시도
+  if (!refresh) {
+    try {
+      const migrationResult = detectAndMigrateV1Data();
+      if (migrationResult.detected && migrationResult.migrated && migrationResult.payload) {
+        console.log('[loadSiteList] V1 data detected and migrated from cache');
+
+        // 마이그레이션된 데이터 처리
+        window.__SEARCHADVISOR_EXPORT_PAYLOAD__ = migrationResult.payload;
+
+        return handleV2MultiAccount(migrationResult.payload);
+      }
+    } catch (e) {
+      console.warn('[loadSiteList] V1 cache migration failed:', e);
+    }
+  }
+
+  return [];
+}
+
+// ============================================================================
+// P0-2: 계정 전환 UI 추가
+// ============================================================================
+
+/**
+ * Switch to a different account in multi-account mode
+ * @param {string} accountEmail - Account email to switch to
+ */
+function switchAccount(accountEmail) {
+  if (!window.__sadvAccountState || !window.__sadvAccountState.isMultiAccount) {
+    console.warn('[Account] Not multi-account mode');
+    return;
+  }
+
+  const prevAccount = window.__sadvAccountState.currentAccount;
+
+  // 현재 계정 업데이트
+  window.__sadvAccountState.currentAccount = accountEmail;
+
+  console.log(`[Account] Switching from ${prevAccount} to ${accountEmail}`);
+
+  // 계정별 데이터 로드
+  const accountData = window.__sadvAccountState.accountsData[accountEmail];
+  if (!accountData) {
+    console.error(`[Account] No data found for account: ${accountEmail}`);
+    return;
+  }
+
+  // 현재 사이트가 이 계정에 있는지 확인
+  const currentSite = curSite || null;
+  const sitesInAccount = accountData.sites || [];
+
+  // __sadvInitData 업데이트
+  window.__sadvInitData.sites = accountData.dataBySite || {};
+  window.__sadvInitData.currentAccount = accountEmail;
+
+  // UI 업데이트
+  if (typeof updateUIState === 'function') {
+    updateUIState({ curAccount: accountEmail });
+  }
+
+  // 현재 사이트가 이 계정에 없으면 첫 번째 사이트로 변경
+  if (currentSite && !sitesInAccount.includes(currentSite)) {
+    const newSite = sitesInAccount[0] || null;
+    if (typeof updateUIState === 'function') {
+      updateUIState({ curSite: newSite });
+    }
+    if (newSite && typeof setComboSite === 'function') {
+      setComboSite(newSite);
+    }
+  }
+
+  // 사이트 콤보 재구축
+  if (typeof buildCombo === 'function') {
+    buildCombo(window.__sadvRows || null);
+  }
+
+  // 현재 뷰 다시 렌더링
+  if (curMode === CONFIG.MODE.SITE && curSite) {
+    if (typeof loadSiteView === 'function') {
+      loadSiteView(curSite);
+    }
+  } else if (curMode === CONFIG.MODE.ALL) {
+    if (typeof renderAllSites === 'function') {
+      renderAllSites();
+    }
+  }
+
+  if (typeof __sadvNotify === 'function') {
+    __sadvNotify();
+  }
+}
+
+/**
+ * Get list of accounts in multi-account mode
+ * @returns {Array} List of account objects
+ */
+function getAccountList() {
+  if (!window.__sadvAccountState || !window.__sadvAccountState.isMultiAccount) {
+    return [];
+  }
+
+  return window.__sadvAccountState.allAccounts.map(accKey => {
+    const accData = window.__sadvAccountState.accountsData[accKey];
+    return {
+      email: accKey,
+      label: accKey.split('@')[0],
+      fullLabel: accKey,
+      encId: accData?.encId || '',
+      siteCount: accData?.sites?.length || 0
+    };
+  });
+}
+
+/**
+ * Get current account in multi-account mode
+ * @returns {string|null} Current account email or null
+ */
+function getCurrentAccount() {
+  if (!window.__sadvAccountState || !window.__sadvAccountState.isMultiAccount) {
+    return null;
+  }
+  return window.__sadvAccountState.currentAccount;
+}
+
+/**
+ * Check if in multi-account mode
+ * @returns {boolean} True if multi-account mode
+ */
+function isMultiAccountMode() {
+  return !!(window.__sadvAccountState && window.__sadvAccountState.isMultiAccount);
+}
+
+/**
+ * Get account state object
+ * @returns {Object|null} Account state or null
+ */
+function getAccountState() {
+  return window.__sadvAccountState || null;
+}
+
+/**
+ * Update account state
+ * @param {Object} state - New account state
+ */
+function setAccountState(state) {
+  if (state && typeof state === 'object') {
+    window.__sadvAccountState = state;
+  }
+}
+
+// ============================================================
+// DATA-MANAGER - Data storage and caching utilities
+// ============================================================
+//
+// This module is the entry point for data management functionality.
+// It has been split into 4 focused modules:
+//
+// - 03-data-cache.js: Cache management (lsGet, lsSet, getCachedData, setCachedData)
+// - 03-data-v2.js: V2 processing (handleV2MultiAccount, migrateV1ToV2)
+// - 03-data-api.js: API calls (fetchExposeData, fetchCrawlData, fetchBacklinkData)
+// - 03-data-state.js: State management (switchAccount, getCurrentAccount, loadSiteList)
+//
+// All public APIs are re-exported here for backward compatibility.
+// ============================================================
+
+// ============================================================
+// PUBLIC API EXPORTS
+// ============================================================
+
+/**
+ * Data Manager API
+ * Provides access to all data management functionality
+ */
+const DATA_MANAGER_API = {
+  // Cache operations (from 03-data-cache.js)
+  lsGet,
+  lsSet,
+  getCachedData,
+  setCachedData,
+  clearCachedData,
+  getSiteListCacheKey,
+  getSiteDataCacheKey,
+  getSiteListCacheStamp,
+  getSiteDataCacheStamp,
+  getUiStateCacheKey,
+  getCachedUiState,
+  setCachedUiState,
+  getMemCache,
+  getAllSites,
+  setAllSites,
+
+  // V2 operations (from 03-data-v2.js)
+  handleV2MultiAccount,
+  migrateV1ToV2,
+  migrateV2ToV1,
+  normalizeLegacyCache,
+  detectAndMigrateV1Data,
+  extractSiteUrlFromCacheKey,
+  backupV1Data,
+  canMigrateV1,
+  getMigrationStats,
+
+  // API operations (from 03-data-api.js)
+  hasOwnDataField,
+  getFieldSnapshotFetchedAt,
+  hasFreshFieldSnapshot,
+  hasLegacySuccessfulFieldSnapshot,
+  hasSuccessfulFieldSnapshot,
+  hasRecentFieldFailure,
+  shouldFetchField,
+  hasDetailSnapshot,
+  hasSuccessfulDiagnosisMetaSnapshot,
+  hasRecentDiagnosisMetaFailure,
+  hasDiagnosisMetaSnapshot,
+  shouldFetchDiagnosisMeta,
+  normalizeSiteData,
+  getCachedSiteSnapshot,
+  emptySiteData,
+  persistSiteData,
+  mergeSiteData,
+  exportSiteData,
+  importSiteData,
+  fetchExposeData,
+  fetchCrawlData,
+  fetchBacklinkData,
+
+  // State operations (from 03-data-state.js)
+  loadSiteList,
+  switchAccount,
+  getAccountList,
+  getCurrentAccount,
+  isMultiAccountMode,
+  getAccountState,
+  setAccountState,
+};
+
+// Make API available globally for debugging
+if (typeof window !== 'undefined') {
+  window.DATA_MANAGER_API = DATA_MANAGER_API;
 }
 
 // fetchWithRetry function is provided by 00-constants.js
@@ -6104,720 +6731,1081 @@ if (typeof window !== "undefined") {
 }
 
 /**
+ * Overview Tab Renderer
+ * Displays key performance indicators and trend charts
+ *
+ * @module renderers/overview
+ * @param {Object} data - Prepared data object containing:
+ *   - totalC: Total clicks
+ *   - totalE: Total exposes
+ *   - avgCtr: Average CTR
+ *   - clicks: Click array
+ *   - exposes: Expose array
+ *   - ctrs: CTR array
+ *   - dates: Date array
+ *   - logs: Raw log data
+ *   - period: Period data with prevClickRatio, prevExposeRatio
+ *   - diagnosisIndexedSeries: Diagnosis indexed series data
+ * @returns {Function} Renderer function that returns DOM element
+ */
+function createOverviewRenderer(data) {
+  return function overview() {
+    const {
+      totalC, totalE, avgCtr, clicks, exposes, ctrs, dates, logs,
+      period, diagnosisIndexedSeries
+    } = data;
+
+    const wrap = document.createElement("div");
+
+    // KPI Grid
+    wrap.appendChild(
+      kpiGrid([
+        {
+          label: "총 클릭",
+          value: fmt(totalC) + "회",
+          sub: "90일 합계",
+          color: C.green,
+          icon: ICONS.click,
+        },
+        {
+          label: "총 노출",
+          value: (totalE / 10000).toFixed(1) + "만",
+          sub: "90일 합계",
+          color: C.blue,
+          icon: ICONS.eye,
+        },
+        {
+          label: "평균 CTR",
+          value: avgCtr + "%",
+          color: C.amber,
+          sub: "90일 평균",
+          icon: ICONS.chart,
+        },
+        {
+          label: "분석기간",
+          value: logs.length + "일",
+          color: C.sub,
+          icon: ICONS.calendar,
+        },
+      ]),
+    );
+
+    // Period comparison
+    const prevCR = period.prevClickRatio != null ? parseFloat(period.prevClickRatio) : null;
+    const prevER = period.prevExposeRatio != null ? parseFloat(period.prevExposeRatio) : null;
+    if (prevCR !== null || prevER !== null) {
+      wrap.appendChild(
+        kpiGrid(
+          [
+            prevCR !== null && {
+              label: "클릭 전기비",
+              value: (prevCR >= 0 ? "+" : "") + prevCR + "%",
+              color: prevCR >= 0 ? C.green : C.red,
+              sub: "90일 전 대비",
+              icon: prevCR >= 0 ? ICONS.up : ICONS.down,
+            },
+            prevER !== null && {
+              label: "노출 전기비",
+              value: (prevER >= 0 ? "+" : "") + prevER + "%",
+              color: prevER >= 0 ? C.green : C.red,
+              sub: "90일 전 대비",
+              icon: prevER >= 0 ? ICONS.up : ICONS.down,
+            },
+          ].filter(Boolean),
+        ),
+      );
+    }
+
+    // Charts
+    wrap.appendChild(
+      chartCard(
+        "일별 클릭수",
+        "최고 " + fmt(Math.max(...clicks)) + "회",
+        C.green,
+        sparkline(clicks, dates, window.innerWidth <= 768 ? 65 : 80, C.green, "회"),
+        dates,
+      ),
+    );
+
+    wrap.appendChild(
+      chartCard(
+        "일별 노출수",
+        "최고 " + fmt(Math.max(...exposes)),
+        C.blue,
+        sparkline(exposes, dates, window.innerWidth <= 768 ? 55 : 65, C.blue, "회"),
+        dates,
+      ),
+    );
+
+    wrap.appendChild(
+      chartCard(
+        "일별 CTR",
+        "평균 " + avgCtr + "%",
+        C.amber,
+        sparkline(ctrs, dates, window.innerWidth <= 768 ? 45 : 55, C.amber, "%"),
+        dates,
+      ),
+    );
+
+    // Diagnosis indexed trend
+    if (diagnosisIndexedSeries.values && diagnosisIndexedSeries.values.length) {
+      wrap.appendChild(
+        chartCard(
+          "색인 추이",
+          fmt(diagnosisIndexedSeries.current) + "건",
+          diagnosisIndexedSeries.color,
+          sparkline(
+            diagnosisIndexedSeries.values.slice(-15),
+            dates,
+            80,
+            diagnosisIndexedSeries.color,
+            "건",
+            { minValue: 0 },
+          ),
+          dates,
+        ),
+      );
+    }
+
+    // Top 3 days
+    const topEl = document.createElement("div");
+    topEl.appendChild(secTitle("클릭 TOP 3"));
+    [...logs]
+      .sort((a, b) => b.clickCount - a.clickCount)
+      .slice(0, 3)
+      .forEach(function (r, i) {
+        const d = document.createElement("div");
+        d.style.cssText = S.row + ";border-color:" + (i === 0 ? C.green + "44" : C.border);
+        d.innerHTML = sanitizeHTML(`<span>${["🥇", "🥈", "🥉"][i]} <span style="font-size:12px;color:#94a3b8;margin-left:8px">${escHtml(fmtD(r.date))}</span></span><b style="color:${C.green};font-size:14px">${escHtml(fmt(r.clickCount))}회</b>`);
+        topEl.appendChild(d);
+      });
+    wrap.appendChild(topEl);
+
+    return wrap;
+  };
+}
+
+/**
+ * Daily Tab Renderer
+ * Displays day-by-day detailed click data with outlier detection
+ *
+ * @module renderers/daily
+ * @param {Object} data - Prepared data object containing:
+ *   - clicks: Click array
+ *   - dates: Date array
+ *   - logs: Raw log data
+ *   - cSt: Click statistics (mean, outliers)
+ * @returns {Function} Renderer function that returns DOM element
+ */
+function createDailyRenderer(data) {
+  return function daily() {
+    const { clicks, logs, cSt } = data;
+    const wrap = document.createElement("div");
+    const mxC = Math.max(...clicks) || 1;
+
+    wrap.appendChild(
+      chartCard(
+        "일별 클릭 추이",
+        "최고 " + fmt(mxC) + "회",
+        C.green,
+        sparkline(clicks, data.dates, window.innerWidth <= 768 ? 75 : 90, C.green, "회"),
+        data.dates,
+      ),
+    );
+
+    wrap.appendChild(secTitle("날짜별 상세"));
+
+    [...logs].reverse().forEach(function (r) {
+      const isOut = cSt.outliers && cSt.outliers.includes(r.clickCount);
+      const d = document.createElement("div");
+      d.style.cssText = "margin-bottom:12px;padding:4px 0";
+      d.innerHTML = sanitizeHTML(`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="font-size:12px;color:#94a3b8;font-weight:500">${escHtml(fmtD(r.date))} (${escHtml(DOW[new Date(fmtD(r.date)).getDay()])})${isOut ? ' <span style="color:' + C.red + ';font-size:10px;background:' + C.red + '15;padding:1px 4px;border-radius:4px">이상치</span>' : ""}</span><span style="font-size:13px;font-weight:700;color:${r.clickCount >= (cSt.mean || 0) ? C.green : C.text}">${escHtml(fmt(r.clickCount))}회</span></div>${hbar(r.clickCount, mxC, r.clickCount >= (cSt.mean || 0) ? C.green : C.blue)}<div style="display:flex;gap:12px;font-size:11px;color:#64748b;margin-top:4px"><span>노출 <b style="color:#94a3b8">${escHtml(fmt(r.exposeCount))}</b></span><span>CTR ${ctrBadge(r.ctr)}</span></div>`);
+      wrap.appendChild(d);
+    });
+
+    return wrap;
+  };
+}
+
+/**
+ * Queries Tab Renderer
+ * Displays search query performance data
+ *
+ * @module renderers/queries
+ * @param {Object} data - Prepared data object containing:
+ *   - queries: Query array with clickCount, exposeCount, ctr, key
+ *   - dates: Date array
+ * @returns {Function} Renderer function that returns DOM element
+ */
+function createQueriesRenderer(data) {
+  return function queries() {
+    const { queries, dates } = data;
+    const wrap = document.createElement("div");
+    const mxC = Math.max(...queries.map((q) => q.clickCount)) || 1;
+
+    if (!queries.length) {
+      const em = document.createElement("div");
+      em.style.cssText = "text-align:center;padding:40px 20px;color:#64748b;font-size:13px";
+      em.innerHTML = sanitizeHTML(`<div style="margin-bottom:12px;opacity:0.5">${ICONS.search}</div>검색어 데이터 없음`);
+      wrap.appendChild(em);
+      return wrap;
+    }
+
+    wrap.appendChild(
+      chartCard(
+        "검색어별 클릭 TOP 10",
+        "총 " + queries.length + "개",
+        C.teal,
+        barchart(
+          queries.slice(0, 10).map((q) => q.clickCount),
+          queries.slice(0, 10).map((_, i) => "#" + (i + 1)),
+          65,
+          C.teal,
+          "회",
+        ),
+        queries.slice(0, 10).map((_, i) => "#" + (i + 1)),
+      ),
+    );
+
+    wrap.appendChild(secTitle("검색어 상세"));
+
+    queries.forEach(function (q, i) {
+      const searchUrl =
+          "https://search.naver.com/search.naver?query=" +
+          encodeURIComponent(q.key);
+      const safeKey = escHtml(q.key);
+      const d = document.createElement("div");
+      d.style.cssText = S.row + ";flex-direction:column;align-items:stretch;gap:8px;border-color:" + (i === 0 ? C.teal + "44" : C.border);
+      d.innerHTML = sanitizeHTML(`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div style="display:flex;align-items:center;gap:8px;min-width:0"><span style="font-size:11px;font-weight:800;color:${i < 3 ? C.teal : "#64748b"}">#${i + 1}</span><a href="${searchUrl}" target="_blank" rel="noopener noreferrer" style="font-size:13px;font-weight:600;color:${C.blue};text-decoration:none;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${safeKey}</a><span style="opacity:0.5">${ICONS.external}</span></div><span style="font-size:13px;font-weight:700;color:${C.green}">${escHtml(fmt(q.clickCount))}회</span></div>${hbar(q.clickCount, mxC, C.teal)}<div style="display:flex;gap:12px;font-size:11px;color:#64748b"><span>노출 <b style="color:#94a3b8">${escHtml(fmt(q.exposeCount))}</b></span><span>CTR ${ctrBadge(q.ctr)}</span></div>`);
+      wrap.appendChild(d);
+    });
+
+    return wrap;
+  };
+}
+
+/**
+ * Pages Tab Renderer
+ * Displays URL performance data
+ *
+ * @module renderers/pages
+ * @param {Object} data - Prepared data object containing:
+ *   - urls: URL array with clickCount, exposeCount, ctr, key
+ *   - dates: Date array
+ * @returns {Function} Renderer function that returns DOM element
+ */
+function createPagesRenderer(data) {
+  return function pages() {
+    const { urls, dates } = data;
+    const wrap = document.createElement("div");
+    const mxC = Math.max(...urls.map((u) => u.clickCount)) || 1;
+
+    if (!urls.length) {
+      const em = document.createElement("div");
+      em.style.cssText = "text-align:center;padding:40px 20px;color:#64748b;font-size:13px";
+      em.innerHTML = sanitizeHTML(`<div style="margin-bottom:12px;opacity:0.5">${ICONS.link}</div>URL 데이터 없음`);
+      wrap.appendChild(em);
+      return wrap;
+    }
+
+    wrap.appendChild(
+      chartCard(
+        "URL별 클릭 TOP 10",
+        "총 " + urls.length + "개",
+        C.green,
+        barchart(
+          urls.slice(0, 10).map((u) => u.clickCount),
+          urls.slice(0, 10).map((_, i) => "#" + (i + 1)),
+          65,
+          C.green,
+          "회",
+        ),
+        urls.slice(0, 10).map((_, i) => "#" + (i + 1)),
+      ),
+    );
+
+    wrap.appendChild(secTitle("URL 상세"));
+
+    urls.forEach(function (u, i) {
+      const pageUrl = (() => {
+          try {
+            return /^https?:\/\//.test(u.key)
+              ? u.key
+              : new URL(u.key, curSite).toString();
+          } catch (e) {
+            return u.key;
+          }
+        })();
+      const linkLabel =
+          pageUrl.length > 92 ? pageUrl.slice(0, 92) + "..." : pageUrl;
+      const d = document.createElement("div");
+      d.style.cssText = S.row + ";flex-direction:column;align-items:stretch;gap:8px;border-color:" + (i === 0 ? C.green + "44" : C.border);
+      d.innerHTML = sanitizeHTML(`<div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:11px;font-weight:800;color:${i === 0 ? C.green : "#64748b"};min-width:24px;margin-top:2px">#${i + 1}</span><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><a href="${pageUrl.replace(/"/g, "&quot;")}" target="_blank" rel="noopener noreferrer" style="font-size:12px;color:${C.blue};line-height:1.4;word-break:break-all;text-decoration:none;font-weight:500">${escHtml(linkLabel)}</a><span style="flex-shrink:0;opacity:0.5">${ICONS.external}</span></div>${hbar(u.clickCount, mxC, i === 0 ? C.green : C.blue)}<div style="display:flex;gap:12px;font-size:11px;color:#64748b"><span>클릭 <b style="color:${C.green}">${escHtml(fmt(u.clickCount))}</b></span><span>노출 <b style="color:${C.blue}">${escHtml(fmt(u.exposeCount))}</b></span><span>CTR ${ctrBadge(u.ctr)}</span></div></div></div>`);
+      wrap.appendChild(d);
+    });
+
+    return wrap;
+  };
+}
+
+/**
+ * Pattern Tab Renderer
+ * Displays day-of-week patterns and future predictions
+ *
+ * @module renderers/pattern
+ * @param {Object} data - Prepared data object containing:
+ *   - dowRows: Day of week analysis data
+ *   - bestDow: Best day of week
+ *   - worstDow: Worst day of week
+ *   - logs: Raw log data
+ *   - cSt: Click statistics (mean, slope)
+ *   - dates: Date array
+ * @returns {Function} Renderer function that returns DOM element
+ */
+function createPatternRenderer(data) {
+  return function pattern() {
+    const { dowRows, bestDow, worstDow, logs, cSt, dates } = data;
+    const wrap = document.createElement("div");
+    const mxC = Math.max(...dowRows.map((x) => x.avgC)) || 1;
+
+    wrap.appendChild(
+      chartCard(
+        "요일별 평균 클릭",
+        bestDow.label + "요일 최고 " + fmt(bestDow.avgC) + "회",
+        C.green,
+        barchart(
+          dowRows.map((x) => x.avgC),
+          dowRows.map((d) => d.label + "요일"),
+          70,
+          C.purple,
+          "회",
+        ),
+        dowRows.map((d) => d.label),
+      ),
+    );
+
+    const grid = document.createElement("div");
+    grid.style.cssText =
+      "display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:20px";
+
+    dowRows.forEach(function (d) {
+      const isB = d.label === bestDow.label;
+      const isW = d.label === worstDow.label && d.n > 0;
+      const hh = d.avgC ? Math.max(4, Math.round((d.avgC / mxC) * 40)) : 2;
+      const cell = document.createElement("div");
+      cell.style.cssText =
+        "background:#1e293b;border:1px solid " +
+        (isB ? C.green + "44" : isW ? C.red + "44" : C.border) +
+        ";border-radius:10px;padding:10px 4px;text-align:center;transition:all 0.2s";
+      cell.innerHTML = sanitizeHTML(`<div style="font-size:11px;color:#94a3b8;margin-bottom:6px;font-weight:600">${escHtml(d.label)}</div><div style="height:40px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:8px"><div style="height:${hh}px;background:${isB ? C.green : isW ? C.red : C.blue};border-radius:3px;width:16px;min-height:2px;opacity:0.8;box-shadow:0 0 8px ${isB ? C.green : isW ? C.red : C.blue}33"></div></div><div style="font-size:11px;font-weight:700;color:${isB ? C.green : isW ? C.red : C.text}">${d.avgC ? escHtml(fmt(d.avgC)) : "-"}</div><div style="font-size:10px;color:#64748b;margin-top:2px">${escHtml(d.n)}일</div>`);
+      grid.appendChild(cell);
+    });
+
+    wrap.appendChild(secTitle("요일별 분석"));
+    wrap.appendChild(grid);
+
+    if (logs.length > 0) {
+      const lastDate = new Date(fmtD(logs[logs.length - 1].date));
+      const fc = Array.from({ length: 7 }, function (_, i) {
+        const fd = new Date(lastDate);
+        fd.setDate(fd.getDate() + i + 1);
+        return {
+          date: fd.toISOString().slice(0, 10),
+          pred: Math.max(
+            0,
+            Math.round(
+              (cSt.mean || 0) + (cSt.slope || 0) * (logs.length + i),
+            ),
+          ),
+          dow: DOW[fd.getDay()],
+        };
+      });
+
+      wrap.appendChild(secTitle("향후 7일 예상"));
+      wrap.appendChild(ibox("amber", `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.lightbulb}</span>추세 기반 참고용 예상치입니다.`));
+
+      wrap.appendChild(
+        chartCard(
+          "예상 클릭",
+          "",
+          `#f59e0b`,
+          sparkline(
+            fc.map((x) => x.pred),
+            fc.map((x) => x.date.slice(5)),
+            65,
+            "#f59e0b",
+            "회",
+          ),
+          fc.map((x) => x.date.slice(5)),
+        ),
+      );
+
+      fc.forEach(function (x, i) {
+        const d = document.createElement("div");
+        d.style.cssText = S.row + ";margin-bottom:6px";
+        d.innerHTML = sanitizeHTML(`<span style="font-size:12px;color:#94a3b8;font-weight:500">${escHtml(x.date)} (${escHtml(x.dow)}) <span style="font-size:10px;color:#64748b;margin-left:4px">+${i + 1}일</span></span><b style="color:${cSt.slope >= 0 ? C.green : C.red};font-size:14px">약 ${escHtml(fmt(x.pred))}회</b>`);
+        wrap.appendChild(d);
+      });
+    }
+
+    return wrap;
+  };
+}
+
+/**
+ * Crawl Tab Renderer
+ * Displays crawl statistics and error information
+ *
+ * @module renderers/crawl
+ * @param {Object} data - Prepared data object containing:
+ *   - crawlSorted: Sorted crawl stats array
+ *   - dates: Date array
+ * @returns {Function} Renderer function that returns DOM element
+ */
+function createCrawlRenderer(data) {
+  return function crawl() {
+    const { crawlSorted, dates } = data;
+    const wrap = document.createElement("div");
+
+    if (!crawlSorted.length) {
+      wrap.innerHTML = sanitizeHTML(
+        '<div style="padding:30px;text-align:center;color:#3d5a78">크롤 데이터 없음</div>'
+      );
+      return wrap;
+    }
+
+    const pageCounts = crawlSorted.map((r) => r.pageCount);
+    const cDates = crawlSorted.map((r) => fmtB(r.date));
+    const totalPages = pageCounts.reduce((a, b) => a + b, 0);
+    const totalSize = crawlSorted.reduce((a, r) => a + r.downloadSize, 0);
+    const avgPage = Math.round(totalPages / crawlSorted.length);
+    const maxPage = Math.max(...pageCounts);
+    const errDays = crawlSorted.filter(
+      (r) => r.sumErrorCount > 0 || r.notFound > 0,
+    ).length;
+    const total404 = crawlSorted.reduce((a, r) => a + (r.notFound || 0), 0);
+
+    wrap.appendChild(
+      kpiGrid([
+        {
+          label: "총 크롤",
+          value: (totalPages / 10000).toFixed(1) + "만",
+          sub: "90일 합계",
+          color: C.blue,
+        },
+        { label: "일평균", value: fmt(avgPage), color: C.teal },
+        {
+          label: "에러·404일",
+          value: errDays + "일",
+          color: errDays > 5 ? C.red : errDays > 0 ? C.amber : C.green,
+        },
+        {
+          label: "총 용량",
+          value: (totalSize / 1024 / 1024 / 1024).toFixed(1) + "GB",
+          color: C.sub,
+        },
+      ]),
+    );
+
+    wrap.appendChild(
+      chartCard(
+        "일별 크롤 페이지",
+        "최고 " + fmt(maxPage) + "p",
+        C.blue,
+        sparkline(pageCounts, cDates, 80, C.blue, "p"),
+        cDates,
+      ),
+    );
+
+    if (total404 > 0) {
+      wrap.appendChild(
+        ibox(
+          "amber",
+          `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.lightbulb}</span>404 Not Found 누적 <b style="color:${C.amber}">${fmt(total404)}건</b> · 삭제된 URL 확인 권장`,
+        ),
+      );
+    }
+
+    wrap.appendChild(secTitle("에러 상세"));
+
+    const errRows = crawlSorted
+      .filter((r) => r.sumErrorCount > 0 || r.notFound > 0)
+      .reverse();
+
+    if (!errRows.length) {
+      const ok = document.createElement("div");
+      ok.style.cssText =
+        "text-align:center;padding:20px;color:#00e676;font-size:13px";
+      ok.innerHTML = sanitizeHTML(`<span style="display:inline-flex;align-items:center;gap:6px;color:#10b981">${ICONS.trendUp} 크롤 상태 양호!</span>`);
+      wrap.appendChild(ok);
+    } else {
+      errRows.forEach(function (r) {
+        const hasServerErr = r.sumErrorCount > 0;
+        const has404 = r.notFound > 0;
+        const d = document.createElement("div");
+        d.style.cssText =
+          "background:#0d1829;border:1px solid " +
+          (hasServerErr ? "#ff525233" : has404 ? "#ffca2833" : "#1a2d45") +
+          ";border-radius:9px;padding:10px 12px;margin-bottom:6px";
+        const errs =
+          [
+            r.serverError && `서버오류 ${escHtml(r.serverError)}`,
+            r.notFound && `404 ${escHtml(r.notFound)}`,
+            r.connectTimeout && `타임아웃 ${escHtml(r.connectTimeout)}`,
+          ]
+            .filter(Boolean)
+            .join(" · ") || "-";
+        const dispErrCnt = (r.sumErrorCount || 0) + (r.notFound || 0);
+        d.innerHTML = sanitizeHTML(`<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:12px;color:#94a3b8;font-weight:500">${escHtml(fmtD(r.date))}</span><span style="font-size:13px;font-weight:700;color:${hasServerErr ? C.red : C.amber}">에러·404 ${escHtml(fmt(dispErrCnt))}건</span></div><div style="font-size:11px;color:${hasServerErr ? C.red : C.amber};opacity:0.8">${escHtml(errs)}</div><div style="font-size:10px;color:#64748b;margin-top:4px">크롤 ${escHtml(fmt(r.pageCount))}p · 시도 ${escHtml(fmt(r.sumTryCount))}</div>`);
+        wrap.appendChild(d);
+      });
+    }
+
+    return wrap;
+  };
+}
+
+/**
+ * Backlink Tab Renderer
+ * Displays backlink trends and top domains
+ *
+ * @module renderers/backlink
+ * @param {Object} data - Prepared data object containing:
+ *   - blTime: Backlink time series data
+ *   - blTopDomains: Top backlink domains
+ *   - dates: Date array
+ * @returns {Function} Renderer function that returns DOM element
+ */
+function createBacklinkRenderer(data) {
+  return function backlink() {
+    const { blTime, blTopDomains, dates } = data;
+    const wrap = document.createElement("div");
+
+    if (!blTime.length) {
+      wrap.innerHTML = sanitizeHTML(
+        '<div style="padding:40px 20px;text-align:center;color:#64748b;font-size:13px"><div style="margin-bottom:12px;opacity:0.5">' + ICONS.link + '</div>백링크 데이터 없음</div>'
+      );
+      return wrap;
+    }
+
+    const blVals = blTime.map((r) => r.backlinkCnt);
+    const blDates = blTime.map((r) => fmtB(r.timeStamp));
+    const latestBl = blVals[blVals.length - 1] || 0;
+    const maxBl = Math.max(...blVals);
+    const minBl = Math.min(...blVals);
+    const blChange = latestBl - blVals[0];
+
+    wrap.appendChild(
+      kpiGrid([
+        { label: "현재 백링크", value: fmt(latestBl), color: C.teal, icon: ICONS.link },
+        { label: "기간 최고", value: fmt(maxBl), color: C.green, icon: ICONS.up },
+        { label: "기간 최저", value: fmt(minBl), color: C.sub, icon: ICONS.down },
+        {
+          label: "증감",
+          value: (blChange >= 0 ? "+" : "") + blChange,
+          color: blChange >= 0 ? C.green : C.red,
+          icon: ICONS.chart,
+        },
+      ]),
+    );
+
+    wrap.appendChild(
+      chartCard(
+        "백링크 추이 (기간별)",
+        "현재 " + fmt(latestBl) + "개",
+        C.teal,
+        sparkline(blVals, blDates, 80, C.teal, "개"),
+        blDates,
+      ),
+    );
+
+    if (blTopDomains.length) {
+      wrap.appendChild(
+        secTitle(
+          '탑 도메인 <span style="font-size:10px;font-weight:400;letter-spacing:0;text-transform:none;color:#64748b;margin-left:6px">도메인별 누적 링크수</span>',
+        ),
+      );
+
+      const mxD = Math.max(...blTopDomains.map((d) => d.backlinkCnt)) || 1;
+      blTopDomains.forEach(function (d, i) {
+        const row = document.createElement("div");
+        row.style.cssText = S.row + ";flex-direction:column;align-items:stretch;gap:8px;border-color:" + (i === 0 ? C.teal + "44" : C.border);
+        row.innerHTML = sanitizeHTML(`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:11px;font-weight:800;color:${i === 0 ? C.teal : "#64748b"}">#${i + 1}</span><span style="font-size:13px;color:#f8fafc;font-weight:600">${escHtml(d.domain)}</span></div><span style="font-size:13px;color:${C.teal};font-weight:700">${escHtml(fmt(d.backlinkCnt))}개</span></div>${hbar(d.backlinkCnt, mxD, C.teal)}`);
+        wrap.appendChild(row);
+      });
+    }
+
+    return wrap;
+  };
+}
+
+/**
+ * Diagnosis Tab Renderer
+ * Displays index status and diagnosis data
+ *
+ * @module renderers/diagnosis
+ * @param {Object} data - Prepared data object containing:
+ *   - diagnosisLogs: Diagnosis log array
+ *   - dates: Date array
+ * @returns {Function} Renderer function that returns DOM element
+ */
+function createDiagnosisRenderer(data) {
+  return function indexed() {
+    const { diagnosisLogs, dates } = data;
+    const wrap = document.createElement("div");
+
+    if (!diagnosisLogs.length) {
+      wrap.innerHTML = sanitizeHTML(
+        '<div style="padding:30px;text-align:center;color:#3d5a78">색인 데이터 없음</div>'
+      );
+      return wrap;
+    }
+
+    // Extract all state counts for each day
+    const indexedDates = diagnosisLogs.map((r) => fmtB(r.date || ""));
+    const indexedValues = diagnosisLogs.map((r) => (r.stateCount && r.stateCount["1"]) || 0);
+    const pendingValues = diagnosisLogs.map((r) => (r.stateCount && r.stateCount["2"]) || 0);
+    const errorValues = diagnosisLogs.map((r) => (r.stateCount && r.stateCount["3"]) || 0);
+    const droppedValues = diagnosisLogs.map((r) => (r.stateCount && r.stateCount["4"]) || 0);
+
+    const currentIndexed = indexedValues[indexedValues.length - 1] || 0;
+    const currentPending = pendingValues[pendingValues.length - 1] || 0;
+    const currentError = errorValues[errorValues.length - 1] || 0;
+    const currentDropped = droppedValues[droppedValues.length - 1] || 0;
+
+    const maxIndexed = Math.max(...indexedValues);
+    const minIndexed = Math.min(...indexedValues);
+    const indexedChange = currentIndexed - (indexedValues[0] || 0);
+    const indexedTrend = st(indexedValues);
+    const avgIndexed = Math.round(indexedValues.reduce((a, b) => a + b, 0) / indexedValues.length);
+
+    wrap.appendChild(
+      kpiGrid([
+        {
+          label: "현재 색인",
+          value: fmt(currentIndexed) + "건",
+          sub: "최고 " + fmt(maxIndexed),
+          color: C.purple,
+        },
+        {
+          label: "대기중",
+          value: fmt(currentPending) + "건",
+          color: C.amber,
+        },
+        {
+          label: "오류",
+          value: fmt(currentError) + "건",
+          color: currentError > 0 ? C.red : C.sub,
+        },
+        {
+          label: "색인에러",
+          value: fmt(currentDropped) + "건",
+          color: currentDropped > 0 ? C.red : C.sub,
+        },
+      ]),
+    );
+
+    wrap.appendChild(
+      chartCard(
+        "색인 추이",
+        "현재 " + fmt(currentIndexed) + "건",
+        C.purple,
+        sparkline(indexedValues, indexedDates, 80, C.purple, "건", { minValue: 0 }),
+        indexedDates,
+      ),
+    );
+
+    if (indexedChange !== 0) {
+      wrap.appendChild(
+        ibox(
+          indexedChange > 0 ? "green" : "red",
+          `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.trendUp}</span>기간 대비 <b style="color:${indexedChange > 0 ? C.green : C.red}">${indexedChange > 0 ? "+" : ""}${fmt(indexedChange)}건</b> ${indexedChange > 0 ? "증가" : "감소"}`,
+        ),
+      );
+    }
+
+    if (currentError > 0 || currentDropped > 0) {
+      wrap.appendChild(
+        ibox(
+          "amber",
+          `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.lightbulb}</span>주의: 오류 ${fmt(currentError)}건, 색인에러 ${fmt(currentDropped)}건 발생`,
+        ),
+      );
+    }
+
+    wrap.appendChild(secTitle("일별 색인 현황"));
+    const mxVal = Math.max(...indexedValues, ...pendingValues) || 1;
+
+    diagnosisLogs.slice().reverse().slice(0, 14).forEach(function (r, i) {
+      const indexed = (r.stateCount && r.stateCount["1"]) || 0;
+      const pending = (r.stateCount && r.stateCount["2"]) || 0;
+      const error = (r.stateCount && r.stateCount["3"]) || 0;
+      const dropped = (r.stateCount && r.stateCount["4"]) || 0;
+      const total = indexed + pending + error + dropped;
+
+      const row = document.createElement("div");
+      row.style.cssText =
+        "background:#0d1829;border:1px solid " +
+        (error > 0 || dropped > 0 ? "#ff525222" : "#1a2d45") +
+        ";border-radius:9px;padding:10px 12px;margin-bottom:6px";
+
+      row.innerHTML = sanitizeHTML(`
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:11px;color:#7a9ab8">${escHtml(fmtD(r.date))}</span>
+          <span style="font-size:11px;font-weight:700;color:${C.purple}">색인 ${escHtml(fmt(indexed))}건</span>
+        </div>
+        <div style="display:flex;gap:2px;height:8px;margin-bottom:4px">
+          <div style="flex:${indexed};background:${C.purple};border-radius:2px 0 0 2px;min-width:${indexed > 0 ? 2 : 0}px"></div>
+          <div style="flex:${pending};background:${C.amber};min-width:${pending > 0 ? 2 : 0}px"></div>
+          <div style="flex:${error};background:${C.red};min-width:${error > 0 ? 2 : 0}px"></div>
+          <div style="flex:${dropped};background:#ff525288;border-radius:0 2px 2px 0;min-width:${dropped > 0 ? 2 : 0}px"></div>
+        </div>
+        <div style="display:flex;gap:12px;font-size:10px;color:#3d5a78">
+          <span style="color:${C.purple}">색인 <b>${escHtml(fmt(indexed))}</b></span>
+          <span style="color:${C.amber}">대기 <b>${escHtml(fmt(pending))}</b></span>
+          ${error > 0 ? `<span style="color:${C.red}">오류 <b>${escHtml(fmt(error))}</b></span>` : ""}
+          ${dropped > 0 ? `<span style="color:#ff5252">에러 <b>${escHtml(fmt(dropped))}</b></span>` : ""}
+        </div>
+      `);
+      wrap.appendChild(row);
+    });
+
+    // Legend
+    const legend = document.createElement("div");
+    legend.style.cssText =
+      "display:flex;gap:16px;justify-content:center;padding:10px;background:#0d1829;border-radius:8px;margin-top:8px";
+    legend.innerHTML = sanitizeHTML(`
+      <span style="font-size:10px;color:${C.purple}">■ 색인</span>
+      <span style="font-size:10px;color:${C.amber}">■ 대기중</span>
+      <span style="font-size:10px;color:${C.red}">■ 오류</span>
+      <span style="font-size:10px;color:#ff5252">■ 색인에러</span>
+    `);
+    wrap.appendChild(legend);
+
+    return wrap;
+  };
+}
+
+/**
+ * Insight Tab Renderer
+ * Displays comprehensive analysis and actionable insights
+ *
+ * @module renderers/insight
+ * @param {Object} data - Prepared data object containing:
+ *   - avgCtr: Average CTR
+ *   - cSt: Click statistics (slope, cv, outliers, mean)
+ *   - corr: Correlation coefficient
+ *   - bestDow: Best day of week
+ *   - worstDow: Worst day of week
+ *   - urls: URL array
+ *   - queries: Query array
+ * @returns {Function} Renderer function that returns DOM element
+ */
+function createInsightRenderer(data) {
+  return function insight() {
+    const {
+      avgCtr, cSt, corr, bestDow, worstDow, urls, queries
+    } = data;
+
+    const wrap = document.createElement("div");
+    const ctrNum = Number(avgCtr) || 0;
+
+    wrap.appendChild(secTitle("종합 분석"));
+
+    // Trend insight
+    wrap.appendChild(
+      ibox(
+        cSt.slope >= 0 ? "green" : "red",
+        `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.trendUp}</span><b>클릭 추세:</b> ${cSt.slope >= 0 ? '하루 평균 <b style="color:#10b981">+' + fmt(Math.round(cSt.slope)) + '회</b> 증가' : '하루 평균 <b style="color:#ef4444">' + fmt(Math.round(Math.abs(cSt.slope || 0))) + '회</b> 감소'}`,
+      ),
+    );
+
+    // CTR insight
+    wrap.appendChild(
+      ibox(
+        ctrNum >= 3 ? "green" : ctrNum >= 1.5 ? "amber" : "red",
+        `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.pieChart}</span><b>평균 CTR ${avgCtr}%:</b> ${ctrNum >= 3 ? "우수해요." : ctrNum >= 1.5 ? "보통이에요. 제목을 개선하세요." : "낮아요. 메타 타이틀을 전면 개선하세요."}`,
+      ),
+    );
+
+    // Correlation insight
+    wrap.appendChild(
+      ibox(
+        Math.abs(corr) > 0.7
+          ? "green"
+          : Math.abs(corr) > 0.4
+            ? "amber"
+            : "red",
+        `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.linkInsight}</span><b>노출↔클릭 상관 ${corr.toFixed(2)}:</b> ${Math.abs(corr) > 0.7 ? "노출 확대가 효과적이에요." : Math.abs(corr) > 0.4 ? "CTR 개선과 노출 확대를 병행하세요." : "클릭 전환이 낮아요. 콘텐츠 품질을 점검하세요."}`,
+      ),
+    );
+
+    // Day of week insight
+    wrap.appendChild(
+      ibox(
+        "green",
+        `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.calendarDays}</span><b>${bestDow.label}요일</b> 평균 ${fmt(bestDow.avgC)}회 최고, <b>${worstDow.label}요일</b> ${fmt(worstDow.avgC)}회 최저`,
+      ),
+    );
+
+    // Outlier insight
+    if (cSt.outliers && cSt.outliers.length) {
+      wrap.appendChild(
+        ibox("amber", `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.lightbulb}</span>이상치 <b>${cSt.outliers.length}개</b> 감지`),
+      );
+    }
+
+    // Stability insight
+    wrap.appendChild(
+      ibox(
+        cSt.cv < 0.3 ? "green" : cSt.cv < 0.5 ? "amber" : "red",
+        `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.barChart}</span><b>안정성 CV=${((cSt.cv || 0) * 100).toFixed(0)}%:</b> ${cSt.cv < 0.3 ? "매우 안정적" : cSt.cv < 0.5 ? "약간 변동 있음" : "일별 편차 큼"}`,
+      ),
+    );
+
+    // Top URL insight
+    if (urls.length > 0) {
+      const top = urls[0];
+      const slug =
+        decodeURIComponent(top.key).split("/").filter(Boolean).pop() ||
+        "";
+      wrap.appendChild(
+        ibox(
+          "blue",
+          `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.dashboard}</span><b>최고 URL:</b> "${escHtml(slug.replace(/-/g, " ").slice(0, 30))}…" CTR <b style="color:#f59e0b">${top.ctr}%</b> 클릭 <b style="color:#10b981">${fmt(top.clickCount)}회</b>`,
+        ),
+      );
+    }
+
+    // Action items
+    const todo = document.createElement("div");
+    todo.style.cssText =
+      "background:#0d1829;border:1px solid #00e67622;border-radius:9px;padding:11px 13px;margin-top:6px";
+    todo.innerHTML = sanitizeHTML(
+      `<div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#f8fafc;margin-bottom:10px"><span style="display:inline-flex;color:#10b981">${ICONS.lightbulb}</span>지금 바로 해볼 것</div>` +
+      [
+        bestDow
+          ? bestDow.label + "요일에 신규 콘텐츠 집중 발행"
+          : "균등한 발행 주기 확립",
+        ctrNum < 2
+          ? "상위 URL 제목/메타설명 A/B 테스트"
+          : "현재 CTR 유지, 노출 확대 집중",
+        (cSt.slope || 0) < 0
+          ? "클릭 감소 원인 파악"
+          : "상승 패턴 분석 후 성공 공식 반복",
+        queries.length
+          ? `"${escHtml(queries[0].key)}" 키워드 변형 글 발행`
+          : "검색어 다양화로 랭킹 트래픽 확보",
+      ]
+        .map(
+          (a) =>
+            `<div style="font-size:12px;color:#7a9ab8;padding:5px 0;border-bottom:1px solid #1a2d45;display:flex;gap:7px"><span style="color:#00e676">→</span>${escHtml(a)}</div>`,
+        )
+        .join("")
+    );
+    wrap.appendChild(todo);
+
+    return wrap;
+  };
+}
+
+/**
  * Build renderer functions for all site data tabs
- * P2-4: Optimized for bundle size reduction
+ * P0 Critical: Refactored into modular tab-specific renderers
+ *
+ * Architecture:
+ * - Each tab has its own renderer module (08-renderers-*.js)
+ * - Registry pattern for easy extensibility
+ * - Shared data preparation logic
+ * - Clear separation of concerns
+ */
+
+/**
+ * Renderer Registry
+ * Maps tab IDs to their renderer factory functions
+ * New tabs can be added by registering here
+ */
+const RENDERER_REGISTRY = {
+  overview: createOverviewRenderer,
+  daily: createDailyRenderer,
+  queries: createQueriesRenderer,
+  urls: createPagesRenderer,
+  pages: createPagesRenderer, // Alias for backward compatibility
+  pattern: createPatternRenderer,
+  crawl: createCrawlRenderer,
+  backlink: createBacklinkRenderer,
+  indexed: createDiagnosisRenderer,
+  diagnosis: createDiagnosisRenderer, // Alias for backward compatibility
+  insight: createInsightRenderer,
+};
+
+/**
+ * Prepare shared data from raw API responses
+ * This function transforms raw data into a format suitable for all renderers
+ *
+ * @param {Object} expose - Search Console exposure data
+ * @param {Object} crawlData - Crawl statistics data
+ * @param {Object} backlinkData - Backlink data
+ * @param {Object} diagnosisMeta - Diagnosis/metadata
+ * @returns {Object} Prepared data object with all computed values
+ */
+function prepareRendererData(expose, crawlData, backlinkData, diagnosisMeta) {
+  const item = (expose && expose.items && expose.items[0]) || {};
+  const period = item.period || {};
+  const rawLogs = item.logs || [];
+  const urls = item.urls || [];
+  const queries = item.querys || [];
+
+  // Process logs
+  const logs = [...rawLogs].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+  const dates = logs.map((r) => fmtB(r.date));
+  const clicks = logs.map((r) => Number(r.clickCount) || 0);
+  const exposes = logs.map((r) => Number(r.exposeCount) || 0);
+  const ctrs = logs.map((r) => {
+    const n = parseFloat(r.ctr);
+    return Number.isFinite(n) ? n : 0;
+  });
+
+  // Calculate statistics
+  const cSt = st(clicks);
+  const totalC = clicks.reduce((a, b) => a + b, 0);
+  const totalE = exposes.reduce((a, b) => a + b, 0);
+  const avgCtr = totalE ? ((totalC / totalE) * 100).toFixed(2) : "0.00";
+  const corr = pearson(exposes, clicks);
+
+  // Extract diagnosis data
+  const diagnosisItem = (diagnosisMeta && diagnosisMeta.items && diagnosisMeta.items[0]) || {};
+  const diagnosisLogs = [...(diagnosisItem.meta || [])].sort((a, b) =>
+    (a.date || "").localeCompare(b.date || ""),
+  );
+  const diagnosisLatest = diagnosisLogs.length > 0 ? diagnosisLogs[diagnosisLogs.length - 1] : null;
+  const diagnosisLatestCounts = diagnosisLatest?.stateCount || {};
+  const diagnosisIndexedCurrent = diagnosisLatestCounts["1"] || 0;
+  const diagnosisIndexedValues = diagnosisLogs.map(r => r.stateCount?.["1"] || 0);
+  const diagnosisIndexedSeries = {
+    current: diagnosisIndexedCurrent,
+    values: diagnosisIndexedValues,
+    color: C.purple,
+  };
+
+  // Day of week analysis
+  const dowAcc = {};
+  logs.forEach(function (r) {
+    const dw = new Date(fmtD(r.date)).getDay();
+    if (!dowAcc[dw]) dowAcc[dw] = { c: 0, n: 0 };
+    dowAcc[dw].c += r.clickCount;
+    dowAcc[dw].n++;
+  });
+
+  const dowRows = DOW.map(function (l, i) {
+    return {
+      label: l,
+      avgC: dowAcc[i] ? Math.round(dowAcc[i].c / dowAcc[i].n) : 0,
+      n: dowAcc[i] ? dowAcc[i].n : 0,
+    };
+  });
+
+  const bestDow = dowRows.reduce(
+    (a, b) => (b.avgC > a.avgC ? b : a),
+    dowRows[0],
+  );
+  const worstDow = dowRows
+    .filter((x) => x.n > 0)
+    .reduce((a, b) => (b.avgC < a.avgC ? b : a), dowRows[0]);
+
+  // Crawl data
+  const crawlStats = crawlData?.items?.[0]?.stats || [];
+  const crawlSorted = [...crawlStats].sort((a, b) =>
+    (a.date || "").localeCompare(b.date || ""),
+  );
+
+  // Backlink data
+  const blData = backlinkData?.items?.[0] || {};
+  const blTime = (blData.countTime || []).sort((a, b) =>
+    a.timeStamp?.localeCompare?.(b.timeStamp) || 0
+  );
+  const blTopDomains = blData.topDomain || [];
+
+  return {
+    // Basic data
+    logs,
+    urls,
+    queries,
+    dates,
+    clicks,
+    exposes,
+    ctrs,
+    period,
+
+    // Computed values
+    totalC,
+    totalE,
+    avgCtr,
+    corr,
+    cSt,
+
+    // Day of week
+    dowRows,
+    bestDow,
+    worstDow,
+
+    // Diagnosis
+    diagnosisLogs,
+    diagnosisIndexedSeries,
+
+    // Crawl
+    crawlSorted,
+
+    // Backlink
+    blTime,
+    blTopDomains,
+  };
+}
+
+/**
+ * Build renderers for all tabs using the registry pattern
+ *
+ * @param {Object} expose - Search Console exposure data
+ * @param {Object} crawlData - Crawl statistics data
+ * @param {Object} backlinkData - Backlink data
+ * @param {Object} diagnosisMeta - Diagnosis/metadata
+ * @returns {Object} Object with renderer functions for each tab
  */
 function buildRenderers(expose, crawlData, backlinkData, diagnosisMeta) {
-    const item = (expose && expose.items && expose.items[0]) || {};
-    const period = item.period || {},
-      rawLogs = item.logs || [],
-      urls = item.urls || [],
-      queries = item.querys || [];
-    const logs = [...rawLogs].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
-    const dates = logs.map((r) => fmtB(r.date)),
-      clicks = logs.map((r) => Number(r.clickCount) || 0),
-      exposes = logs.map((r) => Number(r.exposeCount) || 0),
-      ctrs = logs.map((r) => { const n = parseFloat(r.ctr); return Number.isFinite(n) ? n : 0; });
-    const cSt = st(clicks),
-      totalC = clicks.reduce((a, b) => a + b, 0),
-      totalE = exposes.reduce((a, b) => a + b, 0),
-      avgCtr = totalE ? ((totalC / totalE) * 100).toFixed(2) : "0.00",
-      corr = pearson(exposes, clicks);
+  // Prepare shared data once
+  const data = prepareRendererData(expose, crawlData, backlinkData, diagnosisMeta);
 
-    // Extract diagnosis data
-    const diagnosisItem = (diagnosisMeta && diagnosisMeta.items && diagnosisMeta.items[0]) || {};
-    const diagnosisLogs = [...(diagnosisItem.meta || [])].sort((a, b) =>
-      (a.date || "").localeCompare(b.date || ""),
-    );
-    const diagnosisLatest = diagnosisLogs.length > 0 ? diagnosisLogs[diagnosisLogs.length - 1] : null;
-    const diagnosisLatestCounts = diagnosisLatest?.stateCount || {};
-    const diagnosisIndexedCurrent = diagnosisLatestCounts["1"] || 0;
-    const diagnosisIndexedValues = diagnosisLogs.map(r => r.stateCount?.["1"] || 0);
-    const diagnosisIndexedSeries = {
-      current: diagnosisIndexedCurrent,
-      values: diagnosisIndexedValues,
-      color: C.purple,
-    };
-    const diagnosisIndexedOverviewValues = diagnosisIndexedValues.slice(-15);
-    const dowAcc = {};
-    logs.forEach(function (r) {
-      const dw = new Date(fmtD(r.date)).getDay();
-      if (!dowAcc[dw]) dowAcc[dw] = { c: 0, n: 0 };
-      dowAcc[dw].c += r.clickCount;
-      dowAcc[dw].n++;
-    });
-    const dowRows = DOW.map(function (l, i) {
-      return {
-        label: l,
-        avgC: dowAcc[i] ? Math.round(dowAcc[i].c / dowAcc[i].n) : 0,
-        n: dowAcc[i] ? dowAcc[i].n : 0,
-      };
-    });
-    const bestDow = dowRows.reduce(
-        (a, b) => (b.avgC > a.avgC ? b : a),
-        dowRows[0],
-      ),
-      worstDow = dowRows
-        .filter((x) => x.n > 0)
-        .reduce((a, b) => (b.avgC < a.avgC ? b : a), dowRows[0]);
-    const crawlStats = crawlData?.items?.[0]?.stats || [];
-    const crawlSorted = [...crawlStats].sort((a, b) =>
-      (a.date || "").localeCompare(b.date || ""),
-    );
-    const blData = backlinkData?.items?.[0] || {};
-    const blTime = (blData.countTime || []).sort((a, b) => a.timeStamp?.localeCompare?.(b.timeStamp) || 0);
-    const blTopDomains = blData.topDomain || [];
-    return {
-      overview: function () {
-        const wrap = document.createElement("div");
-        wrap.appendChild(
-          kpiGrid([
-            {
-              label: "총 클릭",
-              value: fmt(totalC) + "회",
-              sub: "90일 합계",
-              color: C.green,
-              icon: ICONS.click,
-            },
-            {
-              label: "총 노출",
-              value: (totalE / 10000).toFixed(1) + "만",
-              sub: "90일 합계",
-              color: C.blue,
-              icon: ICONS.eye,
-            },
-            {
-              label: "평균 CTR",
-              value: avgCtr + "%",
-              color: C.amber,
-              sub: "90일 평균",
-              icon: ICONS.chart,
-            },
-            {
-              label: "분석기간",
-              value: logs.length + "일",
-              color: C.sub,
-              icon: ICONS.calendar,
-            },
-          ]),
-        );
-        const prevCR = period.prevClickRatio != null ? parseFloat(period.prevClickRatio) : null;
-        const prevER = period.prevExposeRatio != null ? parseFloat(period.prevExposeRatio) : null;
-        if (prevCR !== null || prevER !== null)
-          wrap.appendChild(
-            kpiGrid(
-              [
-                prevCR !== null && {
-                  label: "클릭 전기비",
-                  value: (prevCR >= 0 ? "+" : "") + prevCR + "%",
-                  color: prevCR >= 0 ? C.green : C.red,
-                  sub: "90일 전 대비",
-                  icon: prevCR >= 0 ? ICONS.up : ICONS.down,
-                },
-                prevER !== null && {
-                  label: "노출 전기비",
-                  value: (prevER >= 0 ? "+" : "") + prevER + "%",
-                  color: prevER >= 0 ? C.green : C.red,
-                  sub: "90일 전 대비",
-                  icon: prevER >= 0 ? ICONS.up : ICONS.down,
-                },
-              ].filter(Boolean),
-            ),
-          );
-        wrap.appendChild(
-          chartCard(
-            "일별 클릭수",
-            "최고 " + fmt(Math.max(...clicks)) + "회",
-            C.green,
-            sparkline(clicks, dates, window.innerWidth <= 768 ? 65 : 80, C.green, "회"),
-            dates,
-          ),
-        );
-        wrap.appendChild(
-          chartCard(
-            "일별 노출수",
-            "최고 " + fmt(Math.max(...exposes)),
-            C.blue,
-            sparkline(exposes, dates, window.innerWidth <= 768 ? 55 : 65, C.blue, "회"),
-            dates,
-          ),
-        );
-        wrap.appendChild(
-          chartCard(
-            "일별 CTR",
-            "평균 " + avgCtr + "%",
-            C.amber,
-            sparkline(ctrs, dates, window.innerWidth <= 768 ? 45 : 55, C.amber, "%"),
-            dates,
-          ),
-        );
-        if (diagnosisLogs.length) {
-          wrap.appendChild(
-            chartCard(
-              "색인 추이",
-              fmt(diagnosisIndexedSeries.current) + "건",
-              diagnosisIndexedSeries.color,
-              sparkline(
-                diagnosisIndexedOverviewValues,
-                dates,
-                80,
-                diagnosisIndexedSeries.color,
-                "건",
-                { minValue: 0 },
-              ),
-              dates,
-            ),
-          );
-        }
-        const topEl = document.createElement("div");
-        topEl.appendChild(secTitle("클릭 TOP 3"));
-        [...logs]
-          .sort((a, b) => b.clickCount - a.clickCount)
-          .slice(0, 3)
-          .forEach(function (r, i) {
-            const d = document.createElement("div");
-            d.style.cssText = S.row + ";border-color:" + (i === 0 ? C.green + "44" : C.border);
-            d.innerHTML = `<span>${["🥇", "🥈", "🥉"][i]} <span style="font-size:12px;color:#94a3b8;margin-left:8px">${escHtml(fmtD(r.date))}</span></span><b style="color:${C.green};font-size:14px">${escHtml(fmt(r.clickCount))}회</b>`;
-            topEl.appendChild(d);
-          });
-        wrap.appendChild(topEl);
-        return wrap;
-      },
-      daily: function () {
-        const wrap = document.createElement("div"),
-          mxC = Math.max(...clicks) || 1;
-        wrap.appendChild(
-          chartCard(
-            "일별 클릭 추이",
-            "최고 " + fmt(mxC) + "회",
-            C.green,
-            sparkline(clicks, dates, window.innerWidth <= 768 ? 75 : 90, C.green, "회"),
-            dates,
-          ),
-        );
-        wrap.appendChild(secTitle("날짜별 상세"));
-        [...logs].reverse().forEach(function (r) {
-          const isOut = cSt.outliers && cSt.outliers.includes(r.clickCount),
-            d = document.createElement("div");
-          d.style.cssText = "margin-bottom:12px;padding:4px 0";
-          d.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="font-size:12px;color:#94a3b8;font-weight:500">${escHtml(fmtD(r.date))} (${escHtml(DOW[new Date(fmtD(r.date)).getDay()])})${isOut ? ' <span style="color:' + C.red + ';font-size:10px;background:' + C.red + '15;padding:1px 4px;border-radius:4px">이상치</span>' : ""}</span><span style="font-size:13px;font-weight:700;color:${r.clickCount >= (cSt.mean || 0) ? C.green : C.text}">${escHtml(fmt(r.clickCount))}회</span></div>${hbar(r.clickCount, mxC, r.clickCount >= (cSt.mean || 0) ? C.green : C.blue)}<div style="display:flex;gap:12px;font-size:11px;color:#64748b;margin-top:4px"><span>노출 <b style="color:#94a3b8">${escHtml(fmt(r.exposeCount))}</b></span><span>CTR ${ctrBadge(r.ctr)}</span></div>`;
-          wrap.appendChild(d);
-        });
-        return wrap;
-      },
-      urls: function () {
-        const wrap = document.createElement("div"),
-          mxC = Math.max(...urls.map((u) => u.clickCount)) || 1;
-        if (!urls.length) {
-          const em = document.createElement("div");
-          em.style.cssText = "text-align:center;padding:40px 20px;color:#64748b;font-size:13px";
-          em.innerHTML = `<div style="margin-bottom:12px;opacity:0.5">${ICONS.link}</div>URL 데이터 없음`;
-          wrap.appendChild(em);
-          return wrap;
-        }
-        wrap.appendChild(
-          chartCard(
-            "URL별 클릭 TOP 10",
-            "총 " + urls.length + "개",
-            C.green,
-            barchart(
-              urls.slice(0, 10).map((u) => u.clickCount),
-              urls.slice(0, 10).map((_, i) => "#" + (i + 1)),
-              65,
-              C.green,
-              "회",
-            ),
-            urls.slice(0, 10).map((_, i) => "#" + (i + 1)),
-          ),
-        );
-        wrap.appendChild(secTitle("URL 상세"));
-        urls.forEach(function (u, i) {
-          const pageUrl = (() => {
-              try {
-                return /^https?:\/\//.test(u.key)
-                  ? u.key
-                  : new URL(u.key, curSite).toString();
-              } catch (e) {
-                return u.key;
-              }
-            })(),
-            linkLabel =
-              pageUrl.length > 92 ? pageUrl.slice(0, 92) + "..." : pageUrl,
-            d = document.createElement("div");
-          d.style.cssText = S.row + ";flex-direction:column;align-items:stretch;gap:8px;border-color:" + (i === 0 ? C.green + "44" : C.border);
-          d.innerHTML = `<div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:11px;font-weight:800;color:${i === 0 ? C.green : "#64748b"};min-width:24px;margin-top:2px">#${i + 1}</span><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><a href="${pageUrl.replace(/"/g, "&quot;")}" target="_blank" rel="noopener noreferrer" style="font-size:12px;color:${C.blue};line-height:1.4;word-break:break-all;text-decoration:none;font-weight:500">${escHtml(linkLabel)}</a><span style="flex-shrink:0;opacity:0.5">${ICONS.external}</span></div>${hbar(u.clickCount, mxC, i === 0 ? C.green : C.blue)}<div style="display:flex;gap:12px;font-size:11px;color:#64748b"><span>클릭 <b style="color:${C.green}">${escHtml(fmt(u.clickCount))}</b></span><span>노출 <b style="color:${C.blue}">${escHtml(fmt(u.exposeCount))}</b></span><span>CTR ${ctrBadge(u.ctr)}</span></div></div></div>`;
-          wrap.appendChild(d);
-        });
-        return wrap;
-      },
-      queries: function () {
-        const wrap = document.createElement("div"),
-          mxC = Math.max(...queries.map((q) => q.clickCount)) || 1;
-        if (!queries.length) {
-          const em = document.createElement("div");
-          em.style.cssText = "text-align:center;padding:40px 20px;color:#64748b;font-size:13px";
-          em.innerHTML = `<div style="margin-bottom:12px;opacity:0.5">${ICONS.search}</div>검색어 데이터 없음`;
-          wrap.appendChild(em);
-          return wrap;
-        }
-        wrap.appendChild(
-          chartCard(
-            "검색어별 클릭 TOP 10",
-            "총 " + queries.length + "개",
-            C.teal,
-            barchart(
-              queries.slice(0, 10).map((q) => q.clickCount),
-              queries.slice(0, 10).map((_, i) => "#" + (i + 1)),
-              65,
-              C.teal,
-              "회",
-            ),
-            queries.slice(0, 10).map((_, i) => "#" + (i + 1)),
-          ),
-        );
-        wrap.appendChild(secTitle("검색어 상세"));
-        queries.forEach(function (q, i) {
-          const searchUrl =
-              "https://search.naver.com/search.naver?query=" +
-              encodeURIComponent(q.key),
-            safeKey = escHtml(q.key),
-            d = document.createElement("div");
-          d.style.cssText = S.row + ";flex-direction:column;align-items:stretch;gap:8px;border-color:" + (i === 0 ? C.teal + "44" : C.border);
-          d.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div style="display:flex;align-items:center;gap:8px;min-width:0"><span style="font-size:11px;font-weight:800;color:${i < 3 ? C.teal : "#64748b"}">#${i + 1}</span><a href="${searchUrl}" target="_blank" rel="noopener noreferrer" style="font-size:13px;font-weight:600;color:${C.blue};text-decoration:none;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(safeKey)}</a><span style="opacity:0.5">${ICONS.external}</span></div><span style="font-size:13px;font-weight:700;color:${C.green}">${escHtml(fmt(q.clickCount))}회</span></div>${hbar(q.clickCount, mxC, C.teal)}<div style="display:flex;gap:12px;font-size:11px;color:#64748b"><span>노출 <b style="color:#94a3b8">${escHtml(fmt(q.exposeCount))}</b></span><span>CTR ${ctrBadge(q.ctr)}</span></div>`;
-          wrap.appendChild(d);
-        });
-        return wrap;
-      },
-      pattern: function () {
-        const wrap = document.createElement("div"),
-          mxC = Math.max(...dowRows.map((x) => x.avgC)) || 1;
-        wrap.appendChild(
-          chartCard(
-            "요일별 평균 클릭",
-            bestDow.label + "요일 최고 " + fmt(bestDow.avgC) + "회",
-            C.green,
-            barchart(
-              dowRows.map((x) => x.avgC),
-              dowRows.map((d) => d.label + "요일"),
-              70,
-              C.purple,
-              "회",
-            ),
-            dowRows.map((d) => d.label),
-          ),
-        );
-        const grid = document.createElement("div");
-        grid.style.cssText =
-          "display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:20px";
-        dowRows.forEach(function (d) {
-          const isB = d.label === bestDow.label,
-            isW = d.label === worstDow.label && d.n > 0,
-            hh = d.avgC ? Math.max(4, Math.round((d.avgC / mxC) * 40)) : 2;
-          const cell = document.createElement("div");
-          cell.style.cssText =
-            "background:#1e293b;border:1px solid " +
-            (isB ? C.green + "44" : isW ? C.red + "44" : C.border) +
-            ";border-radius:10px;padding:10px 4px;text-align:center;transition:all 0.2s";
-          cell.innerHTML = `<div style="font-size:11px;color:#94a3b8;margin-bottom:6px;font-weight:600">${escHtml(d.label)}</div><div style="height:40px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:8px"><div style="height:${hh}px;background:${isB ? C.green : isW ? C.red : C.blue};border-radius:3px;width:16px;min-height:2px;opacity:0.8;box-shadow:0 0 8px ${isB ? C.green : isW ? C.red : C.blue}33"></div></div><div style="font-size:11px;font-weight:700;color:${isB ? C.green : isW ? C.red : C.text}">${d.avgC ? escHtml(fmt(d.avgC)) : "-"}</div><div style="font-size:10px;color:#64748b;margin-top:2px">${escHtml(d.n)}일</div>`;
-          grid.appendChild(cell);
-        });
-        wrap.appendChild(secTitle("요일별 분석"));
-        wrap.appendChild(grid);
-        if (logs.length > 0) {
-          const lastDate = new Date(fmtD(logs[logs.length - 1].date));
-          const fc = Array.from({ length: 7 }, function (_, i) {
-            const fd = new Date(lastDate);
-            fd.setDate(fd.getDate() + i + 1);
-            return {
-              date: fd.toISOString().slice(0, 10),
-              pred: Math.max(
-                0,
-                Math.round(
-                  (cSt.mean || 0) + (cSt.slope || 0) * (logs.length + i),
-                ),
-              ),
-              dow: DOW[fd.getDay()],
-            };
-          });
-          wrap.appendChild(secTitle("향후 7일 예상"));
-          wrap.appendChild(ibox("amber", `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.lightbulb}</span>추세 기반 참고용 예상치입니다.`));
-          wrap.appendChild(
-            chartCard(
-              "예상 클릭",
-              "",
-              `#f59e0b`,
-              sparkline(
-                fc.map((x) => x.pred),
-                fc.map((x) => x.date.slice(5)),
-                65,
-                "#f59e0b",
-                "회",
-              ),
-              fc.map((x) => x.date.slice(5)),
-            ),
-          );
-          fc.forEach(function (x, i) {
-            const d = document.createElement("div");
-            d.style.cssText = S.row + ";margin-bottom:6px";
-            d.innerHTML = `<span style="font-size:12px;color:#94a3b8;font-weight:500">${escHtml(x.date)} (${escHtml(x.dow)}) <span style="font-size:10px;color:#64748b;margin-left:4px">+${i + 1}일</span></span><b style="color:${cSt.slope >= 0 ? C.green : C.red};font-size:14px">약 ${escHtml(fmt(x.pred))}회</b>`;
-            wrap.appendChild(d);
-          });
-        }
-        return wrap;
-      },
-      crawl: function () {
-        const wrap = document.createElement("div");
-        if (!crawlSorted.length) {
-          wrap.innerHTML =
-            '<div style="padding:30px;text-align:center;color:#3d5a78">\ud06c\ub864 \ub370\uc774\ud130 \uc5c6\uc74c</div>';
-          return wrap;
-        }
-        const pageCounts = crawlSorted.map((r) => r.pageCount),
-          cDates = crawlSorted.map((r) => fmtB(r.date)),
-          totalPages = pageCounts.reduce((a, b) => a + b, 0),
-          totalSize = crawlSorted.reduce((a, r) => a + r.downloadSize, 0),
-          avgPage = Math.round(totalPages / crawlSorted.length),
-          maxPage = Math.max(...pageCounts);
-        const errDays = crawlSorted.filter(
-          (r) => r.sumErrorCount > 0 || r.notFound > 0,
-        ).length;
-        const total404 = crawlSorted.reduce((a, r) => a + (r.notFound || 0), 0);
-        wrap.appendChild(
-          kpiGrid([
-            {
-              label: "\ucd1d \ud06c\ub864",
-              value: (totalPages / 10000).toFixed(1) + "\ub9cc",
-              sub: "90\uc77c \ud569\uacc4",
-              color: C.blue,
-            },
-            { label: "\uc77c\ud3c9\uade0", value: fmt(avgPage), color: C.teal },
-            {
-              label: "\uc5d0\ub7ec·404\uc77c",
-              value: errDays + "\uc77c",
-              color: errDays > 5 ? C.red : errDays > 0 ? C.amber : C.green,
-            },
-            {
-              label: "\ucd1d \uc6a9\ub7c9",
-              value: (totalSize / 1024 / 1024 / 1024).toFixed(1) + "GB",
-              color: C.sub,
-            },
-          ]),
-        );
-        wrap.appendChild(
-          chartCard(
-            "\uc77c\ubcc4 \ud06c\ub864 \ud398\uc774\uc9c0",
-            "\ucd5c\uace0 " + fmt(maxPage) + "p",
-            C.blue,
-            sparkline(pageCounts, cDates, 80, C.blue, "p"),
-            cDates,
-          ),
-        );
-        if (total404 > 0)
-          wrap.appendChild(
-            ibox(
-              "amber",
-              `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.lightbulb}</span>404 Not Found 누적 <b style="color:${C.amber}">${fmt(total404)}건</b> · 삭제된 URL 확인 권장`,
-            ),
-          );
-        wrap.appendChild(secTitle("\uc5d0\ub7ec \uc0c1\uc138"));
-        const errRows = crawlSorted
-          .filter((r) => r.sumErrorCount > 0 || r.notFound > 0)
-          .reverse();
-        if (!errRows.length) {
-          const ok = document.createElement("div");
-          ok.style.cssText =
-            "text-align:center;padding:20px;color:#00e676;font-size:13px";
-          ok.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;color:#10b981">${ICONS.trendUp} 크롤 상태 양호!</span>`;
-          wrap.appendChild(ok);
-        } else {
-          errRows.forEach(function (r) {
-            const hasServerErr = r.sumErrorCount > 0,
-              has404 = r.notFound > 0;
-            const d = document.createElement("div");
-            d.style.cssText =
-              "background:#0d1829;border:1px solid " +
-              (hasServerErr ? "#ff525233" : has404 ? "#ffca2833" : "#1a2d45") +
-              ";border-radius:9px;padding:10px 12px;margin-bottom:6px";
-            const errs =
-              [
-                r.serverError && `\uC11C\uBC84\uC624\uB958 ${escHtml(r.serverError)}`,
-                r.notFound && `404 ${escHtml(r.notFound)}`,
-                r.connectTimeout && `\ud0c0\uc784\uc544\uc6c3 ${escHtml(r.connectTimeout)}`,
-              ]
-                .filter(Boolean)
-                .join(" · ") || "-";
-            const dispErrCnt = (r.sumErrorCount || 0) + (r.notFound || 0);
-            d.innerHTML = `<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:12px;color:#94a3b8;font-weight:500">${escHtml(fmtD(r.date))}</span><span style="font-size:13px;font-weight:700;color:${hasServerErr ? C.red : C.amber}">에러·404 ${escHtml(fmt(dispErrCnt))}건</span></div><div style="font-size:11px;color:${hasServerErr ? C.red : C.amber};opacity:0.8">${escHtml(errs)}</div><div style="font-size:10px;color:#64748b;margin-top:4px">크롤 ${escHtml(fmt(r.pageCount))}p · 시도 ${escHtml(fmt(r.sumTryCount))}</div>`;
-            wrap.appendChild(d);
-          });
-        }
-        return wrap;
-      },
-      backlink: function () {
-        const wrap = document.createElement("div");
-        if (!blTime.length) {
-          wrap.innerHTML =
-            '<div style="padding:40px 20px;text-align:center;color:#64748b;font-size:13px"><div style="margin-bottom:12px;opacity:0.5">' + ICONS.link + '</div>백링크 데이터 없음</div>';
-          return wrap;
-        }
-        const blVals = blTime.map((r) => r.backlinkCnt),
-          blDates = blTime.map((r) => fmtB(r.timeStamp)),
-          latestBl = blVals[blVals.length - 1] || 0,
-          maxBl = Math.max(...blVals),
-          minBl = Math.min(...blVals),
-          blChange = latestBl - blVals[0];
-        wrap.appendChild(
-          kpiGrid([
-            { label: "현재 백링크", value: fmt(latestBl), color: C.teal, icon: ICONS.link },
-            { label: "기간 최고", value: fmt(maxBl), color: C.green, icon: ICONS.up },
-            { label: "기간 최저", value: fmt(minBl), color: C.sub, icon: ICONS.down },
-            {
-              label: "증감",
-              value: (blChange >= 0 ? "+" : "") + blChange,
-              color: blChange >= 0 ? C.green : C.red,
-              icon: ICONS.chart,
-            },
-          ]),
-        );
-        wrap.appendChild(
-          chartCard(
-            "백링크 추이 (기간별)",
-            "현재 " + fmt(latestBl) + "개",
-            C.teal,
-            sparkline(blVals, blDates, 80, C.teal, "개"),
-            blDates,
-          ),
-        );
-        if (blTopDomains.length) {
-          wrap.appendChild(
-            secTitle(
-              '탑 도메인 <span style="font-size:10px;font-weight:400;letter-spacing:0;text-transform:none;color:#64748b;margin-left:6px">도메인별 누적 링크수</span>',
-            ),
-          );
-          const mxD = Math.max(...blTopDomains.map((d) => d.backlinkCnt)) || 1;
-          blTopDomains.forEach(function (d, i) {
-            const row = document.createElement("div");
-            row.style.cssText = S.row + ";flex-direction:column;align-items:stretch;gap:8px;border-color:" + (i === 0 ? C.teal + "44" : C.border);
-            row.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:11px;font-weight:800;color:${i === 0 ? C.teal : "#64748b"}">#${i + 1}</span><span style="font-size:13px;color:#f8fafc;font-weight:600">${escHtml(d.domain)}</span></div><span style="font-size:13px;color:${C.teal};font-weight:700">${escHtml(fmt(d.backlinkCnt))}개</span></div>${hbar(d.backlinkCnt, mxD, C.teal)}`;
-            wrap.appendChild(row);
-          });
-        }
-        return wrap;
-      },
-      insight: function () {
-        const wrap = document.createElement("div"),
-          ctrNum = Number(avgCtr) || 0;
-        wrap.appendChild(secTitle("\uC885\uD569 \uBD84\uC11D"));
-        wrap.appendChild(
-          ibox(
-            cSt.slope >= 0 ? "green" : "red",
-            `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.trendUp}</span><b>클릭 추세:</b> ${cSt.slope >= 0 ? '하루 평균 <b style="color:#10b981">+' + fmt(Math.round(cSt.slope)) + '회</b> 증가' : '하루 평균 <b style="color:#ef4444">' + fmt(Math.round(Math.abs(cSt.slope || 0))) + '회</b> 감소'}`,
-          ),
-        );
-        wrap.appendChild(
-          ibox(
-            ctrNum >= 3 ? "green" : ctrNum >= 1.5 ? "amber" : "red",
-            `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.pieChart}</span><b>평균 CTR ${avgCtr}%:</b> ${ctrNum >= 3 ? "우수해요." : ctrNum >= 1.5 ? "보통이에요. 제목을 개선하세요." : "낮아요. 메타 타이틀을 전면 개선하세요."}`,
-          ),
-        );
-        wrap.appendChild(
-          ibox(
-            Math.abs(corr) > 0.7
-              ? "green"
-              : Math.abs(corr) > 0.4
-                ? "amber"
-                : "red",
-            `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.linkInsight}</span><b>노출↔클릭 상관 ${corr.toFixed(2)}:</b> ${Math.abs(corr) > 0.7 ? "노출 확대가 효과적이에요." : Math.abs(corr) > 0.4 ? "CTR 개선과 노출 확대를 병행하세요." : "클릭 전환이 낮아요. 콘텐츠 품질을 점검하세요."}`,
-          ),
-        );
-        wrap.appendChild(
-          ibox(
-            "green",
-            `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.calendarDays}</span><b>${bestDow.label}요일</b> 평균 ${fmt(bestDow.avgC)}회 최고, <b>${worstDow.label}요일</b> ${fmt(worstDow.avgC)}회 최저`,
-          ),
-        );
-        if (cSt.outliers && cSt.outliers.length)
-          wrap.appendChild(
-            ibox("amber", `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.lightbulb}</span>이상치 <b>${cSt.outliers.length}개</b> 감지`),
-          );
-        wrap.appendChild(
-          ibox(
-            cSt.cv < 0.3 ? "green" : cSt.cv < 0.5 ? "amber" : "red",
-            `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.barChart}</span><b>안정성 CV=${((cSt.cv || 0) * 100).toFixed(0)}%:</b> ${cSt.cv < 0.3 ? "매우 안정적" : cSt.cv < 0.5 ? "약간 변동 있음" : "일별 편차 큼"}`,
-          ),
-        );
-        if (urls.length > 0) {
-          const top = urls[0],
-            slug =
-              decodeURIComponent(top.key).split("/").filter(Boolean).pop() ||
-              "";
-          wrap.appendChild(
-            ibox(
-              "blue",
-              `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.dashboard}</span><b>최고 URL:</b> "${escHtml(slug.replace(/-/g, " ").slice(0, 30))}…" CTR <b style="color:#f59e0b">${top.ctr}%</b> 클릭 <b style="color:#10b981">${fmt(top.clickCount)}회</b>`,
-            ),
-          );
-        }
-        const todo = document.createElement("div");
-        todo.style.cssText =
-          "background:#0d1829;border:1px solid #00e67622;border-radius:9px;padding:11px 13px;margin-top:6px";
-        todo.innerHTML =
-          `<div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#f8fafc;margin-bottom:10px"><span style="display:inline-flex;color:#10b981">${ICONS.lightbulb}</span>지금 바로 해볼 것</div>` +
-          [
-            bestDow
-              ? bestDow.label + "\uC694\uC77C\uC5D0 \uC2E0\uADDC \uCF58\uD150\uCE20 \uC9D1\uC911 \uBC1C\uD589"
-              : "\uAFB8\uC900\uD55C \uBC1C\uD589 \uC8FC\uAE30 \uD655\uB9BD",
-            ctrNum < 2
-              ? "\uC0C1\uC704 URL \uC81C\uBAA9/\uBA54\uD0C0\uC124\uBA85 A/B \uD14C\uC2A4\uD2B8"
-              : "\uD604\uC7AC CTR \uC720\uC9C0, \uB178\uCD9C \uD655\uB300 \uC9D1\uC911",
-            (cSt.slope || 0) < 0
-              ? "\uD074\uB9AD \uAC10\uC18C \uC6D0\uC778 \uD30C\uC545"
-              : "\uC0C1\uC2B9 \uD328\uD134 \uBD84\uC11D \uD6C4 \uC131\uACF5 \uACF5\uC2DD \uBC18\uBCF5",
-            queries.length
-              ? `"${escHtml(queries[0].key)}" \ud0a4\uc6cc\ub4dc \ubcc0\ud615 \uae00 \ubc1c\ud589`
-              : "\uAC80\uC0C9\uC5B4 \uB2E4\uC591\uD654\uB85C \uB835\uD14C\uC778 \uD2B8\uB799\uD53C \uD655\uBCF4",
-          ]
-            .map(
-              (a) =>
-                `<div style="font-size:12px;color:#7a9ab8;padding:5px 0;border-bottom:1px solid #1a2d45;display:flex;gap:7px"><span style="color:#00e676">→</span>${a}</div>`,
-            )
-            .join("");
-        wrap.appendChild(todo);
-        return wrap;
-      },
-      indexed: function () {
-        const wrap = document.createElement("div");
-        if (!diagnosisLogs.length) {
-          wrap.innerHTML =
-            '<div style="padding:30px;text-align:center;color:#3d5a78">\uC0C9\uC778 \uB370\uC774\uD130 \uC5C6\uC74C</div>';
-          return wrap;
-        }
+  // Build renderers using registry
+  const renderers = {};
 
-        // Extract all state counts for each day
-        const indexedDates = diagnosisLogs.map((r) => fmtB(r.date || ""));
-        const indexedValues = diagnosisLogs.map((r) => (r.stateCount && r.stateCount["1"]) || 0);
-        const pendingValues = diagnosisLogs.map((r) => (r.stateCount && r.stateCount["2"]) || 0);
-        const errorValues = diagnosisLogs.map((r) => (r.stateCount && r.stateCount["3"]) || 0);
-        const droppedValues = diagnosisLogs.map((r) => (r.stateCount && r.stateCount["4"]) || 0);
+  for (const [tabId, factory] of Object.entries(RENDERER_REGISTRY)) {
+    if (typeof factory === 'function') {
+      renderers[tabId] = factory(data);
+    }
+  }
 
-        const currentIndexed = indexedValues[indexedValues.length - 1] || 0;
-        const currentPending = pendingValues[pendingValues.length - 1] || 0;
-        const currentError = errorValues[errorValues.length - 1] || 0;
-        const currentDropped = droppedValues[droppedValues.length - 1] || 0;
+  return renderers;
+}
 
-        const maxIndexed = Math.max(...indexedValues);
-        const minIndexed = Math.min(...indexedValues);
-        const indexedChange = currentIndexed - (indexedValues[0] || 0);
-        const indexedTrend = st(indexedValues);
-        const avgIndexed = Math.round(indexedValues.reduce((a, b) => a + b, 0) / indexedValues.length);
+/**
+ * Register a new renderer dynamically
+ * Useful for plugins or extensions
+ *
+ * @param {string} tabId - Tab identifier
+ * @param {Function} factory - Renderer factory function
+ */
+function registerRenderer(tabId, factory) {
+  RENDERER_REGISTRY[tabId] = factory;
+}
 
-        wrap.appendChild(
-          kpiGrid([
-            {
-              label: "\uD604\uC7AC \uC0C9\uC778",
-              value: fmt(currentIndexed) + "\uAC74",
-              sub: "\uCD5C\uACE0 " + fmt(maxIndexed),
-              color: C.purple,
-            },
-            {
-              label: "\uB300\uAE30\uC911",
-              value: fmt(currentPending) + "\uAC74",
-              color: C.amber,
-            },
-            {
-              label: "\uC624\uB958",
-              value: fmt(currentError) + "\uAC74",
-              color: currentError > 0 ? C.red : C.sub,
-            },
-            {
-              label: "\uC0C9\uC778\uC5D0\uB7EC",
-              value: fmt(currentDropped) + "\uAC74",
-              color: currentDropped > 0 ? C.red : C.sub,
-            },
-          ]),
-        );
-
-        wrap.appendChild(
-          chartCard(
-            "\uC0C9\uC778 \uCD94\uC774",
-            "\uD604\uC7AC " + fmt(currentIndexed) + "\uAC74",
-            C.purple,
-            sparkline(indexedValues, indexedDates, 80, C.purple, "\uAC74", { minValue: 0 }),
-            indexedDates,
-          ),
-        );
-
-        if (indexedChange !== 0) {
-          wrap.appendChild(
-            ibox(
-              indexedChange > 0 ? "green" : "red",
-              `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.trendUp}</span>기간 대비 <b style="color:${indexedChange > 0 ? C.green : C.red}">${indexedChange > 0 ? "+" : ""}${fmt(indexedChange)}건</b> ${indexedChange > 0 ? "증가" : "감소"}`,
-            ),
-          );
-        }
-
-        if (currentError > 0 || currentDropped > 0) {
-          wrap.appendChild(
-            ibox(
-              "amber",
-              `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.lightbulb}</span>주의: 오류 ${fmt(currentError)}건, 색인에러 ${fmt(currentDropped)}건 발생`,
-            ),
-          );
-        }
-
-        wrap.appendChild(secTitle("\uC77C\uCBDC \uC0C9\uC778 \uD604\uD669"));
-        const mxVal = Math.max(...indexedValues, ...pendingValues) || 1;
-
-        diagnosisLogs.slice().reverse().slice(0, 14).forEach(function (r, i) {
-          const indexed = (r.stateCount && r.stateCount["1"]) || 0;
-          const pending = (r.stateCount && r.stateCount["2"]) || 0;
-          const error = (r.stateCount && r.stateCount["3"]) || 0;
-          const dropped = (r.stateCount && r.stateCount["4"]) || 0;
-          const total = indexed + pending + error + dropped;
-
-          const row = document.createElement("div");
-          row.style.cssText =
-            "background:#0d1829;border:1px solid " +
-            (error > 0 || dropped > 0 ? "#ff525222" : "#1a2d45") +
-            ";border-radius:9px;padding:10px 12px;margin-bottom:6px";
-
-          row.innerHTML = `
-            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-              <span style="font-size:11px;color:#7a9ab8">${escHtml(fmtD(r.date))}</span>
-              <span style="font-size:11px;font-weight:700;color:${C.purple}">\uC0C9\uC778 ${escHtml(fmt(indexed))}\uAC74</span>
-            </div>
-            <div style="display:flex;gap:2px;height:8px;margin-bottom:4px">
-              <div style="flex:${indexed};background:${C.purple};border-radius:2px 0 0 2px;min-width:${indexed > 0 ? 2 : 0}px"></div>
-              <div style="flex:${pending};background:${C.amber};min-width:${pending > 0 ? 2 : 0}px"></div>
-              <div style="flex:${error};background:${C.red};min-width:${error > 0 ? 2 : 0}px"></div>
-              <div style="flex:${dropped};background:#ff525288;border-radius:0 2px 2px 0;min-width:${dropped > 0 ? 2 : 0}px"></div>
-            </div>
-            <div style="display:flex;gap:12px;font-size:10px;color:#3d5a78">
-              <span style="color:${C.purple}">\uC0C9\uC778 <b>${escHtml(fmt(indexed))}</b></span>
-              <span style="color:${C.amber}">\uB300\uAE30 <b>${escHtml(fmt(pending))}</b></span>
-              ${error > 0 ? `<span style="color:${C.red}">\uC624\uB958 <b>${escHtml(fmt(error))}</b></span>` : ""}
-              ${dropped > 0 ? `<span style="color:#ff5252">\uC5D0\uB7EC <b>${escHtml(fmt(dropped))}</b></span>` : ""}
-            </div>
-          `;
-          wrap.appendChild(row);
-        });
-
-        // Legend
-        const legend = document.createElement("div");
-        legend.style.cssText =
-          "display:flex;gap:16px;justify-content:center;padding:10px;background:#0d1829;border-radius:8px;margin-top:8px";
-        legend.innerHTML = `
-          <span style="font-size:10px;color:${C.purple}">■ \uC0C9\uC778</span>
-          <span style="font-size:10px;color:${C.amber}">■ \uB300\uAE30\uC911</span>
-          <span style="font-size:10px;color:${C.red}">■ \uC624\uB958</span>
-          <span style="font-size:10px;color:#ff5252">■ \uC0C9\uC778\uC5D0\uB7EC</span>
-        `;
-        wrap.appendChild(legend);
-
-        return wrap;
-      },
-    };
-  };
+/**
+ * Get list of available renderer tabs
+ *
+ * @returns {Array<string>} Array of tab IDs
+ */
+function getAvailableRenderers() {
+  return Object.keys(RENDERER_REGISTRY);
+}
 
   /**
  * Assign colors to all sites from the color palette
@@ -7246,18 +8234,20 @@ async function renderAllSites() {
     ? `${Math.floor(estimatedTimeSeconds / 60)}분 ${estimatedTimeSeconds % 60}초`
     : `${estimatedTimeSeconds}초`;
 
-  loading.innerHTML =
+  loading.innerHTML = sanitizeHTML(
     '<div style="font-size:13px;font-weight:700;color:#d4ecff;margin-bottom:8px">전체 현황을 준비 중입니다</div>' +
     `<div id="sadv-all-progress-detail" style="font-size:11px;margin-bottom:10px">기본 리포트를 불러오는 중입니다. (예상: ${estimatedTimeText})</div>` +
     '<div style="height:10px;border-radius:999px;background:#0d1829;border:1px solid #1a2d45;overflow:hidden"><div id="sadv-all-progress-bar" style="width:6%;height:100%;background:linear-gradient(90deg,#40c4ff,#00e676)"></div></div>' +
     '<div id="sadv-all-progress-meta" style="font-size:10px;color:#3d5a78;margin-top:8px">메타 진단은 2개씩 천천히 요청합니다.</div>' +
-    '<div id="sadv-all-progress-percent" style="font-size:11px;color:#40c4ff;margin-top:4px;font-weight:600">0%</div>';
+    '<div id="sadv-all-progress-percent" style="font-size:11px;color:#40c4ff;margin-top:4px;font-weight:600">0%</div>'
+  );
   bdEl.innerHTML = "";
   bdEl.appendChild(loading);
 
   if (!allSites.length) {
-    bdEl.innerHTML =
-      '<div style="padding:30px 20px;text-align:center"><div style="font-size:32px">⚠️</div><div style="color:#ffca28;font-weight:700;margin:10px 0">사이트 목록을 찾을 수 없어요</div><div style="color:#7a9ab8;font-size:12px;line-height:2">↻ 버튼을 눌러 새로고침 해보세요<br>또는 서치어드바이저 콘솔 페이지에서 실행해주세요</div></div>';
+    bdEl.innerHTML = sanitizeHTML(
+      '<div style="padding:30px 20px;text-align:center"><div style="font-size:32px">⚠️</div><div style="color:#ffca28;font-weight:700;margin:10px 0">사이트 목록을 찾을 수 없어요</div><div style="color:#7a9ab8;font-size:12px;line-height:2">↻ 버튼을 눌러 새로고침 해보세요<br>또는 서치어드바이저 콘솔 페이지에서 실행해주세요</div></div>'
+    );
     return;
   }
   const sitesToLoad = allSites;
@@ -7399,11 +8389,11 @@ async function renderAllSites() {
     kpiData.forEach(kpi => {
       const kpiCard = document.createElement("div");
       kpiCard.style.cssText = `background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px;text-align:center`;
-      kpiCard.innerHTML = `
-        <div style="font-size:11px;color:#94a3b8;margin-bottom:4px">${kpi.label}</div>
-        <div style="font-size:20px;font-weight:800;color:${kpi.color};line-height:1.1;margin-bottom:4px">${kpi.value}</div>
-        <div style="font-size:10px;color:#64748b">${kpi.sub}</div>
-      `;
+      kpiCard.innerHTML = sanitizeHTML(`
+        <div style="font-size:11px;color:#94a3b8;margin-bottom:4px">${escHtml(kpi.label)}</div>
+        <div style="font-size:20px;font-weight:800;color:${kpi.color};line-height:1.1;margin-bottom:4px">${escHtml(kpi.value)}</div>
+        <div style="font-size:10px;color:#64748b">${escHtml(kpi.sub)}</div>
+      `);
       mobileKpiWrapper.appendChild(kpiCard);
     });
 
@@ -7454,7 +8444,7 @@ async function renderAllSites() {
     const fontSizeValue = isMobile ? "font-size:14px" : "font-size:15px";
     const fontSizeLabel = isMobile ? "font-size:9px" : "font-size:10px";
 
-    card.innerHTML =
+    card.innerHTML = sanitizeHTML(
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="display:flex;align-items:center;gap:8px;min-width:0"><div style="width:10px;height:10px;border-radius:50%;background:' +
       col +
       ';flex-shrink:0;box-shadow:0 0 0 4px ' +
@@ -7511,24 +8501,26 @@ async function renderAllSites() {
     const indexBlock = document.createElement("div");
     indexBlock.style.cssText = "margin-top:12px;padding-top:12px;border-top:1px solid #334155";
     if (r.diagnosisIndexedValues && r.diagnosisIndexedValues.length > 1) {
-      indexBlock.innerHTML =
+      indexBlock.innerHTML = sanitizeHTML(
         '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px"><span style="font-size:11px;font-weight:700;color:#94a3b8">색인 추이</span><span style="font-size:13px;font-weight:800;color:' +
         col +
         '">' +
-        fmt(r.diagnosisIndexedCurrent) +
-        '건</span></div>';
+        escHtml(fmt(r.diagnosisIndexedCurrent)) +
+        '건</span></div>'
+      );
       const indexMini = sparkline(r.diagnosisIndexedValues, r.diagnosisIndexedDates, 44, col, "건", { minValue: 0 });
       indexMini.style.cssText += "opacity:.9";
       indexBlock.appendChild(indexMini);
     } else {
       const metaCode = r.diagnosisMetaCode == null ? "-" : String(r.diagnosisMetaCode);
       const httpText = r.diagnosisMetaStatus == null ? "-" : String(r.diagnosisMetaStatus);
-      indexBlock.innerHTML =
+      indexBlock.innerHTML = sanitizeHTML(
         '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px"><span style="font-size:11px;font-weight:700;color:#94a3b8">색인 추이</span><span style="font-size:12px;color:#64748b">응답 확인</span></div><div style="font-size:11px;line-height:1.5;color:#64748b">HTTP ' +
         escHtml(httpText) +
         " / code " +
         escHtml(metaCode) +
-        "</div>";
+        "</div>"
+      );
     }
     card.appendChild(indexBlock);
     card.dataset.site = r.site;
@@ -8730,8 +9722,8 @@ function savedAtIso(d) {
       return;
     }
     const requestId = ++siteViewReqId;
-    labelEl.innerHTML = `<span>${escHtml(getSiteLabel(site))}</span>`;
-    bdEl.innerHTML = `<div style="padding:50px 20px;text-align:center;color:#64748b"><div style="display:inline-flex;align-items:center;gap:8px">${ICONS.refresh.replace('width="13" height="13"','width="16" height="16"')} 로딩 중...</div></div>`;
+    labelEl.innerHTML = sanitizeHTML(`<span>${escHtml(getSiteLabel(site))}</span>`);
+    bdEl.innerHTML = sanitizeHTML(`<div style="padding:50px 20px;text-align:center;color:#64748b"><div style="display:inline-flex;align-items:center;gap:8px">${ICONS.refresh.replace('width="13" height="13"','width="16" height="16"')} 로딩 중...</div></div>`);
     let d;
     try {
       d = await fetchSiteData(site);
@@ -8745,8 +9737,9 @@ function savedAtIso(d) {
     }
     if (requestId !== siteViewReqId || site !== curSite) return;
     if (!d || !d.expose || !d.expose.items || !d.expose.items.length) {
-      bdEl.innerHTML =
-        `<div style="padding:40px 20px;text-align:center"><div style="display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;background:#0f172a;border:1px solid #334155;border-radius:12px;margin-bottom:16px;color:#ef4444">${ICONS.xMark.replace('width="14" height="14"','width="22" height="22"')}</div><div style="color:#f8fafc;font-weight:700;font-size:14px;margin-bottom:6px">데이터 없음</div><div style="color:#64748b;font-size:12px">이 사이트의 데이터가 없습니다</div></div>`;
+      bdEl.innerHTML = sanitizeHTML(
+        `<div style="padding:40px 20px;text-align:center"><div style="display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;background:#0f172a;border:1px solid #334155;border-radius:12px;margin-bottom:16px;color:#ef4444">${ICONS.xMark.replace('width="14" height="14"','width="22" height="22"')}</div><div style="color:#f8fafc;font-weight:700;font-size:14px;margin-bottom:6px">데이터 없음</div><div style="color:#64748b;font-size:12px">이 사이트의 데이터가 없습니다</div></div>`
+      );
       return;
     }
     const R = buildRenderers(d.expose, d.crawl, d.backlink, d.diagnosisMeta);
@@ -8883,27 +9876,28 @@ function renderFullRefreshProgress(label, detail, progress, stats) {
       st.errors.map(function (e) { return escHtml(e.site) + ": " + escHtml(e.error); }).join("<br>") +
       "</div>";
   }
-  bdEl.innerHTML =
+  bdEl.innerHTML = sanitizeHTML(
     '<div style="padding:24px 18px 20px;color:#7a9ab8;text-align:left;line-height:1.6">' +
     '<div style="font-size:13px;font-weight:700;color:#d4ecff;margin-bottom:8px">' +
-    label +
+    escHtml(label) +
     "</div>" +
     '<div style="font-size:11px;margin-bottom:10px">' +
-    (detail || "") +
+    escHtml(detail || "") +
     "</div>" +
     '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">' +
     '<div style="flex:1;height:10px;border-radius:999px;background:#0d1829;border:1px solid #1a2d45;overflow:hidden">' +
     '<div style="width:' +
-    pct +
+    escHtml(String(pct)) +
     '%;height:100%;background:linear-gradient(90deg,#40c4ff,#00e676)"></div>' +
     "</div>" +
     '<span style="font-size:11px;font-weight:700;color:#d4ecff;min-width:48px;text-align:right">' +
-    pct +
+    escHtml(String(pct)) +
     "%</span>" +
     "</div>" +
     statsHtml +
     errorsHtml +
-    "</div>";
+    "</div>"
+  );
 }
 
 /**
@@ -8948,7 +9942,7 @@ async function runFullRefreshPipeline(options = {}) {
       ? "\uc804\uccb4\ud604\ud669\uacfc \uc0ac\uc774\ud2b8\ubcc4 \uc0c1\uc138\ud0ed\uc744 \ubaa8\ub450 \ucd5c\uc2e0 \uc0c1\ud0dc\ub85c \ub9de\ucd94\ub294 \uc911\uc785\ub2c8\ub2e4."
       : "\uc0ac\uc774\ud2b8 \ubaa9\ub85d\ubd80\ud130 expose, diagnosisMeta, crawl, backlink\uae4c\uc9c0 \uc21c\uc11c\ub300\ub85c \uac31\uc2e0\ud569\ub2c8\ub2e4.";
   renderFullRefreshProgress(triggerLabel, triggerDetail, 0);
-  labelEl.innerHTML = "<span>\uc804\uccb4 \uc7ac\uc218\uc9d1 \uc9c4\ud589 \uc911</span>";
+  labelEl.innerHTML = sanitizeHTML("<span>\uc804\uccb4 \uc7ac\uc218\uc9d1 \uc9c4\ud589 \uc911</span>");
   const btn = options && options.button ? options.button : null;
   const payload = await collectExportData(
     function (done, total, site, stats) {

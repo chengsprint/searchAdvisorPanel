@@ -36,27 +36,28 @@ function renderFullRefreshProgress(label, detail, progress, stats) {
       st.errors.map(function (e) { return escHtml(e.site) + ": " + escHtml(e.error); }).join("<br>") +
       "</div>";
   }
-  bdEl.innerHTML =
+  bdEl.innerHTML = sanitizeHTML(
     '<div style="padding:24px 18px 20px;color:#7a9ab8;text-align:left;line-height:1.6">' +
     '<div style="font-size:13px;font-weight:700;color:#d4ecff;margin-bottom:8px">' +
-    label +
+    escHtml(label) +
     "</div>" +
     '<div style="font-size:11px;margin-bottom:10px">' +
-    (detail || "") +
+    escHtml(detail || "") +
     "</div>" +
     '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">' +
     '<div style="flex:1;height:10px;border-radius:999px;background:#0d1829;border:1px solid #1a2d45;overflow:hidden">' +
     '<div style="width:' +
-    pct +
+    escHtml(String(pct)) +
     '%;height:100%;background:linear-gradient(90deg,#40c4ff,#00e676)"></div>' +
     "</div>" +
     '<span style="font-size:11px;font-weight:700;color:#d4ecff;min-width:48px;text-align:right">' +
-    pct +
+    escHtml(String(pct)) +
     "%</span>" +
     "</div>" +
     statsHtml +
     errorsHtml +
-    "</div>";
+    "</div>"
+  );
 }
 
 /**
@@ -101,7 +102,7 @@ async function runFullRefreshPipeline(options = {}) {
       ? "\uc804\uccb4\ud604\ud669\uacfc \uc0ac\uc774\ud2b8\ubcc4 \uc0c1\uc138\ud0ed\uc744 \ubaa8\ub450 \ucd5c\uc2e0 \uc0c1\ud0dc\ub85c \ub9de\ucd94\ub294 \uc911\uc785\ub2c8\ub2e4."
       : "\uc0ac\uc774\ud2b8 \ubaa9\ub85d\ubd80\ud130 expose, diagnosisMeta, crawl, backlink\uae4c\uc9c0 \uc21c\uc11c\ub300\ub85c \uac31\uc2e0\ud569\ub2c8\ub2e4.";
   renderFullRefreshProgress(triggerLabel, triggerDetail, 0);
-  labelEl.innerHTML = "<span>\uc804\uccb4 \uc7ac\uc218\uc9d1 \uc9c4\ud589 \uc911</span>";
+  labelEl.innerHTML = sanitizeHTML("<span>\uc804\uccb4 \uc7ac\uc218\uc9d1 \uc9c4\ud589 \uc911</span>");
   const btn = options && options.button ? options.button : null;
   const payload = await collectExportData(
     function (done, total, site, stats) {
