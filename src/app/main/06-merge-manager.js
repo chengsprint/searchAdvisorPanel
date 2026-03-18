@@ -380,7 +380,7 @@
           try {
             site = atob(match[1]);
           } catch (decodeError) {
-            console.error('[Export] Invalid Base64 encoding in key:', key, decodeError);
+            showError(ERROR_MESSAGES.DATA_INCONSISTENCY, decodeError, 'exportSingleAccount-decode');
             continue;
           }
 
@@ -409,7 +409,7 @@
             detailLoaded: data.detailLoaded || false
           };
         } catch (e) {
-          console.error('[Export] Error processing key:', key, e);
+          showError(ERROR_MESSAGES.EXPORT_INCOMPLETE, e, 'exportSingleAccount');
         }
       }
 
@@ -464,12 +464,12 @@
   }
 
   /**
-   * Import account data from exported format
+   * P1: Import account data from exported format with queue serialization
    * @param {Object} exportData - Data from exportCurrentAccountData()
-   * @param {Object} options - Import options
-   * @returns {Object} Import result
+   * @param {Object} options - Import options { overwrite, mergeStrategy, validate }
+   * @returns {Promise<Object>} Promise that resolves with import result
    */
-  function importAccountData(exportData, options = {}) {
+  async function importAccountData(exportData, options = {}) {
     const {
       overwrite = false,
       mergeStrategy = 'newer',
@@ -486,7 +486,7 @@
       if (accountKeys.length === 0) {
         return {
           success: false,
-          error: 'No accounts found in export data'
+          error: ERROR_MESSAGES.NO_VALID_ACCOUNTS
         };
       }
 
@@ -502,7 +502,7 @@
       // V2 포맷이 아닌 레거시 데이터는 지원하지 않음
       return {
         success: false,
-        error: 'Unsupported data format. Please use V2 format with __meta and accounts fields.'
+        error: ERROR_MESSAGES.IMPORT_FORMAT_ERROR
       };
     }
 
@@ -521,38 +521,43 @@
     let skippedCount = 0;
     const errors = [];
 
-    // Import each site
+    // P1: Import sites sequentially to avoid race conditions
     for (const [site, siteData] of Object.entries(sitesToImport)) {
       try {
         const cacheKey = getSiteDataCacheKey(site);
-        const existing = localStorage.getItem(cacheKey);
 
-        if (existing && !overwrite) {
-          const existingData = JSON.parse(existing);
-          // Support both _merge and __meta formats
-          const sourceTime = siteData.__meta?.__fetched_at ||
-                            siteData._merge?.__fetchedAt || 0;
-          const targetTime = existingData.__cacheSavedAt ||
-                            existingData.__meta?.__fetched_at ||
-                            existingData._merge?.__fetchedAt || 0;
+        // Use safeWrite for each site import
+        await safeWrite(cacheKey, async () => {
+          const existing = localStorage.getItem(cacheKey);
 
-          if (mergeStrategy === 'newer' && sourceTime > targetTime) {
-            // Import newer data
+          if (existing && !overwrite) {
+            const existingData = JSON.parse(existing);
+            // Support both _merge and __meta formats
+            const sourceTime = siteData.__meta?.__fetched_at ||
+                              siteData._merge?.__fetchedAt || 0;
+            const targetTime = existingData.__cacheSavedAt ||
+                              existingData.__meta?.__fetched_at ||
+                              existingData._merge?.__fetchedAt || 0;
+
+            if (mergeStrategy === 'newer' && sourceTime > targetTime) {
+              // Import newer data
+              siteData.__meta = siteData.__meta || {};
+              siteData.__meta.__imported_from = sourceEncId;
+              siteData.__meta.__imported_at = Date.now();
+              localStorage.setItem(cacheKey, JSON.stringify(siteData));
+              mergedCount++;
+            } else {
+              skippedCount++;
+            }
+          } else {
+            // No existing data or overwrite
+            siteData.__meta = siteData.__meta || {};
             siteData.__meta.__imported_from = sourceEncId;
             siteData.__meta.__imported_at = Date.now();
             localStorage.setItem(cacheKey, JSON.stringify(siteData));
-            mergedCount++;
-          } else {
-            skippedCount++;
+            importedCount++;
           }
-        } else {
-          // No existing data or overwrite
-          siteData.__meta = siteData.__meta || {};
-          siteData.__meta.__imported_from = sourceEncId;
-          siteData.__meta.__imported_at = Date.now();
-          localStorage.setItem(cacheKey, JSON.stringify(siteData));
-          importedCount++;
-        }
+        });
 
         // Track in registry
         if (!registry.mergedSites) {
@@ -569,11 +574,11 @@
 
       } catch (e) {
         errors.push({ site, error: e.message });
-        console.error('[Import] Error importing site:', site, e);
+        showError(`${ERROR_MESSAGES.IMPORT_FAILED}: ${site}`, e, 'importAccountData');
       }
     }
 
-    saveMergeRegistry(registry);
+    await saveMergeRegistry(registry);
 
     return {
       success: true,
@@ -599,12 +604,19 @@
   }
 
   /**
-   * Save merge registry
+   * P1: Save merge registry with queue serialization
+   * @param {Object} registry - Registry data to save
+   * @returns {Promise<void>} Promise that resolves when registry is saved
    */
-  function saveMergeRegistry(registry) {
-    try {
-      localStorage.setItem(MERGE_REGISTRY_KEY, JSON.stringify(registry));
-    } catch (e) {}
+  async function saveMergeRegistry(registry) {
+    return safeWrite(MERGE_REGISTRY_KEY, async () => {
+      try {
+        localStorage.setItem(MERGE_REGISTRY_KEY, JSON.stringify(registry));
+      } catch (e) {
+        console.error('[saveMergeRegistry] Error:', e);
+        throw e;
+      }
+    }, { skipLock: true }); // Skip lock for registry to avoid deadlock
   }
 
   /**

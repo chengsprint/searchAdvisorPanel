@@ -1,3 +1,12 @@
+  /**
+ * Download the current view as a standalone HTML snapshot file
+ * Collects all data, generates HTML with embedded payload, and triggers download
+ * @returns {Promise<void>}
+ * @example
+ * await downloadSnapshot(); // Downloads searchadvisor-user-20260315-143045.html
+ * @see {collectExportData}
+ * @see {buildSnapshotHtml}
+ */
   async function downloadSnapshot() {
     const btn = document.getElementById("sadv-save-btn");
     const originalText = btn.textContent;
@@ -29,13 +38,26 @@
         URL.revokeObjectURL(link.href);
       }, 1000);
     } catch (e) {
-      console.error(e);
-      alert("HTML 저장 중 오류가 발생했어요. 다시 시도해주세요.");
+      showError(ERROR_MESSAGES.HTML_SAVE_ERROR, e, 'downloadSnapshot');
+      bdEl.innerHTML = createInlineError(
+        ERROR_MESSAGES.HTML_SAVE_ERROR,
+        () => downloadSnapshot(),
+        '다시 시도'
+      ).outerHTML;
     } finally {
       btn.disabled = false;
       btn.textContent = originalText;
     }
   }
+  /**
+ * Build snapshot shell state from a V2 payload
+ * Extracts UI state, metadata, and site information from a saved snapshot
+ * @param {Object} payload - V2 payload object
+ * @returns {Object} Snapshot shell state with accountLabel, allSites, rows, siteMeta, curMode, curSite, curTab, runtimeVersion, cacheMeta
+ * @example
+ * const shellState = buildSnapshotShellState(exportPayload);
+ * console.log(shellState.accountLabel); // "user@example.com"
+ */
   function buildSnapshotShellState(payload) {
     // Handle V2 format
     let allSites, dataBySite, summaryRows, siteMeta, accountLabel, savedAt, curMode, curSite, curTab;
@@ -119,6 +141,17 @@
         : null,
     };
   }
+  /**
+ * Build standalone HTML snapshot string with embedded payload
+ * Creates a complete HTML document with the SearchAdvisor UI and data
+ * @param {Date} savedAt - Timestamp when snapshot was saved
+ * @param {Object} payload - V2 export payload with all data
+ * @returns {string} Complete HTML document string
+ * @example
+ * const html = buildSnapshotHtml(new Date(), exportPayload);
+ * document.body.innerHTML = html;
+ * @see {injectSnapshotReactShell}
+ */
   function buildSnapshotHtml(savedAt, payload) {
     const clone = p.cloneNode(true);
     clone

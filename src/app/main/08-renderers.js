@@ -1,3 +1,19 @@
+  /**
+ * Build renderer functions for all site data tabs
+ * Processes expose, crawl, backlink, and diagnosisMeta data to create renderers
+ * @param {Object} expose - Expose data with items array
+ * @param {Object} crawlData - Crawl data with stats
+ * @param {Object} backlinkData - Backlink data with total, domains, countTime
+ * @param {Object} diagnosisMeta - Diagnosis metadata with items array
+ * @returns {Object} Object with renderer functions for each tab (overview, daily, urls, queries, pattern, crawl, backlink, insight)
+ * @example
+ * const renderers = buildRenderers(exposeData, crawlData, backlinkData, diagnosisData);
+ * renderers.overview(); // Renders overview tab
+ * renderers.daily(); // Renders daily tab
+ * @see {sparkline}
+ * @see {barchart}
+ * @see {kpiGrid}
+ */
   function buildRenderers(expose, crawlData, backlinkData, diagnosisMeta) {
     const item = (expose && expose.items && expose.items[0]) || {};
     const period = item.period || {},
@@ -130,7 +146,7 @@
             "일별 클릭수",
             "최고 " + fmt(Math.max(...clicks)) + "회",
             C.green,
-            sparkline(clicks, dates, 80, C.green, "회"),
+            sparkline(clicks, dates, window.innerWidth <= 768 ? 65 : 80, C.green, "회"),
             dates,
           ),
         );
@@ -139,7 +155,7 @@
             "일별 노출수",
             "최고 " + fmt(Math.max(...exposes)),
             C.blue,
-            sparkline(exposes, dates, 65, C.blue, "회"),
+            sparkline(exposes, dates, window.innerWidth <= 768 ? 55 : 65, C.blue, "회"),
             dates,
           ),
         );
@@ -148,7 +164,7 @@
             "일별 CTR",
             "평균 " + avgCtr + "%",
             C.amber,
-            sparkline(ctrs, dates, 55, C.amber, "%"),
+            sparkline(ctrs, dates, window.innerWidth <= 768 ? 45 : 55, C.amber, "%"),
             dates,
           ),
         );
@@ -192,7 +208,7 @@
             "일별 클릭 추이",
             "최고 " + fmt(mxC) + "회",
             C.green,
-            sparkline(clicks, dates, 90, C.green, "회"),
+            sparkline(clicks, dates, window.innerWidth <= 768 ? 75 : 90, C.green, "회"),
             dates,
           ),
         );

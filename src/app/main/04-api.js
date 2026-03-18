@@ -14,7 +14,7 @@ const inflightDiagnosisMeta = {};
  */
 async function fetchExposeData(site, options) {
   if (!encId || typeof encId !== 'string') {
-    console.error('[fetchExposeData] Invalid encId:', encId);
+    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchExposeData');
     return null;
   }
   if (memCache[site] && !shouldFetchField(memCache[site], "expose", options)) {
@@ -44,6 +44,7 @@ async function fetchExposeData(site, options) {
         detailLoaded: false,
       });
     } catch (e) {
+      showError(ERROR_MESSAGES.DATA_LOAD_FAILED, e, 'fetchExposeData');
       return persistSiteData(site, {
         expose: null,
         exposeFetchState: "failure",
@@ -66,7 +67,7 @@ async function fetchExposeData(site, options) {
  */
 async function fetchCrawlData(site, options) {
   if (!encId || typeof encId !== 'string') {
-    console.error('[fetchCrawlData] Invalid encId:', encId);
+    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchCrawlData');
     return null;
   }
   const baseData = await fetchExposeData(site, options);
@@ -107,6 +108,7 @@ async function fetchCrawlData(site, options) {
         detailLoaded: baseData.detailLoaded,
       });
     } catch (e) {
+      showError(ERROR_MESSAGES.DETAIL_DATA_MISSING, e, 'fetchCrawlData');
       return persistSiteData(site, {
         ...baseData,
         crawl: null,
@@ -131,7 +133,7 @@ async function fetchCrawlData(site, options) {
  */
 async function fetchBacklinkData(site, options) {
   if (!encId || typeof encId !== 'string') {
-    console.error('[fetchBacklinkData] Invalid encId:', encId);
+    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchBacklinkData');
     return null;
   }
   const baseData = await fetchExposeData(site, options);
@@ -171,6 +173,7 @@ async function fetchBacklinkData(site, options) {
         detailLoaded: baseData.detailLoaded,
       });
     } catch (e) {
+      showError(ERROR_MESSAGES.DETAIL_DATA_MISSING, e, 'fetchBacklinkData');
       return persistSiteData(site, {
         ...baseData,
         backlink: null,
@@ -195,7 +198,7 @@ async function fetchBacklinkData(site, options) {
  */
 async function fetchSiteData(site, options) {
   if (!encId || typeof encId !== 'string') {
-    console.error('[fetchSiteData] Invalid encId:', encId);
+    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchSiteData');
     return null;
   }
   const baseData = await fetchDiagnosisMeta(site, null, options);
@@ -236,7 +239,8 @@ async function fetchSiteData(site, options) {
                   fetchedAt: Date.now(),
                 };
               })
-              .catch(function () {
+              .catch(function (e) {
+                showError(ERROR_MESSAGES.DETAIL_DATA_MISSING, e, 'fetchSiteData-crawl');
                 return {
                   key: "crawl",
                   ok: false,
@@ -274,7 +278,8 @@ async function fetchSiteData(site, options) {
                   fetchedAt: Date.now(),
                 };
               })
-              .catch(function () {
+              .catch(function (e) {
+                showError(ERROR_MESSAGES.DETAIL_DATA_MISSING, e, 'fetchSiteData-backlink');
                 return {
                   key: "backlink",
                   ok: false,
@@ -317,7 +322,7 @@ async function fetchSiteData(site, options) {
  */
 async function fetchDiagnosisMeta(site, seedData, options) {
   if (!encId || typeof encId !== 'string') {
-    console.error('[fetchDiagnosisMeta] Invalid encId:', encId);
+    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchDiagnosisMeta');
     return null;
   }
   const baseData = seedData || (await fetchExposeData(site, options));
@@ -350,7 +355,7 @@ async function fetchDiagnosisMeta(site, seedData, options) {
           diagnosisMetaFetchState = "success";
         }
       } catch (e) {
-        console.error('[fetchDiagnosisMeta] Error:', e);
+        showError(ERROR_MESSAGES.DATA_LOAD_ERROR, e, 'fetchDiagnosisMeta');
       }
       return persistSiteData(site, {
         ...baseData,

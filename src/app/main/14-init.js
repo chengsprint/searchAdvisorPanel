@@ -1,5 +1,16 @@
   // Async initialization - wait for site list to load
   console.log('[Init] Starting async initialization...');
+  /**
+   * Initialize the SearchAdvisor application
+   * Loads site list, sets up UI state, and renders initial view
+   * This is the main entry point that runs on page load
+   * @returns {Promise<void>}
+   * @example
+   // Automatically called on page load
+   * @see {loadSiteList}
+   * @see {renderAllSites}
+   * @see {loadSiteView}
+   */
   (async function() {
     console.log('[Init] Inside async IIFE, calling loadSiteList...');
     await loadSiteList(false);

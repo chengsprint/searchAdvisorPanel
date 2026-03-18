@@ -2,6 +2,14 @@
 // ALL-SITES-VIEW - All sites view rendering and export
 // ============================================================
 
+/**
+ * Render the all sites overview view
+ * Fetches expose data and diagnosis meta for all sites, then displays summary cards
+ * @returns {Promise<void>}
+ * @example
+ * await renderAllSites();
+ * @see {buildSiteSummaryRow}
+ */
 async function renderAllSites() {
   const requestId = ++allViewReqId;
   setAllSitesLabel();
@@ -26,7 +34,7 @@ async function renderAllSites() {
 
   if (!allSites.length) {
     bdEl.innerHTML =
-      '<div style="padding:30px 20px;text-align:center"><div style="font-size:32px">↻</div><div style="color:#ffca28;font-weight:700;margin:10px 0">사이트 목록을 찾을 수 없어요</div><div style="color:#7a9ab8;font-size:12px;line-height:2">↻ 버튼을 눌러 새로고침 해보세요<br>또는 서치어드바이저 콘솔 페이지에서 실행해주세요</div></div>';
+      '<div style="padding:30px 20px;text-align:center"><div style="font-size:32px">⚠️</div><div style="color:#ffca28;font-weight:700;margin:10px 0">사이트 목록을 찾을 수 없어요</div><div style="color:#7a9ab8;font-size:12px;line-height:2">↻ 버튼을 눌러 새로고침 해보세요<br>또는 서치어드바이저 콘솔 페이지에서 실행해주세요</div></div>';
     return;
   }
   const sitesToLoad = allSites;
@@ -88,14 +96,11 @@ async function renderAllSites() {
         // 실패한 사이트 에러 추적
         failedCount++;
         const errorDetail = result.reason?.message || result.reason || '알 수 없는 오류';
-        ERROR_TRACKING.reportError({
-          type: 'dataLoadError',
-          phase: 'expose',
-          site: batchSites[offset],
-          error: errorDetail,
-          batchIndex: i + offset,
-          totalSites: sitesToLoad.length
-        });
+        showError(
+          `${batchSites[offset]} 사이트 데이터 로딩 실패`,
+          result.reason,
+          'renderAllSites-expose'
+        );
       }
     });
     // 배치 실패 시 진행률 메타에 표시
@@ -153,14 +158,36 @@ async function renderAllSites() {
   const grandC = rows.reduce((a, r) => a + r.totalC, 0);
   const grandE = rows.reduce((a, r) => a + r.totalE, 0);
   const avgCtrAll = grandE ? (grandC / grandE) * 100 : 0;
-  wrap.appendChild(
-    kpiGrid([
-      { label: "전체 클릭", value: (grandC / 10000).toFixed(1) + "만", sub: "90일 합계", color: C.green },
-      { label: "전체 노출", value: (grandE / 10000000).toFixed(1) + "천만", sub: "90일 합계", color: C.blue },
-      { label: "평균CTR", value: avgCtrAll.toFixed(2) + "%", sub: "90일 평균", color: C.amber },
-      { label: "활성사이트", value: rows.filter((r) => r.totalC > 0).length + "개", color: C.teal },
-    ]),
-  );
+  const isMobile = window.innerWidth <= 768;
+
+  // Responsive KPI grid: 2 columns on mobile, 4 on desktop
+  const kpiData = [
+    { label: "전체 클릭", value: (grandC / 10000).toFixed(1) + "만", sub: "90일 합계", color: C.green },
+    { label: "전체 노출", value: (grandE / 10000000).toFixed(1) + "천만", sub: "90일 합계", color: C.blue },
+    { label: "평균CTR", value: avgCtrAll.toFixed(2) + "%", sub: "90일 평균", color: C.amber },
+    { label: "활성사이트", value: rows.filter((r) => r.totalC > 0).length + "개", color: C.teal },
+  ];
+
+  // On mobile, show in 2x2 grid
+  if (isMobile) {
+    const mobileKpiWrapper = document.createElement("div");
+    mobileKpiWrapper.style.cssText = "display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px";
+
+    kpiData.forEach(kpi => {
+      const kpiCard = document.createElement("div");
+      kpiCard.style.cssText = `background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px;text-align:center`;
+      kpiCard.innerHTML = `
+        <div style="font-size:11px;color:#94a3b8;margin-bottom:4px">${kpi.label}</div>
+        <div style="font-size:20px;font-weight:800;color:${kpi.color};line-height:1.1;margin-bottom:4px">${kpi.value}</div>
+        <div style="font-size:10px;color:#64748b">${kpi.sub}</div>
+      `;
+      mobileKpiWrapper.appendChild(kpiCard);
+    });
+
+    wrap.appendChild(mobileKpiWrapper);
+  } else {
+    wrap.appendChild(kpiGrid(kpiData));
+  }
   wrap.appendChild(
     secTitle(
       "클릭 랭킹 TOP " +
@@ -177,7 +204,7 @@ async function renderAllSites() {
       barchart(
         top30.map((r) => r.totalC),
         top30.map((r) => r.site.replace(/^https?:\/\//, "")),
-        80,
+        window.innerWidth <= 768 ? 65 : 80,
         C.green,
         "회",
       ),
@@ -196,6 +223,14 @@ async function renderAllSites() {
       r.sourceAccount && (typeof r.sourceAccount === "string" ? r.sourceAccount.trim() : "")
         ? `<span style="font-size:10px;color:#64748b;background:#1e293b;padding:2px 6px;border-radius:4px;margin-left:8px;white-space:nowrap;border:1px solid #334155" title="${escHtml(r.sourceAccount)}">${escHtml(r.sourceAccount.split("@")[0])}</span>`
         : "";
+
+    // Responsive card layout
+    const isMobile = window.innerWidth <= 768;
+    const gridTemplate = isMobile ? "grid-template-columns:repeat(3,minmax(0,1fr));gap:6px" : "grid-template-columns:repeat(3,minmax(0,1fr));gap:8px";
+    const paddingStyle = isMobile ? "padding:6px" : "padding:8px";
+    const fontSizeValue = isMobile ? "font-size:14px" : "font-size:15px";
+    const fontSizeLabel = isMobile ? "font-size:9px" : "font-size:10px";
+
     card.innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="display:flex;align-items:center;gap:8px;min-width:0"><div style="width:10px;height:10px;border-radius:50%;background:' +
       col +
@@ -205,19 +240,43 @@ async function renderAllSites() {
       escHtml(shortName) +
       '</span>' +
       sourceBadge +
-      '</div></div><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px"><div style="text-align:center;min-width:0;background:rgba(30,41,59,0.3);padding:8px;border-radius:8px"><div style="font-size:15px;font-weight:800;line-height:1.1;color:' +
+      '</div></div><div style="display:grid;' +
+      gridTemplate +
+      ';margin-bottom:12px"><div style="text-align:center;min-width:0;background:rgba(30,41,59,0.3);' +
+      paddingStyle +
+      ';border-radius:8px"><div style="' +
+      fontSizeValue +
+      ';font-weight:800;line-height:1.1;color:' +
       C.green +
       '">' +
       escHtml(fmt(r.totalC)) +
-      '</div><div style="font-size:10px;line-height:1.4;color:#64748b;margin-top:4px">클릭</div></div><div style="text-align:center;min-width:0;background:rgba(30,41,59,0.3);padding:8px;border-radius:8px"><div style="font-size:15px;font-weight:800;line-height:1.1;color:' +
+      '</div><div style="' +
+      fontSizeLabel +
+      ';line-height:1.4;color:#64748b;margin-top:4px">클릭</div></div><div style="text-align:center;min-width:0;background:rgba(30,41,59,0.3);' +
+      paddingStyle +
+      ';border-radius:8px"><div style="' +
+      fontSizeValue +
+      ';font-weight:800;line-height:1.1;color:' +
       C.blue +
       '">' +
       escHtml((r.totalE / 10000).toFixed(1)) +
-      '만</div><div style="font-size:10px;line-height:1.4;color:#64748b;margin-top:4px">노출</div></div><div style="text-align:center;min-width:0;background:rgba(30,41,59,0.3);padding:8px;border-radius:8px"><div style="font-size:15px;font-weight:800;line-height:1.1;color:' +
+      '만</div><div style="' +
+      fontSizeLabel +
+      ';line-height:1.4;color:#64748b;margin-top:4px">노출</div></div><div style="text-align:center;min-width:0;background:rgba(30,41,59,0.3);' +
+      paddingStyle +
+      ';border-radius:8px"><div style="' +
+      fontSizeValue +
+      ';font-weight:800;line-height:1.1;color:' +
       C.amber +
       '">' +
       escHtml(r.avgCtr) +
-      '%</div><div style="font-size:10px;line-height:1.4;color:#64748b;margin-top:4px">CTR</div></div></div>';
+      '%</div><div style="' +
+      fontSizeLabel +
+      ';line-height:1.4;color:#64748b;margin-top:4px">CTR</div></div></div>';
+    // Add keyboard accessibility
+    card.setAttribute("tabindex", "0");
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-label", `${shortName} 사이트 상세 보기`);
     if (r.clicks && r.clicks.length > 1) {
       const miniDates = (r.logs || []).map(function (log) {
         return fmtB(log.date);
@@ -274,12 +333,44 @@ async function renderAllSites() {
       switchMode("site");
     }
   });
+  // Keyboard navigation for site cards
+  wrap.addEventListener('keydown', function(e) {
+    const card = e.target.closest(".sadv-allcard");
+    if (!card) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      card.click();
+    }
+    // Arrow key navigation between cards
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const cards = Array.from(wrap.querySelectorAll('.sadv-allcard'));
+      const currentIndex = cards.indexOf(card);
+      const nextIndex = e.key === 'ArrowDown'
+        ? Math.min(currentIndex + 1, cards.length - 1)
+        : Math.max(currentIndex - 1, 0);
+      cards[nextIndex].focus();
+    }
+  });
 
   if (requestId !== allViewReqId || curMode !== "all") return;
   bdEl.replaceChildren(wrap);
   bdEl.scrollTop = 0;
 }
 
+/**
+ * Collect export data for all sites with progress reporting
+ * Fetches all data types (expose, crawl, backlink, diagnosisMeta) for export
+ * @param {Function} onProgress - Progress callback function(done, total, site, stats)
+ * @param {Object} options - Options object
+ * @param {string} options.refreshMode - Refresh mode ('refresh' or 'cache-first')
+ * @returns {Promise<Object>} Export payload with dataBySite, summaryRows, stats
+ * @example
+ * const payload = await collectExportData(
+ *   (done, total, site) => console.log(`${done}/${total}: ${site}`),
+ *   { refreshMode: 'cache-first' }
+ * );
+ */
 async function collectExportData(onProgress, options) {
   const dataBySite = {};
   const summaryRows = [];
