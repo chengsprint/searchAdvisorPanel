@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>V2 병합 계정 테스트</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      background: #0a1628;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <div id="test"></div>
+  <script>
+    window.onerror = function(msg, url, line, col, error) {
+      console.error('[Error]', msg, 'at', url, 'line:', line);
+      document.getElementById('test').textContent = 'Error: ' + msg;
+      return true;
+    };
+  </script>
+  <script>
+    // V2 병합 계정 더미 데이터 (서로 다른 네이버 계정)
+    window.__SEARCHADVISOR_EXPORT_PAYLOAD__ = {
+      __meta: {
+        version: "1.0",
+        savedAt: new Date().toISOString(),
+        accountCount: 2,
+        hasConflicts: true
+      },
+      accounts: {
+        "account1@naver.com": {
+          encId: "enc-id-account-1",
+          sites: ["https://shared-site.com", "https://account1-exclusive.com"],
+          siteMeta: {
+            "https://shared-site.com": { label: "공유 사이트 (계정1)" },
+            "https://account1-exclusive.com": { label: "계정1 전용 사이트" }
+          },
+          dataBySite: {
+            "https://shared-site.com": {
+              __meta: { __source: "account1@naver.com", __fetched_at: Date.now(), __schema: "1.0" },
+              expose: { items: [{
+                period: { start: "20260301", end: "20260315" },
+                logs: Array.from({length: 15}, (_, i) => {
+                  const d = new Date(2026, 2, 1 + i);
+                  return {
+                    date: d.toISOString().slice(0, 10).replace(/-/g, ''),
+                    clickCount: Math.floor(Math.random() * 300) + 50,
+                    exposeCount: Math.floor(Math.random() * 600) + 100,
+                    ctr: (Math.random() * 3 + 0.5).toFixed(2)
+                  };
+                }),
+                urls: Array.from({length: 8}, (_, i) => ({
+                  key: `https://shared-site.com/page-${i+1}`,
+                  clickCount: Math.floor(Math.random() * 100) + 10,
+                  exposeCount: Math.floor(Math.random() * 300) + 50,
+                  ctr: (Math.random() * 4 + 0.5).toFixed(2)
+                })),
+                querys: Array.from({length: 6}, (_, i) => ({
+                  key: `계정1검색어${i+1}`,
+                  clickCount: Math.floor(Math.random() * 80) + 5,
+                  exposeCount: Math.floor(Math.random() * 200) + 20,
+                  ctr: (Math.random() * 3 + 0.5).toFixed(2)
+                }))
+              }] },
+              crawl: { items: [{ stats: Array.from({length: 15}, () => ({ pageCount: Math.floor(Math.random() * 3000) + 1000 })) }] },
+              backlink: { items: [{ stats: Array.from({length: 15}, () => ({ backlinksCount: Math.floor(Math.random() * 300) + 50 })) }] },
+              detailLoaded: true
+            },
+            "https://account1-exclusive.com": {
+              __meta: { __source: "account1@naver.com", __fetched_at: Date.now(), __schema: "1.0" },
+              expose: { items: [{
+                period: { start: "20260301", end: "20260315" },
+                logs: Array.from({length: 15}, (_, i) => ({
+                  date: new Date(2026, 2, 1 + i).toISOString().slice(0, 10).replace(/-/g, ''),
+                  clickCount: Math.floor(Math.random() * 500) + 100,
+                  exposeCount: Math.floor(Math.random() * 1000) + 200,
+                  ctr: (Math.random() * 4 + 1).toFixed(2)
+                })),
+                urls: [], querys: []
+              }] },
+              detailLoaded: true
+            }
+          }
+        },
+        "account2@naver.com": {
+          encId: "enc-id-account-2",
+          sites: ["https://shared-site.com", "https://account2-exclusive.com"],
+          siteMeta: {
+            "https://shared-site.com": { label: "공유 사이트 (계정2)" },
+            "https://account2-exclusive.com": { label: "계정2 전용 사이트" }
+          },
+          dataBySite: {
+            "https://shared-site.com": {
+              __meta: { __source: "account2@naver.com", __fetched_at: Date.now(), __schema: "1.0" },
+              expose: { items: [{
+                period: { start: "20260301", end: "20260315" },
+                logs: Array.from({length: 15}, (_, i) => {
+                  const d = new Date(2026, 2, 1 + i);
+                  return {
+                    date: d.toISOString().slice(0, 10).replace(/-/g, ''),
+                    clickCount: Math.floor(Math.random() * 400) + 80,
+                    exposeCount: Math.floor(Math.random() * 800) + 150,
+                    ctr: (Math.random() * 3 + 0.5).toFixed(2)
+                  };
+                }),
+                urls: Array.from({length: 10}, (_, i) => ({
+                  key: `https://shared-site.com/other-${i+1}`,
+                  clickCount: Math.floor(Math.random() * 150) + 20,
+                  exposeCount: Math.floor(Math.random() * 400) + 80,
+                  ctr: (Math.random() * 5 + 0.5).toFixed(2)
+                })),
+                querys: Array.from({length: 8}, (_, i) => ({
+                  key: `계정2키워드${i+1}`,
+                  clickCount: Math.floor(Math.random() * 120) + 10,
+                  exposeCount: Math.floor(Math.random() * 300) + 30,
+                  ctr: (Math.random() * 4 + 0.5).toFixed(2)
+                }))
+              }] },
+              crawl: { items: [{ stats: Array.from({length: 15}, () => ({ pageCount: Math.floor(Math.random() * 4000) + 1500 })) }] },
+              backlink: { items: [{ stats: Array.from({length: 15}, () => ({ backlinksCount: Math.floor(Math.random() * 400) + 80 })) }] },
+              detailLoaded: true
+            },
+            "https://account2-exclusive.com": {
+              __meta: { __source: "account2@naver.com", __fetched_at: Date.now(), __schema: "1.0" },
+              expose: { items: [{
+                period: { start: "20260301", end: "20260315" },
+                logs: Array.from({length: 15}, (_, i) => ({
+                  date: new Date(2026, 2, 1 + i).toISOString().slice(0, 10).replace(/-/g, ''),
+                  clickCount: Math.floor(Math.random() * 600) + 150,
+                  exposeCount: Math.floor(Math.random() * 1200) + 250,
+                  ctr: (Math.random() * 4 + 1).toFixed(2)
+                })),
+                urls: [], querys: []
+              }] },
+              detailLoaded: true
+            }
+          }
+        }
+      },
+      ui: { curMode: "all", curSite: null, curTab: "overview" },
+      _summary: {
+        siteOwnership: {
+          "https://shared-site.com": ["account1@naver.com", "account2@naver.com"],
+          "https://account1-exclusive.com": ["account1@naver.com"],
+          "https://account2-exclusive.com": ["account2@naver.com"]
+        },
+        conflicts: [{
+          site: "https://shared-site.com",
+          accounts: ["account1@naver.com", "account2@naver.com"]
+        }]
+      },
+      stats: { success: 2, partial: 0, failed: 0, errors: [] }
+    };
+  </script>
+  <script src="runtime.js"></script>
+</body>
+</html>

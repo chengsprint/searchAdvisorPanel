@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quick Widget Test</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a1628;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 20px;
+    }
+    .info {
+      color: #8bb8e8;
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+    .error {
+      color: #ff6b6b;
+      background: #2a1a1a;
+      padding: 10px;
+      border-radius: 4px;
+      margin-bottom: 10px;
+    }
+    .success {
+      color: #51cf66;
+      background: #1a2a1a;
+      padding: 10px;
+      border-radius: 4px;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="info">위젯 로딩 중...</div>
+  <div id="widget-mount"></div>
+
+  <script>
+    // 에러 핸들링
+    window.addEventListener('error', (e) => {
+      document.querySelector('.info').innerHTML =
+        '<div class="error">Error: ' + e.message + '<br>File: ' + e.filename + ':' + e.lineno + '</div>';
+    });
+
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const widget = document.querySelector('#sadv-p');
+        if (widget) {
+          document.querySelector('.info').innerHTML =
+            '<div class="success">✓ 위젯 로드 성공! (' + widget.offsetWidth + 'x' + widget.offsetHeight + 'px)</div>';
+        } else {
+          document.querySelector('.info').innerHTML =
+            '<div class="error">위젯을 찾을 수 없습니다. 콘솔을 확인하세요.</div>';
+        }
+      }, 3000);
+    });
+  </script>
+
+  <!-- 테스트 데이터 -->
+  <script>
+    window.__SEARCHADVISOR_EXPORT_PAYLOAD__ = {
+      __meta: { version: "2.0.0", generatedAt: new Date().toISOString() },
+      accounts: [{
+        id: 'test-1',
+        label: '테스트 계정',
+        siteUrl: 'https://example.com',
+        crawlData: {
+          '2026-03-18': {
+            clicks: 1250,
+            impressions: 8500,
+            ctr: 14.7,
+            position: 12.5,
+            pages: [
+              { url: 'https://example.com/page1', clicks: 450, impressions: 3200, ctr: 14.1, position: 8.5 },
+              { url: 'https://example.com/page2', clicks: 320, impressions: 2100, ctr: 15.2, position: 15.2 }
+            ],
+            queries: [
+              { query: 'test keyword', clicks: 280, impressions: 1200, ctr: 23.3, position: 5.2 },
+              { query: 'example search', clicks: 195, impressions: 980, ctr: 19.9, position: 8.1 }
+            ]
+          }
+        },
+        backlinkData: {
+          totalBacklinks: 1250,
+          newBacklinks: 45,
+          lostBacklinks: 12,
+          referringDomains: 180
+        },
+        diagnosisMeta: {
+          siteHealth: 85,
+          indexedPages: 1250,
+          crawlErrors: 12,
+          mobileFriendly: true,
+          pageSpeedScore: 78
+        }
+      }],
+      ui: { currentTab: 'overview', currentAccount: 'test-1' },
+      stats: {
+        totalClicks: 1250,
+        totalImpressions: 8500,
+        avgCtr: 14.7,
+        avgPosition: 12.5
+      }
+    };
+  </script>
+
+  <!-- Runtime (모듈 타입으로 로드) -->
+  <script type="module">
+    // runtime.js를 가져오기 위한 별도 스크립트
+    import * as Runtime from './runtime.js';
+    window.Runtime = Runtime;
+  </script>
+</body>
+</html>

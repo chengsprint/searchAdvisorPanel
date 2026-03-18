@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SearchAdvisor Panel - 상세 분석</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 24px;
+    }
+    .info {
+      text-align: center;
+      color: #94a3b8;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+    .tab-controls {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+      background: #1e293b;
+      padding: 15px;
+      border-radius: 8px;
+    }
+    .tab-btn {
+      background: #334155;
+      color: #f8fafc;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    .tab-btn:hover {
+      background: #475569;
+    }
+    .tab-btn.active {
+      background: #0ea5e9;
+      font-weight: 600;
+    }
+    .capture-info {
+      background: #1e293b;
+      padding: 12px 20px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .capture-info button {
+      background: #0ea5e9;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .capture-info button:hover {
+      background: #0284c7;
+    }
+    #widget-frame {
+      background: #020617;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid #334155;
+      min-height: 600px;
+    }
+    .pixel-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 20px;
+      padding: 15px;
+      background: #1e293b;
+      border-radius: 8px;
+    }
+    .pixel-sample {
+      aspect-ratio: 1;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .pixel-sample:hover {
+      transform: scale(1.1);
+    }
+    .analysis-panel {
+      background: #1e293b;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 20px;
+      font-size: 13px;
+    }
+    .analysis-panel h3 {
+      margin-bottom: 10px;
+      color: #0ea5e9;
+    }
+    .analysis-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid #334155;
+    }
+    .analysis-item:last-child {
+      border-bottom: none;
+    }
+    .status {
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+    }
+    .status.good { background: #059669; }
+    .status.warn { background: #d97706; }
+    .status.bad { background: #dc2626; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 SearchAdvisor Panel - 픽셀 단위 상세 분석</h1>
+    <p class="info">모든 탭의 UI/UX를 픽셀 단위로 분석하여 구현 완성도를 확인합니다</p>
+
+    <div class="tab-controls" id="tabControls">
+      <button class="tab-btn active" data-tab="overview">📊 전체현황</button>
+      <button class="tab-btn" data-tab="daily">📅 일별현황</button>
+      <button class="tab-btn" data-tab="queries">🔍 검색어</button>
+      <button class="tab-btn" data-tab="pages">📄 페이지</button>
+      <button class="tab-btn" data-tab="pattern">🔄 패턴</button>
+      <button class="tab-btn" data-tab="crawl">🕷️ 크롤링</button>
+      <button class="tab-btn" data-tab="backlink">🔗 백링크</button>
+      <button class="tab-btn" data-tab="diagnosis">🩺 진단</button>
+      <button class="tab-btn" data-tab="insight">💡 인사이트</button>
+    </div>
+
+    <div class="capture-info">
+      <span id="currentInfo">현재 탭: 전체현황</span>
+      <button onclick="captureCurrentTab()">📸 현재 탭 캡처</button>
+      <button onclick="captureAllTabs()">📦 전체 탭 캡처</button>
+    </div>
+
+    <div id="widget-frame">
+      <iframe id="widget" src="test-single-fixed.html" style="width:100%;height:800px;border:none;"></iframe>
+    </div>
+
+    <div class="analysis-panel" id="analysisPanel">
+      <h3>📐 픽셀 단위 분석 결과</h3>
+      <div id="analysisResults">
+        <div class="analysis-item">
+          <span>위젯 로드 상태</span>
+          <span class="status good">분석 중...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="dist/runtime.js"></script>
+  <script>
+    let currentTab = 'overview';
+    const widgetFrame = document.getElementById('widget');
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    const currentInfo = document.getElementById('currentInfo');
+
+    // 탭 전환
+    tabButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tab = btn.dataset.tab;
+        switchTab(tab);
+      });
+    });
+
+    function switchTab(tabId) {
+      currentTab = tabId;
+
+      // 위젯 내부 탭 클릭
+      const iframe = document.getElementById('widget');
+      iframe.onload = () => {
+        try {
+          const tabButton = iframe.contentDocument.querySelector(`[data-t="${tabId}"]`);
+          if (tabButton) {
+            tabButton.click();
+            updateInfo();
+            analyzeCurrentTab();
+          }
+        } catch (e) {
+          console.log('Tab switch:', e);
+        }
+      };
+
+      // 첫 로드 후 실행
+      if (iframe.contentDocument) {
+        const tabButton = iframe.contentDocument.querySelector(`[data-t="${tabId}"]`);
+        if (tabButton) {
+          tabButton.click();
+          updateInfo();
+          analyzeCurrentTab();
+        }
+      }
+
+      tabButtons.forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
+    }
+
+    function updateInfo() {
+      const tabNames = {
+        overview: '전체현황',
+        daily: '일별현황',
+        queries: '검색어',
+        pages: '페이지',
+        pattern: '패턴',
+        crawl: '크롤링',
+        backlink: '백링크',
+        diagnosis: '진단',
+        insight: '인사이트'
+      };
+      currentInfo.textContent = `현재 탭: ${tabNames[currentTab]}`;
+    }
+
+    function analyzeCurrentTab() {
+      const iframe = document.getElementById('widget');
+      const results = [];
+
+      try {
+        const doc = iframe.contentDocument;
+        const widget = doc.querySelector('#sadv-p');
+
+        if (!widget) {
+          results.push({ name: '위젯 존재', status: 'bad', msg: '위젯을 찾을 수 없음' });
+        } else {
+          results.push({ name: '위젯 렌더링', status: 'good', msg: '정상' });
+
+          // 탭 버튼 분석
+          const tabs = doc.querySelectorAll('[role="tab"]');
+          results.push({
+            name: '탭 버튼 수',
+            status: tabs.length === 8 ? 'good' : 'warn',
+            msg: `${tabs.length}개`
+          });
+
+          // 활성 탭 확인
+          const activeTab = doc.querySelector('[role="tab"][aria-selected="true"]');
+          results.push({
+            name: '활성 탭 상태',
+            status: activeTab ? 'good' : 'bad',
+            msg: activeTab ? activeTab.textContent.trim() : '없음'
+          });
+
+          // 콘텐츠 영역 확인
+          const tabpanel = doc.querySelector('#sadv-tabpanel');
+          if (tabpanel) {
+            const hasContent = tabpanel.children.length > 0;
+            results.push({
+              name: '탭 패널 콘텐츠',
+              status: hasContent ? 'good' : 'bad',
+              msg: `${tabpanel.children.length}개 요소`
+            });
+
+            // 텍스트 콘텐츠 확인
+            const textLength = tabpanel.textContent.trim().length;
+            results.push({
+              name: '텍스트 콘텐츠',
+              status: textLength > 100 ? 'good' : 'warn',
+              msg: `${textLength}자`
+            });
+          } else {
+            results.push({ name: '탭 패널', status: 'bad', msg: '없음' });
+          }
+
+          // 색상 분석
+          const computedStyle = window.getComputedStyle(widget);
+          const bgColor = computedStyle.backgroundColor;
+          results.push({
+            name: '배경색',
+            status: 'good',
+            msg: bgColor
+          });
+
+          // 폰트 분석
+          const fontSize = computedStyle.fontSize;
+          results.push({
+            name: '기본 폰트 크기',
+            status: fontSize.includes('13') || fontSize.includes('14') ? 'good' : 'warn',
+            msg: fontSize
+          });
+        }
+      } catch (e) {
+        results.push({ name: '분석 오류', status: 'bad', msg: e.message });
+      }
+
+      // 결과 표시
+      const resultsDiv = document.getElementById('analysisResults');
+      resultsDiv.innerHTML = results.map(r => `
+        <div class="analysis-item">
+          <span>${r.name}</span>
+          <span class="status ${r.status}">${r.msg}</span>
+        </div>
+      `).join('');
+    }
+
+    function captureCurrentTab() {
+      const iframe = document.getElementById('widget');
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      canvas.width = iframe.offsetWidth;
+      canvas.height = iframe.offsetHeight;
+
+      try {
+        ctx.drawImage(iframe.contentDocument.body, 0, 0);
+
+        const link = document.createElement('a');
+        link.download = `tab-${currentTab}-${Date.now()}.png`;
+        link.href = canvas.toDataURL();
+        link.click();
+      } catch (e) {
+        alert('캡처 실패: ' + e.message + '\n\n대신 수동 캡처를 사용하세요.');
+      }
+    }
+
+    function captureAllTabs() {
+      const tabs = ['overview', 'daily', 'queries', 'pages', 'pattern', 'crawl', 'backlink', 'diagnosis', 'insight'];
+      let delay = 0;
+
+      tabs.forEach((tab, index) => {
+        setTimeout(() => {
+          switchTab(tab);
+          setTimeout(() => captureCurrentTab(), 500);
+        }, delay);
+        delay += 2000;
+      });
+    }
+
+    // 초기 분석
+    setTimeout(() => {
+      analyzeCurrentTab();
+    }, 3000);
+  </script>
+</body>
+</html>

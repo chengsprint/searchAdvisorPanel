@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>V2 단일 계정 테스트</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      background: #0a1628;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <div id="test"></div>
+  <script>
+    window.onerror = function(msg, url, line, col, error) {
+      console.error('[Error]', msg, 'at', url, 'line:', line);
+      document.getElementById('test').textContent = 'Error: ' + msg;
+      return true;
+    };
+  </script>
+  <script>
+    // V2 단일 계정 더미 데이터
+    window.__SEARCHADVISOR_EXPORT_PAYLOAD__ = {
+      __meta: {
+        version: "1.0",
+        savedAt: new Date().toISOString(),
+        accountCount: 1
+      },
+      accounts: {
+        "test-single@example.com": {
+          encId: "test-single-enc-id",
+          sites: ["https://site1-example.com", "https://site2-example.com"],
+          siteMeta: {
+            "https://site1-example.com": { label: "사이트 1" },
+            "https://site2-example.com": { label: "사이트 2" }
+          },
+          dataBySite: {
+            "https://site1-example.com": {
+              __meta: {
+                __source: "test-single@example.com",
+                __fetched_at: Date.now(),
+                __schema: "1.0"
+              },
+              expose: {
+                items: [{
+                  period: { start: "20260301", end: "20260315", prevClickRatio: "12.5", prevExposeRatio: "8.3" },
+                  logs: Array.from({length: 15}, (_, i) => {
+                    const date = new Date(2026, 2, 1 + i);
+                    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+                    return {
+                      date: dateStr,
+                      clickCount: Math.floor(Math.random() * 400) + 50,
+                      exposeCount: Math.floor(Math.random() * 800) + 100,
+                      ctr: ((Math.random() * 3 + 0.5)).toFixed(2)
+                    };
+                  }),
+                  urls: Array.from({length: 10}, (_, i) => ({
+                    key: `https://site1-example.com/page-${i+1}`,
+                    clickCount: Math.floor(Math.random() * 200) + 10,
+                    exposeCount: Math.floor(Math.random() * 500) + 50,
+                    ctr: (Math.random() * 5 + 0.5).toFixed(2)
+                  })),
+                  querys: Array.from({length: 8}, (_, i) => ({
+                    key: `검색어${i+1}`,
+                    clickCount: Math.floor(Math.random() * 100) + 5,
+                    exposeCount: Math.floor(Math.random() * 300) + 20,
+                    ctr: (Math.random() * 3 + 0.5).toFixed(2)
+                  }))
+                }]
+              },
+              crawl: { items: [{ stats: Array.from({length: 15}, (_, i) => {
+                const date = new Date(2026, 2, 1 + i);
+                return { date: date.toISOString().slice(0, 10).replace(/-/g, ''), pageCount: Math.floor(Math.random() * 5000) + 1000 };
+              }) }] },
+              backlink: { items: [{ stats: Array.from({length: 15}, (_, i) => {
+                const date = new Date(2026, 2, 1 + i);
+                return { date: date.toISOString().slice(0, 10).replace(/-/g, ''), backlinksCount: Math.floor(Math.random() * 500) + 50 };
+              }) }] },
+              detailLoaded: true
+            },
+            "https://site2-example.com": {
+              __meta: { __source: "test-single@example.com", __fetched_at: Date.now(), __schema: "1.0" },
+              expose: { items: [{
+                period: { start: "20260301", end: "20260315", prevClickRatio: "15.2", prevExposeRatio: "9.8" },
+                logs: Array.from({length: 15}, (_, i) => {
+                  const date = new Date(2026, 2, 1 + i);
+                  return {
+                    date: date.toISOString().slice(0, 10).replace(/-/g, ''),
+                    clickCount: Math.floor(Math.random() * 600) + 100,
+                    exposeCount: Math.floor(Math.random() * 1200) + 200,
+                    ctr: ((Math.random() * 4 + 1)).toFixed(2)
+                  };
+                }),
+                urls: Array.from({length: 12}, (_, i) => ({
+                  key: `https://site2-example.com/page-${i+1}`,
+                  clickCount: Math.floor(Math.random() * 300) + 20,
+                  exposeCount: Math.floor(Math.random() * 600) + 80,
+                  ctr: (Math.random() * 6 + 1).toFixed(2)
+                })),
+                querys: Array.from({length: 10}, (_, i) => ({
+                  key: `검색어B${i+1}`,
+                  clickCount: Math.floor(Math.random() * 150) + 10,
+                  exposeCount: Math.floor(Math.random() * 400) + 30,
+                  ctr: (Math.random() * 4 + 1).toFixed(2)
+                }))
+              }] },
+              crawl: { items: [{ stats: Array.from({length: 15}, (_, i) => {
+                const date = new Date(2026, 2, 1 + i);
+                return { date: date.toISOString().slice(0, 10).replace(/-/g, ''), pageCount: Math.floor(Math.random() * 8000) + 2000 };
+              }) }] },
+              backlink: { items: [{ stats: Array.from({length: 15}, (_, i) => {
+                const date = new Date(2026, 2, 1 + i);
+                return { date: date.toISOString().slice(0, 10).replace(/-/g, ''), backlinksCount: Math.floor(Math.random() * 800) + 100 };
+              }) }] },
+              detailLoaded: true
+            }
+          }
+        }
+      },
+      ui: { curMode: "all", curSite: null, curTab: "overview" },
+      summaryRows: [
+        { site: "https://site1-example.com", totalC: 2450, totalE: 8500, ctr: 2.88 },
+        { site: "https://site2-example.com", totalC: 3800, totalE: 12500, ctr: 3.04 }
+      ],
+      stats: { success: 2, partial: 0, failed: 0, errors: [] }
+    };
+  </script>
+  <script src="runtime.js"></script>
+</body>
+</html>

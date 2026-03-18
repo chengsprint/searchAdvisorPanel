@@ -81,7 +81,7 @@ describe('Data Manager Integration', () => {
 
       const isCacheValid = (key) => {
         const cached = cache.get(key);
-        if (!cached) return false;
+        if (!cached) {return false;}
         return Date.now() - cached.timestamp < CACHE_TTL;
       };
 

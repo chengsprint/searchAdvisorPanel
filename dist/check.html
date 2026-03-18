@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>V2 마이그레이션 검증</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 20px;
+      background: #0f172a;
+      color: #f1f5f9;
+      line-height: 1.6;
+    }
+    h1 { color: #10b981; margin-bottom: 20px; }
+    h2 { color: #38bdf8; margin: 30px 0 15px; font-size: 18px; }
+    .section {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .test-result {
+      padding: 12px;
+      margin: 8px 0;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .pass { background: #064e3b; border-left: 4px solid #10b981; }
+    .fail { background: #7f1d1d; border-left: 4px solid #ef4444; }
+    .info { background: #0c4a6e; border-left: 4px solid #0ea5e9; }
+    pre {
+      background: #020617;
+      padding: 12px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 12px;
+      margin: 8px 0;
+    }
+    code { color: #a5f3fc; }
+    button {
+      background: #10b981;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 5px;
+    }
+    button:hover { background: #059669; }
+    #log {
+      background: #020617;
+      padding: 15px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 20px;
+    }
+    .log-entry { margin: 4px 0; }
+    .log-error { color: #ef4444; }
+    .log-success { color: #10b981; }
+    .log-info { color: #38bdf8; }
+  </style>
+</head>
+<body>
+  <h1>V2 JSON Schema 마이그레이션 검증</h1>
+
+  <div class="section">
+    <h2>테스트 페이지 선택</h2>
+    <button onclick="loadTest('single')">단일 계정 테스트</button>
+    <button onclick="loadTest('merged')">복합 계정 테스트</button>
+    <button onclick="loadTest('demo')">원본 Demo 테스트</button>
+  </div>
+
+  <div id="results"></div>
+
+  <div id="log"></div>
+
+  <script>
+    const logDiv = document.getElementById('log');
+    const resultsDiv = document.getElementById('results');
+
+    function log(message, type = 'info') {
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logDiv.appendChild(entry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function addResult(title, passed, details = '') {
+      const result = document.createElement('div');
+      result.className = `test-result ${passed ? 'pass' : 'fail'}`;
+      result.innerHTML = `
+        <strong>${passed ? '✓' : '✗'} ${title}</strong>
+        ${details ? `<pre>${details}</pre>` : ''}
+      `;
+      resultsDiv.appendChild(result);
+    }
+
+    function addInfo(title, details) {
+      const info = document.createElement('div');
+      info.className = 'test-result info';
+      info.innerHTML = `
+        <strong>ℹ ${title}</strong>
+        <pre>${details}</pre>
+      `;
+      resultsDiv.appendChild(info);
+    }
+
+    async function runTests(testType) {
+      resultsDiv.innerHTML = '';
+      logDiv.innerHTML = '';
+      log(`테스트 시작: ${testType}`, 'info');
+
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = `${testType}.html`;
+      document.body.appendChild(iframe);
+
+      await new Promise(resolve => {
+        iframe.onload = resolve;
+        setTimeout(resolve, 3000);
+      });
+
+      try {
+        const win = iframe.contentWindow;
+        const doc = iframe.contentDocument;
+
+        // 1. 패널 렌더링 확인
+        log('패널 렌더링 확인...', 'info');
+        const hasPanel = !!doc.getElementById('sadv-react-shell-root');
+        const hasShell = !!doc.querySelector('.sadvx-shell');
+        addResult('패널 렌더링', hasPanel || hasShell,
+          `sadv-react-shell-root: ${hasPanel}\nsadvx-shell: ${hasShell}`);
+
+        // 2. 데이터 로드 확인
+        log('데이터 로드 확인...', 'info');
+        const allSites = win.allSites || [];
+        const memCacheKeys = win.memCache ? Object.keys(win.memCache) : [];
+        addResult('사이트 로드', allSites.length > 0,
+          `사이트 수: ${allSites.length}\n사이트 목록: ${allSites.join(', ')}`);
+        addInfo('캐시 상태', `memCache 키 수: ${memCacheKeys.length}`);
+
+        // 3. UI 상태 확인
+        log('UI 상태 확인...', 'info');
+        const uiState = {
+          curMode: win.curMode,
+          curSite: win.curSite,
+          curTab: win.curTab
+        };
+        addResult('UI 상태', !!uiState.curMode,
+          `curMode: ${uiState.curMode}\ncurSite: ${uiState.curSite}\ncurTab: ${uiState.curTab}`);
+
+        // 4. 데이터 구조 확인
+        if (memCacheKeys.length > 0) {
+          log('데이터 구조 확인...', 'info');
+          const firstSite = memCacheKeys[0];
+          const siteData = win.memCache[firstSite];
+
+          if (siteData) {
+            const dataStructure = {
+              hasExpose: !!siteData.expose,
+              hasCrawl: !!siteData.crawl,
+              hasBacklink: !!siteData.backlink,
+              hasDiagnosis: !!siteData.diagnosisMeta,
+              hasMeta: !!siteData.__meta,
+              schemaVersion: siteData.__meta?.__schema,
+              detailLoaded: siteData.detailLoaded
+            };
+            addResult('데이터 구조', dataStructure.hasExpose && dataStructure.hasCrawl,
+              JSON.stringify(dataStructure, null, 2));
+
+            // 상세 데이터 확인
+            if (dataStructure.hasExpose) {
+              const exposeLogs = siteData.expose?.items?.[0]?.logs?.length || 0;
+              addInfo('Expose 데이터', `로그 수: ${exposeLogs}`);
+            }
+            if (dataStructure.hasCrawl) {
+              const crawlStats = siteData.crawl?.items?.[0]?.stats?.length || 0;
+              addInfo('Crawl 데이터', `통계 수: ${crawlStats}`);
+            }
+            if (dataStructure.hasBacklink) {
+              const backlinkTotal = siteData.backlink?.items?.[0]?.total || 0;
+              addInfo('Backlink 데이터', `전체 백링크: ${backlinkTotal}`);
+            }
+          }
+        }
+
+        // 5. 병합 메타데이터 (복합 계정만)
+        if (testType === 'merged') {
+          log('병합 메타데이터 확인...', 'info');
+          const mergedMeta = win.__SEARCHADVISOR_EXPORT_PAYLOAD__?.mergedMeta;
+          addResult('병합 메타데이터', !!mergedMeta && mergedMeta.isMerged,
+            mergedMeta ? JSON.stringify(mergedMeta, null, 2) : '없음');
+        }
+
+        log('테스트 완료', 'success');
+
+      } catch (error) {
+        log(`오류 발생: ${error.message}`, 'error');
+        addResult('테스트 실행', false, error.message);
+      } finally {
+        document.body.removeChild(iframe);
+      }
+    }
+
+    function loadTest(testType) {
+      log(`${testType} 테스트 페이지로 이동...`, 'info');
+      setTimeout(() => {
+        runTests(testType);
+      }, 100);
+    }
+
+    // 페이지 로드시 자동 테스트
+    window.addEventListener('load', () => {
+      log('검증 페이지가 로드되었습니다. 테스트 버튼을 선택하세요.', 'info');
+    });
+  </script>
+</body>
+</html>

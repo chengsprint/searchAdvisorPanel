@@ -14,14 +14,14 @@ describe('Helper Functions', () => {
   const L = (key) => translations[key] || key;
 
   const formatDate = (date) => {
-    if (!date) return 'N/A';
+    if (!date) {return 'N/A';}
     const d = new Date(date);
-    if (isNaN(d.getTime())) return 'Invalid Date';
+    if (isNaN(d.getTime())) {return 'Invalid Date';}
     return d.toISOString().split('T')[0];
   };
 
   const formatNumber = (num) => {
-    if (typeof num !== 'number') return 'N/A';
+    if (typeof num !== 'number') {return 'N/A';}
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   };
 

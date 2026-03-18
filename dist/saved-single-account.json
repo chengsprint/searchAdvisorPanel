@@ -1,0 +1,795 @@
+{
+  "__meta": {
+    "version": "1.0",
+    "savedAt": "2026-03-18T10:12:22.351Z",
+    "accountCount": 1
+  },
+  "accounts": {
+    "test-single@example.com": {
+      "encId": "test-single-enc-id",
+      "sites": [
+        "https://site1-example.com",
+        "https://site2-example.com"
+      ],
+      "siteMeta": {
+        "https://site1-example.com": {
+          "label": "사이트 1"
+        },
+        "https://site2-example.com": {
+          "label": "사이트 2"
+        }
+      },
+      "dataBySite": {
+        "https://site1-example.com": {
+          "__meta": {
+            "__source": "test-single@example.com",
+            "__fetched_at": 1773828742352,
+            "__schema": "1.0"
+          },
+          "expose": {
+            "items": [
+              {
+                "period": {
+                  "start": "20260301",
+                  "end": "20260315",
+                  "prevClickRatio": "12.5",
+                  "prevExposeRatio": "8.3"
+                },
+                "logs": [
+                  {
+                    "date": "20260301",
+                    "clickCount": 158,
+                    "exposeCount": 598,
+                    "ctr": "3.41"
+                  },
+                  {
+                    "date": "20260302",
+                    "clickCount": 81,
+                    "exposeCount": 404,
+                    "ctr": "1.85"
+                  },
+                  {
+                    "date": "20260303",
+                    "clickCount": 347,
+                    "exposeCount": 532,
+                    "ctr": "2.89"
+                  },
+                  {
+                    "date": "20260304",
+                    "clickCount": 332,
+                    "exposeCount": 591,
+                    "ctr": "1.61"
+                  },
+                  {
+                    "date": "20260305",
+                    "clickCount": 147,
+                    "exposeCount": 897,
+                    "ctr": "1.27"
+                  },
+                  {
+                    "date": "20260306",
+                    "clickCount": 341,
+                    "exposeCount": 110,
+                    "ctr": "3.15"
+                  },
+                  {
+                    "date": "20260307",
+                    "clickCount": 399,
+                    "exposeCount": 888,
+                    "ctr": "0.89"
+                  },
+                  {
+                    "date": "20260308",
+                    "clickCount": 344,
+                    "exposeCount": 708,
+                    "ctr": "2.56"
+                  },
+                  {
+                    "date": "20260309",
+                    "clickCount": 137,
+                    "exposeCount": 437,
+                    "ctr": "3.47"
+                  },
+                  {
+                    "date": "20260310",
+                    "clickCount": 307,
+                    "exposeCount": 615,
+                    "ctr": "3.30"
+                  },
+                  {
+                    "date": "20260311",
+                    "clickCount": 124,
+                    "exposeCount": 253,
+                    "ctr": "0.95"
+                  },
+                  {
+                    "date": "20260312",
+                    "clickCount": 364,
+                    "exposeCount": 741,
+                    "ctr": "2.52"
+                  },
+                  {
+                    "date": "20260313",
+                    "clickCount": 284,
+                    "exposeCount": 445,
+                    "ctr": "1.19"
+                  },
+                  {
+                    "date": "20260314",
+                    "clickCount": 153,
+                    "exposeCount": 226,
+                    "ctr": "0.72"
+                  },
+                  {
+                    "date": "20260315",
+                    "clickCount": 52,
+                    "exposeCount": 702,
+                    "ctr": "0.58"
+                  }
+                ],
+                "urls": [
+                  {
+                    "key": "https://site1-example.com/page-1",
+                    "clickCount": 21,
+                    "exposeCount": 216,
+                    "ctr": "4.86"
+                  },
+                  {
+                    "key": "https://site1-example.com/page-2",
+                    "clickCount": 71,
+                    "exposeCount": 280,
+                    "ctr": "1.11"
+                  },
+                  {
+                    "key": "https://site1-example.com/page-3",
+                    "clickCount": 89,
+                    "exposeCount": 204,
+                    "ctr": "4.63"
+                  },
+                  {
+                    "key": "https://site1-example.com/page-4",
+                    "clickCount": 187,
+                    "exposeCount": 237,
+                    "ctr": "0.55"
+                  },
+                  {
+                    "key": "https://site1-example.com/page-5",
+                    "clickCount": 191,
+                    "exposeCount": 140,
+                    "ctr": "4.48"
+                  },
+                  {
+                    "key": "https://site1-example.com/page-6",
+                    "clickCount": 154,
+                    "exposeCount": 469,
+                    "ctr": "1.60"
+                  },
+                  {
+                    "key": "https://site1-example.com/page-7",
+                    "clickCount": 125,
+                    "exposeCount": 137,
+                    "ctr": "0.84"
+                  },
+                  {
+                    "key": "https://site1-example.com/page-8",
+                    "clickCount": 133,
+                    "exposeCount": 339,
+                    "ctr": "1.74"
+                  },
+                  {
+                    "key": "https://site1-example.com/page-9",
+                    "clickCount": 206,
+                    "exposeCount": 123,
+                    "ctr": "3.40"
+                  },
+                  {
+                    "key": "https://site1-example.com/page-10",
+                    "clickCount": 162,
+                    "exposeCount": 99,
+                    "ctr": "3.69"
+                  }
+                ],
+                "querys": [
+                  {
+                    "key": "검색어1",
+                    "clickCount": 25,
+                    "exposeCount": 207,
+                    "ctr": "0.64"
+                  },
+                  {
+                    "key": "검색어2",
+                    "clickCount": 104,
+                    "exposeCount": 317,
+                    "ctr": "1.90"
+                  },
+                  {
+                    "key": "검색어3",
+                    "clickCount": 70,
+                    "exposeCount": 57,
+                    "ctr": "2.25"
+                  },
+                  {
+                    "key": "검색어4",
+                    "clickCount": 36,
+                    "exposeCount": 319,
+                    "ctr": "2.35"
+                  },
+                  {
+                    "key": "검색어5",
+                    "clickCount": 70,
+                    "exposeCount": 275,
+                    "ctr": "0.51"
+                  },
+                  {
+                    "key": "검색어6",
+                    "clickCount": 45,
+                    "exposeCount": 298,
+                    "ctr": "0.90"
+                  },
+                  {
+                    "key": "검색어7",
+                    "clickCount": 68,
+                    "exposeCount": 256,
+                    "ctr": "1.00"
+                  },
+                  {
+                    "key": "검색어8",
+                    "clickCount": 17,
+                    "exposeCount": 287,
+                    "ctr": "2.90"
+                  }
+                ]
+              }
+            ]
+          },
+          "crawl": {
+            "items": [
+              {
+                "stats": [
+                  {
+                    "date": "20260301",
+                    "pageCount": 1289
+                  },
+                  {
+                    "date": "20260302",
+                    "pageCount": 4861
+                  },
+                  {
+                    "date": "20260303",
+                    "pageCount": 3250
+                  },
+                  {
+                    "date": "20260304",
+                    "pageCount": 2692
+                  },
+                  {
+                    "date": "20260305",
+                    "pageCount": 1090
+                  },
+                  {
+                    "date": "20260306",
+                    "pageCount": 5694
+                  },
+                  {
+                    "date": "20260307",
+                    "pageCount": 2649
+                  },
+                  {
+                    "date": "20260308",
+                    "pageCount": 1334
+                  },
+                  {
+                    "date": "20260309",
+                    "pageCount": 4366
+                  },
+                  {
+                    "date": "20260310",
+                    "pageCount": 2480
+                  },
+                  {
+                    "date": "20260311",
+                    "pageCount": 5197
+                  },
+                  {
+                    "date": "20260312",
+                    "pageCount": 3694
+                  },
+                  {
+                    "date": "20260313",
+                    "pageCount": 5475
+                  },
+                  {
+                    "date": "20260314",
+                    "pageCount": 1285
+                  },
+                  {
+                    "date": "20260315",
+                    "pageCount": 3215
+                  }
+                ]
+              }
+            ]
+          },
+          "backlink": {
+            "items": [
+              {
+                "stats": [
+                  {
+                    "date": "20260301",
+                    "backlinksCount": 217
+                  },
+                  {
+                    "date": "20260302",
+                    "backlinksCount": 53
+                  },
+                  {
+                    "date": "20260303",
+                    "backlinksCount": 327
+                  },
+                  {
+                    "date": "20260304",
+                    "backlinksCount": 236
+                  },
+                  {
+                    "date": "20260305",
+                    "backlinksCount": 97
+                  },
+                  {
+                    "date": "20260306",
+                    "backlinksCount": 270
+                  },
+                  {
+                    "date": "20260307",
+                    "backlinksCount": 88
+                  },
+                  {
+                    "date": "20260308",
+                    "backlinksCount": 116
+                  },
+                  {
+                    "date": "20260309",
+                    "backlinksCount": 394
+                  },
+                  {
+                    "date": "20260310",
+                    "backlinksCount": 198
+                  },
+                  {
+                    "date": "20260311",
+                    "backlinksCount": 164
+                  },
+                  {
+                    "date": "20260312",
+                    "backlinksCount": 444
+                  },
+                  {
+                    "date": "20260313",
+                    "backlinksCount": 307
+                  },
+                  {
+                    "date": "20260314",
+                    "backlinksCount": 385
+                  },
+                  {
+                    "date": "20260315",
+                    "backlinksCount": 249
+                  }
+                ]
+              }
+            ]
+          },
+          "detailLoaded": true
+        },
+        "https://site2-example.com": {
+          "__meta": {
+            "__source": "test-single@example.com",
+            "__fetched_at": 1773828742353,
+            "__schema": "1.0"
+          },
+          "expose": {
+            "items": [
+              {
+                "period": {
+                  "start": "20260301",
+                  "end": "20260315",
+                  "prevClickRatio": "15.2",
+                  "prevExposeRatio": "9.8"
+                },
+                "logs": [
+                  {
+                    "date": "20260301",
+                    "clickCount": 577,
+                    "exposeCount": 438,
+                    "ctr": "1.12"
+                  },
+                  {
+                    "date": "20260302",
+                    "clickCount": 619,
+                    "exposeCount": 562,
+                    "ctr": "1.62"
+                  },
+                  {
+                    "date": "20260303",
+                    "clickCount": 466,
+                    "exposeCount": 424,
+                    "ctr": "3.19"
+                  },
+                  {
+                    "date": "20260304",
+                    "clickCount": 200,
+                    "exposeCount": 586,
+                    "ctr": "2.17"
+                  },
+                  {
+                    "date": "20260305",
+                    "clickCount": 622,
+                    "exposeCount": 336,
+                    "ctr": "4.64"
+                  },
+                  {
+                    "date": "20260306",
+                    "clickCount": 101,
+                    "exposeCount": 921,
+                    "ctr": "2.90"
+                  },
+                  {
+                    "date": "20260307",
+                    "clickCount": 697,
+                    "exposeCount": 399,
+                    "ctr": "3.45"
+                  },
+                  {
+                    "date": "20260308",
+                    "clickCount": 265,
+                    "exposeCount": 998,
+                    "ctr": "4.71"
+                  },
+                  {
+                    "date": "20260309",
+                    "clickCount": 456,
+                    "exposeCount": 699,
+                    "ctr": "4.04"
+                  },
+                  {
+                    "date": "20260310",
+                    "clickCount": 133,
+                    "exposeCount": 457,
+                    "ctr": "1.74"
+                  },
+                  {
+                    "date": "20260311",
+                    "clickCount": 111,
+                    "exposeCount": 1019,
+                    "ctr": "3.47"
+                  },
+                  {
+                    "date": "20260312",
+                    "clickCount": 461,
+                    "exposeCount": 1256,
+                    "ctr": "2.73"
+                  },
+                  {
+                    "date": "20260313",
+                    "clickCount": 297,
+                    "exposeCount": 816,
+                    "ctr": "3.03"
+                  },
+                  {
+                    "date": "20260314",
+                    "clickCount": 499,
+                    "exposeCount": 862,
+                    "ctr": "4.45"
+                  },
+                  {
+                    "date": "20260315",
+                    "clickCount": 324,
+                    "exposeCount": 1039,
+                    "ctr": "4.64"
+                  }
+                ],
+                "urls": [
+                  {
+                    "key": "https://site2-example.com/page-1",
+                    "clickCount": 279,
+                    "exposeCount": 182,
+                    "ctr": "1.09"
+                  },
+                  {
+                    "key": "https://site2-example.com/page-2",
+                    "clickCount": 52,
+                    "exposeCount": 172,
+                    "ctr": "6.50"
+                  },
+                  {
+                    "key": "https://site2-example.com/page-3",
+                    "clickCount": 109,
+                    "exposeCount": 230,
+                    "ctr": "2.97"
+                  },
+                  {
+                    "key": "https://site2-example.com/page-4",
+                    "clickCount": 265,
+                    "exposeCount": 239,
+                    "ctr": "4.35"
+                  },
+                  {
+                    "key": "https://site2-example.com/page-5",
+                    "clickCount": 35,
+                    "exposeCount": 92,
+                    "ctr": "1.00"
+                  },
+                  {
+                    "key": "https://site2-example.com/page-6",
+                    "clickCount": 96,
+                    "exposeCount": 228,
+                    "ctr": "3.34"
+                  },
+                  {
+                    "key": "https://site2-example.com/page-7",
+                    "clickCount": 266,
+                    "exposeCount": 552,
+                    "ctr": "4.14"
+                  },
+                  {
+                    "key": "https://site2-example.com/page-8",
+                    "clickCount": 20,
+                    "exposeCount": 422,
+                    "ctr": "5.22"
+                  },
+                  {
+                    "key": "https://site2-example.com/page-9",
+                    "clickCount": 243,
+                    "exposeCount": 344,
+                    "ctr": "2.74"
+                  },
+                  {
+                    "key": "https://site2-example.com/page-10",
+                    "clickCount": 238,
+                    "exposeCount": 153,
+                    "ctr": "2.07"
+                  },
+                  {
+                    "key": "https://site2-example.com/page-11",
+                    "clickCount": 110,
+                    "exposeCount": 674,
+                    "ctr": "1.46"
+                  },
+                  {
+                    "key": "https://site2-example.com/page-12",
+                    "clickCount": 71,
+                    "exposeCount": 239,
+                    "ctr": "2.50"
+                  }
+                ],
+                "querys": [
+                  {
+                    "key": "검색어B1",
+                    "clickCount": 101,
+                    "exposeCount": 384,
+                    "ctr": "1.83"
+                  },
+                  {
+                    "key": "검색어B2",
+                    "clickCount": 19,
+                    "exposeCount": 230,
+                    "ctr": "1.66"
+                  },
+                  {
+                    "key": "검색어B3",
+                    "clickCount": 108,
+                    "exposeCount": 39,
+                    "ctr": "4.43"
+                  },
+                  {
+                    "key": "검색어B4",
+                    "clickCount": 71,
+                    "exposeCount": 32,
+                    "ctr": "3.93"
+                  },
+                  {
+                    "key": "검색어B5",
+                    "clickCount": 146,
+                    "exposeCount": 354,
+                    "ctr": "4.22"
+                  },
+                  {
+                    "key": "검색어B6",
+                    "clickCount": 104,
+                    "exposeCount": 398,
+                    "ctr": "3.40"
+                  },
+                  {
+                    "key": "검색어B7",
+                    "clickCount": 135,
+                    "exposeCount": 67,
+                    "ctr": "3.24"
+                  },
+                  {
+                    "key": "검색어B8",
+                    "clickCount": 159,
+                    "exposeCount": 359,
+                    "ctr": "4.85"
+                  },
+                  {
+                    "key": "검색어B9",
+                    "clickCount": 105,
+                    "exposeCount": 74,
+                    "ctr": "2.01"
+                  },
+                  {
+                    "key": "검색어B10",
+                    "clickCount": 147,
+                    "exposeCount": 60,
+                    "ctr": "4.27"
+                  }
+                ]
+              }
+            ]
+          },
+          "crawl": {
+            "items": [
+              {
+                "stats": [
+                  {
+                    "date": "20260301",
+                    "pageCount": 9282
+                  },
+                  {
+                    "date": "20260302",
+                    "pageCount": 6748
+                  },
+                  {
+                    "date": "20260303",
+                    "pageCount": 7250
+                  },
+                  {
+                    "date": "20260304",
+                    "pageCount": 7865
+                  },
+                  {
+                    "date": "20260305",
+                    "pageCount": 3320
+                  },
+                  {
+                    "date": "20260306",
+                    "pageCount": 2526
+                  },
+                  {
+                    "date": "20260307",
+                    "pageCount": 7396
+                  },
+                  {
+                    "date": "20260308",
+                    "pageCount": 9034
+                  },
+                  {
+                    "date": "20260309",
+                    "pageCount": 6086
+                  },
+                  {
+                    "date": "20260310",
+                    "pageCount": 4150
+                  },
+                  {
+                    "date": "20260311",
+                    "pageCount": 4139
+                  },
+                  {
+                    "date": "20260312",
+                    "pageCount": 6960
+                  },
+                  {
+                    "date": "20260313",
+                    "pageCount": 9472
+                  },
+                  {
+                    "date": "20260314",
+                    "pageCount": 7625
+                  },
+                  {
+                    "date": "20260315",
+                    "pageCount": 8591
+                  }
+                ]
+              }
+            ]
+          },
+          "backlink": {
+            "items": [
+              {
+                "stats": [
+                  {
+                    "date": "20260301",
+                    "backlinksCount": 679
+                  },
+                  {
+                    "date": "20260302",
+                    "backlinksCount": 338
+                  },
+                  {
+                    "date": "20260303",
+                    "backlinksCount": 756
+                  },
+                  {
+                    "date": "20260304",
+                    "backlinksCount": 520
+                  },
+                  {
+                    "date": "20260305",
+                    "backlinksCount": 138
+                  },
+                  {
+                    "date": "20260306",
+                    "backlinksCount": 205
+                  },
+                  {
+                    "date": "20260307",
+                    "backlinksCount": 577
+                  },
+                  {
+                    "date": "20260308",
+                    "backlinksCount": 400
+                  },
+                  {
+                    "date": "20260309",
+                    "backlinksCount": 454
+                  },
+                  {
+                    "date": "20260310",
+                    "backlinksCount": 421
+                  },
+                  {
+                    "date": "20260311",
+                    "backlinksCount": 435
+                  },
+                  {
+                    "date": "20260312",
+                    "backlinksCount": 721
+                  },
+                  {
+                    "date": "20260313",
+                    "backlinksCount": 290
+                  },
+                  {
+                    "date": "20260314",
+                    "backlinksCount": 685
+                  },
+                  {
+                    "date": "20260315",
+                    "backlinksCount": 614
+                  }
+                ]
+              }
+            ]
+          },
+          "detailLoaded": true
+        }
+      }
+    }
+  },
+  "ui": {
+    "curMode": "all",
+    "curSite": null,
+    "curTab": "overview"
+  },
+  "summaryRows": [
+    {
+      "site": "https://site1-example.com",
+      "totalC": 2450,
+      "totalE": 8500,
+      "ctr": 2.88
+    },
+    {
+      "site": "https://site2-example.com",
+      "totalC": 3800,
+      "totalE": 12500,
+      "ctr": 3.04
+    }
+  ],
+  "stats": {
+    "success": 2,
+    "partial": 0,
+    "failed": 0,
+    "errors": []
+  }
+}

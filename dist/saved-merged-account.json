@@ -1,0 +1,934 @@
+{
+  "__meta": {
+    "version": "1.0",
+    "savedAt": "2026-03-18T10:12:25.653Z",
+    "accountCount": 2,
+    "hasConflicts": true
+  },
+  "accounts": {
+    "account1@naver.com": {
+      "encId": "enc-id-account-1",
+      "sites": [
+        "https://shared-site.com",
+        "https://account1-exclusive.com"
+      ],
+      "siteMeta": {
+        "https://shared-site.com": {
+          "label": "공유 사이트 (계정1)"
+        },
+        "https://account1-exclusive.com": {
+          "label": "계정1 전용 사이트"
+        }
+      },
+      "dataBySite": {
+        "https://shared-site.com": {
+          "__meta": {
+            "__source": "account1@naver.com",
+            "__fetched_at": 1773828745653,
+            "__schema": "1.0"
+          },
+          "expose": {
+            "items": [
+              {
+                "period": {
+                  "start": "20260301",
+                  "end": "20260315"
+                },
+                "logs": [
+                  {
+                    "date": "20260301",
+                    "clickCount": 109,
+                    "exposeCount": 354,
+                    "ctr": "1.59"
+                  },
+                  {
+                    "date": "20260302",
+                    "clickCount": 134,
+                    "exposeCount": 508,
+                    "ctr": "1.75"
+                  },
+                  {
+                    "date": "20260303",
+                    "clickCount": 52,
+                    "exposeCount": 255,
+                    "ctr": "1.90"
+                  },
+                  {
+                    "date": "20260304",
+                    "clickCount": 214,
+                    "exposeCount": 277,
+                    "ctr": "0.95"
+                  },
+                  {
+                    "date": "20260305",
+                    "clickCount": 311,
+                    "exposeCount": 259,
+                    "ctr": "2.72"
+                  },
+                  {
+                    "date": "20260306",
+                    "clickCount": 216,
+                    "exposeCount": 627,
+                    "ctr": "0.75"
+                  },
+                  {
+                    "date": "20260307",
+                    "clickCount": 303,
+                    "exposeCount": 142,
+                    "ctr": "0.98"
+                  },
+                  {
+                    "date": "20260308",
+                    "clickCount": 179,
+                    "exposeCount": 238,
+                    "ctr": "3.17"
+                  },
+                  {
+                    "date": "20260309",
+                    "clickCount": 344,
+                    "exposeCount": 467,
+                    "ctr": "0.96"
+                  },
+                  {
+                    "date": "20260310",
+                    "clickCount": 184,
+                    "exposeCount": 582,
+                    "ctr": "2.94"
+                  },
+                  {
+                    "date": "20260311",
+                    "clickCount": 292,
+                    "exposeCount": 112,
+                    "ctr": "1.66"
+                  },
+                  {
+                    "date": "20260312",
+                    "clickCount": 295,
+                    "exposeCount": 403,
+                    "ctr": "1.15"
+                  },
+                  {
+                    "date": "20260313",
+                    "clickCount": 147,
+                    "exposeCount": 523,
+                    "ctr": "0.96"
+                  },
+                  {
+                    "date": "20260314",
+                    "clickCount": 323,
+                    "exposeCount": 431,
+                    "ctr": "1.85"
+                  },
+                  {
+                    "date": "20260315",
+                    "clickCount": 280,
+                    "exposeCount": 558,
+                    "ctr": "1.94"
+                  }
+                ],
+                "urls": [
+                  {
+                    "key": "https://shared-site.com/page-1",
+                    "clickCount": 35,
+                    "exposeCount": 281,
+                    "ctr": "1.14"
+                  },
+                  {
+                    "key": "https://shared-site.com/page-2",
+                    "clickCount": 32,
+                    "exposeCount": 253,
+                    "ctr": "3.44"
+                  },
+                  {
+                    "key": "https://shared-site.com/page-3",
+                    "clickCount": 81,
+                    "exposeCount": 120,
+                    "ctr": "0.94"
+                  },
+                  {
+                    "key": "https://shared-site.com/page-4",
+                    "clickCount": 95,
+                    "exposeCount": 65,
+                    "ctr": "2.84"
+                  },
+                  {
+                    "key": "https://shared-site.com/page-5",
+                    "clickCount": 88,
+                    "exposeCount": 299,
+                    "ctr": "2.90"
+                  },
+                  {
+                    "key": "https://shared-site.com/page-6",
+                    "clickCount": 19,
+                    "exposeCount": 128,
+                    "ctr": "3.84"
+                  },
+                  {
+                    "key": "https://shared-site.com/page-7",
+                    "clickCount": 38,
+                    "exposeCount": 240,
+                    "ctr": "1.96"
+                  },
+                  {
+                    "key": "https://shared-site.com/page-8",
+                    "clickCount": 67,
+                    "exposeCount": 233,
+                    "ctr": "4.44"
+                  }
+                ],
+                "querys": [
+                  {
+                    "key": "계정1검색어1",
+                    "clickCount": 38,
+                    "exposeCount": 99,
+                    "ctr": "2.09"
+                  },
+                  {
+                    "key": "계정1검색어2",
+                    "clickCount": 33,
+                    "exposeCount": 68,
+                    "ctr": "1.53"
+                  },
+                  {
+                    "key": "계정1검색어3",
+                    "clickCount": 15,
+                    "exposeCount": 52,
+                    "ctr": "1.54"
+                  },
+                  {
+                    "key": "계정1검색어4",
+                    "clickCount": 56,
+                    "exposeCount": 179,
+                    "ctr": "3.29"
+                  },
+                  {
+                    "key": "계정1검색어5",
+                    "clickCount": 70,
+                    "exposeCount": 40,
+                    "ctr": "2.96"
+                  },
+                  {
+                    "key": "계정1검색어6",
+                    "clickCount": 25,
+                    "exposeCount": 111,
+                    "ctr": "2.45"
+                  }
+                ]
+              }
+            ]
+          },
+          "crawl": {
+            "items": [
+              {
+                "stats": [
+                  {
+                    "pageCount": 2136
+                  },
+                  {
+                    "pageCount": 3475
+                  },
+                  {
+                    "pageCount": 2522
+                  },
+                  {
+                    "pageCount": 1197
+                  },
+                  {
+                    "pageCount": 2196
+                  },
+                  {
+                    "pageCount": 2910
+                  },
+                  {
+                    "pageCount": 1947
+                  },
+                  {
+                    "pageCount": 3853
+                  },
+                  {
+                    "pageCount": 1887
+                  },
+                  {
+                    "pageCount": 1010
+                  },
+                  {
+                    "pageCount": 3125
+                  },
+                  {
+                    "pageCount": 2963
+                  },
+                  {
+                    "pageCount": 1994
+                  },
+                  {
+                    "pageCount": 3626
+                  },
+                  {
+                    "pageCount": 1978
+                  }
+                ]
+              }
+            ]
+          },
+          "backlink": {
+            "items": [
+              {
+                "stats": [
+                  {
+                    "backlinksCount": 288
+                  },
+                  {
+                    "backlinksCount": 102
+                  },
+                  {
+                    "backlinksCount": 64
+                  },
+                  {
+                    "backlinksCount": 79
+                  },
+                  {
+                    "backlinksCount": 260
+                  },
+                  {
+                    "backlinksCount": 105
+                  },
+                  {
+                    "backlinksCount": 138
+                  },
+                  {
+                    "backlinksCount": 247
+                  },
+                  {
+                    "backlinksCount": 98
+                  },
+                  {
+                    "backlinksCount": 278
+                  },
+                  {
+                    "backlinksCount": 239
+                  },
+                  {
+                    "backlinksCount": 178
+                  },
+                  {
+                    "backlinksCount": 219
+                  },
+                  {
+                    "backlinksCount": 109
+                  },
+                  {
+                    "backlinksCount": 115
+                  }
+                ]
+              }
+            ]
+          },
+          "detailLoaded": true
+        },
+        "https://account1-exclusive.com": {
+          "__meta": {
+            "__source": "account1@naver.com",
+            "__fetched_at": 1773828745654,
+            "__schema": "1.0"
+          },
+          "expose": {
+            "items": [
+              {
+                "period": {
+                  "start": "20260301",
+                  "end": "20260315"
+                },
+                "logs": [
+                  {
+                    "date": "20260301",
+                    "clickCount": 101,
+                    "exposeCount": 413,
+                    "ctr": "4.29"
+                  },
+                  {
+                    "date": "20260302",
+                    "clickCount": 275,
+                    "exposeCount": 678,
+                    "ctr": "1.87"
+                  },
+                  {
+                    "date": "20260303",
+                    "clickCount": 150,
+                    "exposeCount": 724,
+                    "ctr": "4.76"
+                  },
+                  {
+                    "date": "20260304",
+                    "clickCount": 455,
+                    "exposeCount": 528,
+                    "ctr": "4.44"
+                  },
+                  {
+                    "date": "20260305",
+                    "clickCount": 519,
+                    "exposeCount": 403,
+                    "ctr": "3.85"
+                  },
+                  {
+                    "date": "20260306",
+                    "clickCount": 449,
+                    "exposeCount": 621,
+                    "ctr": "3.27"
+                  },
+                  {
+                    "date": "20260307",
+                    "clickCount": 512,
+                    "exposeCount": 575,
+                    "ctr": "1.61"
+                  },
+                  {
+                    "date": "20260308",
+                    "clickCount": 355,
+                    "exposeCount": 374,
+                    "ctr": "4.80"
+                  },
+                  {
+                    "date": "20260309",
+                    "clickCount": 168,
+                    "exposeCount": 515,
+                    "ctr": "1.99"
+                  },
+                  {
+                    "date": "20260310",
+                    "clickCount": 460,
+                    "exposeCount": 1056,
+                    "ctr": "4.27"
+                  },
+                  {
+                    "date": "20260311",
+                    "clickCount": 411,
+                    "exposeCount": 876,
+                    "ctr": "1.34"
+                  },
+                  {
+                    "date": "20260312",
+                    "clickCount": 558,
+                    "exposeCount": 1083,
+                    "ctr": "1.54"
+                  },
+                  {
+                    "date": "20260313",
+                    "clickCount": 440,
+                    "exposeCount": 1100,
+                    "ctr": "4.65"
+                  },
+                  {
+                    "date": "20260314",
+                    "clickCount": 275,
+                    "exposeCount": 375,
+                    "ctr": "4.29"
+                  },
+                  {
+                    "date": "20260315",
+                    "clickCount": 158,
+                    "exposeCount": 996,
+                    "ctr": "1.40"
+                  }
+                ],
+                "urls": [],
+                "querys": []
+              }
+            ]
+          },
+          "detailLoaded": true
+        }
+      }
+    },
+    "account2@naver.com": {
+      "encId": "enc-id-account-2",
+      "sites": [
+        "https://shared-site.com",
+        "https://account2-exclusive.com"
+      ],
+      "siteMeta": {
+        "https://shared-site.com": {
+          "label": "공유 사이트 (계정2)"
+        },
+        "https://account2-exclusive.com": {
+          "label": "계정2 전용 사이트"
+        }
+      },
+      "dataBySite": {
+        "https://shared-site.com": {
+          "__meta": {
+            "__source": "account2@naver.com",
+            "__fetched_at": 1773828745654,
+            "__schema": "1.0"
+          },
+          "expose": {
+            "items": [
+              {
+                "period": {
+                  "start": "20260301",
+                  "end": "20260315"
+                },
+                "logs": [
+                  {
+                    "date": "20260301",
+                    "clickCount": 142,
+                    "exposeCount": 364,
+                    "ctr": "3.01"
+                  },
+                  {
+                    "date": "20260302",
+                    "clickCount": 87,
+                    "exposeCount": 777,
+                    "ctr": "3.31"
+                  },
+                  {
+                    "date": "20260303",
+                    "clickCount": 110,
+                    "exposeCount": 508,
+                    "ctr": "3.17"
+                  },
+                  {
+                    "date": "20260304",
+                    "clickCount": 192,
+                    "exposeCount": 853,
+                    "ctr": "2.99"
+                  },
+                  {
+                    "date": "20260305",
+                    "clickCount": 256,
+                    "exposeCount": 206,
+                    "ctr": "2.19"
+                  },
+                  {
+                    "date": "20260306",
+                    "clickCount": 127,
+                    "exposeCount": 624,
+                    "ctr": "0.72"
+                  },
+                  {
+                    "date": "20260307",
+                    "clickCount": 136,
+                    "exposeCount": 893,
+                    "ctr": "1.12"
+                  },
+                  {
+                    "date": "20260308",
+                    "clickCount": 308,
+                    "exposeCount": 521,
+                    "ctr": "2.91"
+                  },
+                  {
+                    "date": "20260309",
+                    "clickCount": 420,
+                    "exposeCount": 256,
+                    "ctr": "1.60"
+                  },
+                  {
+                    "date": "20260310",
+                    "clickCount": 359,
+                    "exposeCount": 519,
+                    "ctr": "3.28"
+                  },
+                  {
+                    "date": "20260311",
+                    "clickCount": 103,
+                    "exposeCount": 449,
+                    "ctr": "3.20"
+                  },
+                  {
+                    "date": "20260312",
+                    "clickCount": 457,
+                    "exposeCount": 313,
+                    "ctr": "3.26"
+                  },
+                  {
+                    "date": "20260313",
+                    "clickCount": 85,
+                    "exposeCount": 694,
+                    "ctr": "3.28"
+                  },
+                  {
+                    "date": "20260314",
+                    "clickCount": 395,
+                    "exposeCount": 591,
+                    "ctr": "0.93"
+                  },
+                  {
+                    "date": "20260315",
+                    "clickCount": 123,
+                    "exposeCount": 343,
+                    "ctr": "1.05"
+                  }
+                ],
+                "urls": [
+                  {
+                    "key": "https://shared-site.com/other-1",
+                    "clickCount": 81,
+                    "exposeCount": 168,
+                    "ctr": "2.84"
+                  },
+                  {
+                    "key": "https://shared-site.com/other-2",
+                    "clickCount": 169,
+                    "exposeCount": 261,
+                    "ctr": "4.02"
+                  },
+                  {
+                    "key": "https://shared-site.com/other-3",
+                    "clickCount": 112,
+                    "exposeCount": 254,
+                    "ctr": "2.33"
+                  },
+                  {
+                    "key": "https://shared-site.com/other-4",
+                    "clickCount": 165,
+                    "exposeCount": 463,
+                    "ctr": "2.45"
+                  },
+                  {
+                    "key": "https://shared-site.com/other-5",
+                    "clickCount": 88,
+                    "exposeCount": 375,
+                    "ctr": "3.66"
+                  },
+                  {
+                    "key": "https://shared-site.com/other-6",
+                    "clickCount": 111,
+                    "exposeCount": 157,
+                    "ctr": "4.30"
+                  },
+                  {
+                    "key": "https://shared-site.com/other-7",
+                    "clickCount": 102,
+                    "exposeCount": 110,
+                    "ctr": "4.49"
+                  },
+                  {
+                    "key": "https://shared-site.com/other-8",
+                    "clickCount": 44,
+                    "exposeCount": 401,
+                    "ctr": "4.29"
+                  },
+                  {
+                    "key": "https://shared-site.com/other-9",
+                    "clickCount": 162,
+                    "exposeCount": 374,
+                    "ctr": "0.56"
+                  },
+                  {
+                    "key": "https://shared-site.com/other-10",
+                    "clickCount": 140,
+                    "exposeCount": 389,
+                    "ctr": "2.43"
+                  }
+                ],
+                "querys": [
+                  {
+                    "key": "계정2키워드1",
+                    "clickCount": 79,
+                    "exposeCount": 211,
+                    "ctr": "3.81"
+                  },
+                  {
+                    "key": "계정2키워드2",
+                    "clickCount": 94,
+                    "exposeCount": 64,
+                    "ctr": "1.01"
+                  },
+                  {
+                    "key": "계정2키워드3",
+                    "clickCount": 70,
+                    "exposeCount": 161,
+                    "ctr": "2.82"
+                  },
+                  {
+                    "key": "계정2키워드4",
+                    "clickCount": 64,
+                    "exposeCount": 286,
+                    "ctr": "2.81"
+                  },
+                  {
+                    "key": "계정2키워드5",
+                    "clickCount": 16,
+                    "exposeCount": 88,
+                    "ctr": "3.06"
+                  },
+                  {
+                    "key": "계정2키워드6",
+                    "clickCount": 88,
+                    "exposeCount": 315,
+                    "ctr": "0.81"
+                  },
+                  {
+                    "key": "계정2키워드7",
+                    "clickCount": 99,
+                    "exposeCount": 243,
+                    "ctr": "1.48"
+                  },
+                  {
+                    "key": "계정2키워드8",
+                    "clickCount": 119,
+                    "exposeCount": 171,
+                    "ctr": "2.44"
+                  }
+                ]
+              }
+            ]
+          },
+          "crawl": {
+            "items": [
+              {
+                "stats": [
+                  {
+                    "pageCount": 4803
+                  },
+                  {
+                    "pageCount": 4385
+                  },
+                  {
+                    "pageCount": 3824
+                  },
+                  {
+                    "pageCount": 4935
+                  },
+                  {
+                    "pageCount": 5156
+                  },
+                  {
+                    "pageCount": 3457
+                  },
+                  {
+                    "pageCount": 4445
+                  },
+                  {
+                    "pageCount": 3381
+                  },
+                  {
+                    "pageCount": 1747
+                  },
+                  {
+                    "pageCount": 4339
+                  },
+                  {
+                    "pageCount": 4021
+                  },
+                  {
+                    "pageCount": 3464
+                  },
+                  {
+                    "pageCount": 2652
+                  },
+                  {
+                    "pageCount": 4116
+                  },
+                  {
+                    "pageCount": 3564
+                  }
+                ]
+              }
+            ]
+          },
+          "backlink": {
+            "items": [
+              {
+                "stats": [
+                  {
+                    "backlinksCount": 380
+                  },
+                  {
+                    "backlinksCount": 465
+                  },
+                  {
+                    "backlinksCount": 107
+                  },
+                  {
+                    "backlinksCount": 415
+                  },
+                  {
+                    "backlinksCount": 134
+                  },
+                  {
+                    "backlinksCount": 132
+                  },
+                  {
+                    "backlinksCount": 152
+                  },
+                  {
+                    "backlinksCount": 185
+                  },
+                  {
+                    "backlinksCount": 205
+                  },
+                  {
+                    "backlinksCount": 420
+                  },
+                  {
+                    "backlinksCount": 200
+                  },
+                  {
+                    "backlinksCount": 301
+                  },
+                  {
+                    "backlinksCount": 459
+                  },
+                  {
+                    "backlinksCount": 304
+                  },
+                  {
+                    "backlinksCount": 283
+                  }
+                ]
+              }
+            ]
+          },
+          "detailLoaded": true
+        },
+        "https://account2-exclusive.com": {
+          "__meta": {
+            "__source": "account2@naver.com",
+            "__fetched_at": 1773828745654,
+            "__schema": "1.0"
+          },
+          "expose": {
+            "items": [
+              {
+                "period": {
+                  "start": "20260301",
+                  "end": "20260315"
+                },
+                "logs": [
+                  {
+                    "date": "20260301",
+                    "clickCount": 403,
+                    "exposeCount": 334,
+                    "ctr": "3.90"
+                  },
+                  {
+                    "date": "20260302",
+                    "clickCount": 263,
+                    "exposeCount": 1183,
+                    "ctr": "3.05"
+                  },
+                  {
+                    "date": "20260303",
+                    "clickCount": 556,
+                    "exposeCount": 1395,
+                    "ctr": "2.60"
+                  },
+                  {
+                    "date": "20260304",
+                    "clickCount": 241,
+                    "exposeCount": 1178,
+                    "ctr": "2.99"
+                  },
+                  {
+                    "date": "20260305",
+                    "clickCount": 664,
+                    "exposeCount": 309,
+                    "ctr": "1.89"
+                  },
+                  {
+                    "date": "20260306",
+                    "clickCount": 724,
+                    "exposeCount": 356,
+                    "ctr": "4.18"
+                  },
+                  {
+                    "date": "20260307",
+                    "clickCount": 202,
+                    "exposeCount": 1333,
+                    "ctr": "4.29"
+                  },
+                  {
+                    "date": "20260308",
+                    "clickCount": 747,
+                    "exposeCount": 705,
+                    "ctr": "3.18"
+                  },
+                  {
+                    "date": "20260309",
+                    "clickCount": 476,
+                    "exposeCount": 925,
+                    "ctr": "2.49"
+                  },
+                  {
+                    "date": "20260310",
+                    "clickCount": 570,
+                    "exposeCount": 1200,
+                    "ctr": "2.89"
+                  },
+                  {
+                    "date": "20260311",
+                    "clickCount": 706,
+                    "exposeCount": 1230,
+                    "ctr": "3.10"
+                  },
+                  {
+                    "date": "20260312",
+                    "clickCount": 252,
+                    "exposeCount": 1096,
+                    "ctr": "4.67"
+                  },
+                  {
+                    "date": "20260313",
+                    "clickCount": 271,
+                    "exposeCount": 1379,
+                    "ctr": "2.49"
+                  },
+                  {
+                    "date": "20260314",
+                    "clickCount": 301,
+                    "exposeCount": 1077,
+                    "ctr": "4.19"
+                  },
+                  {
+                    "date": "20260315",
+                    "clickCount": 242,
+                    "exposeCount": 1289,
+                    "ctr": "2.17"
+                  }
+                ],
+                "urls": [],
+                "querys": []
+              }
+            ]
+          },
+          "detailLoaded": true
+        }
+      }
+    }
+  },
+  "ui": {
+    "curMode": "all",
+    "curSite": null,
+    "curTab": "overview"
+  },
+  "_summary": {
+    "siteOwnership": {
+      "https://shared-site.com": [
+        "account1@naver.com",
+        "account2@naver.com"
+      ],
+      "https://account1-exclusive.com": [
+        "account1@naver.com"
+      ],
+      "https://account2-exclusive.com": [
+        "account2@naver.com"
+      ]
+    },
+    "conflicts": [
+      {
+        "site": "https://shared-site.com",
+        "accounts": [
+          "account1@naver.com",
+          "account2@naver.com"
+        ]
+      }
+    ]
+  },
+  "stats": {
+    "success": 2,
+    "partial": 0,
+    "failed": 0,
+    "errors": []
+  }
+}

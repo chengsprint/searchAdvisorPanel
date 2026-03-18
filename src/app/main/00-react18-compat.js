@@ -461,19 +461,5 @@ if (typeof window !== 'undefined') {
   }
 }
 
-// ============================================================================
-// 내보내기 (ES6 모듈 방식)
-// ============================================================================
-
-export {
-  detectReactVersion,
-  supportsConcurrentFeatures,
-  createReact18CompatibleObserver,
-  runConcurrentTask,
-  createTransition,
-  createStrictModeSafeEffect,
-  preventDoubleRender,
-  createReact18CompatibleState,
-  isStrictMode,
-  getReact18CompatibilityInfo
-};
+// Note: 모듈은 브라우저에서 직접 실행되므로 ES6 export를 사용하지 않습니다.
+// 필요한 함수는 React18Compat 네임스페이스 아래에서 사용할 수 있습니다.

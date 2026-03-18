@@ -1,0 +1,47 @@
+[
+  {
+    "tab": "전체현황",
+    "status": "failed",
+    "reason": "Widget load timeout"
+  },
+  {
+    "tab": "일별현황",
+    "status": "failed",
+    "reason": "Widget load timeout"
+  },
+  {
+    "tab": "검색어",
+    "status": "failed",
+    "reason": "Widget load timeout"
+  },
+  {
+    "tab": "페이지",
+    "status": "failed",
+    "reason": "Widget load timeout"
+  },
+  {
+    "tab": "패턴",
+    "status": "failed",
+    "reason": "Widget load timeout"
+  },
+  {
+    "tab": "크롤링",
+    "status": "failed",
+    "reason": "Widget load timeout"
+  },
+  {
+    "tab": "백링크",
+    "status": "failed",
+    "reason": "Widget load timeout"
+  },
+  {
+    "tab": "진단",
+    "status": "failed",
+    "reason": "Widget load timeout"
+  },
+  {
+    "tab": "인사이트",
+    "status": "failed",
+    "reason": "Widget load timeout"
+  }
+]
