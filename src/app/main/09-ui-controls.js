@@ -49,6 +49,7 @@
  * setAllSitesLabel(); // Updates header label
  */
   function setAllSitesLabel() {
+    if (!labelEl) return;
     const mergedMeta = getMergedMetaState();
     const summary = isMergedReport() && mergedMeta && mergedMeta.sourceCount
       ? `${allSites.length}개 사이트 등록됨 · ${mergedMeta.sourceCount}개 스냅샷 병합`
@@ -105,7 +106,7 @@
     countDiv.style.cssText = isMobile
       ? "font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#3d5a78;padding:4px 12px 8px;border-bottom:1px solid #1a2d45;margin-bottom:4px"
       : "font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#3d5a78;padding:3px 9px 6px;border-bottom:1px solid #1a2d45;margin-bottom:3px";
-    countDiv.textContent = "전체 " + orderedSites.length + " 개 · 클릭증은순";
+    countDiv.textContent = "전체 " + orderedSites.length + " 개 · 클릭많은순";
 
     drop.replaceChildren(searchDiv, countDiv);
     orderedSites.forEach(function (s) {
@@ -115,18 +116,20 @@
         clickStr = row ? fmt(row.totalC) + "\uD074\uB9AD" : "—",
         clickCol = row ? C.green : C.muted;
       const item = document.createElement("div");
-      item.className = "sadv-copt" + (s === curSite ? " active" : "");
+      item.className = "sadv-combo-item sadv-copt" + (s === curSite ? " active" : "");
       item.dataset.site = s;
       item.setAttribute("tabindex", "0");
       item.setAttribute("role", "option");
-      item.setAttribute("aria-selected", s === curSite);
+      item.setAttribute("aria-selected", s === curSite ? "true" : "false");
       item.style.cursor = "pointer";
       item.innerHTML = `<div class="sadv-combo-item-dot" style="background:${col}"></div><div class="sadv-combo-item-info"><div class="sadv-combo-item-name">${escHtml(shortName.split("/")[0])}</div><div class="sadv-combo-item-url">${escHtml(shortName)}</div></div><div class="sadv-combo-item-click" style="color:${clickCol}">${escHtml(clickStr)}</div>`;
       item.addEventListener("click", function () {
         setComboSite(s);
         const wrap = document.getElementById("sadv-combo-wrap");
-        wrap.classList.remove("open");
-        wrap.setAttribute("aria-expanded", "false");
+        if (wrap) {
+          wrap.classList.remove("open");
+          wrap.setAttribute("aria-expanded", "false");
+        }
       });
       // Keyboard navigation for combo items
       item.addEventListener('keydown', function(e) {
@@ -134,27 +137,33 @@
           e.preventDefault();
           setComboSite(s);
           const wrap = document.getElementById("sadv-combo-wrap");
-          wrap.classList.remove("open");
-          wrap.setAttribute("aria-expanded", "false");
+          if (wrap) {
+            wrap.classList.remove("open");
+            wrap.setAttribute("aria-expanded", "false");
+          }
           // Return focus to combo button
-          document.getElementById("sadv-combo-btn").focus();
+          const comboBtn = document.getElementById("sadv-combo-btn");
+          if (comboBtn) comboBtn.focus();
         }
         if (e.key === 'Escape') {
           e.preventDefault();
           const wrap = document.getElementById("sadv-combo-wrap");
-          wrap.classList.remove("open");
-          wrap.setAttribute("aria-expanded", "false");
-          document.getElementById("sadv-combo-btn").focus();
+          if (wrap) {
+            wrap.classList.remove("open");
+            wrap.setAttribute("aria-expanded", "false");
+          }
+          const comboBtn = document.getElementById("sadv-combo-btn");
+          if (comboBtn) comboBtn.focus();
         }
         // Arrow key navigation
         if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
           e.preventDefault();
-          const items = Array.from(drop.querySelectorAll('.sadv-combo-item'));
+          const items = Array.from(drop.querySelectorAll('.sadv-combo-item[data-site]'));
           const currentIndex = items.indexOf(item);
           const nextIndex = e.key === 'ArrowDown'
             ? Math.min(currentIndex + 1, items.length - 1)
             : Math.max(currentIndex - 1, 0);
-          items[nextIndex].focus();
+          if (items[nextIndex]) items[nextIndex].focus();
         }
       });
       drop.appendChild(item);
@@ -167,10 +176,14 @@
     curSite = site;
     const col = SITE_COLORS_MAP[site] || C.muted,
       shortName = getSiteLabel(site);
-    document.getElementById("sadv-combo-dot").style.background = col;
-    document.getElementById("sadv-combo-label").textContent = shortName;
-    document.querySelectorAll(".sadv-combo-item").forEach((el) => {
-      el.classList.toggle("active", el.dataset.site === site);
+    const comboDot = document.getElementById("sadv-combo-dot");
+    const comboLabel = document.getElementById("sadv-combo-label");
+    if (comboDot) comboDot.style.background = col;
+    if (comboLabel) comboLabel.textContent = shortName;
+    document.querySelectorAll(".sadv-combo-item[data-site]").forEach((el) => {
+      const isActive = el.dataset.site === site;
+      el.classList.toggle("active", isActive);
+      el.setAttribute("aria-selected", isActive ? "true" : "false");
     });
     setCachedUiState();
     if (typeof notifySnapshotShellState === "function") notifySnapshotShellState();
@@ -192,10 +205,14 @@
     curSite = site;
     const col = SITE_COLORS_MAP[site] || C.muted,
       shortName = getSiteLabel(site);
-    document.getElementById("sadv-combo-dot").style.background = col;
-    document.getElementById("sadv-combo-label").textContent = shortName;
-    document.querySelectorAll(".sadv-combo-item").forEach((el) => {
-      el.classList.toggle("active", el.dataset.site === site);
+    const comboDot = document.getElementById("sadv-combo-dot");
+    const comboLabel = document.getElementById("sadv-combo-label");
+    if (comboDot) comboDot.style.background = col;
+    if (comboLabel) comboLabel.textContent = shortName;
+    document.querySelectorAll(".sadv-combo-item[data-site]").forEach((el) => {
+      const isActive = el.dataset.site === site;
+      el.classList.toggle("active", isActive);
+      el.setAttribute("aria-selected", isActive ? "true" : "false");
     });
     setCachedUiState();
     if (typeof notifySnapshotShellState === "function") notifySnapshotShellState();
@@ -207,12 +224,12 @@
     comboWrapMain.setAttribute("role", "combobox");
     comboWrapMain.setAttribute("aria-expanded", "false");
   }
-
-  document
-    .getElementById("sadv-combo-btn")
-    .addEventListener("click", function (e) {
+  const comboBtn = document.getElementById("sadv-combo-btn");
+  if (comboBtn) {
+    comboBtn.addEventListener("click", function (e) {
       e.stopPropagation();
       const wrap = document.getElementById("sadv-combo-wrap");
+      if (!wrap) return;
       wrap.classList.toggle("open");
       wrap.setAttribute("aria-expanded", wrap.classList.contains("open") ? "true" : "false");
       if (wrap.classList.contains("open")) {
@@ -225,7 +242,7 @@
             inp.oninput = function () {
               const q = inp.value.toLowerCase();
               document
-                .querySelectorAll(".sadv-combo-item")
+                .querySelectorAll(".sadv-combo-item[data-site]")
                 .forEach(function (el) {
                   el.style.display =
                     !q ||
@@ -238,26 +255,29 @@
         }, 50);
       }
     });
-  // Keyboard support for combo button
-  document.getElementById("sadv-combo-btn").addEventListener('keydown', function(e) {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      this.click();
-    }
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      const wrap = document.getElementById("sadv-combo-wrap");
-      if (wrap.classList.contains("open")) {
-        wrap.classList.remove("open");
-        wrap.setAttribute("aria-expanded", "false");
+    // Keyboard support for combo button
+    comboBtn.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        this.click();
       }
-    }
-    if (e.key === 'ArrowDown' && this.getAttribute("aria-expanded") === "true") {
-      e.preventDefault();
-      const firstItem = document.querySelector(".sadv-combo-item:not([style*='display: none'])");
-      if (firstItem) firstItem.focus();
-    }
-  });
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        const wrap = document.getElementById("sadv-combo-wrap");
+        if (wrap && wrap.classList.contains("open")) {
+          wrap.classList.remove("open");
+          wrap.setAttribute("aria-expanded", "false");
+        }
+      }
+      if (e.key === 'ArrowDown' && this.getAttribute("aria-expanded") === "true") {
+        e.preventDefault();
+        const firstItem = document.querySelector(".sadv-combo-item[data-site]:not([style*='display: none'])");
+        if (firstItem) firstItem.focus();
+      }
+    });
+  } else {
+    console.warn("[UI Controls] #sadv-combo-btn not found during initialization");
+  }
   document.addEventListener("click", function (e) {
     const wrap = document.getElementById("sadv-combo-wrap");
     if (wrap && !wrap.contains(e.target)) {
@@ -272,7 +292,8 @@
       if (wrap && wrap.classList.contains("open")) {
         wrap.classList.remove("open");
         wrap.setAttribute("aria-expanded", "false");
-        document.getElementById("sadv-combo-btn").focus();
+        const activeComboBtn = document.getElementById("sadv-combo-btn");
+        if (activeComboBtn) activeComboBtn.focus();
       }
     }
   });
@@ -287,52 +308,58 @@
     { id: "pattern", label: "패턴", icon: ICONS.barChart },
     { id: "insight", label: "인사이트", icon: ICONS.lightbulb },
   ];
-  tabsEl.setAttribute("role", "tablist");
-  tabsEl.replaceChildren(...TABS.map((t) => {
-    const btn = document.createElement("button");
-    btn.className = `sadv-t${t.id === curTab ? " on" : ""}`;
-    btn.dataset.t = t.id;
-    btn.setAttribute("role", "tab");
-    btn.setAttribute("aria-selected", t.id === curTab);
-    btn.setAttribute("aria-controls", "sadv-tabpanel");
-    btn.style.cssText = "display:inline-flex;align-items:center;gap:5px";
-    btn.innerHTML = `${t.icon}${escHtml(t.label)}`;
-    return btn;
-  }));
-  tabsEl.addEventListener("click", function (e) {
-    const t = e.target.closest("[data-t]");
-    if (!t || t.dataset.t === curTab) return;
-    curTab = t.dataset.t;
-    tabsEl.querySelectorAll(".sadv-t").forEach((b) => {
-      b.classList.remove("on");
-      b.setAttribute("aria-selected", "false");
+  if (tabsEl) {
+    tabsEl.setAttribute("role", "tablist");
+    tabsEl.replaceChildren(...TABS.map((t) => {
+      const btn = document.createElement("button");
+      btn.className = `sadv-t${t.id === curTab ? " on" : ""}`;
+      btn.dataset.t = t.id;
+      btn.setAttribute("role", "tab");
+      btn.setAttribute("aria-selected", t.id === curTab ? "true" : "false");
+      btn.setAttribute("aria-controls", "sadv-tabpanel");
+      btn.style.cssText = "display:inline-flex;align-items:center;gap:5px";
+      btn.innerHTML = `${t.icon}${escHtml(t.label)}`;
+      return btn;
+    }));
+    tabsEl.addEventListener("click", function (e) {
+      const t = e.target.closest("[data-t]");
+      if (!t || t.dataset.t === curTab) return;
+      curTab = t.dataset.t;
+      tabsEl.querySelectorAll(".sadv-t").forEach((b) => {
+        b.classList.remove("on");
+        b.setAttribute("aria-selected", "false");
+      });
+      t.classList.add("on");
+      t.setAttribute("aria-selected", "true");
+      setCachedUiState();
+      if (window.__sadvR) renderTab(window.__sadvR);
+      __sadvNotify();
     });
-    t.classList.add("on");
-    t.setAttribute("aria-selected", "true");
-    setCachedUiState();
-    if (window.__sadvR) renderTab(window.__sadvR);
-    __sadvNotify();
-  });
-  // Keyboard navigation for tabs
-  tabsEl.addEventListener('keydown', function(e) {
-    const tab = e.target.closest('.sadv-t');
-    if (!tab) return;
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      tab.click();
-    }
-    // Arrow key navigation
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-      e.preventDefault();
-      const tabs = Array.from(tabsEl.querySelectorAll('.sadv-t'));
-      const currentIndex = tabs.indexOf(tab);
-      const nextIndex = e.key === 'ArrowRight'
-        ? Math.min(currentIndex + 1, tabs.length - 1)
-        : Math.max(currentIndex - 1, 0);
-      tabs[nextIndex].focus();
-      tabs[nextIndex].click();
-    }
-  });
+    // Keyboard navigation for tabs
+    tabsEl.addEventListener('keydown', function(e) {
+      const tab = e.target.closest('.sadv-t');
+      if (!tab) return;
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        tab.click();
+      }
+      // Arrow key navigation
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        const tabs = Array.from(tabsEl.querySelectorAll('.sadv-t'));
+        const currentIndex = tabs.indexOf(tab);
+        const nextIndex = e.key === 'ArrowRight'
+          ? Math.min(currentIndex + 1, tabs.length - 1)
+          : Math.max(currentIndex - 1, 0);
+        if (tabs[nextIndex]) {
+          tabs[nextIndex].focus();
+          tabs[nextIndex].click();
+        }
+      }
+    });
+  } else {
+    console.warn("[UI Controls] #sadv-tabs not found during initialization");
+  }
   /**
  * Render the current tab content using the provided renderers
  * @param {Object} R - Renderers object with functions for each tab
@@ -342,37 +369,44 @@
  * @see {buildRenderers}
  */
   function renderTab(R) {
+    if (!bdEl || !R || typeof R[curTab] !== "function") return;
     bdEl.setAttribute("role", "tabpanel");
     bdEl.id = "sadv-tabpanel";
     bdEl.replaceChildren(R[curTab]());
     bdEl.scrollTop = 0;
   }
-  modeBar.setAttribute("role", "tablist");
-  modeBar.addEventListener("click", function (e) {
-    const m = e.target.closest("[data-m]");
-    if (!m) return;
-    switchMode(m.dataset.m);
-  });
-  // Keyboard navigation for mode buttons
-  modeBar.addEventListener('keydown', function(e) {
-    const modeBtn = e.target.closest('.sadv-mode');
-    if (!modeBtn) return;
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      modeBtn.click();
-    }
-    // Arrow key navigation
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-      e.preventDefault();
-      const modeButtons = Array.from(modeBar.querySelectorAll('.sadv-mode'));
-      const currentIndex = modeButtons.indexOf(modeBtn);
-      const nextIndex = e.key === 'ArrowRight'
-        ? Math.min(currentIndex + 1, modeButtons.length - 1)
-        : Math.max(currentIndex - 1, 0);
-      modeButtons[nextIndex].focus();
-      modeButtons[nextIndex].click();
-    }
-  });
+  if (modeBar) {
+    modeBar.setAttribute("role", "tablist");
+    modeBar.addEventListener("click", function (e) {
+      const m = e.target.closest("[data-m]");
+      if (!m) return;
+      switchMode(m.dataset.m);
+    });
+    // Keyboard navigation for mode buttons
+    modeBar.addEventListener('keydown', function(e) {
+      const modeBtn = e.target.closest('.sadv-mode');
+      if (!modeBtn) return;
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        modeBtn.click();
+      }
+      // Arrow key navigation
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        const modeButtons = Array.from(modeBar.querySelectorAll('.sadv-mode'));
+        const currentIndex = modeButtons.indexOf(modeBtn);
+        const nextIndex = e.key === 'ArrowRight'
+          ? Math.min(currentIndex + 1, modeButtons.length - 1)
+          : Math.max(currentIndex - 1, 0);
+        if (modeButtons[nextIndex]) {
+          modeButtons[nextIndex].focus();
+          modeButtons[nextIndex].click();
+        }
+      }
+    });
+  } else {
+    console.warn("[UI Controls] #sadv-mode-bar not found during initialization");
+  }
   /**
  * Switch between 'all' and 'site' view modes
  * Updates UI visibility and loads appropriate view
@@ -386,6 +420,14 @@
  */
   function switchMode(mode) {
     if (mode === curMode) return;
+    if (!modeBar || !siteBar || !tabsEl) {
+      curMode = mode;
+      console.warn("[UI Controls] Missing mode UI containers; switchMode skipped");
+      setCachedUiState();
+      if (typeof notifySnapshotShellState === "function") notifySnapshotShellState();
+      __sadvNotify();
+      return;
+    }
     curMode = mode;
     modeBar
       .querySelectorAll(".sadv-mode")

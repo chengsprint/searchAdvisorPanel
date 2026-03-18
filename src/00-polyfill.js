@@ -8,18 +8,16 @@ var process=globalThis.process||{env:{NODE_ENV:"production"}};
 (function() {
   'use strict';
 
+  var pendingCallbacks = [];
+
   // DOMPurify will be loaded from CDN if not already available
   if (typeof DOMPurify === 'undefined') {
     // Attempt to load from CDN (will be used in browser environment)
     if (typeof document !== 'undefined') {
       var script = document.createElement('script');
       script.src = 'https://cdn.jsdelivr.net/npm/dompurify@3.3.3/dist/purify.min.js';
-      script.integrity = 'sha512-iHT6/YuqYMFeG5+JT0DqY2to8PyUGeTVG2XvrUQDCQr0OVA4rqXiPGsVMGpK2w+fW6ulWzTd8o1MN6/EfwM2WA==';
       script.crossOrigin = 'anonymous';
-      script.async = false; // Load synchronously to ensure availability
-
-      // Store pending callbacks
-      var pendingCallbacks = [];
+      script.async = true;
 
       // Make DOMPurify available when loaded
       script.onload = function() {
@@ -35,7 +33,11 @@ var process=globalThis.process||{env:{NODE_ENV:"production"}};
         window.__DOMPurifyFailed = true;
       };
 
-      document.head.insertBefore(script, document.head.firstChild);
+      if (document.head) {
+        document.head.insertBefore(script, document.head.firstChild);
+      } else {
+        document.documentElement.appendChild(script);
+      }
     }
   } else {
     window.__DOMPurifyLoaded = true;
@@ -57,4 +59,3 @@ var process=globalThis.process||{env:{NODE_ENV:"production"}};
     }
   };
 })();
-

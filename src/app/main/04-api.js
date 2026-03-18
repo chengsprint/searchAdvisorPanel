@@ -409,6 +409,25 @@ async function fetchSiteData(site, options) {
   return inflightDetail[site];
 }
 
+async function refreshExportSiteData(site) {
+  delete memCache[site];
+  clearCachedData(site);
+  return fetchSiteData(site, { force: true, retryIncomplete: true });
+}
+
+async function ensureExportSiteList(refreshMode) {
+  const forceSiteListRefresh = refreshMode === "refresh";
+  await loadSiteList(forceSiteListRefresh);
+  assignColors();
+  ensureCurrentSite();
+}
+
+async function resolveExportSiteData(site, options) {
+  const refreshMode = options && options.refreshMode === "refresh" ? "refresh" : "cache-first";
+  if (refreshMode === "refresh") return refreshExportSiteData(site);
+  return fetchSiteData(site, { retryIncomplete: true });
+}
+
 /**
  * Fetch diagnosis meta data for a site
  * @param {string} site - Site URL

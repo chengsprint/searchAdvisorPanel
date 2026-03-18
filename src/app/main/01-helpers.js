@@ -2,6 +2,141 @@
 // P0 SECURITY: DOMPurify Integration for XSS Prevention
 // ============================================================
 
+const SANITIZE_DEFAULT_ALLOWED_TAGS = [
+  'div', 'span', 'p', 'a', 'strong', 'em', 'i', 'b',
+  'br', 'hr', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+  'table', 'thead', 'tbody', 'tr', 'td', 'th',
+  'button', 'input',
+  'svg', 'path', 'line', 'circle', 'rect', 'defs', 'linearGradient',
+  'text', 'g', 'stop', 'style'
+];
+
+const SANITIZE_DEFAULT_ALLOWED_ATTR = [
+  'class', 'style', 'href', 'id', 'title',
+  'type', 'placeholder', 'value', 'disabled', 'tabindex', 'role',
+  'name', 'autocomplete', 'target', 'rel',
+  'width', 'height', 'viewBox', 'preserveAspectRatio', 'cx', 'cy',
+  'r', 'x', 'x1', 'x2', 'y', 'y1', 'y2', 'fill', 'stroke',
+  'stroke-width', 'stroke-dasharray', 'opacity', 'stop-color',
+  'stop-opacity', 'offset', 'd', 'text-anchor', 'dominant-baseline',
+  'font-size', 'font-weight', 'letter-spacing', 'paint-order',
+  'stroke-linejoin', 'stroke-linecap', 'rx', 'ry', 'transform',
+  'color', 'background', 'border', 'padding', 'margin', 'display',
+  'align-items', 'justify-content', 'gap', 'flex', 'grid',
+  'border-radius', 'box-shadow', 'transition', 'white-space',
+  'overflow', 'text-overflow', 'line-height', 'visibility',
+  'word-break', 'text-align', 'vertical-align', 'position',
+  'top', 'left', 'right', 'bottom', 'z-index', 'cursor',
+  'pointer-events', 'backdrop-filter', 'max-width', 'min-width',
+  'min-height', 'max-height', 'transform-origin', 'filter'
+];
+
+const SANITIZE_DEFAULT_FORBID_TAGS = ['script', 'object', 'embed', 'iframe', 'form'];
+const SANITIZE_DEFAULT_FORBID_ATTR = ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur'];
+
+function isAllowedSanitizeAttr(attrName, allowedAttrs) {
+  return (
+    allowedAttrs.includes(attrName) ||
+    attrName.startsWith('data-') ||
+    attrName.startsWith('aria-')
+  );
+}
+
+function isSafeSanitizeUrl(value) {
+  const normalized = String(value || '').trim().replace(/[\u0000-\u001F\u007F\s]+/g, '').toLowerCase();
+  if (!normalized) return true;
+  return !(
+    normalized.startsWith('javascript:') ||
+    normalized.startsWith('vbscript:') ||
+    normalized.startsWith('data:text/html') ||
+    normalized.startsWith('data:text/javascript')
+  );
+}
+
+function sanitizeInlineStyle(styleValue) {
+  return String(styleValue || '')
+    .replace(/expression\s*\([^)]*\)/gi, '')
+    .replace(/url\s*\(\s*(['"]?)\s*javascript:[^)]*\)/gi, '')
+    .replace(/-moz-binding\s*:[^;]+;?/gi, '')
+    .replace(/behavior\s*:[^;]+;?/gi, '');
+}
+
+function fallbackSanitizeHTML(dirty, options = {}) {
+  if (typeof document === 'undefined') {
+    return String(dirty || '')
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  const allowedTags = new Set((options.ALLOWED_TAGS || SANITIZE_DEFAULT_ALLOWED_TAGS).map((tag) => String(tag).toLowerCase()));
+  const allowedAttrs = (options.ALLOWED_ATTR || SANITIZE_DEFAULT_ALLOWED_ATTR).map((attr) => String(attr).toLowerCase());
+  const forbidTags = new Set((options.FORBID_TAGS || SANITIZE_DEFAULT_FORBID_TAGS).map((tag) => String(tag).toLowerCase()));
+  const forbidAttrs = (options.FORBID_ATTR || SANITIZE_DEFAULT_FORBID_ATTR).map((attr) => String(attr).toLowerCase());
+  const template = document.createElement('template');
+  template.innerHTML = String(dirty || '');
+
+  function unwrapNode(node) {
+    const parent = node.parentNode;
+    if (!parent) return;
+    while (node.firstChild) {
+      parent.insertBefore(node.firstChild, node);
+    }
+    parent.removeChild(node);
+  }
+
+  function walk(node) {
+    if (!node) return;
+
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const tag = node.tagName.toLowerCase();
+      if (forbidTags.has(tag)) {
+        node.remove();
+        return;
+      }
+      if (!allowedTags.has(tag)) {
+        unwrapNode(node);
+        return;
+      }
+
+      Array.from(node.attributes).forEach((attr) => {
+        const name = attr.name.toLowerCase();
+        const value = attr.value;
+
+        if (
+          forbidAttrs.includes(name) ||
+          name.startsWith('on') ||
+          !isAllowedSanitizeAttr(name, allowedAttrs)
+        ) {
+          node.removeAttribute(attr.name);
+          return;
+        }
+
+        if ((name === 'href' || name === 'src' || name === 'xlink:href') && !isSafeSanitizeUrl(value)) {
+          node.removeAttribute(attr.name);
+          return;
+        }
+
+        if (name === 'style') {
+          const sanitizedStyle = sanitizeInlineStyle(value);
+          if (sanitizedStyle) {
+            node.setAttribute('style', sanitizedStyle);
+          } else {
+            node.removeAttribute('style');
+          }
+        }
+      });
+    }
+
+    Array.from(node.childNodes).forEach(walk);
+  }
+
+  Array.from(template.content.childNodes).forEach(walk);
+  return template.innerHTML;
+}
+
 /**
  * DOMPurify sanitizer for HTML content
  * Prevents XSS attacks by sanitizing HTML before injection
@@ -13,54 +148,29 @@ function sanitizeHTML(dirty, options = {}) {
   // Check if DOMPurify is available
   if (typeof DOMPurify !== 'undefined' && DOMPurify.sanitize) {
     const defaultOptions = {
-      ALLOWED_TAGS: [
-        'div', 'span', 'p', 'a', 'strong', 'em', 'i', 'b',
-        'br', 'hr', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-        'table', 'thead', 'tbody', 'tr', 'td', 'th',
-        'svg', 'path', 'line', 'circle', 'rect', 'defs', 'linearGradient',
-        'text', 'g', 'stop', 'style'
-      ],
-      ALLOWED_ATTR: [
-        'class', 'style', 'href', 'data-*', 'id', 'title',
-        'width', 'height', 'viewBox', 'preserveAspectRatio', 'cx', 'cy',
-        'r', 'x', 'x1', 'x2', 'y', 'y1', 'y2', 'fill', 'stroke',
-        'stroke-width', 'stroke-dasharray', 'opacity', 'stop-color',
-        'stop-opacity', 'offset', 'd', 'text-anchor', 'dominant-baseline',
-        'font-size', 'font-weight', 'letter-spacing', 'paint-order',
-        'stroke-linejoin', 'stroke-linecap', 'rx', 'ry', 'transform',
-        'color', 'background', 'border', 'padding', 'margin', 'display',
-        'align-items', 'justify-content', 'gap', 'flex', 'grid',
-        'border-radius', 'box-shadow', 'transition', 'white-space',
-        'overflow', 'text-overflow', 'line-height', 'visibility',
-        'word-break', 'text-align', 'vertical-align', 'position',
-        'top', 'left', 'right', 'bottom', 'z-index', 'cursor',
-        'pointer-events', 'backdrop-filter', 'max-width', 'min-width',
-        'min-height', 'max-height', 'transform-origin', 'filter'
-      ],
+      ALLOWED_TAGS: SANITIZE_DEFAULT_ALLOWED_TAGS,
+      ALLOWED_ATTR: SANITIZE_DEFAULT_ALLOWED_ATTR,
+      ALLOW_ARIA_ATTR: true,
       ALLOW_DATA_ATTR: true,
       SAFE_FOR_TEMPLATES: true,
-      ADD_ATTR: ['data-*'],
-      FORBID_TAGS: ['script', 'object', 'embed', 'iframe', 'form', 'input', 'button'],
-      FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur']
+      FORBID_TAGS: SANITIZE_DEFAULT_FORBID_TAGS,
+      FORBID_ATTR: SANITIZE_DEFAULT_FORBID_ATTR
     };
 
     const mergedOptions = { ...defaultOptions, ...options };
     return DOMPurify.sanitize(dirty, mergedOptions);
   }
 
-  // Fallback: if DOMPurify is not available, log warning and use escHtml
+  // Fallback: if DOMPurify is not available, use built-in sanitizer
   if (typeof window !== 'undefined') {
-    console.warn('[SECURITY] DOMPurify not available. Using basic HTML escaping. This is less secure.');
-    console.warn('[SECURITY] Please ensure DOMPurify is loaded before this script.');
+    if (!window.__sadvFallbackSanitizeWarned) {
+      console.warn('[SECURITY] DOMPurify not available. Using built-in fallback sanitizer.');
+      console.warn('[SECURITY] Please ensure DOMPurify is loaded before this script.');
+      window.__sadvFallbackSanitizeWarned = true;
+    }
   }
 
-  // Basic escape as fallback
-  return String(dirty || '')
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+  return fallbackSanitizeHTML(dirty, options);
 }
 
 // ============================================================

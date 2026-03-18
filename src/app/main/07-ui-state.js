@@ -26,13 +26,20 @@ const __sadvReadyResolvers = [];
  * console.log(snapshot.curMode); // "all" or "site"
  */
 function __sadvSnapshot() {
+  const snapshotAccountLabel =
+    (typeof window !== "undefined" &&
+      window.__sadvAccountState &&
+      typeof window.__sadvAccountState.currentAccount === "string" &&
+      window.__sadvAccountState.currentAccount) ||
+    (ACCOUNT_UTILS.getAccountInfo().accountLabel || "");
+
   return {
     curMode,
     curSite,
     curTab,
     allSites: [...allSites],
     rows: window.__sadvRows || [],
-    accountLabel,
+    accountLabel: snapshotAccountLabel,
   };
 }
 
@@ -240,6 +247,14 @@ function getMergedMetaState() {
       ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__
       : null;
   return payload && payload.mergedMeta ? payload.mergedMeta : null;
+}
+
+/**
+ * Check whether the current payload/state represents a merged report
+ * @returns {boolean} True when merged metadata exists
+ */
+function isMergedReport() {
+  return !!getMergedMetaState();
 }
 
 // ============================================================================
