@@ -29,8 +29,12 @@
         URL.revokeObjectURL(link.href);
       }, 1000);
     } catch (e) {
-      console.error(e);
-      alert("HTML 저장 중 오류가 발생했어요. 다시 시도해주세요.");
+      showError(ERROR_MESSAGES.HTML_SAVE_ERROR, e, 'downloadSnapshot');
+      bdEl.innerHTML = createInlineError(
+        ERROR_MESSAGES.HTML_SAVE_ERROR,
+        () => downloadSnapshot(),
+        '다시 시도'
+      ).outerHTML;
     } finally {
       btn.disabled = false;
       btn.textContent = originalText;

@@ -26,7 +26,7 @@ async function renderAllSites() {
 
   if (!allSites.length) {
     bdEl.innerHTML =
-      '<div style="padding:30px 20px;text-align:center"><div style="font-size:32px">↻</div><div style="color:#ffca28;font-weight:700;margin:10px 0">사이트 목록을 찾을 수 없어요</div><div style="color:#7a9ab8;font-size:12px;line-height:2">↻ 버튼을 눌러 새로고침 해보세요<br>또는 서치어드바이저 콘솔 페이지에서 실행해주세요</div></div>';
+      '<div style="padding:30px 20px;text-align:center"><div style="font-size:32px">⚠️</div><div style="color:#ffca28;font-weight:700;margin:10px 0">사이트 목록을 찾을 수 없어요</div><div style="color:#7a9ab8;font-size:12px;line-height:2">↻ 버튼을 눌러 새로고침 해보세요<br>또는 서치어드바이저 콘솔 페이지에서 실행해주세요</div></div>';
     return;
   }
   const sitesToLoad = allSites;
@@ -88,14 +88,11 @@ async function renderAllSites() {
         // 실패한 사이트 에러 추적
         failedCount++;
         const errorDetail = result.reason?.message || result.reason || '알 수 없는 오류';
-        ERROR_TRACKING.reportError({
-          type: 'dataLoadError',
-          phase: 'expose',
-          site: batchSites[offset],
-          error: errorDetail,
-          batchIndex: i + offset,
-          totalSites: sitesToLoad.length
-        });
+        showError(
+          `${batchSites[offset]} 사이트 데이터 로딩 실패`,
+          result.reason,
+          'renderAllSites-expose'
+        );
       }
     });
     // 배치 실패 시 진행률 메타에 표시
