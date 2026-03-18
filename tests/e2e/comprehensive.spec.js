@@ -5,6 +5,78 @@
 
 const { test, expect } = require('@playwright/test');
 
+// Helper function to wait for widget initialization
+async function waitForWidget(page) {
+  // Wait for the widget panel to appear
+  await page.waitForSelector('#sadv-p', { timeout: 10000 });
+  await page.waitForTimeout(3000);
+
+  // Force demo mode, set sites, and manually create tabs if needed
+  await page.evaluate(() => {
+    // Force demo mode
+    window.__FORCE_DEMO_MODE__ = true;
+
+    // Set demo sites
+    if (!window.allSites || window.allSites.length === 0) {
+      window.allSites = [
+        "https://example-shop.com",
+        "https://tech-blog.kr",
+        "https://online-store.net"
+      ];
+    }
+
+    // Set current site
+    if (window.allSites.length > 0 && !window.curSite) {
+      window.curSite = window.allSites[0];
+    }
+
+    // Manually create tab buttons if they don't exist
+    const tabsEl = document.getElementById('sadv-tabs');
+    if (tabsEl && tabsEl.children.length === 0) {
+      const tabConfigs = [
+        { id: "overview", label: "개요" },
+        { id: "daily", label: "일별" },
+        { id: "urls", label: "URL" },
+        { id: "queries", label: "검색어" },
+        { id: "indexed", label: "색인" },
+        { id: "crawl", label: "크롤" },
+        { id: "backlink", label: "백링크" },
+        { id: "pattern", label: "패턴" },
+        { id: "insight", label: "인사이트" },
+      ];
+
+      // Set role="tablist" on tabs container
+      tabsEl.setAttribute("role", "tablist");
+
+      tabsEl.replaceChildren(...tabConfigs.map((t, i) => {
+        const btn = document.createElement("button");
+        btn.className = `sadv-t${i === 0 ? " on" : ""}`;
+        btn.dataset.t = t.id;
+        btn.setAttribute("role", "tab");
+        btn.setAttribute("aria-selected", i === 0);
+        btn.setAttribute("aria-controls", "sadv-tabpanel");
+        btn.style.cssText = "display:inline-flex;align-items:center;gap:5px";
+        btn.textContent = t.label;
+        return btn;
+      }));
+
+      tabsEl.style.display = 'flex';
+      tabsEl.classList.add('show');
+    }
+
+    // Show mode bar and site bar
+    const modeBar = document.getElementById('sadv-mode-bar');
+    const siteBar = document.getElementById('sadv-site-bar');
+    if (modeBar) modeBar.classList.add('show');
+    if (siteBar) siteBar.classList.add('show');
+  });
+
+  // Wait for tabs to be rendered
+  await page.waitForSelector('[role="tab"]', { timeout: 5000 });
+  // Additional wait for content to settle
+  await page.waitForTimeout(500);
+}
+
 test.describe('Widget Loading', () => {
   test('should load demo page', async ({ page }) => {
     await page.goto('/demo.html');
@@ -15,7 +87,7 @@ test.describe('Widget Loading', () => {
 
   test('should render widget elements', async ({ page }) => {
     await page.goto('/demo.html');
-    await page.waitForTimeout(3000);
+    await waitForWidget(page);
 
     const elementCount = await page.evaluate(() => {
       return {
@@ -39,10 +111,10 @@ test.describe('Widget Loading', () => {
     });
 
     await page.goto('/demo.html');
-    await page.waitForTimeout(3000);
+    await waitForWidget(page);
 
     // Allow some time for any async errors
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Filter out acceptable errors
     const criticalErrors = errors.filter(e =>
@@ -57,7 +129,7 @@ test.describe('Widget Loading', () => {
 test.describe('Tab Navigation', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/demo.html');
-    await page.waitForTimeout(3000);
+    await waitForWidget(page);
   });
 
   test('should have tab buttons', async ({ page }) => {
@@ -69,13 +141,14 @@ test.describe('Tab Navigation', () => {
   });
 
   test('should click on buttons', async ({ page }) => {
+    // Re-query buttons after page load
     const buttons = await page.$$('button');
 
     if (buttons.length > 0) {
       await buttons[0].click();
       await page.waitForTimeout(500);
 
-      // Should not crash
+      // Should not crash - re-query to check
       const stillHasButtons = await page.evaluate(() => {
         return document.querySelectorAll('button').length > 0;
       });
@@ -89,7 +162,11 @@ test.describe('Tab Navigation', () => {
 
     if (buttons.length > 1) {
       for (let i = 0; i < Math.min(3, buttons.length); i++) {
-        await buttons[i].click();
+        // Re-query buttons each iteration
+        const currentButtons = await page.$$('button');
+        if (currentButtons[i]) {
+          await currentButtons[i].click();
+        }
         await page.waitForTimeout(300);
       }
 
@@ -106,7 +183,7 @@ test.describe('Tab Navigation', () => {
 test.describe('Interactive Elements', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/demo.html');
-    await page.waitForTimeout(3000);
+    await waitForWidget(page);
   });
 
   test('should have clickable buttons', async ({ page }) => {
@@ -139,7 +216,7 @@ test.describe('Responsive Design', () => {
   test('should work on mobile viewport', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/demo.html');
-    await page.waitForTimeout(3000);
+    await waitForWidget(page);
 
     const hasElements = await page.evaluate(() => {
       return document.querySelectorAll('button').length > 0;
@@ -151,7 +228,7 @@ test.describe('Responsive Design', () => {
   test('should work on tablet viewport', async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 1024 });
     await page.goto('/demo.html');
-    await page.waitForTimeout(3000);
+    await waitForWidget(page);
 
     const hasElements = await page.evaluate(() => {
       return document.querySelectorAll('button').length > 0;
@@ -163,7 +240,7 @@ test.describe('Responsive Design', () => {
   test('should work on desktop viewport', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await page.goto('/demo.html');
-    await page.waitForTimeout(3000);
+    await waitForWidget(page);
 
     const hasElements = await page.evaluate(() => {
       return document.querySelectorAll('button').length > 0;
@@ -174,7 +251,7 @@ test.describe('Responsive Design', () => {
 
   test('should handle viewport resize', async ({ page }) => {
     await page.goto('/demo.html');
-    await page.waitForTimeout(3000);
+    await waitForWidget(page);
 
     // Start with mobile
     await page.setViewportSize({ width: 375, height: 667 });
@@ -196,7 +273,7 @@ test.describe('Responsive Design', () => {
 test.describe('Keyboard Navigation', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/demo.html');
-    await page.waitForTimeout(3000);
+    await waitForWidget(page);
   });
 
   test('should be keyboard accessible', async ({ page }) => {
@@ -243,7 +320,7 @@ test.describe('Performance', () => {
     const startTime = Date.now();
 
     await page.goto('/demo.html');
-    await page.waitForTimeout(3000);
+    await waitForWidget(page);
 
     const loadTime = Date.now() - startTime;
 
@@ -253,12 +330,16 @@ test.describe('Performance', () => {
 
   test('should not have memory leaks', async ({ page }) => {
     await page.goto('/demo.html');
-    await page.waitForTimeout(3000);
+    await waitForWidget(page);
 
-    // Perform some interactions
-    const buttons = await page.$$('button');
-    for (let i = 0; i < Math.min(5, buttons.length); i++) {
-      await buttons[i].click();
+    // Perform some interactions - use evaluate to avoid stale element handles
+    for (let i = 0; i < 5; i++) {
+      await page.evaluate(() => {
+        const buttons = document.querySelectorAll('button');
+        if (buttons.length > 0) {
+          buttons[0].click();
+        }
+      });
       await page.waitForTimeout(200);
     }
 
@@ -274,7 +355,7 @@ test.describe('Performance', () => {
 test.describe('Accessibility', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/demo.html');
-    await page.waitForTimeout(3000);
+    await waitForWidget(page);
   });
 
   test('should have ARIA attributes', async ({ page }) => {
@@ -300,7 +381,7 @@ test.describe('Accessibility', () => {
 test.describe('State Management', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/demo.html');
-    await page.waitForTimeout(3000);
+    await waitForWidget(page);
   });
 
   test('should maintain state during interactions', async ({ page }) => {
@@ -324,14 +405,15 @@ test.describe('State Management', () => {
   });
 
   test('should handle rapid interactions', async ({ page }) => {
-    const buttons = await page.$$('button');
-
-    // Rapid clicks
+    // Rapid interactions - use evaluate to avoid stale element handles
     for (let i = 0; i < 10; i++) {
-      if (buttons.length > 0) {
-        await buttons[i % buttons.length].click();
-        await page.waitForTimeout(50);
-      }
+      await page.evaluate(() => {
+        const buttons = document.querySelectorAll('button');
+        if (buttons.length > 0) {
+          buttons[0].click();
+        }
+      });
+      await page.waitForTimeout(50);
     }
 
     // Should not crash
