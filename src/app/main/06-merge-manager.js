@@ -464,12 +464,12 @@
   }
 
   /**
-   * Import account data from exported format
+   * P1: Import account data from exported format with queue serialization
    * @param {Object} exportData - Data from exportCurrentAccountData()
-   * @param {Object} options - Import options
-   * @returns {Object} Import result
+   * @param {Object} options - Import options { overwrite, mergeStrategy, validate }
+   * @returns {Promise<Object>} Promise that resolves with import result
    */
-  function importAccountData(exportData, options = {}) {
+  async function importAccountData(exportData, options = {}) {
     const {
       overwrite = false,
       mergeStrategy = 'newer',
@@ -521,38 +521,43 @@
     let skippedCount = 0;
     const errors = [];
 
-    // Import each site
+    // P1: Import sites sequentially to avoid race conditions
     for (const [site, siteData] of Object.entries(sitesToImport)) {
       try {
         const cacheKey = getSiteDataCacheKey(site);
-        const existing = localStorage.getItem(cacheKey);
 
-        if (existing && !overwrite) {
-          const existingData = JSON.parse(existing);
-          // Support both _merge and __meta formats
-          const sourceTime = siteData.__meta?.__fetched_at ||
-                            siteData._merge?.__fetchedAt || 0;
-          const targetTime = existingData.__cacheSavedAt ||
-                            existingData.__meta?.__fetched_at ||
-                            existingData._merge?.__fetchedAt || 0;
+        // Use safeWrite for each site import
+        await safeWrite(cacheKey, async () => {
+          const existing = localStorage.getItem(cacheKey);
 
-          if (mergeStrategy === 'newer' && sourceTime > targetTime) {
-            // Import newer data
+          if (existing && !overwrite) {
+            const existingData = JSON.parse(existing);
+            // Support both _merge and __meta formats
+            const sourceTime = siteData.__meta?.__fetched_at ||
+                              siteData._merge?.__fetchedAt || 0;
+            const targetTime = existingData.__cacheSavedAt ||
+                              existingData.__meta?.__fetched_at ||
+                              existingData._merge?.__fetchedAt || 0;
+
+            if (mergeStrategy === 'newer' && sourceTime > targetTime) {
+              // Import newer data
+              siteData.__meta = siteData.__meta || {};
+              siteData.__meta.__imported_from = sourceEncId;
+              siteData.__meta.__imported_at = Date.now();
+              localStorage.setItem(cacheKey, JSON.stringify(siteData));
+              mergedCount++;
+            } else {
+              skippedCount++;
+            }
+          } else {
+            // No existing data or overwrite
+            siteData.__meta = siteData.__meta || {};
             siteData.__meta.__imported_from = sourceEncId;
             siteData.__meta.__imported_at = Date.now();
             localStorage.setItem(cacheKey, JSON.stringify(siteData));
-            mergedCount++;
-          } else {
-            skippedCount++;
+            importedCount++;
           }
-        } else {
-          // No existing data or overwrite
-          siteData.__meta = siteData.__meta || {};
-          siteData.__meta.__imported_from = sourceEncId;
-          siteData.__meta.__imported_at = Date.now();
-          localStorage.setItem(cacheKey, JSON.stringify(siteData));
-          importedCount++;
-        }
+        });
 
         // Track in registry
         if (!registry.mergedSites) {
@@ -573,7 +578,7 @@
       }
     }
 
-    saveMergeRegistry(registry);
+    await saveMergeRegistry(registry);
 
     return {
       success: true,
@@ -599,12 +604,19 @@
   }
 
   /**
-   * Save merge registry
+   * P1: Save merge registry with queue serialization
+   * @param {Object} registry - Registry data to save
+   * @returns {Promise<void>} Promise that resolves when registry is saved
    */
-  function saveMergeRegistry(registry) {
-    try {
-      localStorage.setItem(MERGE_REGISTRY_KEY, JSON.stringify(registry));
-    } catch (e) {}
+  async function saveMergeRegistry(registry) {
+    return safeWrite(MERGE_REGISTRY_KEY, async () => {
+      try {
+        localStorage.setItem(MERGE_REGISTRY_KEY, JSON.stringify(registry));
+      } catch (e) {
+        console.error('[saveMergeRegistry] Error:', e);
+        throw e;
+      }
+    }, { skipLock: true }); // Skip lock for registry to avoid deadlock
   }
 
   /**
