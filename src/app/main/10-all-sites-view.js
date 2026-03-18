@@ -8,13 +8,22 @@ async function renderAllSites() {
   const loading = document.createElement("div");
   loading.style.cssText =
     "padding:24px 18px 20px;color:#7a9ab8;text-align:left;line-height:1.6";
+
+  // 예상 소요 시간 계산 (사이트당 약 0.5초로 가정)
+  const estimatedTimeSeconds = Math.ceil(allSites.length * 0.5);
+  const estimatedTimeText = estimatedTimeSeconds > 60
+    ? `${Math.floor(estimatedTimeSeconds / 60)}분 ${estimatedTimeSeconds % 60}초`
+    : `${estimatedTimeSeconds}초`;
+
   loading.innerHTML =
     '<div style="font-size:13px;font-weight:700;color:#d4ecff;margin-bottom:8px">전체 현황을 준비 중입니다</div>' +
-    '<div id="sadv-all-progress-detail" style="font-size:11px;margin-bottom:10px">기본 리포트를 불러오는 중입니다.</div>' +
+    `<div id="sadv-all-progress-detail" style="font-size:11px;margin-bottom:10px">기본 리포트를 불러오는 중입니다. (예상: ${estimatedTimeText})</div>` +
     '<div style="height:10px;border-radius:999px;background:#0d1829;border:1px solid #1a2d45;overflow:hidden"><div id="sadv-all-progress-bar" style="width:6%;height:100%;background:linear-gradient(90deg,#40c4ff,#00e676)"></div></div>' +
-    '<div id="sadv-all-progress-meta" style="font-size:10px;color:#3d5a78;margin-top:8px">메타 진단은 2개씩 천천히 요청합니다.</div>';
+    '<div id="sadv-all-progress-meta" style="font-size:10px;color:#3d5a78;margin-top:8px">메타 진단은 2개씩 천천히 요청합니다.</div>' +
+    '<div id="sadv-all-progress-percent" style="font-size:11px;color:#40c4ff;margin-top:4px;font-weight:600">0%</div>';
   bdEl.innerHTML = "";
   bdEl.appendChild(loading);
+
   if (!allSites.length) {
     bdEl.innerHTML =
       '<div style="padding:30px 20px;text-align:center"><div style="font-size:32px">↻</div><div style="color:#ffca28;font-weight:700;margin:10px 0">사이트 목록을 찾을 수 없어요</div><div style="color:#7a9ab8;font-size:12px;line-height:2">↻ 버튼을 눌러 새로고침 해보세요<br>또는 서치어드바이저 콘솔 페이지에서 실행해주세요</div></div>';
@@ -25,13 +34,38 @@ async function renderAllSites() {
   const loadingDetail = loading.querySelector("#sadv-all-progress-detail");
   const loadingBar = loading.querySelector("#sadv-all-progress-bar");
   const loadingMeta = loading.querySelector("#sadv-all-progress-meta");
+  const loadingPercent = loading.querySelector("#sadv-all-progress-percent");
   let missingDiagnosisMetaCount = null;
+
+  // 시작 시간 기록 (예상 시간 정확도 개선)
+  const startTime = Date.now();
+
   const setProgress = function (label, ratio, note) {
     if (requestId !== allViewReqId || curMode !== CONFIG.MODE.ALL) return;
     if (ratio >= CONFIG.PROGRESS.META_PHASE_RATIO_START && missingDiagnosisMetaCount === 0) return;
     if (loadingDetail) loadingDetail.textContent = label;
     if (loadingBar) loadingBar.style.width = Math.max(6, Math.round(ratio * 100)) + "%";
+    if (loadingPercent) {
+      const percent = Math.round(ratio * 100);
+      loadingPercent.textContent = `${percent}%`;
+      // 진행률 색상 변경 (완료 시 녹색)
+      loadingPercent.style.color = percent >= 100 ? '#00e676' : '#40c4ff';
+    }
     if (loadingMeta && note) loadingMeta.textContent = note;
+
+    // 경과 시간 및 남은 시간 표시
+    if (loadingMeta && ratio < 1) {
+      const elapsed = Date.now() - startTime;
+      const estimatedTotal = elapsed / ratio;
+      const remaining = Math.max(0, estimatedTotal - elapsed);
+      const remainingSeconds = Math.ceil(remaining / 1000);
+      if (remainingSeconds > 5) {
+        const remainingText = remainingSeconds > 60
+          ? `${Math.floor(remainingSeconds / 60)}분 ${remainingSeconds % 60}초`
+          : `${remainingSeconds}초`;
+        loadingMeta.textContent = `${note} (남은 시간: 약 ${remainingText})`;
+      }
+    }
   };
   const exposeResults = [];
   for (let i = 0; i < sitesToLoad.length; i += ALL_SITES_BATCH) {
@@ -45,12 +79,30 @@ async function renderAllSites() {
     );
     const batchResults = await Promise.allSettled(batchSites.map((site) => fetchExposeData(site)));
     if (requestId !== allViewReqId || curMode !== "all") return;
+    let failedCount = 0;
     batchResults.forEach(function (result, offset) {
       exposeResults[i + offset] = result;
       if (result.status === "fulfilled") {
         siteDataBySite[batchSites[offset]] = result.value;
+      } else {
+        // 실패한 사이트 에러 추적
+        failedCount++;
+        const errorDetail = result.reason?.message || result.reason || '알 수 없는 오류';
+        ERROR_TRACKING.reportError({
+          type: 'dataLoadError',
+          phase: 'expose',
+          site: batchSites[offset],
+          error: errorDetail,
+          batchIndex: i + offset,
+          totalSites: sitesToLoad.length
+        });
       }
     });
+    // 배치 실패 시 진행률 메타에 표시
+    if (failedCount > 0 && loadingMeta) {
+      const currentNote = loadingMeta.textContent;
+      loadingMeta.textContent = `${currentNote} (${failedCount}개 사이트 실패 - 자동 재시도됨)`;
+    }
   }
   const metaSitesToLoad = sitesToLoad.filter(function (site) {
     return !hasDiagnosisMetaSnapshot(siteDataBySite[site] || null);
