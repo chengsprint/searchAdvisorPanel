@@ -1,4 +1,72 @@
+// ============================================================
+// P0 SECURITY: DOMPurify Integration for XSS Prevention
+// ============================================================
+
+/**
+ * DOMPurify sanitizer for HTML content
+ * Prevents XSS attacks by sanitizing HTML before injection
+ * @param {string} dirty - Untrusted HTML string
+ * @param {Object} options - DOMPurify configuration options
+ * @returns {string} Sanitized HTML safe for innerHTML use
+ */
+function sanitizeHTML(dirty, options = {}) {
+  // Check if DOMPurify is available
+  if (typeof DOMPurify !== 'undefined' && DOMPurify.sanitize) {
+    const defaultOptions = {
+      ALLOWED_TAGS: [
+        'div', 'span', 'p', 'a', 'strong', 'em', 'i', 'b',
+        'br', 'hr', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+        'table', 'thead', 'tbody', 'tr', 'td', 'th',
+        'svg', 'path', 'line', 'circle', 'rect', 'defs', 'linearGradient',
+        'text', 'g', 'stop', 'style'
+      ],
+      ALLOWED_ATTR: [
+        'class', 'style', 'href', 'data-*', 'id', 'title',
+        'width', 'height', 'viewBox', 'preserveAspectRatio', 'cx', 'cy',
+        'r', 'x', 'x1', 'x2', 'y', 'y1', 'y2', 'fill', 'stroke',
+        'stroke-width', 'stroke-dasharray', 'opacity', 'stop-color',
+        'stop-opacity', 'offset', 'd', 'text-anchor', 'dominant-baseline',
+        'font-size', 'font-weight', 'letter-spacing', 'paint-order',
+        'stroke-linejoin', 'stroke-linecap', 'rx', 'ry', 'transform',
+        'color', 'background', 'border', 'padding', 'margin', 'display',
+        'align-items', 'justify-content', 'gap', 'flex', 'grid',
+        'border-radius', 'box-shadow', 'transition', 'white-space',
+        'overflow', 'text-overflow', 'line-height', 'visibility',
+        'word-break', 'text-align', 'vertical-align', 'position',
+        'top', 'left', 'right', 'bottom', 'z-index', 'cursor',
+        'pointer-events', 'backdrop-filter', 'max-width', 'min-width',
+        'min-height', 'max-height', 'transform-origin', 'filter'
+      ],
+      ALLOW_DATA_ATTR: true,
+      SAFE_FOR_TEMPLATES: true,
+      ADD_ATTR: ['data-*'],
+      FORBID_TAGS: ['script', 'object', 'embed', 'iframe', 'form', 'input', 'button'],
+      FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur']
+    };
+
+    const mergedOptions = { ...defaultOptions, ...options };
+    return DOMPurify.sanitize(dirty, mergedOptions);
+  }
+
+  // Fallback: if DOMPurify is not available, log warning and use escHtml
+  if (typeof window !== 'undefined') {
+    console.warn('[SECURITY] DOMPurify not available. Using basic HTML escaping. This is less secure.');
+    console.warn('[SECURITY] Please ensure DOMPurify is loaded before this script.');
+  }
+
+  // Basic escape as fallback
+  return String(dirty || '')
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+// ============================================================
 // Tooltip helper functions
+// ============================================================
+
 let TIP = null;
 function tip() {
   if (!TIP) {
@@ -11,7 +79,7 @@ function tip() {
 }
 function showTip(e, h) {
   const t = tip();
-  t.innerHTML = escHtml(h);
+  t.innerHTML = sanitizeHTML(escHtml(h));
   t.style.display = "block";
   moveTip(e);
 }
@@ -149,7 +217,7 @@ function sparkline(vals, labels, H, col, unit, opts) {
   svg.setAttribute("viewBox", "0 0 " + W2 + " " + H);
   svg.setAttribute("preserveAspectRatio", "none");
   svg.style.cssText = "display:block;width:100%;height:auto;cursor:crosshair";
-  svg.innerHTML =
+  svg.innerHTML = sanitizeHTML(
 
     '<defs><linearGradient id="' +
 
@@ -157,11 +225,11 @@ function sparkline(vals, labels, H, col, unit, opts) {
 
     '" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="' +
 
-    col +
+    escHtml(col) +
 
     '" stop-opacity="0.22"/><stop offset="100%" stop-color="' +
 
-    col +
+    escHtml(col) +
 
     '" stop-opacity="0.01"/></linearGradient></defs>' +
 
@@ -169,37 +237,38 @@ function sparkline(vals, labels, H, col, unit, opts) {
 
     '<path d="' +
 
-    area +
+    escHtml(area) +
 
     '" fill="url(#' +
 
-    uid +
+    escHtml(uid) +
 
     ')"/><path d="' +
 
-    path +
+    escHtml(path) +
 
     '" fill="none" stroke="' +
 
-    col +
+    escHtml(col) +
 
     '" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/><line id="' +
 
-    wid +
+    escHtml(wid) +
 
     '" x1="0" y1="0" x2="0" y2="' +
 
-    H +
+    escHtml(H) +
 
     '" stroke="#3d5a78" stroke-width="1" stroke-dasharray="3,2" opacity="0"/><circle id="' +
 
-    cid +
+    escHtml(cid) +
 
     '" cx="0" cy="0" r="3.5" fill="' +
 
-    col +
+    escHtml(col) +
 
-    '" stroke="#060b14" stroke-width="1.5" opacity="0"/>';
+    '" stroke="#060b14" stroke-width="1.5" opacity="0"/>'
+  );
 
   svg.addEventListener("mousemove", function (e) {
     const rect = svg.getBoundingClientRect(),
@@ -302,7 +371,7 @@ function barchart(vals, labels, H, col, unit) {
         })
         .join("")
       : "";
-  svg.innerHTML = `<defs><linearGradient id="${uid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${col}" stop-opacity="0.9"/><stop offset="100%" stop-color="${col}" stop-opacity="0.35"/></linearGradient></defs>${guideMarkup}`;
+  svg.innerHTML = sanitizeHTML(`<defs><linearGradient id="${escHtml(uid)}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${escHtml(col)}" stop-opacity="0.9"/><stop offset="100%" stop-color="${escHtml(col)}" stop-opacity="0.35"/></linearGradient></defs>${guideMarkup}`);
   vals.forEach(function (v, i) {
     const bh = Math.max(2, (v / mx) * (H - 4)),
       x = gap + i * (bw + gap),
@@ -369,12 +438,12 @@ function chartCard(title, valueStr, valueCol, svgEl, labelsArr) {
   const hd = document.createElement("div");
   hd.style.cssText =
     "display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px";
-  hd.innerHTML = `<span style="font-size:12px;line-height:1.4;color:#94a3b8;font-weight:600">${escHtml(title)}</span><span style="font-size:14px;line-height:1.2;font-weight:800;color:${valueCol};text-align:right;letter-spacing:-0.01em">${escHtml(valueStr)}</span>`;
+  hd.innerHTML = sanitizeHTML(`<span style="font-size:12px;line-height:1.4;color:#94a3b8;font-weight:600">${escHtml(title)}</span><span style="font-size:14px;line-height:1.2;font-weight:800;color:${valueCol};text-align:right;letter-spacing:-0.01em">${escHtml(valueStr)}</span>`);
   wrap.appendChild(hd);
   wrap.appendChild(svgEl);
   if (labelsArr) {
     const lbl = document.createElement("div");
-    lbl.innerHTML = xlbl(labelsArr);
+    lbl.innerHTML = sanitizeHTML(xlbl(labelsArr));
     wrap.appendChild(lbl);
   }
   return wrap;
@@ -389,7 +458,7 @@ function kpiGrid(items) {
     d.style.cssText =
       "background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px 8px;text-align:center;min-width:0;min-height:90px;display:flex;flex-direction:column;justify-content:center;align-items:center;transition:all 0.2s;box-shadow:0 1px 2px rgba(0,0,0,0.05)";
     const iconHtml = it.icon ? `<div style="margin-bottom:8px;color:${it.color || '#94a3b8'};opacity:0.8">${it.icon}</div>` : "";
-    d.innerHTML = `${iconHtml}<div style="font-size:16px;font-weight:800;color:${it.color || C.text};line-height:1.1;letter-spacing:-0.02em;word-break:keep-all">${escHtml(it.value)}</div><div style="font-size:10px;color:#64748b;line-height:1.4;margin-top:4px;visibility:${it.sub ? "visible" : "hidden"}">${escHtml(it.sub || "&nbsp;")}</div><div style="font-size:10px;color:#94a3b8;line-height:1.4;margin-top:6px;word-break:keep-all;font-weight:500">${escHtml(it.label)}</div>`;
+    d.innerHTML = sanitizeHTML(`${iconHtml}<div style="font-size:16px;font-weight:800;color:${it.color || C.text};line-height:1.1;letter-spacing:-0.02em;word-break:keep-all">${escHtml(it.value)}</div><div style="font-size:10px;color:#64748b;line-height:1.4;margin-top:4px;visibility:${it.sub ? "visible" : "hidden"}">${escHtml(it.sub || "&nbsp;")}</div><div style="font-size:10px;color:#94a3b8;line-height:1.4;margin-top:6px;word-break:keep-all;font-weight:500">${escHtml(it.label)}</div>`);
     g.appendChild(d);
   });
   return g;
@@ -400,36 +469,25 @@ function secTitle(t) {
   const d = document.createElement("div");
   d.style.cssText =
     "font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#64748b;margin:24px 0 12px;display:flex;align-items:center;gap:10px";
-  d.innerHTML =
+  d.innerHTML = sanitizeHTML(
     escHtml(t) +
-    ' <span style="flex:1;height:1px;background:#334155;display:inline-block;opacity:0.3"></span>';
+    ' <span style="flex:1;height:1px;background:#334155;display:inline-block;opacity:0.3"></span>'
+  );
   return d;
 }
 
 // Info box function
 // Security Note: This function uses innerHTML for HTML content. All dynamic values in
-// call sites MUST be escaped using escHtml(). Fixed: 08-renderers.js line 558 (slug value).
-// When adding new ibox() calls with dynamic content, always use escHtml() for user/API data.
-// P0-1: XSS 취약점 수정 - 개발 환경에서 보안 경고 추가
+// call sites MUST be escaped using escHtml() AND sanitized with sanitizeHTML().
+// P0 SECURITY: XSS Prevention - DOMPurify is now applied automatically
 function ibox(type, html) {
-  // 개발 환경에서 잠재적 XSS 위험 경고
-  if (typeof window !== "undefined" &&
-      typeof html === "string" &&
-      html.includes("<") &&
-      !html.includes("&lt;") &&
-      // 이미 escape된 HTML인지 확인 (안전한 패턴)
-      !/^(<span|<div|<b>|<strong>|<em>|<i>|<br|<hr|\/[a-z]+>|\s+)*$/i.test(html)) {
-    console.warn("[SECURITY] ibox() 호출에 원시 HTML이 포함되어 있습니다. 동적 값에는 escHtml()를 사용하세요.");
-    console.warn("[SECURITY] HTML 내용:", html.substring(0, 100));
-    console.trace("[SECURITY] 호출 스택:");
-  }
-
   const col =
     { green: C.green, amber: C.amber, red: C.red, blue: C.blue }[type] ||
       C.blue;
   const d = document.createElement("div");
   d.style.cssText = `border-left:3px solid ${col};background:${col}0d;border-radius:12px;padding:16px;margin-bottom:12px;font-size:12px;line-height:1.6;color:#94a3b8;border:1px solid ${col}22`;
-  d.innerHTML = html; // SECURITY WARNING: Ensure html parameter is sanitized before use
+  // P0 SECURITY: Apply DOMPurify sanitization
+  d.innerHTML = sanitizeHTML(html);
   return d;
 }
 

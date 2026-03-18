@@ -23,18 +23,20 @@ async function renderAllSites() {
     ? `${Math.floor(estimatedTimeSeconds / 60)}분 ${estimatedTimeSeconds % 60}초`
     : `${estimatedTimeSeconds}초`;
 
-  loading.innerHTML =
+  loading.innerHTML = sanitizeHTML(
     '<div style="font-size:13px;font-weight:700;color:#d4ecff;margin-bottom:8px">전체 현황을 준비 중입니다</div>' +
     `<div id="sadv-all-progress-detail" style="font-size:11px;margin-bottom:10px">기본 리포트를 불러오는 중입니다. (예상: ${estimatedTimeText})</div>` +
     '<div style="height:10px;border-radius:999px;background:#0d1829;border:1px solid #1a2d45;overflow:hidden"><div id="sadv-all-progress-bar" style="width:6%;height:100%;background:linear-gradient(90deg,#40c4ff,#00e676)"></div></div>' +
     '<div id="sadv-all-progress-meta" style="font-size:10px;color:#3d5a78;margin-top:8px">메타 진단은 2개씩 천천히 요청합니다.</div>' +
-    '<div id="sadv-all-progress-percent" style="font-size:11px;color:#40c4ff;margin-top:4px;font-weight:600">0%</div>';
+    '<div id="sadv-all-progress-percent" style="font-size:11px;color:#40c4ff;margin-top:4px;font-weight:600">0%</div>'
+  );
   bdEl.innerHTML = "";
   bdEl.appendChild(loading);
 
   if (!allSites.length) {
-    bdEl.innerHTML =
-      '<div style="padding:30px 20px;text-align:center"><div style="font-size:32px">⚠️</div><div style="color:#ffca28;font-weight:700;margin:10px 0">사이트 목록을 찾을 수 없어요</div><div style="color:#7a9ab8;font-size:12px;line-height:2">↻ 버튼을 눌러 새로고침 해보세요<br>또는 서치어드바이저 콘솔 페이지에서 실행해주세요</div></div>';
+    bdEl.innerHTML = sanitizeHTML(
+      '<div style="padding:30px 20px;text-align:center"><div style="font-size:32px">⚠️</div><div style="color:#ffca28;font-weight:700;margin:10px 0">사이트 목록을 찾을 수 없어요</div><div style="color:#7a9ab8;font-size:12px;line-height:2">↻ 버튼을 눌러 새로고침 해보세요<br>또는 서치어드바이저 콘솔 페이지에서 실행해주세요</div></div>'
+    );
     return;
   }
   const sitesToLoad = allSites;
@@ -176,11 +178,11 @@ async function renderAllSites() {
     kpiData.forEach(kpi => {
       const kpiCard = document.createElement("div");
       kpiCard.style.cssText = `background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px;text-align:center`;
-      kpiCard.innerHTML = `
-        <div style="font-size:11px;color:#94a3b8;margin-bottom:4px">${kpi.label}</div>
-        <div style="font-size:20px;font-weight:800;color:${kpi.color};line-height:1.1;margin-bottom:4px">${kpi.value}</div>
-        <div style="font-size:10px;color:#64748b">${kpi.sub}</div>
-      `;
+      kpiCard.innerHTML = sanitizeHTML(`
+        <div style="font-size:11px;color:#94a3b8;margin-bottom:4px">${escHtml(kpi.label)}</div>
+        <div style="font-size:20px;font-weight:800;color:${kpi.color};line-height:1.1;margin-bottom:4px">${escHtml(kpi.value)}</div>
+        <div style="font-size:10px;color:#64748b">${escHtml(kpi.sub)}</div>
+      `);
       mobileKpiWrapper.appendChild(kpiCard);
     });
 
@@ -231,7 +233,7 @@ async function renderAllSites() {
     const fontSizeValue = isMobile ? "font-size:14px" : "font-size:15px";
     const fontSizeLabel = isMobile ? "font-size:9px" : "font-size:10px";
 
-    card.innerHTML =
+    card.innerHTML = sanitizeHTML(
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="display:flex;align-items:center;gap:8px;min-width:0"><div style="width:10px;height:10px;border-radius:50%;background:' +
       col +
       ';flex-shrink:0;box-shadow:0 0 0 4px ' +
@@ -288,24 +290,26 @@ async function renderAllSites() {
     const indexBlock = document.createElement("div");
     indexBlock.style.cssText = "margin-top:12px;padding-top:12px;border-top:1px solid #334155";
     if (r.diagnosisIndexedValues && r.diagnosisIndexedValues.length > 1) {
-      indexBlock.innerHTML =
+      indexBlock.innerHTML = sanitizeHTML(
         '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px"><span style="font-size:11px;font-weight:700;color:#94a3b8">색인 추이</span><span style="font-size:13px;font-weight:800;color:' +
         col +
         '">' +
-        fmt(r.diagnosisIndexedCurrent) +
-        '건</span></div>';
+        escHtml(fmt(r.diagnosisIndexedCurrent)) +
+        '건</span></div>'
+      );
       const indexMini = sparkline(r.diagnosisIndexedValues, r.diagnosisIndexedDates, 44, col, "건", { minValue: 0 });
       indexMini.style.cssText += "opacity:.9";
       indexBlock.appendChild(indexMini);
     } else {
       const metaCode = r.diagnosisMetaCode == null ? "-" : String(r.diagnosisMetaCode);
       const httpText = r.diagnosisMetaStatus == null ? "-" : String(r.diagnosisMetaStatus);
-      indexBlock.innerHTML =
+      indexBlock.innerHTML = sanitizeHTML(
         '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px"><span style="font-size:11px;font-weight:700;color:#94a3b8">색인 추이</span><span style="font-size:12px;color:#64748b">응답 확인</span></div><div style="font-size:11px;line-height:1.5;color:#64748b">HTTP ' +
         escHtml(httpText) +
         " / code " +
         escHtml(metaCode) +
-        "</div>";
+        "</div>"
+      );
     }
     card.appendChild(indexBlock);
     card.dataset.site = r.site;

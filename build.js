@@ -21,12 +21,27 @@ const MODULES = [
   'app/main/00-constants.js',
   'app/main/01-helpers.js',
   'app/main/02-dom-init.js',
-  'app/main/03-data-manager.js',
+  // Data manager modules (split for maintainability)
+  'app/main/03-data-cache.js',    // Cache management
+  'app/main/03-data-v2.js',       // V2 processing
+  'app/main/03-data-api.js',      // API calls
+  'app/main/03-data-state.js',    // State management
+  'app/main/03-data-manager.js',  // Entry point (re-exports APIs)
   'app/main/04-api.js',
   'app/main/05-demo-mode.js',
   'app/main/06-merge-manager.js',
   'app/main/07-ui-state.js',
-  'app/main/08-renderers.js',
+  // Renderer modules (must be in this order)
+  'app/main/08-renderers-overview.js',
+  'app/main/08-renderers-daily.js',
+  'app/main/08-renderers-queries.js',
+  'app/main/08-renderers-pages.js',
+  'app/main/08-renderers-pattern.js',
+  'app/main/08-renderers-crawl.js',
+  'app/main/08-renderers-backlink.js',
+  'app/main/08-renderers-diagnosis.js',
+  'app/main/08-renderers-insight.js',
+  'app/main/08-renderers.js',  // Main registry (now refactored)
   'app/main/09-ui-controls.js',
   'app/main/10-all-sites-view.js',
   'app/main/12-snapshot.js',  // Must be before 11-site-view.js (provides fetchSiteData)
