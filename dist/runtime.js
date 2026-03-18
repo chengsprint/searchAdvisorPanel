@@ -177,7 +177,15 @@ const CONFIG = {
   UI: {
     PANEL_WIDTH: 490,
     PANEL_PADDING: 32,
-    Z_INDEX_TOOLTIP: 10000000
+    Z_INDEX_TOOLTIP: 10000000,
+    MOBILE_BREAKPOINT: 768,
+    MOBILE_PANEL_WIDTH: '100vw',
+    MIN_TOUCH_TARGET: 44,
+    RESPONSIVE: {
+      MOBILE: 768,
+      TABLET: 1024,
+      DESKTOP: 1280
+    }
   },
   CHART: {
     MIN_HEIGHT: 65,
@@ -185,7 +193,12 @@ const CONFIG = {
     TOOLTIP_OFFSET: { X: 14, Y: 36 },
     BAR_GAP: 3,
     MIN_BAR_WIDTH: 3,
-    Y_AXIS_COLLISION_THRESHOLD: 8
+    Y_AXIS_COLLISION_THRESHOLD: 8,
+    RESPONSIVE: {
+      MOBILE_HEIGHT: 55,
+      MOBILE_BAR_GAP: 2,
+      MOBILE_PADDING: { LEFT: 2, RIGHT: 2, TOP: 4, BOTTOM: 4 }
+    }
   },
   RETRY: {
     JITTER_MS: 500,
@@ -808,6 +821,103 @@ const FULL_REFRESH_BATCH_SIZE = 1;
 const FULL_REFRESH_SITE_DELAY_MS = 350;
 const FULL_REFRESH_JITTER_MS = 150;
 
+// ============================================================
+// P1: USER-FRIENDLY ERROR MESSAGES
+// ============================================================
+const ERROR_MESSAGES = {
+  // Network/Fetch Errors
+  NETWORK_ERROR: "네트워크 연결을 확인하고 다시 시도해주세요.",
+  REQUEST_TIMEOUT: "요청 시간이 초과했어요. 잠시 후 다시 시도해주세요.",
+  MAX_RETRIES_EXCEEDED: "데이터를 불러오는 데 실패했습니다. 잠시 후 다시 시도해주세요.",
+  INVALID_ENCID: "사용자 정보를 찾을 수 없어요. 서치어드바이저 페이지에서 다시 실행해주세요.",
+
+  // Data Loading Errors
+  DATA_LOAD_ERROR: "데이터를 불러오는 중 오류가 발생했어요.",
+  DATA_LOAD_FAILED: "데이터를 불러오는 데 실패했습니다. 잠시 후 다시 시도해주세요.",
+  NO_SITE_DATA: "이 사이트의 데이터가 없습니다.",
+  EXPOSE_DATA_MISSING: "기본 리포트 데이터가 없어요.",
+  DETAIL_DATA_MISSING: "상세 정보를 불러올 수 없어요.",
+
+  // Download/Export Errors
+  DOWNLOAD_FAILED: "파일 다운로드에 실패했어요. 다시 시도해주세요.",
+  HTML_SAVE_ERROR: "HTML 저장 중 오류가 발생했어요. 다시 시도해주세요.",
+  EXPORT_INCOMPLETE: "일부 사이트 데이터를 내보내지 못했어요.",
+
+  // Import/Merge Errors
+  IMPORT_FAILED: "데이터 가져오기에 실패했어요.",
+  IMPORT_FORMAT_ERROR: "지원하지 않는 파일 형식이에요. V2 형식 파일을 사용해주세요.",
+  MERGE_FAILED: "데이터 병합에 실패했어요.",
+  NO_VALID_ACCOUNTS: "가져올 계정 데이터가 없어요.",
+
+  // UI Errors
+  SITE_NOT_FOUND: "사이트를 찾을 수 없어요.",
+  SNAPSHOT_PANEL_NOT_FOUND: "패널을 찾을 수 없어요.",
+  RENDER_ERROR: "화면 표시 중 오류가 발생했어요.",
+
+  // Storage Errors
+  STORAGE_ERROR: "데이터 저장 중 오류가 발생했어요.",
+  CACHE_ERROR: "캐시 데이터를 읽는 중 오류가 발생했어요.",
+
+  // Validation Errors
+  INVALID_PAYLOAD: "데이터 형식이 올바르지 않아요.",
+  INVALID_ACCOUNT_DATA: "계정 데이터가 올바르지 않아요.",
+  DATA_INCONSISTENCY: "데이터 일관성 검사에 실패했어요.",
+
+  // Generic Errors
+  UNKNOWN_ERROR: "알 수 없는 오류가 발생했어요. 잠시 후 다시 시도해주세요.",
+  RETRY_LATER: "잠시 후 다시 시도해주세요.",
+  CONTACT_SUPPORT: "문제가 지속되면 고객센터에 문의해주세요."
+};
+
+// Helper function to display user-friendly errors
+function showError(userMessage, technicalError = null, context = null) {
+  // Log technical error for debugging
+  if (technicalError) {
+    console.error('[Error]', context || 'Unknown', technicalError);
+  }
+
+  // Report to error tracking system
+  if (typeof ERROR_TRACKING !== 'undefined' && ERROR_TRACKING.reportError) {
+    ERROR_TRACKING.reportError({
+      type: 'userError',
+      message: userMessage,
+      technicalError: technicalError?.message || String(technicalError),
+      context: context
+    });
+  }
+
+  return userMessage;
+}
+
+// Helper function to create inline error message element
+function createInlineError(message, actionCallback = null, actionText = '다시 시도') {
+  const container = document.createElement('div');
+  container.style.cssText = 'padding:20px;text-align:center;background:#0f172a;border:1px solid #334155;border-radius:12px;margin:16px 0';
+
+  const icon = document.createElement('div');
+  icon.style.cssText = 'font-size:32px;margin-bottom:12px;color:#ef4444';
+  icon.textContent = '⚠️';
+
+  const messageEl = document.createElement('div');
+  messageEl.style.cssText = 'color:#f8fafc;font-weight:700;font-size:14px;margin-bottom:8px';
+  messageEl.textContent = message;
+
+  container.appendChild(icon);
+  container.appendChild(messageEl);
+
+  if (actionCallback) {
+    const button = document.createElement('button');
+    button.style.cssText = 'margin-top:12px;padding:8px 16px;background:#0ea5e9;color:#f8fafc;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.2s';
+    button.textContent = actionText;
+    button.onmouseover = () => button.style.background = '#0284c7';
+    button.onmouseout = () => button.style.background = '#0ea5e9';
+    button.onclick = actionCallback;
+    container.appendChild(button);
+  }
+
+  return container;
+}
+
 async function fetchWithRetry(url, options, maxRetries = 2) {
   let attempt = 0;
   while (attempt <= maxRetries) {
@@ -825,8 +935,9 @@ async function fetchWithRetry(url, options, maxRetries = 2) {
       clearTimeout(timeoutId);
       if (e.name === 'AbortError') {
         console.error('[fetchWithRetry] Request timeout:', url);
+        throw new Error(ERROR_MESSAGES.REQUEST_TIMEOUT);
       }
-      if (attempt === maxRetries) throw e;
+      if (attempt === maxRetries) throw new Error(ERROR_MESSAGES.MAX_RETRIES_EXCEEDED);
     }
     attempt++;
     if (attempt <= maxRetries) {
@@ -835,7 +946,7 @@ async function fetchWithRetry(url, options, maxRetries = 2) {
       await new Promise((r) => setTimeout(r, delay + jitter));
     }
   }
-  throw new Error("Max retries exceeded");
+  throw new Error(ERROR_MESSAGES.MAX_RETRIES_EXCEEDED);
 }
 
 // Tooltip helper functions
@@ -1864,14 +1975,14 @@ if (old) {
 // Inject style to adjust HTML margin for the panel
 const inj = document.createElement("style");
 inj.id = "sadv-inj";
-inj.textContent = `html{margin-right:min(${PNL}px,100vw) !important;transition:margin-right .25s ease;box-sizing:border-box;}`;
+inj.textContent = `html{margin-right:min(${PNL}px,100vw) !important;transition:margin-right .25s ease;box-sizing:border-box}@media(max-width:${CONFIG.UI.MOBILE_BREAKPOINT}px){html{margin-right:0 !important}}`;
 document.head.appendChild(inj);
 
 // Create main panel
 const p = document.createElement("div");
 p.id = "sadv-p";
 p.style.cssText = `position:fixed;top:0;right:0;width:min(${PNL}px,100vw);max-width:100vw;height:100vh;display:flex;flex-direction:column;background:#020617;z-index:9999999;font-family:Pretendard,system-ui,sans-serif;font-size:13px;color:#f8fafc;border-left:1px solid #334155;box-sizing:border-box;box-shadow:-10px 0 15px -3px rgba(0,0,0,0.1)`;
-p.innerHTML = `<style>#sadv-p *{box-sizing:border-box}#sadv-p ::-webkit-scrollbar{width:6px}#sadv-p ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}#sadv-header{padding:20px;border-bottom:1px solid #1e293b;background:rgba(2,6,23,0.8);backdrop-filter:blur(12px)}#sadv-mode-bar{display:flex;gap:4px;margin-top:16px;background:#0f172a;padding:4px;border-radius:12px;border:1px solid #334155}.sadv-mode{flex:1;background:transparent;border:none;color:#94a3b8;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}.sadv-mode.on{background:#1e293b;color:#0ea5e9;box-shadow:0 4px 6px -1px rgba(0,0,0,0.2)}#sadv-site-bar{margin-top:12px;position:relative;display:none}#sadv-site-bar.show{display:block}#sadv-combo-wrap{position:relative}#sadv-combo-btn{width:100%;background:#0f172a;border:1px solid #334155;color:#f8fafc;border-radius:10px;padding:10px 36px 10px 12px;font-size:13px;cursor:pointer;text-align:left;font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:10px}#sadv-combo-btn:hover{border-color:#0ea5e9;background:#1e293b}#sadv-combo-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#64748b}#sadv-combo-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:500}#sadv-combo-arrow{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#64748b;font-size:12px;pointer-events:none;transition:transform .2s}#sadv-combo-wrap.open #sadv-combo-arrow{transform:translateY(-50%) rotate(180deg)}#sadv-combo-drop{display:none;position:absolute;top:calc(100% + 8px);left:0;right:0;background:#0f172a;border:1px solid #334155;border-radius:12px;padding:6px;z-index:100;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);max-height:300px;overflow-y:auto}#sadv-combo-wrap.open #sadv-combo-drop{display:block}.sadv-combo-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;cursor:pointer;transition:all .1s;border:1px solid transparent}.sadv-combo-item:hover{background:#1e293b}.sadv-combo-item.active{background:#1e293b;border-color:#334155;color:#0ea5e9}#sadv-tabs{display:none;flex-wrap:wrap;gap:6px;padding:12px 20px;background:#020617;border-bottom:1px solid #1e293b;justify-content:center}#sadv-tabs.show{display:flex;justify-content:center}#sadv-tabs::-webkit-scrollbar{display:none}.sadv-t{background:transparent;border:1px solid transparent;color:#64748b;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}.sadv-t:hover{color:#f8fafc;background:#1e293b}.sadv-t.on{background:rgba(14,165,233,0.1);border-color:rgba(14,165,233,0.2);color:#0ea5e9}#sadv-refresh-btn{display:inline-flex;align-items:center;gap:6px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s}#sadv-refresh-btn:hover{border-color:#0ea5e9;color:#0ea5e9;background:#1e293b}#sadv-bd{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px}#sadv-tabpanel{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px}.sadv-allcard{background:#0f172a;border:1px solid #1e293b;border-radius:16px;padding:20px;margin-bottom:16px;cursor:pointer;transition:all .2s}.sadv-allcard:hover{border-color:#334155;transform:translateY(-2px)}</style><div id="sadv-header"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:7px;font-size:18px;font-weight:800;letter-spacing:-0.03em"><span style="display:inline-flex;opacity:0.95">${ICONS.logoSearch}</span>Search<span style="color:#10b981">Advisor</span></div><div id="sadv-account-badge" style="display:none;padding:4px 12px;border-radius:999px;border:1px solid #1e293b;color:#0ea5e9;background:rgba(15,23,42,0.6);font-size:11px;font-weight:600;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div></div><div id="sadv-site-label" style="font-size:11px;color:#64748b;margin-top:4px;display:flex;align-items:center;gap:4px">\ub85c\ub529 \uc911...</div></div><div style="display:flex;gap:8px;align-items:center"><button id="sadv-refresh-btn" class="sadv-btn" title="새로고침" style="display:inline-flex;align-items:center;gap:5px">${ICONS.refresh} 새로고침</button><button id="sadv-save-btn" class="sadv-btn" title="현재 화면 저장" style="display:inline-flex;align-items:center;gap:5px">${ICONS.save} 저장</button><button id="sadv-x" style="background:none;border:1px solid #1e293b;color:#475569;width:32px;height:32px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s">${ICONS.xMark}</button></div></div><div id="sadv-mode-bar"><button class="sadv-mode on" data-m="all" style="display:inline-flex;align-items:center;justify-content:center;gap:5px">${ICONS.globe} 전체현황</button><button class="sadv-mode" data-m="site" style="display:inline-flex;align-items:center;justify-content:center;gap:5px">${ICONS.layers} 사이트별</button></div><div id="sadv-site-bar"><div id="sadv-combo-wrap"><button id="sadv-combo-btn"><span id="sadv-combo-dot"></span><span id="sadv-combo-label">\uc0ac\uc774\ud2b8 \uc120\ud0dd</span></button><span id="sadv-combo-arrow" style="display:inline-flex;align-items:center">${ICONS.chevronDown}</span><div id="sadv-combo-drop"></div></div></div></div><div id="sadv-tabs"></div><div id="sadv-bd"><div style="padding:60px 20px;text-align:center;color:#64748b">⏳ \ub85c\ub529 \uc911...</div></div>`;
+p.innerHTML = `<style>#sadv-p *{box-sizing:border-box}#sadv-p ::-webkit-scrollbar{width:6px}#sadv-p ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}#sadv-header{padding:20px;border-bottom:1px solid #1e293b;background:rgba(2,6,23,0.8);backdrop-filter:blur(12px)}#sadv-mode-bar{display:flex;gap:4px;margin-top:16px;background:#0f172a;padding:4px;border-radius:12px;border:1px solid #334155}.sadv-mode{flex:1;background:transparent;border:none;color:#94a3b8;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}.sadv-mode.on{background:#1e293b;color:#0ea5e9;box-shadow:0 4px 6px -1px rgba(0,0,0,0.2)}#sadv-site-bar{margin-top:12px;position:relative;display:none}#sadv-site-bar.show{display:block}#sadv-combo-wrap{position:relative}#sadv-combo-btn{width:100%;background:#0f172a;border:1px solid #334155;color:#f8fafc;border-radius:10px;padding:10px 36px 10px 12px;font-size:13px;cursor:pointer;text-align:left;font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:10px}#sadv-combo-btn:hover{border-color:#0ea5e9;background:#1e293b}#sadv-combo-btn:focus-visible{outline:2px solid #0ea5e9;outline-offset:2px;box-shadow:0 0 0 4px rgba(14, 165, 233, 0.1)}#sadv-combo-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#64748b}#sadv-combo-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:500}#sadv-combo-arrow{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#64748b;font-size:12px;pointer-events:none;transition:transform .2s}#sadv-combo-wrap.open #sadv-combo-arrow{transform:translateY(-50%) rotate(180deg)}#sadv-combo-drop{display:none;position:absolute;top:calc(100% + 8px);left:0;right:0;background:#0f172a;border:1px solid #334155;border-radius:12px;padding:6px;z-index:100;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);max-height:300px;overflow-y:auto}#sadv-combo-wrap.open #sadv-combo-drop{display:block}.sadv-combo-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;cursor:pointer;transition:all .1s;border:1px solid transparent}.sadv-combo-item:hover{background:#1e293b}.sadv-combo-item:focus-visible{outline:2px solid #0ea5e9;outline-offset:-2px}.sadv-combo-item.active{background:#1e293b;border-color:#334155;color:#0ea5e9}#sadv-tabs{display:none;flex-wrap:wrap;gap:6px;padding:12px 20px;background:#020617;border-bottom:1px solid #1e293b;justify-content:center}#sadv-tabs.show{display:flex;justify-content:center}#sadv-tabs::-webkit-scrollbar{display:none}.sadv-t{background:transparent;border:1px solid transparent;color:#64748b;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}.sadv-t:hover{color:#f8fafc;background:#1e293b}.sadv-t.on{background:rgba(14,165,233,0.1);border-color:rgba(14,165,233,0.2);color:#0ea5e9}#sadv-refresh-btn{display:inline-flex;align-items:center;gap:6px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s}#sadv-refresh-btn:hover{border-color:#0ea5e9;color:#0ea5e9;background:#1e293b}#sadv-refresh-btn:focus-visible{outline:2px solid #0ea5e9;outline-offset:2px;box-shadow:0 0 0 4px rgba(14, 165, 233, 0.1)}#sadv-bd{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px}#sadv-tabpanel{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px}.sadv-allcard{background:#0f172a;border:1px solid #1e293b;border-radius:16px;padding:20px;margin-bottom:16px;cursor:pointer;transition:all .2s}.sadv-allcard:hover{border-color:#334155;transform:translateY(-2px)}</style><div id="sadv-header"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:7px;font-size:18px;font-weight:800;letter-spacing:-0.03em"><span style="display:inline-flex;opacity:0.95">${ICONS.logoSearch}</span>Search<span style="color:#10b981">Advisor</span></div><div id="sadv-account-badge" style="display:none;padding:4px 12px;border-radius:999px;border:1px solid #1e293b;color:#0ea5e9;background:rgba(15,23,42,0.6);font-size:11px;font-weight:600;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div></div><div id="sadv-site-label" style="font-size:11px;color:#64748b;margin-top:4px;display:flex;align-items:center;gap:4px">\ub85c\ub529 \uc911...</div></div><div style="display:flex;gap:8px;align-items:center"><button id="sadv-refresh-btn" class="sadv-btn" title="새로고침" style="display:inline-flex;align-items:center;gap:5px">${ICONS.refresh} 새로고침</button><button id="sadv-save-btn" class="sadv-btn" title="현재 화면 저장" style="display:inline-flex;align-items:center;gap:5px">${ICONS.save} 저장</button><button id="sadv-x" style="background:none;border:1px solid #1e293b;color:#475569;width:32px;height:32px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s">${ICONS.xMark}</button></div></div><div id="sadv-mode-bar"><button class="sadv-mode on" data-m="all" style="display:inline-flex;align-items:center;justify-content:center;gap:5px">${ICONS.globe} 전체현황</button><button class="sadv-mode" data-m="site" style="display:inline-flex;align-items:center;justify-content:center;gap:5px">${ICONS.layers} 사이트별</button></div><div id="sadv-site-bar"><div id="sadv-combo-wrap"><button id="sadv-combo-btn"><span id="sadv-combo-dot"></span><span id="sadv-combo-label">\uc0ac\uc774\ud2b8 \uc120\ud0dd</span></button><span id="sadv-combo-arrow" style="display:inline-flex;align-items:center">${ICONS.chevronDown}</span><div id="sadv-combo-drop"></div></div></div></div><div id="sadv-tabs"></div><div id="sadv-bd"><div style="padding:60px 20px;text-align:center;color:#64748b">⏳ \ub85c\ub529 \uc911...</div></div>`;
 document.body.appendChild(p);
 
 // Add additional UI styles
@@ -1910,6 +2021,11 @@ siteUiStyle.textContent = `
   border-color:rgba(14, 165, 233, 0.2);
   color:#0ea5e9;
 }
+.sadv-t:focus-visible{
+  outline:2px solid #0ea5e9;
+  outline-offset:2px;
+  box-shadow:0 0 0 4px rgba(14, 165, 233, 0.1);
+}
 #sadv-bd{
   padding:20px;
 }
@@ -1933,16 +2049,154 @@ siteUiStyle.textContent = `
   color:#0ea5e9;
   background:#1e293b;
 }
+#sadv-save-btn:focus-visible{
+  outline:2px solid #0ea5e9;
+  outline-offset:2px;
+  box-shadow:0 0 0 4px rgba(14, 165, 233, 0.1);
+}
 #sadv-x:hover {
   border-color:#ef4444;
   color:#ef4444;
   background:rgba(239,68,68,0.1);
 }
+#sadv-x:focus-visible{
+  outline:2px solid #ef4444;
+  outline-offset:2px;
+  box-shadow:0 0 0 4px rgba(239, 68, 68, 0.1);
+}
+.sadv-mode:focus-visible{
+  outline:2px solid #0ea5e9;
+  outline-offset:2px;
+  box-shadow:0 0 0 4px rgba(14, 165, 233, 0.1);
+}
+.sadv-allcard:focus-visible{
+  outline:2px solid #0ea5e9;
+  outline-offset:2px;
+  box-shadow:0 0 0 4px rgba(14, 165, 233, 0.1);
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  #sadv-p {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    border-left: none;
+  }
+
+  #sadv-p ::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  #sadv-header {
+    padding: 16px !important;
+  }
+
+  #sadv-mode-bar {
+    margin-top: 12px;
+  }
+
+  .sadv-mode {
+    padding: 12px;
+    font-size: 13px;
+    min-height: 44px;
+  }
+
+  #sadv-site-bar {
+    margin-top: 8px;
+  }
+
+  #sadv-combo-btn {
+    padding: 12px 40px 12px 14px;
+    font-size: 14px;
+    min-height: 44px;
+  }
+
+  #sadv-combo-dot {
+    width: 10px;
+    height: 10px;
+  }
+
+  #sadv-combo-label {
+    font-size: 14px;
+  }
+
+  #sadv-combo-drop {
+    max-height: 50vh;
+  }
+
+  .sadv-combo-item {
+    padding: 12px;
+    gap: 12px;
+    min-height: 44px;
+  }
+
+  #sadv-tabs {
+    padding: 10px 16px;
+    gap: 4px;
+    justify-content: flex-start;
+  }
+
+  .sadv-t {
+    padding: 8px 10px;
+    font-size: 11px;
+    min-height: 40px;
+  }
+
+  #sadv-bd, #sadv-tabpanel {
+    padding: 16px;
+  }
+
+  .sadv-allcard {
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+
+  #sadv-refresh-btn, #sadv-save-btn {
+    padding: 10px 14px;
+    font-size: 13px;
+    min-height: 44px;
+  }
+
+  #sadv-x {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 480px) {
+  #sadv-header {
+    padding: 12px !important;
+  }
+
+  #sadv-mode-bar {
+    gap: 2px;
+  }
+
+  .sadv-mode {
+    padding: 10px;
+    font-size: 12px;
+  }
+
+  #sadv-tabs {
+    padding: 8px 12px;
+    gap: 3px;
+  }
+
+  .sadv-t {
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+
+  #sadv-bd, #sadv-tabpanel {
+    padding: 12px;
+  }
+}
 `;
 p.appendChild(siteUiStyle);
 
-// Setup close button handler
-document.getElementById("sadv-x").onclick = function () {
+// Setup close button handler with keyboard support
+const closeBtn = document.getElementById("sadv-x");
+closeBtn.onclick = function () {
   p.remove();
   document.getElementById("sadv-inj") &&
     document.getElementById("sadv-inj").remove();
@@ -1951,13 +2205,41 @@ document.getElementById("sadv-x").onclick = function () {
     TIP = null;
   }
 };
+closeBtn.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    closeBtn.click();
+  }
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    closeBtn.click();
+  }
+});
 
 // Helper functions
 // Note: escHtml() is provided by 01-helpers.js
+
+/**
+ * Pad a number with leading zeros to ensure 2 digits
+ * @param {number|string} v - Value to pad
+ * @returns {string} Two-digit string with leading zeros
+ * @example
+ * pad2(5) // returns "05"
+ * pad2(12) // returns "12"
+ */
 function pad2(v) {
   return String(v).padStart(2, "0");
 }
 
+/**
+ * Generate a filename timestamp from a date object
+ * Format: YYYYMMDD-HHmmss
+ * @param {Date} d - Date object
+ * @returns {string} Formatted timestamp string
+ * @example
+ * stampFile(new Date(2026, 2, 15, 14, 30, 45)) // returns "20260315-143045"
+ * @see {stampLabel}
+ */
 function stampFile(d) {
   return (
     d.getFullYear() +
@@ -1970,6 +2252,15 @@ function stampFile(d) {
   );
 }
 
+/**
+ * Generate a human-readable timestamp label from a date object
+ * Format: YYYY.MM.DD HH:mm:ss
+ * @param {Date} d - Date object
+ * @returns {string} Formatted timestamp string
+ * @example
+ * stampLabel(new Date(2026, 2, 15, 14, 30, 45)) // returns "2026.03.15 14:30:45"
+ * @see {stampFile}
+ */
 function stampLabel(d) {
   return (
     d.getFullYear() +
@@ -1986,6 +2277,15 @@ function stampLabel(d) {
   );
 }
 
+/**
+ * Convert a value to a filesystem-safe filename
+ * Removes protocol, replaces special characters with hyphens
+ * @param {string} v - Value to convert (URL, email, etc.)
+ * @returns {string} Filesystem-safe string (max 80 chars)
+ * @example
+ * fileSafe('https://example.com/path') // returns "example-com-path"
+ * fileSafe('user@example.com') // returns "userexample-com"
+ */
 function fileSafe(v) {
   return String(v || "snapshot")
     .replace(/^https?:\/\//, "")
@@ -1996,6 +2296,15 @@ function fileSafe(v) {
     .slice(0, 80);
 }
 
+/**
+ * Extract account identifier from an email address or label
+ * @param {string} v - Email address or account label
+ * @returns {string} Filesystem-safe account identifier
+ * @example
+ * accountIdFromLabel('user@example.com') // returns "user"
+ * accountIdFromLabel('unknown') // returns "unknown"
+ * @see {fileSafe}
+ */
 function accountIdFromLabel(v) {
   const raw = String(v || "").trim();
   const localPart = raw.includes("@") ? raw.split("@")[0] : raw;
@@ -2006,6 +2315,16 @@ function accountIdFromLabel(v) {
 // 이제 ACCOUNT_UTILS.getAccountLabel()을 사용하세요.
 // getAccountLabel()은 ACCOUNT_UTILS로 이동됨.
 
+/**
+ * Apply account label badge to the UI header
+ * Shows or hides the account badge based on the provided label
+ * @param {string|null} accountLabel - Account email/label to display, or null to hide
+ * @returns {void}
+ * @example
+ * applyAccountBadge('user@example.com') // Shows badge with email
+ * applyAccountBadge(null) // Hides badge
+ * @see {ACCOUNT_UTILS.getAccountLabel}
+ */
 function applyAccountBadge(accountLabel) {
   const badge = document.getElementById("sadv-account-badge");
   if (!badge) return;
@@ -2030,6 +2349,151 @@ window.__sadvTabsEl = document.getElementById("sadv-tabs");
 let allSites = [];
 const memCache = {};
 
+// ============================================================================
+// P1: localStorage Race Condition Fix - Write Queue System
+// ============================================================================
+let writeQueue = Promise.resolve();
+const writeLocks = new Map(); // Key-based locks for optimistic locking
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 100;
+
+/**
+ * Execute a write operation with queue serialization and optimistic locking
+ * @param {string} key - localStorage key
+ * @param {Function} writeFn - Function that performs the write operation
+ * @param {Object} options - Options { retries: number, skipLock: boolean }
+ * @returns {Promise<void>}
+ */
+function safeWrite(key, writeFn, options = {}) {
+  const { retries = MAX_RETRIES, skipLock = false } = options;
+
+  // Add to write queue for serialization
+  writeQueue = writeQueue.then(async () => {
+    let attempt = 0;
+
+    while (attempt <= retries) {
+      try {
+        // Optimistic lock check
+        if (!skipLock && writeLocks.has(key)) {
+          const lockInfo = writeLocks.get(key);
+          const age = Date.now() - lockInfo.timestamp;
+          // Lock is stale (older than 5 seconds), break it
+          if (age > 5000) {
+            writeLocks.delete(key);
+          } else {
+            // Lock is active, wait and retry
+            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+            attempt++;
+            continue;
+          }
+        }
+
+        // Acquire lock
+        const lockId = Math.random().toString(36).substr(2, 9);
+        if (!skipLock) {
+          writeLocks.set(key, { id: lockId, timestamp: Date.now() });
+        }
+
+        // Execute write function
+        await writeFn();
+
+        // Release lock
+        if (!skipLock && writeLocks.get(key)?.id === lockId) {
+          writeLocks.delete(key);
+        }
+
+        return; // Success
+      } catch (e) {
+        // Release lock on error
+        if (!skipLock && writeLocks.get(key)?.id === lockId) {
+          writeLocks.delete(key);
+        }
+
+        // Handle QuotaExceededError with cache cleanup
+        if (e.name === 'QuotaExceededError') {
+          console.warn('[safeWrite] Quota exceeded, cleaning cache...');
+          const cleaned = cleanupOldCache();
+
+          if (!cleaned && attempt >= retries) {
+            throw new Error('localStorage quota exceeded and no old cache to clean');
+          }
+        }
+
+        // Retry logic
+        if (attempt >= retries) {
+          throw e;
+        }
+
+        attempt++;
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+      }
+    }
+  });
+
+  return writeQueue;
+}
+
+/**
+ * Clean up old cache entries to free space
+ * @returns {boolean} True if cache was cleaned, false if nothing to clean
+ */
+function cleanupOldCache() {
+  try {
+    const keysToCheck = Object.keys(localStorage);
+    const now = Date.now();
+    let cleaned = false;
+
+    // Sort keys by cache timestamp (oldest first)
+    const cacheEntries = [];
+    for (const key of keysToCheck) {
+      if (key.startsWith(DATA_LS_PREFIX)) {
+        try {
+          const value = localStorage.getItem(key);
+          if (!value) continue;
+
+          const data = JSON.parse(value);
+          const timestamp = data.ts || data.__cacheSavedAt || data.__fetched_at || 0;
+
+          cacheEntries.push({ key, timestamp });
+        } catch (e) {
+          // Invalid data, mark for removal
+          cacheEntries.push({ key, timestamp: 0 });
+        }
+      }
+    }
+
+    // Sort by timestamp (oldest first)
+    cacheEntries.sort((a, b) => a.timestamp - b.timestamp);
+
+    // Remove oldest entries that are expired
+    for (const entry of cacheEntries) {
+      if (now - entry.timestamp > DATA_TTL) {
+        localStorage.removeItem(entry.key);
+        cleaned = true;
+        console.log(`[cleanupOldCache] Removed expired cache: ${entry.key}`);
+      }
+    }
+
+    // If still no space, remove oldest 10% of entries
+    if (!cleaned && cacheEntries.length > 10) {
+      const toRemove = Math.ceil(cacheEntries.length * 0.1);
+      for (let i = 0; i < toRemove; i++) {
+        localStorage.removeItem(cacheEntries[i].key);
+        cleaned = true;
+        console.log(`[cleanupOldCache] Removed old cache to free space: ${cacheEntries[i].key}`);
+      }
+    }
+
+    return cleaned;
+  } catch (e) {
+    console.error('[cleanupOldCache] Error:', e);
+    return false;
+  }
+}
+
+/**
+ * Get cache namespace with account support
+ */
 function getCacheNamespace() {
   // For demo/test mode, use a fixed namespace
   if (IS_DEMO_MODE) return 'demo';
@@ -2041,6 +2505,11 @@ function getCacheNamespace() {
 // 이제 ACCOUNT_UTILS.getAccountLabel()을 사용하세요.
 // getAccountLabel()은 ACCOUNT_UTILS로 이동됨.
 
+/**
+ * P1: Safe localStorage get with error handling
+ * @param {string} k - Key to retrieve
+ * @returns {any|null} Parsed value or null on error
+ */
 function lsGet(k) {
   try {
     const v = localStorage.getItem(k);
@@ -2051,12 +2520,23 @@ function lsGet(k) {
   }
 }
 
+/**
+ * P1: Safe localStorage set with queue serialization and retry logic
+ * @param {string} k - Key to set
+ * @param {any} v - Value to store (will be JSON.stringified)
+ * @returns {Promise<void>} Promise that resolves when write is complete
+ */
 function lsSet(k, v) {
-  try {
-    localStorage.setItem(k, JSON.stringify(v));
-  } catch (e) {
-    console.error('[lsSet] Error:', e);
-  }
+  return safeWrite(k, async () => {
+    const serialized = JSON.stringify(v);
+
+    // Check size before writing (warn if > 1MB)
+    if (serialized.length > 1024 * 1024) {
+      console.warn(`[lsSet] Large data size for key "${k}": ${serialized.length} bytes`);
+    }
+
+    localStorage.setItem(k, serialized);
+  });
 }
 
 function getCachedData(site) {
@@ -2071,19 +2551,28 @@ function getCachedData(site) {
   };
 }
 
+/**
+ * P1: Set cached data with queue serialization
+ * @param {string} site - Site identifier
+ * @param {Object} data - Data to cache
+ * @returns {Promise<void>} Promise that resolves when cache is written
+ */
 function setCachedData(site, data) {
-  lsSet(getSiteDataCacheKey(site), {
+  return lsSet(getSiteDataCacheKey(site), {
     ts: Date.now(),
     data,
   });
 }
 
+/**
+ * P1: Clear cached data with queue serialization
+ * @param {string} site - Site identifier
+ * @returns {Promise<void>} Promise that resolves when cache is cleared
+ */
 function clearCachedData(site) {
-  try {
+  return safeWrite(getSiteDataCacheKey(site), async () => {
     localStorage.removeItem(getSiteDataCacheKey(site));
-  } catch (e) {
-    console.error('[clearCachedData] Error:', e);
-  }
+  });
 }
 
 function getSiteListCacheKey() {
@@ -2131,8 +2620,12 @@ function getCachedUiState() {
   };
 }
 
+/**
+ * P1: Set cached UI state with queue serialization
+ * @returns {Promise<void>} Promise that resolves when state is saved
+ */
 function setCachedUiState() {
-  lsSet(getUiStateCacheKey(), {
+  return lsSet(getUiStateCacheKey(), {
     ts: Date.now(),
     mode: curMode,
     tab: curTab,
@@ -2352,13 +2845,20 @@ function emptySiteData() {
   };
 }
 
+/**
+ * P1: Persist site data with queue serialization
+ * @param {string} site - Site identifier
+ * @param {Object} data - Data to persist
+ * @returns {Promise<Object>} Promise that resolves with persisted data
+ */
 function persistSiteData(site, data) {
   const next =
     normalizeSiteData({ ...(getCachedSiteSnapshot(site) || emptySiteData()), ...(data || {}) }) ||
     emptySiteData();
   memCache[site] = next;
-  setCachedData(site, next);
-  return next;
+
+  // Return promise for async write
+  return setCachedData(site, next).then(() => next);
 }
 
 function hasSuccessfulDiagnosisMetaSnapshot(data) {
@@ -2707,7 +3207,7 @@ const inflightDiagnosisMeta = {};
  */
 async function fetchExposeData(site, options) {
   if (!encId || typeof encId !== 'string') {
-    console.error('[fetchExposeData] Invalid encId:', encId);
+    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchExposeData');
     return null;
   }
   if (memCache[site] && !shouldFetchField(memCache[site], "expose", options)) {
@@ -2737,6 +3237,7 @@ async function fetchExposeData(site, options) {
         detailLoaded: false,
       });
     } catch (e) {
+      showError(ERROR_MESSAGES.DATA_LOAD_FAILED, e, 'fetchExposeData');
       return persistSiteData(site, {
         expose: null,
         exposeFetchState: "failure",
@@ -2759,7 +3260,7 @@ async function fetchExposeData(site, options) {
  */
 async function fetchCrawlData(site, options) {
   if (!encId || typeof encId !== 'string') {
-    console.error('[fetchCrawlData] Invalid encId:', encId);
+    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchCrawlData');
     return null;
   }
   const baseData = await fetchExposeData(site, options);
@@ -2800,6 +3301,7 @@ async function fetchCrawlData(site, options) {
         detailLoaded: baseData.detailLoaded,
       });
     } catch (e) {
+      showError(ERROR_MESSAGES.DETAIL_DATA_MISSING, e, 'fetchCrawlData');
       return persistSiteData(site, {
         ...baseData,
         crawl: null,
@@ -2824,7 +3326,7 @@ async function fetchCrawlData(site, options) {
  */
 async function fetchBacklinkData(site, options) {
   if (!encId || typeof encId !== 'string') {
-    console.error('[fetchBacklinkData] Invalid encId:', encId);
+    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchBacklinkData');
     return null;
   }
   const baseData = await fetchExposeData(site, options);
@@ -2864,6 +3366,7 @@ async function fetchBacklinkData(site, options) {
         detailLoaded: baseData.detailLoaded,
       });
     } catch (e) {
+      showError(ERROR_MESSAGES.DETAIL_DATA_MISSING, e, 'fetchBacklinkData');
       return persistSiteData(site, {
         ...baseData,
         backlink: null,
@@ -2888,7 +3391,7 @@ async function fetchBacklinkData(site, options) {
  */
 async function fetchSiteData(site, options) {
   if (!encId || typeof encId !== 'string') {
-    console.error('[fetchSiteData] Invalid encId:', encId);
+    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchSiteData');
     return null;
   }
   const baseData = await fetchDiagnosisMeta(site, null, options);
@@ -2929,7 +3432,8 @@ async function fetchSiteData(site, options) {
                   fetchedAt: Date.now(),
                 };
               })
-              .catch(function () {
+              .catch(function (e) {
+                showError(ERROR_MESSAGES.DETAIL_DATA_MISSING, e, 'fetchSiteData-crawl');
                 return {
                   key: "crawl",
                   ok: false,
@@ -2967,7 +3471,8 @@ async function fetchSiteData(site, options) {
                   fetchedAt: Date.now(),
                 };
               })
-              .catch(function () {
+              .catch(function (e) {
+                showError(ERROR_MESSAGES.DETAIL_DATA_MISSING, e, 'fetchSiteData-backlink');
                 return {
                   key: "backlink",
                   ok: false,
@@ -3010,7 +3515,7 @@ async function fetchSiteData(site, options) {
  */
 async function fetchDiagnosisMeta(site, seedData, options) {
   if (!encId || typeof encId !== 'string') {
-    console.error('[fetchDiagnosisMeta] Invalid encId:', encId);
+    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchDiagnosisMeta');
     return null;
   }
   const baseData = seedData || (await fetchExposeData(site, options));
@@ -3043,7 +3548,7 @@ async function fetchDiagnosisMeta(site, seedData, options) {
           diagnosisMetaFetchState = "success";
         }
       } catch (e) {
-        console.error('[fetchDiagnosisMeta] Error:', e);
+        showError(ERROR_MESSAGES.DATA_LOAD_ERROR, e, 'fetchDiagnosisMeta');
       }
       return persistSiteData(site, {
         ...baseData,
@@ -3118,6 +3623,12 @@ function getDiagnosisMetaRange() {
 // running on localhost, local networks, or file:// protocol.
 // ============================================================
 
+/**
+ * Demo mode detection flag
+ * Automatically enabled when running on localhost, local networks, or file:// protocol
+ * @type {boolean}
+ * @constant
+ */
 const IS_DEMO_MODE = (function() {
   try {
     const protocol = (location && location.protocol) || "";
@@ -3326,8 +3837,16 @@ if (IS_DEMO_MODE) {
   };
 }
 
-
-// Demo mode: inject mock data when running on localhost or file://
+/**
+ * Inject demo mode mock data into the application
+ * This function populates memCache with realistic mock data for all demo sites
+ * It supports both built-in DEMO_SITES and custom injected data from __sadvInitData
+ * @returns {boolean} True if demo data was injected, false otherwise
+ * @example
+ * // In demo mode, this is called during initialization
+ * injectDemoData(); // returns true and populates memCache
+ * @see {DEMO_SITES}
+ */
 function injectDemoData() {
   const protocol = (location && location.protocol) || "";
   const host = (location && location.hostname) || "";
@@ -3947,7 +4466,7 @@ function injectDemoData() {
           try {
             site = atob(match[1]);
           } catch (decodeError) {
-            console.error('[Export] Invalid Base64 encoding in key:', key, decodeError);
+            showError(ERROR_MESSAGES.DATA_INCONSISTENCY, decodeError, 'exportSingleAccount-decode');
             continue;
           }
 
@@ -3976,7 +4495,7 @@ function injectDemoData() {
             detailLoaded: data.detailLoaded || false
           };
         } catch (e) {
-          console.error('[Export] Error processing key:', key, e);
+          showError(ERROR_MESSAGES.EXPORT_INCOMPLETE, e, 'exportSingleAccount');
         }
       }
 
@@ -4031,12 +4550,12 @@ function injectDemoData() {
   }
 
   /**
-   * Import account data from exported format
+   * P1: Import account data from exported format with queue serialization
    * @param {Object} exportData - Data from exportCurrentAccountData()
-   * @param {Object} options - Import options
-   * @returns {Object} Import result
+   * @param {Object} options - Import options { overwrite, mergeStrategy, validate }
+   * @returns {Promise<Object>} Promise that resolves with import result
    */
-  function importAccountData(exportData, options = {}) {
+  async function importAccountData(exportData, options = {}) {
     const {
       overwrite = false,
       mergeStrategy = 'newer',
@@ -4053,7 +4572,7 @@ function injectDemoData() {
       if (accountKeys.length === 0) {
         return {
           success: false,
-          error: 'No accounts found in export data'
+          error: ERROR_MESSAGES.NO_VALID_ACCOUNTS
         };
       }
 
@@ -4069,7 +4588,7 @@ function injectDemoData() {
       // V2 포맷이 아닌 레거시 데이터는 지원하지 않음
       return {
         success: false,
-        error: 'Unsupported data format. Please use V2 format with __meta and accounts fields.'
+        error: ERROR_MESSAGES.IMPORT_FORMAT_ERROR
       };
     }
 
@@ -4088,38 +4607,43 @@ function injectDemoData() {
     let skippedCount = 0;
     const errors = [];
 
-    // Import each site
+    // P1: Import sites sequentially to avoid race conditions
     for (const [site, siteData] of Object.entries(sitesToImport)) {
       try {
         const cacheKey = getSiteDataCacheKey(site);
-        const existing = localStorage.getItem(cacheKey);
 
-        if (existing && !overwrite) {
-          const existingData = JSON.parse(existing);
-          // Support both _merge and __meta formats
-          const sourceTime = siteData.__meta?.__fetched_at ||
-                            siteData._merge?.__fetchedAt || 0;
-          const targetTime = existingData.__cacheSavedAt ||
-                            existingData.__meta?.__fetched_at ||
-                            existingData._merge?.__fetchedAt || 0;
+        // Use safeWrite for each site import
+        await safeWrite(cacheKey, async () => {
+          const existing = localStorage.getItem(cacheKey);
 
-          if (mergeStrategy === 'newer' && sourceTime > targetTime) {
-            // Import newer data
+          if (existing && !overwrite) {
+            const existingData = JSON.parse(existing);
+            // Support both _merge and __meta formats
+            const sourceTime = siteData.__meta?.__fetched_at ||
+                              siteData._merge?.__fetchedAt || 0;
+            const targetTime = existingData.__cacheSavedAt ||
+                              existingData.__meta?.__fetched_at ||
+                              existingData._merge?.__fetchedAt || 0;
+
+            if (mergeStrategy === 'newer' && sourceTime > targetTime) {
+              // Import newer data
+              siteData.__meta = siteData.__meta || {};
+              siteData.__meta.__imported_from = sourceEncId;
+              siteData.__meta.__imported_at = Date.now();
+              localStorage.setItem(cacheKey, JSON.stringify(siteData));
+              mergedCount++;
+            } else {
+              skippedCount++;
+            }
+          } else {
+            // No existing data or overwrite
+            siteData.__meta = siteData.__meta || {};
             siteData.__meta.__imported_from = sourceEncId;
             siteData.__meta.__imported_at = Date.now();
             localStorage.setItem(cacheKey, JSON.stringify(siteData));
-            mergedCount++;
-          } else {
-            skippedCount++;
+            importedCount++;
           }
-        } else {
-          // No existing data or overwrite
-          siteData.__meta = siteData.__meta || {};
-          siteData.__meta.__imported_from = sourceEncId;
-          siteData.__meta.__imported_at = Date.now();
-          localStorage.setItem(cacheKey, JSON.stringify(siteData));
-          importedCount++;
-        }
+        });
 
         // Track in registry
         if (!registry.mergedSites) {
@@ -4136,11 +4660,11 @@ function injectDemoData() {
 
       } catch (e) {
         errors.push({ site, error: e.message });
-        console.error('[Import] Error importing site:', site, e);
+        showError(`${ERROR_MESSAGES.IMPORT_FAILED}: ${site}`, e, 'importAccountData');
       }
     }
 
-    saveMergeRegistry(registry);
+    await saveMergeRegistry(registry);
 
     return {
       success: true,
@@ -4166,12 +4690,19 @@ function injectDemoData() {
   }
 
   /**
-   * Save merge registry
+   * P1: Save merge registry with queue serialization
+   * @param {Object} registry - Registry data to save
+   * @returns {Promise<void>} Promise that resolves when registry is saved
    */
-  function saveMergeRegistry(registry) {
-    try {
-      localStorage.setItem(MERGE_REGISTRY_KEY, JSON.stringify(registry));
-    } catch (e) {}
+  async function saveMergeRegistry(registry) {
+    return safeWrite(MERGE_REGISTRY_KEY, async () => {
+      try {
+        localStorage.setItem(MERGE_REGISTRY_KEY, JSON.stringify(registry));
+      } catch (e) {
+        console.error('[saveMergeRegistry] Error:', e);
+        throw e;
+      }
+    }, { skipLock: true }); // Skip lock for registry to avoid deadlock
   }
 
   /**
@@ -4225,6 +4756,13 @@ const __sadvReadyResolvers = [];
 // 스냅샷 상태 함수들
 // ============================================================================
 
+/**
+ * Create a snapshot of the current UI state
+ * @returns {Object} Object containing current mode, site, tab, sites, rows, and account label
+ * @example
+ * const snapshot = __sadvSnapshot();
+ * console.log(snapshot.curMode); // "all" or "site"
+ */
 function __sadvSnapshot() {
   return {
     curMode,
@@ -4236,6 +4774,12 @@ function __sadvSnapshot() {
   };
 }
 
+/**
+ * Notify all registered listeners of UI state changes
+ * Calls each listener with the current snapshot
+ * @returns {void}
+ * @see {__sadvSnapshot}
+ */
 function __sadvNotify() {
   const snap = __sadvSnapshot();
   __sadvListeners.forEach(function (fn) {
@@ -4247,6 +4791,12 @@ function __sadvNotify() {
   });
 }
 
+/**
+ * Mark the SearchAdvisor UI as ready and resolve all pending ready promises
+ * Should only be called once during initialization
+ * @returns {void}
+ * @see {__sadvNotify}
+ */
 function __sadvMarkReady() {
   if (__sadvInitialReady) return;
   __sadvInitialReady = true;
@@ -4265,6 +4815,15 @@ function __sadvMarkReady() {
 // 스냅샷 쉘 상태 관리 함수들
 // ============================================================================
 
+/**
+ * Build snapshot shell state from a V2 payload
+ * Extracts UI state, metadata, and site information from a saved snapshot
+ * @param {Object} payload - V2 payload object
+ * @returns {Object} Snapshot shell state with accountLabel, allSites, rows, siteMeta, curMode, curSite, curTab, runtimeVersion, cacheMeta
+ * @example
+ * const shellState = buildSnapshotShellState(exportPayload);
+ * console.log(shellState.accountLabel); // "user@example.com"
+ */
 function buildSnapshotShellState(payload) {
   // Handle V2 format
   let allSites, dataBySite, summaryRows, siteMeta, accountLabel, savedAt, curMode, curSite, curTab;
@@ -4355,6 +4914,16 @@ function buildSnapshotShellState(payload) {
 
 let snapshotMetaState = { siteMeta: {}, mergedMeta: null };
 
+/**
+ * Set the snapshot metadata state
+ * @param {Object} state - State object containing siteMeta and mergedMeta
+ * @returns {void}
+ * @example
+ * setSnapshotMetaState({
+ *   siteMeta: { 'https://example.com': { label: 'Example' } },
+ *   mergedMeta: { isMerged: true }
+ * });
+ */
 function setSnapshotMetaState(state) {
   snapshotMetaState = {
     siteMeta: state && state.siteMeta ? state.siteMeta : {},
@@ -4362,6 +4931,15 @@ function setSnapshotMetaState(state) {
   };
 }
 
+/**
+ * Get the site metadata map from live state or export payload
+ * Returns a map of site URLs to their metadata (labels, etc.)
+ * @returns {Object} Site metadata map
+ * @example
+ * const metaMap = getSiteMetaMap();
+ * console.log(metaMap['https://example.com'].label); // 'Example Site'
+ * @see {getMergedMetaState}
+ */
 function getSiteMetaMap() {
   const liveMap = snapshotMetaState.siteMeta;
   if (liveMap && Object.keys(liveMap).length) return liveMap;
@@ -4383,6 +4961,16 @@ function getSiteMetaMap() {
   return payload.siteMeta || {};
 }
 
+/**
+ * Get the merged metadata state for multi-account snapshots
+ * @returns {Object|null} Merged metadata object or null
+ * @example
+ * const mergedMeta = getMergedMetaState();
+ * if (mergedMeta?.isMerged) {
+ *   console.log('This is a merged snapshot');
+ * }
+ * @see {getSiteMetaMap}
+ */
 function getMergedMetaState() {
   if (snapshotMetaState.mergedMeta) return snapshotMetaState.mergedMeta;
   const payload =
@@ -4424,6 +5012,22 @@ if (typeof window !== "undefined") {
   });
 }
 
+  /**
+ * Build renderer functions for all site data tabs
+ * Processes expose, crawl, backlink, and diagnosisMeta data to create renderers
+ * @param {Object} expose - Expose data with items array
+ * @param {Object} crawlData - Crawl data with stats
+ * @param {Object} backlinkData - Backlink data with total, domains, countTime
+ * @param {Object} diagnosisMeta - Diagnosis metadata with items array
+ * @returns {Object} Object with renderer functions for each tab (overview, daily, urls, queries, pattern, crawl, backlink, insight)
+ * @example
+ * const renderers = buildRenderers(exposeData, crawlData, backlinkData, diagnosisData);
+ * renderers.overview(); // Renders overview tab
+ * renderers.daily(); // Renders daily tab
+ * @see {sparkline}
+ * @see {barchart}
+ * @see {kpiGrid}
+ */
   function buildRenderers(expose, crawlData, backlinkData, diagnosisMeta) {
     const item = (expose && expose.items && expose.items[0]) || {};
     const period = item.period || {},
@@ -4556,7 +5160,7 @@ if (typeof window !== "undefined") {
             "일별 클릭수",
             "최고 " + fmt(Math.max(...clicks)) + "회",
             C.green,
-            sparkline(clicks, dates, 80, C.green, "회"),
+            sparkline(clicks, dates, window.innerWidth <= 768 ? 65 : 80, C.green, "회"),
             dates,
           ),
         );
@@ -4565,7 +5169,7 @@ if (typeof window !== "undefined") {
             "일별 노출수",
             "최고 " + fmt(Math.max(...exposes)),
             C.blue,
-            sparkline(exposes, dates, 65, C.blue, "회"),
+            sparkline(exposes, dates, window.innerWidth <= 768 ? 55 : 65, C.blue, "회"),
             dates,
           ),
         );
@@ -4574,7 +5178,7 @@ if (typeof window !== "undefined") {
             "일별 CTR",
             "평균 " + avgCtr + "%",
             C.amber,
-            sparkline(ctrs, dates, 55, C.amber, "%"),
+            sparkline(ctrs, dates, window.innerWidth <= 768 ? 45 : 55, C.amber, "%"),
             dates,
           ),
         );
@@ -4618,7 +5222,7 @@ if (typeof window !== "undefined") {
             "일별 클릭 추이",
             "최고 " + fmt(mxC) + "회",
             C.green,
-            sparkline(clicks, dates, 90, C.green, "회"),
+            sparkline(clicks, dates, window.innerWidth <= 768 ? 75 : 90, C.green, "회"),
             dates,
           ),
         );
@@ -5146,11 +5750,27 @@ if (typeof window !== "undefined") {
     };
   };
 
+  /**
+ * Assign colors to all sites from the color palette
+ * Each site gets a consistent color based on its index
+ * @returns {void}
+ * @example
+ * assignColors();
+ * console.log(SITE_COLORS_MAP['https://example.com']); // "#10b981"
+ */
   function assignColors() {
     allSites.forEach((s, i) => {
       if (!SITE_COLORS_MAP[s]) SITE_COLORS_MAP[s] = COLORS[i % COLORS.length];
     });
   }
+  /**
+ * Ensure curSite is set to a valid site from allSites
+ * If curSite is null or invalid, sets it to the first site
+ * @returns {string|null} The current site URL or null if no sites available
+ * @example
+ * const site = ensureCurrentSite();
+ * console.log(site); // "https://example.com" or null
+ */
   function ensureCurrentSite() {
     if (!allSites.length) {
       curSite = null;
@@ -5159,6 +5779,13 @@ if (typeof window !== "undefined") {
     if (!curSite || !allSites.includes(curSite)) curSite = allSites[0];
     return curSite;
   }
+  /**
+ * Update the all sites label text in the header
+ * Shows site count and merge information if applicable
+ * @returns {void}
+ * @example
+ * setAllSitesLabel(); // Updates header label
+ */
   function setAllSitesLabel() {
     const mergedMeta = getMergedMetaState();
     const summary = isMergedReport() && mergedMeta && mergedMeta.sourceCount
@@ -5166,6 +5793,15 @@ if (typeof window !== "undefined") {
       : `${allSites.length}개 사이트 등록됨`;
     labelEl.textContent = summary;
   }
+  /**
+ * Build the site selector combo box dropdown
+ * Creates clickable items for each site with search functionality
+ * @param {Array|null} rows - Optional array of site summary rows for ordering
+ * @returns {void}
+ * @example
+ * buildCombo(summaryRows); // Builds combo with sites ordered by clicks
+ * @see {setComboSite}
+ */
   function buildCombo(rows) {
     console.log('[buildCombo] Called, allSites:', allSites, 'rows:', rows);
     const drop = document.getElementById("sadv-combo-drop");
@@ -5188,17 +5824,25 @@ if (typeof window !== "undefined") {
 
     // Create search container
     const searchDiv = document.createElement("div");
-    searchDiv.style.cssText = "padding:6px 6px 4px;position:relative";
+    const isMobile = window.innerWidth <= 768;
+    searchDiv.style.cssText = isMobile
+      ? "padding:8px 8px 6px;position:relative"
+      : "padding:6px 6px 4px;position:relative";
 
     const input = document.createElement("input");
     input.id = "sadv-combo-search";
     input.placeholder = "사이트 검색...";
+    if (isMobile) {
+      input.style.cssText = "width:100%;padding:10px 12px;font-size:14px;min-height:44px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#f8fafc;box-sizing:border-box";
+    }
 
     searchDiv.appendChild(input);
 
     // Create count display
     const countDiv = document.createElement("div");
-    countDiv.style.cssText = "font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#3d5a78;padding:3px 9px 6px;border-bottom:1px solid #1a2d45;margin-bottom:3px";
+    countDiv.style.cssText = isMobile
+      ? "font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#3d5a78;padding:4px 12px 8px;border-bottom:1px solid #1a2d45;margin-bottom:4px"
+      : "font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#3d5a78;padding:3px 9px 6px;border-bottom:1px solid #1a2d45;margin-bottom:3px";
     countDiv.textContent = "전체 " + orderedSites.length + " 개 · 클릭증은순";
 
     drop.replaceChildren(searchDiv, countDiv);
@@ -5211,6 +5855,10 @@ if (typeof window !== "undefined") {
       const item = document.createElement("div");
       item.className = "sadv-copt" + (s === curSite ? " active" : "");
       item.dataset.site = s;
+      item.setAttribute("tabindex", "0");
+      item.setAttribute("role", "option");
+      item.setAttribute("aria-selected", s === curSite);
+      item.style.cursor = "pointer";
       item.innerHTML = `<div class="sadv-combo-item-dot" style="background:${col}"></div><div class="sadv-combo-item-info"><div class="sadv-combo-item-name">${escHtml(shortName.split("/")[0])}</div><div class="sadv-combo-item-url">${escHtml(shortName)}</div></div><div class="sadv-combo-item-click" style="color:${clickCol}">${escHtml(clickStr)}</div>`;
       item.addEventListener("click", function () {
         setComboSite(s);
@@ -5218,10 +5866,64 @@ if (typeof window !== "undefined") {
         wrap.classList.remove("open");
         wrap.setAttribute("aria-expanded", "false");
       });
+      // Keyboard navigation for combo items
+      item.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          setComboSite(s);
+          const wrap = document.getElementById("sadv-combo-wrap");
+          wrap.classList.remove("open");
+          wrap.setAttribute("aria-expanded", "false");
+          // Return focus to combo button
+          document.getElementById("sadv-combo-btn").focus();
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          const wrap = document.getElementById("sadv-combo-wrap");
+          wrap.classList.remove("open");
+          wrap.setAttribute("aria-expanded", "false");
+          document.getElementById("sadv-combo-btn").focus();
+        }
+        // Arrow key navigation
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          const items = Array.from(drop.querySelectorAll('.sadv-combo-item'));
+          const currentIndex = items.indexOf(item);
+          const nextIndex = e.key === 'ArrowDown'
+            ? Math.min(currentIndex + 1, items.length - 1)
+            : Math.max(currentIndex - 1, 0);
+          items[nextIndex].focus();
+        }
+      });
       drop.appendChild(item);
     });
     console.log('[buildCombo] Built', orderedSites.length, 'combo items');
   }
+  function setComboSite(site) {
+    if (!site || !allSites.includes(site)) return;
+    const sameSite = curSite === site;
+    curSite = site;
+    const col = SITE_COLORS_MAP[site] || C.muted,
+      shortName = getSiteLabel(site);
+    document.getElementById("sadv-combo-dot").style.background = col;
+    document.getElementById("sadv-combo-label").textContent = shortName;
+    document.querySelectorAll(".sadv-combo-item").forEach((el) => {
+      el.classList.toggle("active", el.dataset.site === site);
+    });
+    setCachedUiState();
+    if (typeof notifySnapshotShellState === "function") notifySnapshotShellState();
+    if (curMode === CONFIG.MODE.SITE && !sameSite) loadSiteView(site);
+    __sadvNotify();
+  }
+  /**
+ * Set the currently selected site in the combo box
+ * Updates the combo button, highlights the active item, and loads site view if needed
+ * @param {string} site - Site URL to select
+ * @returns {void}
+ * @example
+ * setComboSite('https://example.com');
+ * @see {buildCombo}
+ */
   function setComboSite(site) {
     if (!site || !allSites.includes(site)) return;
     const sameSite = curSite === site;
@@ -5274,11 +5976,42 @@ if (typeof window !== "undefined") {
         }, 50);
       }
     });
+  // Keyboard support for combo button
+  document.getElementById("sadv-combo-btn").addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      this.click();
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      const wrap = document.getElementById("sadv-combo-wrap");
+      if (wrap.classList.contains("open")) {
+        wrap.classList.remove("open");
+        wrap.setAttribute("aria-expanded", "false");
+      }
+    }
+    if (e.key === 'ArrowDown' && this.getAttribute("aria-expanded") === "true") {
+      e.preventDefault();
+      const firstItem = document.querySelector(".sadv-combo-item:not([style*='display: none'])");
+      if (firstItem) firstItem.focus();
+    }
+  });
   document.addEventListener("click", function (e) {
     const wrap = document.getElementById("sadv-combo-wrap");
     if (wrap && !wrap.contains(e.target)) {
       wrap.classList.remove("open");
       wrap.setAttribute("aria-expanded", "false");
+    }
+  });
+  // ESC key to close combo dropdown
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      const wrap = document.getElementById("sadv-combo-wrap");
+      if (wrap && wrap.classList.contains("open")) {
+        wrap.classList.remove("open");
+        wrap.setAttribute("aria-expanded", "false");
+        document.getElementById("sadv-combo-btn").focus();
+      }
     }
   });
   const TABS = [
@@ -5318,6 +6051,34 @@ if (typeof window !== "undefined") {
     if (window.__sadvR) renderTab(window.__sadvR);
     __sadvNotify();
   });
+  // Keyboard navigation for tabs
+  tabsEl.addEventListener('keydown', function(e) {
+    const tab = e.target.closest('.sadv-t');
+    if (!tab) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      tab.click();
+    }
+    // Arrow key navigation
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      const tabs = Array.from(tabsEl.querySelectorAll('.sadv-t'));
+      const currentIndex = tabs.indexOf(tab);
+      const nextIndex = e.key === 'ArrowRight'
+        ? Math.min(currentIndex + 1, tabs.length - 1)
+        : Math.max(currentIndex - 1, 0);
+      tabs[nextIndex].focus();
+      tabs[nextIndex].click();
+    }
+  });
+  /**
+ * Render the current tab content using the provided renderers
+ * @param {Object} R - Renderers object with functions for each tab
+ * @returns {void}
+ * @example
+ * renderTab(buildRenderers(expose, crawl, backlink, diagnosisMeta));
+ * @see {buildRenderers}
+ */
   function renderTab(R) {
     bdEl.setAttribute("role", "tabpanel");
     bdEl.id = "sadv-tabpanel";
@@ -5330,6 +6091,37 @@ if (typeof window !== "undefined") {
     if (!m) return;
     switchMode(m.dataset.m);
   });
+  // Keyboard navigation for mode buttons
+  modeBar.addEventListener('keydown', function(e) {
+    const modeBtn = e.target.closest('.sadv-mode');
+    if (!modeBtn) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      modeBtn.click();
+    }
+    // Arrow key navigation
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      const modeButtons = Array.from(modeBar.querySelectorAll('.sadv-mode'));
+      const currentIndex = modeButtons.indexOf(modeBtn);
+      const nextIndex = e.key === 'ArrowRight'
+        ? Math.min(currentIndex + 1, modeButtons.length - 1)
+        : Math.max(currentIndex - 1, 0);
+      modeButtons[nextIndex].focus();
+      modeButtons[nextIndex].click();
+    }
+  });
+  /**
+ * Switch between 'all' and 'site' view modes
+ * Updates UI visibility and loads appropriate view
+ * @param {string} mode - Mode to switch to ('all' or 'site')
+ * @returns {void}
+ * @example
+ * switchMode('all'); // Shows all sites overview
+ * switchMode('site'); // Shows current site detail
+ * @see {renderAllSites}
+ * @see {loadSiteView}
+ */
   function switchMode(mode) {
     if (mode === curMode) return;
     curMode = mode;
@@ -5364,6 +6156,14 @@ if (typeof window !== "undefined") {
 // ALL-SITES-VIEW - All sites view rendering and export
 // ============================================================
 
+/**
+ * Render the all sites overview view
+ * Fetches expose data and diagnosis meta for all sites, then displays summary cards
+ * @returns {Promise<void>}
+ * @example
+ * await renderAllSites();
+ * @see {buildSiteSummaryRow}
+ */
 async function renderAllSites() {
   const requestId = ++allViewReqId;
   setAllSitesLabel();
@@ -5388,7 +6188,7 @@ async function renderAllSites() {
 
   if (!allSites.length) {
     bdEl.innerHTML =
-      '<div style="padding:30px 20px;text-align:center"><div style="font-size:32px">↻</div><div style="color:#ffca28;font-weight:700;margin:10px 0">사이트 목록을 찾을 수 없어요</div><div style="color:#7a9ab8;font-size:12px;line-height:2">↻ 버튼을 눌러 새로고침 해보세요<br>또는 서치어드바이저 콘솔 페이지에서 실행해주세요</div></div>';
+      '<div style="padding:30px 20px;text-align:center"><div style="font-size:32px">⚠️</div><div style="color:#ffca28;font-weight:700;margin:10px 0">사이트 목록을 찾을 수 없어요</div><div style="color:#7a9ab8;font-size:12px;line-height:2">↻ 버튼을 눌러 새로고침 해보세요<br>또는 서치어드바이저 콘솔 페이지에서 실행해주세요</div></div>';
     return;
   }
   const sitesToLoad = allSites;
@@ -5450,14 +6250,11 @@ async function renderAllSites() {
         // 실패한 사이트 에러 추적
         failedCount++;
         const errorDetail = result.reason?.message || result.reason || '알 수 없는 오류';
-        ERROR_TRACKING.reportError({
-          type: 'dataLoadError',
-          phase: 'expose',
-          site: batchSites[offset],
-          error: errorDetail,
-          batchIndex: i + offset,
-          totalSites: sitesToLoad.length
-        });
+        showError(
+          `${batchSites[offset]} 사이트 데이터 로딩 실패`,
+          result.reason,
+          'renderAllSites-expose'
+        );
       }
     });
     // 배치 실패 시 진행률 메타에 표시
@@ -5515,14 +6312,36 @@ async function renderAllSites() {
   const grandC = rows.reduce((a, r) => a + r.totalC, 0);
   const grandE = rows.reduce((a, r) => a + r.totalE, 0);
   const avgCtrAll = grandE ? (grandC / grandE) * 100 : 0;
-  wrap.appendChild(
-    kpiGrid([
-      { label: "전체 클릭", value: (grandC / 10000).toFixed(1) + "만", sub: "90일 합계", color: C.green },
-      { label: "전체 노출", value: (grandE / 10000000).toFixed(1) + "천만", sub: "90일 합계", color: C.blue },
-      { label: "평균CTR", value: avgCtrAll.toFixed(2) + "%", sub: "90일 평균", color: C.amber },
-      { label: "활성사이트", value: rows.filter((r) => r.totalC > 0).length + "개", color: C.teal },
-    ]),
-  );
+  const isMobile = window.innerWidth <= 768;
+
+  // Responsive KPI grid: 2 columns on mobile, 4 on desktop
+  const kpiData = [
+    { label: "전체 클릭", value: (grandC / 10000).toFixed(1) + "만", sub: "90일 합계", color: C.green },
+    { label: "전체 노출", value: (grandE / 10000000).toFixed(1) + "천만", sub: "90일 합계", color: C.blue },
+    { label: "평균CTR", value: avgCtrAll.toFixed(2) + "%", sub: "90일 평균", color: C.amber },
+    { label: "활성사이트", value: rows.filter((r) => r.totalC > 0).length + "개", color: C.teal },
+  ];
+
+  // On mobile, show in 2x2 grid
+  if (isMobile) {
+    const mobileKpiWrapper = document.createElement("div");
+    mobileKpiWrapper.style.cssText = "display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px";
+
+    kpiData.forEach(kpi => {
+      const kpiCard = document.createElement("div");
+      kpiCard.style.cssText = `background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px;text-align:center`;
+      kpiCard.innerHTML = `
+        <div style="font-size:11px;color:#94a3b8;margin-bottom:4px">${kpi.label}</div>
+        <div style="font-size:20px;font-weight:800;color:${kpi.color};line-height:1.1;margin-bottom:4px">${kpi.value}</div>
+        <div style="font-size:10px;color:#64748b">${kpi.sub}</div>
+      `;
+      mobileKpiWrapper.appendChild(kpiCard);
+    });
+
+    wrap.appendChild(mobileKpiWrapper);
+  } else {
+    wrap.appendChild(kpiGrid(kpiData));
+  }
   wrap.appendChild(
     secTitle(
       "클릭 랭킹 TOP " +
@@ -5539,7 +6358,7 @@ async function renderAllSites() {
       barchart(
         top30.map((r) => r.totalC),
         top30.map((r) => r.site.replace(/^https?:\/\//, "")),
-        80,
+        window.innerWidth <= 768 ? 65 : 80,
         C.green,
         "회",
       ),
@@ -5558,6 +6377,14 @@ async function renderAllSites() {
       r.sourceAccount && (typeof r.sourceAccount === "string" ? r.sourceAccount.trim() : "")
         ? `<span style="font-size:10px;color:#64748b;background:#1e293b;padding:2px 6px;border-radius:4px;margin-left:8px;white-space:nowrap;border:1px solid #334155" title="${escHtml(r.sourceAccount)}">${escHtml(r.sourceAccount.split("@")[0])}</span>`
         : "";
+
+    // Responsive card layout
+    const isMobile = window.innerWidth <= 768;
+    const gridTemplate = isMobile ? "grid-template-columns:repeat(3,minmax(0,1fr));gap:6px" : "grid-template-columns:repeat(3,minmax(0,1fr));gap:8px";
+    const paddingStyle = isMobile ? "padding:6px" : "padding:8px";
+    const fontSizeValue = isMobile ? "font-size:14px" : "font-size:15px";
+    const fontSizeLabel = isMobile ? "font-size:9px" : "font-size:10px";
+
     card.innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="display:flex;align-items:center;gap:8px;min-width:0"><div style="width:10px;height:10px;border-radius:50%;background:' +
       col +
@@ -5567,19 +6394,43 @@ async function renderAllSites() {
       escHtml(shortName) +
       '</span>' +
       sourceBadge +
-      '</div></div><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px"><div style="text-align:center;min-width:0;background:rgba(30,41,59,0.3);padding:8px;border-radius:8px"><div style="font-size:15px;font-weight:800;line-height:1.1;color:' +
+      '</div></div><div style="display:grid;' +
+      gridTemplate +
+      ';margin-bottom:12px"><div style="text-align:center;min-width:0;background:rgba(30,41,59,0.3);' +
+      paddingStyle +
+      ';border-radius:8px"><div style="' +
+      fontSizeValue +
+      ';font-weight:800;line-height:1.1;color:' +
       C.green +
       '">' +
       escHtml(fmt(r.totalC)) +
-      '</div><div style="font-size:10px;line-height:1.4;color:#64748b;margin-top:4px">클릭</div></div><div style="text-align:center;min-width:0;background:rgba(30,41,59,0.3);padding:8px;border-radius:8px"><div style="font-size:15px;font-weight:800;line-height:1.1;color:' +
+      '</div><div style="' +
+      fontSizeLabel +
+      ';line-height:1.4;color:#64748b;margin-top:4px">클릭</div></div><div style="text-align:center;min-width:0;background:rgba(30,41,59,0.3);' +
+      paddingStyle +
+      ';border-radius:8px"><div style="' +
+      fontSizeValue +
+      ';font-weight:800;line-height:1.1;color:' +
       C.blue +
       '">' +
       escHtml((r.totalE / 10000).toFixed(1)) +
-      '만</div><div style="font-size:10px;line-height:1.4;color:#64748b;margin-top:4px">노출</div></div><div style="text-align:center;min-width:0;background:rgba(30,41,59,0.3);padding:8px;border-radius:8px"><div style="font-size:15px;font-weight:800;line-height:1.1;color:' +
+      '만</div><div style="' +
+      fontSizeLabel +
+      ';line-height:1.4;color:#64748b;margin-top:4px">노출</div></div><div style="text-align:center;min-width:0;background:rgba(30,41,59,0.3);' +
+      paddingStyle +
+      ';border-radius:8px"><div style="' +
+      fontSizeValue +
+      ';font-weight:800;line-height:1.1;color:' +
       C.amber +
       '">' +
       escHtml(r.avgCtr) +
-      '%</div><div style="font-size:10px;line-height:1.4;color:#64748b;margin-top:4px">CTR</div></div></div>';
+      '%</div><div style="' +
+      fontSizeLabel +
+      ';line-height:1.4;color:#64748b;margin-top:4px">CTR</div></div></div>';
+    // Add keyboard accessibility
+    card.setAttribute("tabindex", "0");
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-label", `${shortName} 사이트 상세 보기`);
     if (r.clicks && r.clicks.length > 1) {
       const miniDates = (r.logs || []).map(function (log) {
         return fmtB(log.date);
@@ -5636,12 +6487,44 @@ async function renderAllSites() {
       switchMode("site");
     }
   });
+  // Keyboard navigation for site cards
+  wrap.addEventListener('keydown', function(e) {
+    const card = e.target.closest(".sadv-allcard");
+    if (!card) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      card.click();
+    }
+    // Arrow key navigation between cards
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const cards = Array.from(wrap.querySelectorAll('.sadv-allcard'));
+      const currentIndex = cards.indexOf(card);
+      const nextIndex = e.key === 'ArrowDown'
+        ? Math.min(currentIndex + 1, cards.length - 1)
+        : Math.max(currentIndex - 1, 0);
+      cards[nextIndex].focus();
+    }
+  });
 
   if (requestId !== allViewReqId || curMode !== "all") return;
   bdEl.replaceChildren(wrap);
   bdEl.scrollTop = 0;
 }
 
+/**
+ * Collect export data for all sites with progress reporting
+ * Fetches all data types (expose, crawl, backlink, diagnosisMeta) for export
+ * @param {Function} onProgress - Progress callback function(done, total, site, stats)
+ * @param {Object} options - Options object
+ * @param {string} options.refreshMode - Refresh mode ('refresh' or 'cache-first')
+ * @returns {Promise<Object>} Export payload with dataBySite, summaryRows, stats
+ * @example
+ * const payload = await collectExportData(
+ *   (done, total, site) => console.log(`${done}/${total}: ${site}`),
+ *   { refreshMode: 'cache-first' }
+ * );
+ */
 async function collectExportData(onProgress, options) {
   const dataBySite = {};
   const summaryRows = [];
@@ -5759,6 +6642,15 @@ function savedAtIso(d) {
   );
 }
 
+  /**
+ * Download the current view as a standalone HTML snapshot file
+ * Collects all data, generates HTML with embedded payload, and triggers download
+ * @returns {Promise<void>}
+ * @example
+ * await downloadSnapshot(); // Downloads searchadvisor-user-20260315-143045.html
+ * @see {collectExportData}
+ * @see {buildSnapshotHtml}
+ */
   async function downloadSnapshot() {
     const btn = document.getElementById("sadv-save-btn");
     const originalText = btn.textContent;
@@ -5790,13 +6682,26 @@ function savedAtIso(d) {
         URL.revokeObjectURL(link.href);
       }, 1000);
     } catch (e) {
-      console.error(e);
-      alert("HTML 저장 중 오류가 발생했어요. 다시 시도해주세요.");
+      showError(ERROR_MESSAGES.HTML_SAVE_ERROR, e, 'downloadSnapshot');
+      bdEl.innerHTML = createInlineError(
+        ERROR_MESSAGES.HTML_SAVE_ERROR,
+        () => downloadSnapshot(),
+        '다시 시도'
+      ).outerHTML;
     } finally {
       btn.disabled = false;
       btn.textContent = originalText;
     }
   }
+  /**
+ * Build snapshot shell state from a V2 payload
+ * Extracts UI state, metadata, and site information from a saved snapshot
+ * @param {Object} payload - V2 payload object
+ * @returns {Object} Snapshot shell state with accountLabel, allSites, rows, siteMeta, curMode, curSite, curTab, runtimeVersion, cacheMeta
+ * @example
+ * const shellState = buildSnapshotShellState(exportPayload);
+ * console.log(shellState.accountLabel); // "user@example.com"
+ */
   function buildSnapshotShellState(payload) {
     // Handle V2 format
     let allSites, dataBySite, summaryRows, siteMeta, accountLabel, savedAt, curMode, curSite, curTab;
@@ -5880,6 +6785,17 @@ function savedAtIso(d) {
         : null,
     };
   }
+  /**
+ * Build standalone HTML snapshot string with embedded payload
+ * Creates a complete HTML document with the SearchAdvisor UI and data
+ * @param {Date} savedAt - Timestamp when snapshot was saved
+ * @param {Object} payload - V2 export payload with all data
+ * @returns {string} Complete HTML document string
+ * @example
+ * const html = buildSnapshotHtml(new Date(), exportPayload);
+ * document.body.innerHTML = html;
+ * @see {injectSnapshotReactShell}
+ */
   function buildSnapshotHtml(savedAt, payload) {
     const clone = p.cloneNode(true);
     clone
@@ -6713,12 +7629,38 @@ function savedAtIso(d) {
     return mergedInfo;
   }
 
+  /**
+ * Load and render the site detail view for a specific site
+ * Fetches all data types (expose, crawl, backlink, diagnosisMeta) and renders tabs
+ * @param {string} site - Site URL to load
+ * @returns {Promise<void>}
+ * @example
+ * await loadSiteView('https://example.com');
+ * @see {buildRenderers}
+ */
   async function loadSiteView(site) {
-    if (!site) return;
+    if (!site) {
+      bdEl.innerHTML = createInlineError(
+        ERROR_MESSAGES.SITE_NOT_FOUND,
+        () => window.location.reload(),
+        '새로고침'
+      ).outerHTML;
+      return;
+    }
     const requestId = ++siteViewReqId;
     labelEl.innerHTML = `<span>${escHtml(getSiteLabel(site))}</span>`;
     bdEl.innerHTML = `<div style="padding:50px 20px;text-align:center;color:#64748b"><div style="display:inline-flex;align-items:center;gap:8px">${ICONS.refresh.replace('width="13" height="13"','width="16" height="16"')} 로딩 중...</div></div>`;
-    const d = await fetchSiteData(site);
+    let d;
+    try {
+      d = await fetchSiteData(site);
+    } catch (e) {
+      bdEl.innerHTML = createInlineError(
+        ERROR_MESSAGES.DATA_LOAD_FAILED,
+        () => loadSiteView(site),
+        '다시 시도'
+      ).outerHTML;
+      return;
+    }
     if (requestId !== siteViewReqId || site !== curSite) return;
     if (!d || !d.expose || !d.expose.items || !d.expose.items.length) {
       bdEl.innerHTML =
@@ -6731,6 +7673,17 @@ function savedAtIso(d) {
     if (typeof notifySnapshotShellState === "function") notifySnapshotShellState();
   }
 
+  /**
+ * Build a summary row object for a site in the all sites view
+ * Extracts key metrics from site data for display in the overview
+ * @param {string} site - Site URL
+ * @param {Object|null} data - Site data object with expose, crawl, backlink, diagnosisMeta
+ * @returns {Object} Summary row object with metrics
+ * @example
+ * const row = buildSiteSummaryRow('https://example.com', siteData);
+ * console.log(row.totalC); // Total clicks
+ * console.log(row.avgCtr); // Average CTR
+ */
   function buildSiteSummaryRow(site, data) {
     const item = (data && data.expose && data.expose.items && data.expose.items[0]) || {};
     const logs = (item.logs || []).sort((a, b) => (a.date || "").localeCompare(b.date || ""));
@@ -6810,6 +7763,21 @@ function savedAtIso(d) {
     };
   }
 
+/**
+ * Render full refresh progress UI with progress bar and stats
+ * @param {string} label - Main progress label
+ * @param {string} detail - Detailed progress description
+ * @param {number} progress - Progress ratio (0-1)
+ * @param {Object} stats - Statistics object { success, partial, failed, errors }
+ * @returns {void}
+ * @example
+ * renderFullRefreshProgress(
+ *   '데이터 새로고침 중',
+ *   '5 / 10 사이트 처리 중',
+ *   0.5,
+ *   { success: 4, partial: 1, failed: 0, errors: [] }
+ * );
+ */
 function renderFullRefreshProgress(label, detail, progress, stats) {
   const ratio =
     typeof progress === "number" && isFinite(progress)
@@ -6856,6 +7824,14 @@ function renderFullRefreshProgress(label, detail, progress, stats) {
     "</div>";
 }
 
+/**
+ * Check if a full refresh should be triggered based on cache expiry
+ * @returns {boolean} True if any cache is expired and refresh is needed
+ * @example
+ * if (shouldBootstrapFullRefresh()) {
+ *   await runFullRefreshPipeline({ trigger: 'cache-expiry' });
+ * }
+ */
 function shouldBootstrapFullRefresh() {
   if (!allSites.length) return false;
   const now = Date.now();
@@ -6867,6 +7843,18 @@ function shouldBootstrapFullRefresh() {
   });
 }
 
+/**
+ * Run the full refresh pipeline to update all site data
+ * Fetches expose, diagnosisMeta, crawl, and backlink data for all sites
+ * @param {Object} options - Options object
+ * @param {string} options.trigger - Trigger source ('cache-expiry' or 'manual')
+ * @param {HTMLElement} options.button - Optional button element to update with progress
+ * @returns {Promise<Object>} Payload with summaryRows and stats
+ * @example
+ * const payload = await runFullRefreshPipeline({ trigger: 'manual' });
+ * console.log(`Refreshed ${payload.summaryRows.length} sites`);
+ * @see {renderFullRefreshProgress}
+ */
 async function runFullRefreshPipeline(options = {}) {
   const trigger = options && options.trigger ? options.trigger : "manual";
   const triggerLabel =
@@ -6915,6 +7903,18 @@ async function runFullRefreshPipeline(options = {}) {
   return payload;
 }
 
+/**
+ * Render a failure summary popup when data collection has issues
+ * Shows failed and partial counts, and displays error details
+ * @param {Object} stats - Statistics object with failed, partial, and errors
+ * @returns {void}
+ * @example
+ * renderFailureSummary({
+ *   failed: 2,
+ *   partial: 1,
+ *   errors: [{ site: 'https://example.com', error: 'Network error' }]
+ * });
+ */
 function renderFailureSummary(stats) {
   if (!stats || (stats.failed === 0 && stats.errors.length === 0)) return;
   const summaryEl = document.createElement("div");
@@ -6967,6 +7967,17 @@ function renderFailureSummary(stats) {
 
   // Async initialization - wait for site list to load
   console.log('[Init] Starting async initialization...');
+  /**
+   * Initialize the SearchAdvisor application
+   * Loads site list, sets up UI state, and renders initial view
+   * This is the main entry point that runs on page load
+   * @returns {Promise<void>}
+   * @example
+   // Automatically called on page load
+   * @see {loadSiteList}
+   * @see {renderAllSites}
+   * @see {loadSiteView}
+   */
   (async function() {
     console.log('[Init] Inside async IIFE, calling loadSiteList...');
     await loadSiteList(false);

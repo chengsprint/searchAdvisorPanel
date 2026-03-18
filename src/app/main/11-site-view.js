@@ -1,9 +1,35 @@
+  /**
+ * Load and render the site detail view for a specific site
+ * Fetches all data types (expose, crawl, backlink, diagnosisMeta) and renders tabs
+ * @param {string} site - Site URL to load
+ * @returns {Promise<void>}
+ * @example
+ * await loadSiteView('https://example.com');
+ * @see {buildRenderers}
+ */
   async function loadSiteView(site) {
-    if (!site) return;
+    if (!site) {
+      bdEl.innerHTML = createInlineError(
+        ERROR_MESSAGES.SITE_NOT_FOUND,
+        () => window.location.reload(),
+        '새로고침'
+      ).outerHTML;
+      return;
+    }
     const requestId = ++siteViewReqId;
     labelEl.innerHTML = `<span>${escHtml(getSiteLabel(site))}</span>`;
     bdEl.innerHTML = `<div style="padding:50px 20px;text-align:center;color:#64748b"><div style="display:inline-flex;align-items:center;gap:8px">${ICONS.refresh.replace('width="13" height="13"','width="16" height="16"')} 로딩 중...</div></div>`;
-    const d = await fetchSiteData(site);
+    let d;
+    try {
+      d = await fetchSiteData(site);
+    } catch (e) {
+      bdEl.innerHTML = createInlineError(
+        ERROR_MESSAGES.DATA_LOAD_FAILED,
+        () => loadSiteView(site),
+        '다시 시도'
+      ).outerHTML;
+      return;
+    }
     if (requestId !== siteViewReqId || site !== curSite) return;
     if (!d || !d.expose || !d.expose.items || !d.expose.items.length) {
       bdEl.innerHTML =
@@ -16,6 +42,17 @@
     if (typeof notifySnapshotShellState === "function") notifySnapshotShellState();
   }
 
+  /**
+ * Build a summary row object for a site in the all sites view
+ * Extracts key metrics from site data for display in the overview
+ * @param {string} site - Site URL
+ * @param {Object|null} data - Site data object with expose, crawl, backlink, diagnosisMeta
+ * @returns {Object} Summary row object with metrics
+ * @example
+ * const row = buildSiteSummaryRow('https://example.com', siteData);
+ * console.log(row.totalC); // Total clicks
+ * console.log(row.avgCtr); // Average CTR
+ */
   function buildSiteSummaryRow(site, data) {
     const item = (data && data.expose && data.expose.items && data.expose.items[0]) || {};
     const logs = (item.logs || []).sort((a, b) => (a.date || "").localeCompare(b.date || ""));

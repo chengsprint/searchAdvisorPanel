@@ -18,6 +18,13 @@ const __sadvReadyResolvers = [];
 // 스냅샷 상태 함수들
 // ============================================================================
 
+/**
+ * Create a snapshot of the current UI state
+ * @returns {Object} Object containing current mode, site, tab, sites, rows, and account label
+ * @example
+ * const snapshot = __sadvSnapshot();
+ * console.log(snapshot.curMode); // "all" or "site"
+ */
 function __sadvSnapshot() {
   return {
     curMode,
@@ -29,6 +36,12 @@ function __sadvSnapshot() {
   };
 }
 
+/**
+ * Notify all registered listeners of UI state changes
+ * Calls each listener with the current snapshot
+ * @returns {void}
+ * @see {__sadvSnapshot}
+ */
 function __sadvNotify() {
   const snap = __sadvSnapshot();
   __sadvListeners.forEach(function (fn) {
@@ -40,6 +53,12 @@ function __sadvNotify() {
   });
 }
 
+/**
+ * Mark the SearchAdvisor UI as ready and resolve all pending ready promises
+ * Should only be called once during initialization
+ * @returns {void}
+ * @see {__sadvNotify}
+ */
 function __sadvMarkReady() {
   if (__sadvInitialReady) return;
   __sadvInitialReady = true;
@@ -58,6 +77,15 @@ function __sadvMarkReady() {
 // 스냅샷 쉘 상태 관리 함수들
 // ============================================================================
 
+/**
+ * Build snapshot shell state from a V2 payload
+ * Extracts UI state, metadata, and site information from a saved snapshot
+ * @param {Object} payload - V2 payload object
+ * @returns {Object} Snapshot shell state with accountLabel, allSites, rows, siteMeta, curMode, curSite, curTab, runtimeVersion, cacheMeta
+ * @example
+ * const shellState = buildSnapshotShellState(exportPayload);
+ * console.log(shellState.accountLabel); // "user@example.com"
+ */
 function buildSnapshotShellState(payload) {
   // Handle V2 format
   let allSites, dataBySite, summaryRows, siteMeta, accountLabel, savedAt, curMode, curSite, curTab;
@@ -148,6 +176,16 @@ function buildSnapshotShellState(payload) {
 
 let snapshotMetaState = { siteMeta: {}, mergedMeta: null };
 
+/**
+ * Set the snapshot metadata state
+ * @param {Object} state - State object containing siteMeta and mergedMeta
+ * @returns {void}
+ * @example
+ * setSnapshotMetaState({
+ *   siteMeta: { 'https://example.com': { label: 'Example' } },
+ *   mergedMeta: { isMerged: true }
+ * });
+ */
 function setSnapshotMetaState(state) {
   snapshotMetaState = {
     siteMeta: state && state.siteMeta ? state.siteMeta : {},
@@ -155,6 +193,15 @@ function setSnapshotMetaState(state) {
   };
 }
 
+/**
+ * Get the site metadata map from live state or export payload
+ * Returns a map of site URLs to their metadata (labels, etc.)
+ * @returns {Object} Site metadata map
+ * @example
+ * const metaMap = getSiteMetaMap();
+ * console.log(metaMap['https://example.com'].label); // 'Example Site'
+ * @see {getMergedMetaState}
+ */
 function getSiteMetaMap() {
   const liveMap = snapshotMetaState.siteMeta;
   if (liveMap && Object.keys(liveMap).length) return liveMap;
@@ -176,6 +223,16 @@ function getSiteMetaMap() {
   return payload.siteMeta || {};
 }
 
+/**
+ * Get the merged metadata state for multi-account snapshots
+ * @returns {Object|null} Merged metadata object or null
+ * @example
+ * const mergedMeta = getMergedMetaState();
+ * if (mergedMeta?.isMerged) {
+ *   console.log('This is a merged snapshot');
+ * }
+ * @see {getSiteMetaMap}
+ */
 function getMergedMetaState() {
   if (snapshotMetaState.mergedMeta) return snapshotMetaState.mergedMeta;
   const payload =
