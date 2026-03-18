@@ -77,16 +77,16 @@ function buildSnapshotShellState(payload) {
     curSite = payload.ui?.curSite || null;
     curTab = payload.ui?.curTab || "overview";
   } else {
-    // Legacy format (should not happen in big bang, but kept for safety)
-    accountLabel = payload.accountLabel || "";
-    allSites = Array.isArray(payload.allSites) ? payload.allSites.slice() : [];
-    dataBySite = payload.dataBySite || {};
-    summaryRows = payload.summaryRows || [];
-    siteMeta = payload.siteMeta || {};
-    savedAt = payload.savedAt;
-    curMode = payload.curMode || CONFIG.MODE.ALL;
-    curSite = payload.curSite || null;
-    curTab = payload.curTab || "overview";
+    // V2 포맷이 아닌 경우 빈 값 반환
+    accountLabel = "";
+    allSites = [];
+    dataBySite = {};
+    summaryRows = [];
+    siteMeta = {};
+    savedAt = null;
+    curMode = CONFIG.MODE.ALL;
+    curSite = null;
+    curTab = "overview";
   }
 
   const snapshotTabIds = [
@@ -183,4 +183,36 @@ function getMergedMetaState() {
       ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__
       : null;
   return payload && payload.mergedMeta ? payload.mergedMeta : null;
+}
+
+// ============================================================================
+// 전역 노출 (IIFE로 감싸진 환경에서도 접근 가능하도록)
+// ============================================================================
+if (typeof window !== "undefined") {
+  // UI 상태 변수들을 window 객체에 노출
+  Object.defineProperty(window, "curMode", {
+    get: function() { return curMode; },
+    set: function(v) { curMode = v; },
+    enumerable: true
+  });
+  Object.defineProperty(window, "curSite", {
+    get: function() { return curSite; },
+    set: function(v) { curSite = v; },
+    enumerable: true
+  });
+  Object.defineProperty(window, "curTab", {
+    get: function() { return curTab; },
+    set: function(v) { curTab = v; },
+    enumerable: true
+  });
+  Object.defineProperty(window, "siteViewReqId", {
+    get: function() { return siteViewReqId; },
+    set: function(v) { siteViewReqId = v; },
+    enumerable: true
+  });
+  Object.defineProperty(window, "allViewReqId", {
+    get: function() { return allViewReqId; },
+    set: function(v) { allViewReqId = v; },
+    enumerable: true
+  });
 }
