@@ -17,7 +17,30 @@
       return;
     }
     const requestId = ++siteViewReqId;
-    labelEl.innerHTML = sanitizeHTML(`<span>${escHtml(getSiteLabel(site))}</span>`);
+
+    // Get account label from siteOwnership for display
+    let accountLabel = null;
+    if (window.__sadvInitData && window.__sadvInitData.siteOwnership) {
+      const owners = window.__sadvInitData.siteOwnership[site];
+      if (owners && owners.length > 0) {
+        accountLabel = owners[0];
+        if (owners.length > 1) {
+          accountLabel = `${owners[0]} (+${owners.length - 1})`;
+        }
+      }
+    }
+
+    // Update label with account info
+    const labelContent = `<span>${escHtml(getSiteLabel(site))}</span>`;
+    if (accountLabel) {
+      labelEl.innerHTML = sanitizeHTML(
+        labelContent +
+        `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;border:1px solid rgba(14,165,233,0.2);color:#0ea5e9;background:rgba(14,165,233,0.1);font-size:10px;font-weight:600;margin-left:8px" title="${escHtml(accountLabel)}">${escHtml(accountLabel.includes("@") ? accountLabel.split("@")[0] : accountLabel)}</span>`
+      );
+    } else {
+      labelEl.innerHTML = sanitizeHTML(labelContent);
+    }
+
     bdEl.innerHTML = sanitizeHTML(`<div style="padding:50px 20px;text-align:center;color:#64748b"><div style="display:inline-flex;align-items:center;gap:8px">${ICONS.refresh.replace('width="13" height="13"','width="16" height="16"')} 로딩 중...</div></div>`);
     let d;
     try {
@@ -103,6 +126,26 @@
       (initSiteData && initSiteData.__meta && initSiteData.__meta.__source) ||
       null;
 
+    // Get account ownership from siteOwnership (V2 multi-account)
+    let accountLabel = null;
+    if (typeof window !== "undefined" && window.__sadvInitData && window.__sadvInitData.siteOwnership) {
+      const owners = window.__sadvInitData.siteOwnership[site];
+      if (owners && owners.length > 0) {
+        // Use first owner email as account label
+        accountLabel = owners[0];
+        // If multiple accounts, show count
+        if (owners.length > 1) {
+          accountLabel = `${owners[0]} (+${owners.length - 1})`;
+        }
+      }
+    }
+    // Fallback to sourceAccount if available
+    if (!accountLabel && sourceAccount) {
+      accountLabel = typeof sourceAccount === "object" && sourceAccount.accountLabel
+        ? sourceAccount.accountLabel
+        : sourceAccount;
+    }
+
     return {
       site,
       totalC,
@@ -130,5 +173,6 @@
           ? data.diagnosisMetaRange
           : null,
       sourceAccount: sourceAccount,
+      accountLabel: accountLabel, // New field for account label display
     };
   }

@@ -221,10 +221,12 @@ async function renderAllSites() {
     card.className = "sadv-allcard";
     card.style.borderTop = "2px solid " + col + "44";
     const shortName = typeof getSiteLabel === "function" ? getSiteLabel(r.site) : r.site.replace(/^https?:\/\//, "");
-    const sourceBadge =
-      r.sourceAccount && (typeof r.sourceAccount === "string" ? r.sourceAccount.trim() : "")
-        ? `<span style="font-size:10px;color:#64748b;background:#1e293b;padding:2px 6px;border-radius:4px;margin-left:8px;white-space:nowrap;border:1px solid #334155" title="${escHtml(r.sourceAccount)}">${escHtml(r.sourceAccount.split("@")[0])}</span>`
-        : "";
+
+    // PRIORITY: Use accountLabel first (from siteOwnership), fallback to sourceAccount
+    const displayAccount = r.accountLabel || r.sourceAccount;
+    const accountBadge = displayAccount && (typeof displayAccount === "string" ? displayAccount.trim() : "")
+      ? `<span style="font-size:10px;color:#0ea5e9;background:rgba(14,165,233,0.1);padding:2px 6px;border-radius:4px;margin-left:8px;white-space:nowrap;border:1px solid rgba(14,165,233,0.2)" title="${escHtml(displayAccount)}">${escHtml(displayAccount.includes("@") ? displayAccount.split("@")[0] : displayAccount)}</span>`
+      : "";
 
     // Responsive card layout
     const isMobile = window.innerWidth <= 768;
@@ -241,7 +243,7 @@ async function renderAllSites() {
       '15"></div><span style="font-size:14px;font-weight:700;line-height:1.3;color:#f8fafc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px">' +
       escHtml(shortName) +
       '</span>' +
-      sourceBadge +
+      accountBadge +
       '</div></div><div style="display:grid;' +
       gridTemplate +
       ';margin-bottom:12px"><div style="text-align:center;min-width:0;background:rgba(30,41,59,0.3);' +
