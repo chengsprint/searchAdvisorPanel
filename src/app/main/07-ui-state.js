@@ -272,4 +272,39 @@ if (typeof window !== "undefined") {
     set: function(v) { allViewReqId = v; },
     enumerable: true
   });
+
+  // React 18 호환 상태 관리 노출
+  // React 18 Concurrent Mode에서도 안전하게 상태를 구독할 수 있습니다.
+  window.__SEARCHADVISOR_UI_STATE__ = {
+    getState: function() {
+      return {
+        curMode: curMode,
+        curSite: curSite,
+        curTab: curTab,
+        allSites: [...allSites],
+        rows: window.__sadvRows || [],
+        accountLabel: accountLabel,
+        siteViewReqId: siteViewReqId,
+        allViewReqId: allViewReqId
+      };
+    },
+    subscribe: function(listener) {
+      __sadvListeners.add(listener);
+      // 구독 해제 함수 반환
+      return function unsubscribe() {
+        __sadvListeners.delete(listener);
+      };
+    },
+    // React 18 Concurrent Mode 호환 알림
+    notifyConcurrent: function() {
+      const react18Compat = window.__REACT18_COMPAT__;
+      if (react18Compat && react18Compat.supportsConcurrentFeatures()) {
+        // React 18에서는 다음 타이머 틱에 알림
+        Promise.resolve().then(__sadvNotify);
+      } else {
+        // React 17 이하에서는 즉시 알림
+        __sadvNotify();
+      }
+    }
+  };
 }
