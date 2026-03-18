@@ -1,0 +1,154 @@
+function renderFullRefreshProgress(label, detail, progress, stats) {
+  const ratio =
+    typeof progress === "number" && isFinite(progress)
+      ? Math.max(0.06, Math.min(1, progress))
+      : 0.06;
+  const st = stats || { success: 0, partial: 0, failed: 0, errors: [] };
+  const pct = Math.round(ratio * 100);
+  let statsHtml = "";
+  if (st.success > 0 || st.partial > 0 || st.failed > 0) {
+    statsHtml =
+      '<div style="display:flex;gap:12px;margin-top:8px;font-size:10px">' +
+      '<span style="color:#4ade80">' + st.success + ' success</span>' +
+      '<span style="color:#fbbf24">' + st.partial + ' partial</span>' +
+      '<span style="color:#f87171">' + st.failed + ' failed</span>' +
+      "</div>";
+  }
+  let errorsHtml = "";
+  if (st.errors && st.errors.length > 0 && st.errors.length <= 3) {
+    errorsHtml =
+      '<div style="margin-top:10px;font-size:10px;color:#f87171;line-height:1.4">' +
+      st.errors.map(function (e) { return escHtml(e.site) + ": " + escHtml(e.error); }).join("<br>") +
+      "</div>";
+  }
+  bdEl.innerHTML =
+    '<div style="padding:24px 18px 20px;color:#7a9ab8;text-align:left;line-height:1.6">' +
+    '<div style="font-size:13px;font-weight:700;color:#d4ecff;margin-bottom:8px">' +
+    label +
+    "</div>" +
+    '<div style="font-size:11px;margin-bottom:10px">' +
+    (detail || "") +
+    "</div>" +
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">' +
+    '<div style="flex:1;height:10px;border-radius:999px;background:#0d1829;border:1px solid #1a2d45;overflow:hidden">' +
+    '<div style="width:' +
+    pct +
+    '%;height:100%;background:linear-gradient(90deg,#40c4ff,#00e676)"></div>' +
+    "</div>" +
+    '<span style="font-size:11px;font-weight:700;color:#d4ecff;min-width:48px;text-align:right">' +
+    pct +
+    "%</span>" +
+    "</div>" +
+    statsHtml +
+    errorsHtml +
+    "</div>";
+}
+
+function shouldBootstrapFullRefresh() {
+  if (!allSites.length) return false;
+  const now = Date.now();
+  const siteListTs = getSiteListCacheStamp();
+  if (!(typeof siteListTs === "number") || now - siteListTs >= DATA_TTL) return true;
+  return allSites.some(function (site) {
+    const siteTs = getSiteDataCacheStamp(site);
+    return !(typeof siteTs === "number") || now - siteTs >= DATA_TTL;
+  });
+}
+
+async function runFullRefreshPipeline(options = {}) {
+  const trigger = options && options.trigger ? options.trigger : "manual";
+  const triggerLabel =
+    trigger === "cache-expiry"
+      ? "\uce90\uc2dc\uac00 \ub9cc\ub8cc\ub418\uc5b4 \uc804\uccb4 \ub370\uc774\ud130\ub97c \ub2e4\uc2dc \uc218\uc9d1\ud558\uace0 \uc788\uc5b4\uc694."
+      : "\uc804\uccb4 \ub370\uc774\ud130\ub97c \ub2e4\uc2dc \uc218\uc9d1\ud558\uace0 \uc788\uc5b4\uc694.";
+  const triggerDetail =
+    trigger === "cache-expiry"
+      ? "\uc804\uccb4\ud604\ud669\uacfc \uc0ac\uc774\ud2b8\ubcc4 \uc0c1\uc138\ud0ed\uc744 \ubaa8\ub450 \ucd5c\uc2e0 \uc0c1\ud0dc\ub85c \ub9de\ucd94\ub294 \uc911\uc785\ub2c8\ub2e4."
+      : "\uc0ac\uc774\ud2b8 \ubaa9\ub85d\ubd80\ud130 expose, diagnosisMeta, crawl, backlink\uae4c\uc9c0 \uc21c\uc11c\ub300\ub85c \uac31\uc2e0\ud569\ub2c8\ub2e4.";
+  renderFullRefreshProgress(triggerLabel, triggerDetail, 0);
+  labelEl.innerHTML = "<span>\uc804\uccb4 \uc7ac\uc218\uc9d1 \uc9c4\ud589 \uc911</span>";
+  const btn = options && options.button ? options.button : null;
+  const payload = await collectExportData(
+    function (done, total, site, stats) {
+      const safeTotal = Math.max(1, total);
+      const shortSite = site
+        ? site.replace("https://", "").replace("http://", "")
+        : "";
+      const detail =
+        done +
+        " / " +
+        safeTotal +
+        " \uc0ac\uc774\ud2b8 \ucc98\ub9ac \uc911" +
+        (shortSite ? " · " + shortSite : "");
+      renderFullRefreshProgress(triggerLabel, detail, done / safeTotal, stats);
+      if (btn) btn.textContent = done + "/" + safeTotal;
+    },
+    { refreshMode: "refresh" },
+  );
+  window.__sadvRows = payload.summaryRows;
+  buildCombo(payload.summaryRows);
+  assignColors();
+  ensureCurrentSite();
+  if (curSite) setComboSite(curSite);
+  if (curMode === "site" && curSite) {
+    await loadSiteView(curSite);
+  } else {
+    setAllSitesLabel();
+    await renderAllSites();
+  }
+  setCachedUiState();
+  if (payload.stats && (payload.stats.failed > 0 || payload.stats.errors.length > 0)) {
+    renderFailureSummary(payload.stats);
+  }
+  return payload;
+}
+
+function renderFailureSummary(stats) {
+  if (!stats || (stats.failed === 0 && stats.errors.length === 0)) return;
+  const summaryEl = document.createElement("div");
+  summaryEl.id = "sadv-failure-summary";
+  summaryEl.style.cssText =
+    "position:fixed;bottom:12px;right:12px;background:#1a1a2e;border:1px solid #f87171;border-radius:8px;padding:12px 16px;font-size:11px;color:#f87171;max-width:320px;z-index:10000000;box-shadow:0 4px 20px rgba(0,0,0,.5);font-family:Apple SD Gothic Neo,system-ui";
+  const failedCount = stats.failed || 0;
+  const partialCount = stats.partial || 0;
+  const errorItems = (stats.errors || []).slice(0, 5);
+  const headerRow = document.createElement("div");
+  headerRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-bottom:4px";
+  const titleSpan = document.createElement("span");
+  titleSpan.style.fontWeight = "700";
+  titleSpan.textContent = "Data Collection Issues";
+  headerRow.appendChild(titleSpan);
+  const closeBtn = document.createElement("button");
+  closeBtn.textContent = "\u00d7";
+  closeBtn.style.cssText = "background:none;border:none;color:#f87171;cursor:pointer;font-size:14px;padding:0 4px";
+  closeBtn.onclick = function () { summaryEl.remove(); };
+  headerRow.appendChild(closeBtn);
+  summaryEl.appendChild(headerRow);
+  const countDiv = document.createElement("div");
+  countDiv.style.color = "#fcd34d";
+  countDiv.textContent = failedCount + " failed" + (partialCount > 0 ? ", " + partialCount + " partial" : "");
+  summaryEl.appendChild(countDiv);
+  if (errorItems.length > 0) {
+    const errorDiv = document.createElement("div");
+    errorDiv.style.cssText = "margin-top:8px;padding-top:8px;border-top:1px solid #f8717155;font-size:10px;line-height:1.5";
+    errorItems.forEach(function (e) {
+      const line = document.createElement("div");
+      const siteShort = e.site ? e.site.replace(/^https?:\/\//, "").slice(0, 30) : "unknown";
+      line.textContent = siteShort + ": " + (e.error || "unknown error");
+      errorDiv.appendChild(line);
+    });
+    if (stats.errors.length > 5) {
+      const moreLine = document.createElement("div");
+      moreLine.style.color = "#fbbf24";
+      moreLine.textContent = "... +" + (stats.errors.length - 5) + " more";
+      errorDiv.appendChild(moreLine);
+    }
+    summaryEl.appendChild(errorDiv);
+  }
+  const existing = document.getElementById("sadv-failure-summary");
+  if (existing) existing.remove();
+  document.body.appendChild(summaryEl);
+  setTimeout(function () {
+    if (summaryEl && summaryEl.parentElement) summaryEl.remove();
+  }, 30000);
+}

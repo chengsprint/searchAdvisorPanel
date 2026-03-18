@@ -12,11 +12,26 @@ const DIST_DIR = path.join(__dirname, 'dist');
 const OUTPUT_FILE = path.join(DIST_DIR, 'runtime.js');
 
 // Module load order - must be preserved
+// Dependencies: each module may depend on earlier modules
 const MODULES = [
   '00-polyfill.js',
   '01-style.js',
   '02-react-bundle.js',
-  'app/main.js'
+  'app/main/00-constants.js',
+  'app/main/01-helpers.js',
+  'app/main/02-dom-init.js',
+  'app/main/03-data-manager.js',
+  'app/main/04-api.js',
+  'app/main/05-demo-mode.js',
+  'app/main/06-merge-manager.js',
+  'app/main/07-ui-state.js',
+  'app/main/08-renderers.js',
+  'app/main/09-ui-controls.js',
+  'app/main/10-all-sites-view.js',
+  'app/main/11-site-view.js',
+  'app/main/12-snapshot.js',
+  'app/main/13-refresh.js',
+  'app/main/14-init.js'
 ];
 
 function build() {
