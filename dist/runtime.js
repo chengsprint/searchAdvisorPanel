@@ -2881,7 +2881,199 @@ window.__sadvTabsEl = document.getElementById("sadv-tabs");
 // ============================================================
 
 let allSites = [];
-const memCache = {};
+
+// ============================================================================
+// P1: LRU Cache Implementation
+// ============================================================================
+
+/**
+ * LRU (Least Recently Used) Cache with TTL support
+ * Prevents unbounded memory growth by evicting least recently used entries
+ */
+class LRUCache {
+  /**
+   * @param {number} capacity - Maximum number of entries (default: 100)
+   * @param {number} ttl - Time-to-live in milliseconds (default: 12 hours)
+   */
+  constructor(capacity = 100, ttl = 12 * 60 * 60 * 1000) {
+    this.capacity = capacity;
+    this.ttl = ttl;
+    this.cache = new Map();
+    this.access = new Map();
+    this.evictionCallback = null;
+  }
+
+  /**
+   * Set callback to be invoked when entries are evicted
+   * @param {Function} callback - Function to call on eviction (key, value) => void
+   */
+  onEviction(callback) {
+    this.evictionCallback = callback;
+  }
+
+  /**
+   * Get a value from the cache
+   * @param {string} key - Cache key
+   * @returns {*} Cached value or undefined if not found/expired
+   */
+  get(key) {
+    const item = this.cache.get(key);
+    if (!item) return undefined;
+
+    // Check TTL
+    if (Date.now() - item.timestamp > this.ttl) {
+      this.delete(key);
+      return undefined;
+    }
+
+    // Update access time for LRU tracking
+    this.access.set(key, Date.now());
+    return item.value;
+  }
+
+  /**
+   * Set a value in the cache
+   * @param {string} key - Cache key
+   * @param {*} value - Value to cache
+   */
+  set(key, value) {
+    const now = Date.now();
+
+    // Check if we need to evict (at capacity and key doesn't exist)
+    if (this.cache.size >= this.capacity && !this.cache.has(key)) {
+      this._evictLRU();
+    }
+
+    // Store value with timestamp
+    this.cache.set(key, { value, timestamp: now });
+    this.access.set(key, now);
+  }
+
+  /**
+   * Check if a key exists in the cache (and is not expired)
+   * @param {string} key - Cache key
+   * @returns {boolean} True if key exists and is valid
+   */
+  has(key) {
+    const item = this.cache.get(key);
+    if (!item) return false;
+
+    // Check TTL
+    if (Date.now() - item.timestamp > this.ttl) {
+      this.delete(key);
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Delete a specific key from the cache
+   * @param {string} key - Cache key to delete
+   * @returns {boolean} True if key was deleted
+   */
+  delete(key) {
+    const deleted = this.cache.delete(key);
+    this.access.delete(key);
+    return deleted;
+  }
+
+  /**
+   * Clear all entries from the cache
+   */
+  clear() {
+    this.cache.clear();
+    this.access.clear();
+  }
+
+  /**
+   * Get current cache size
+   * @returns {number} Number of entries in cache
+   */
+  get size() {
+    return this.cache.size;
+  }
+
+  /**
+   * Get all keys in the cache
+   * @returns {Array<string>} Array of cache keys
+   */
+  keys() {
+    return Array.from(this.cache.keys());
+  }
+
+  /**
+   * Evict the least recently used entry
+   * @private
+   */
+  _evictLRU() {
+    let oldestKey = null;
+    let oldestTime = Infinity;
+
+    for (const [key, time] of this.access.entries()) {
+      if (time < oldestTime) {
+        oldestTime = time;
+        oldestKey = key;
+      }
+    }
+
+    if (oldestKey) {
+      const item = this.cache.get(oldestKey);
+      const value = item ? item.value : undefined;
+
+      this.delete(oldestKey);
+
+      // Call eviction callback if registered
+      if (this.evictionCallback && typeof this.evictionCallback === 'function') {
+        try {
+          this.evictionCallback(oldestKey, value);
+        } catch (e) {
+          console.error('[LRUCache] Eviction callback error:', e);
+        }
+      }
+
+      console.log(`[LRUCache] Evicted LRU entry: ${oldestKey}`);
+    }
+  }
+
+  /**
+   * Clean up expired entries
+   * @returns {number} Number of entries cleaned up
+   */
+  cleanupExpired() {
+    const now = Date.now();
+    let cleaned = 0;
+
+    for (const [key, item] of this.cache.entries()) {
+      if (now - item.timestamp > this.ttl) {
+        this.delete(key);
+        cleaned++;
+      }
+    }
+
+    if (cleaned > 0) {
+      console.log(`[LRUCache] Cleaned up ${cleaned} expired entries`);
+    }
+
+    return cleaned;
+  }
+}
+
+// Initialize memCache as LRUCache instance
+const memCache = new LRUCache(
+  100, // capacity: 100 entries
+  12 * 60 * 60 * 1000 // ttl: 12 hours
+);
+
+// Optional: Set up eviction callback for logging
+memCache.onEviction((key, value) => {
+  console.debug(`[LRUCache] Evicted cache entry: ${key}`);
+});
+
+// Periodic cleanup of expired entries (every 30 minutes)
+setInterval(() => {
+  memCache.cleanupExpired();
+}, 30 * 60 * 1000);
 
 // ============================================================================
 // P1: localStorage Race Condition Fix - Write Queue System
