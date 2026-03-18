@@ -1,3 +1,18 @@
+/**
+ * Render full refresh progress UI with progress bar and stats
+ * @param {string} label - Main progress label
+ * @param {string} detail - Detailed progress description
+ * @param {number} progress - Progress ratio (0-1)
+ * @param {Object} stats - Statistics object { success, partial, failed, errors }
+ * @returns {void}
+ * @example
+ * renderFullRefreshProgress(
+ *   '데이터 새로고침 중',
+ *   '5 / 10 사이트 처리 중',
+ *   0.5,
+ *   { success: 4, partial: 1, failed: 0, errors: [] }
+ * );
+ */
 function renderFullRefreshProgress(label, detail, progress, stats) {
   const ratio =
     typeof progress === "number" && isFinite(progress)
@@ -44,6 +59,14 @@ function renderFullRefreshProgress(label, detail, progress, stats) {
     "</div>";
 }
 
+/**
+ * Check if a full refresh should be triggered based on cache expiry
+ * @returns {boolean} True if any cache is expired and refresh is needed
+ * @example
+ * if (shouldBootstrapFullRefresh()) {
+ *   await runFullRefreshPipeline({ trigger: 'cache-expiry' });
+ * }
+ */
 function shouldBootstrapFullRefresh() {
   if (!allSites.length) return false;
   const now = Date.now();
@@ -55,6 +78,18 @@ function shouldBootstrapFullRefresh() {
   });
 }
 
+/**
+ * Run the full refresh pipeline to update all site data
+ * Fetches expose, diagnosisMeta, crawl, and backlink data for all sites
+ * @param {Object} options - Options object
+ * @param {string} options.trigger - Trigger source ('cache-expiry' or 'manual')
+ * @param {HTMLElement} options.button - Optional button element to update with progress
+ * @returns {Promise<Object>} Payload with summaryRows and stats
+ * @example
+ * const payload = await runFullRefreshPipeline({ trigger: 'manual' });
+ * console.log(`Refreshed ${payload.summaryRows.length} sites`);
+ * @see {renderFullRefreshProgress}
+ */
 async function runFullRefreshPipeline(options = {}) {
   const trigger = options && options.trigger ? options.trigger : "manual";
   const triggerLabel =
@@ -103,6 +138,18 @@ async function runFullRefreshPipeline(options = {}) {
   return payload;
 }
 
+/**
+ * Render a failure summary popup when data collection has issues
+ * Shows failed and partial counts, and displays error details
+ * @param {Object} stats - Statistics object with failed, partial, and errors
+ * @returns {void}
+ * @example
+ * renderFailureSummary({
+ *   failed: 2,
+ *   partial: 1,
+ *   errors: [{ site: 'https://example.com', error: 'Network error' }]
+ * });
+ */
 function renderFailureSummary(stats) {
   if (!stats || (stats.failed === 0 && stats.errors.length === 0)) return;
   const summaryEl = document.createElement("div");
