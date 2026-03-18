@@ -276,7 +276,8 @@ async function renderAllSites() {
       escHtml(r.avgCtr) +
       '%</div><div style="' +
       fontSizeLabel +
-      ';line-height:1.4;color:#64748b;margin-top:4px">CTR</div></div></div>';
+      ';line-height:1.4;color:#64748b;margin-top:4px">CTR</div></div></div>'
+    );
     // Add keyboard accessibility
     card.setAttribute("tabindex", "0");
     card.setAttribute("role", "button");
