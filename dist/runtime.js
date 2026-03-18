@@ -808,6 +808,103 @@ const FULL_REFRESH_BATCH_SIZE = 1;
 const FULL_REFRESH_SITE_DELAY_MS = 350;
 const FULL_REFRESH_JITTER_MS = 150;
 
+// ============================================================
+// P1: USER-FRIENDLY ERROR MESSAGES
+// ============================================================
+const ERROR_MESSAGES = {
+  // Network/Fetch Errors
+  NETWORK_ERROR: "네트워크 연결을 확인하고 다시 시도해주세요.",
+  REQUEST_TIMEOUT: "요청 시간이 초과했어요. 잠시 후 다시 시도해주세요.",
+  MAX_RETRIES_EXCEEDED: "데이터를 불러오는 데 실패했습니다. 잠시 후 다시 시도해주세요.",
+  INVALID_ENCID: "사용자 정보를 찾을 수 없어요. 서치어드바이저 페이지에서 다시 실행해주세요.",
+
+  // Data Loading Errors
+  DATA_LOAD_ERROR: "데이터를 불러오는 중 오류가 발생했어요.",
+  DATA_LOAD_FAILED: "데이터를 불러오는 데 실패했습니다. 잠시 후 다시 시도해주세요.",
+  NO_SITE_DATA: "이 사이트의 데이터가 없습니다.",
+  EXPOSE_DATA_MISSING: "기본 리포트 데이터가 없어요.",
+  DETAIL_DATA_MISSING: "상세 정보를 불러올 수 없어요.",
+
+  // Download/Export Errors
+  DOWNLOAD_FAILED: "파일 다운로드에 실패했어요. 다시 시도해주세요.",
+  HTML_SAVE_ERROR: "HTML 저장 중 오류가 발생했어요. 다시 시도해주세요.",
+  EXPORT_INCOMPLETE: "일부 사이트 데이터를 내보내지 못했어요.",
+
+  // Import/Merge Errors
+  IMPORT_FAILED: "데이터 가져오기에 실패했어요.",
+  IMPORT_FORMAT_ERROR: "지원하지 않는 파일 형식이에요. V2 형식 파일을 사용해주세요.",
+  MERGE_FAILED: "데이터 병합에 실패했어요.",
+  NO_VALID_ACCOUNTS: "가져올 계정 데이터가 없어요.",
+
+  // UI Errors
+  SITE_NOT_FOUND: "사이트를 찾을 수 없어요.",
+  SNAPSHOT_PANEL_NOT_FOUND: "패널을 찾을 수 없어요.",
+  RENDER_ERROR: "화면 표시 중 오류가 발생했어요.",
+
+  // Storage Errors
+  STORAGE_ERROR: "데이터 저장 중 오류가 발생했어요.",
+  CACHE_ERROR: "캐시 데이터를 읽는 중 오류가 발생했어요.",
+
+  // Validation Errors
+  INVALID_PAYLOAD: "데이터 형식이 올바르지 않아요.",
+  INVALID_ACCOUNT_DATA: "계정 데이터가 올바르지 않아요.",
+  DATA_INCONSISTENCY: "데이터 일관성 검사에 실패했어요.",
+
+  // Generic Errors
+  UNKNOWN_ERROR: "알 수 없는 오류가 발생했어요. 잠시 후 다시 시도해주세요.",
+  RETRY_LATER: "잠시 후 다시 시도해주세요.",
+  CONTACT_SUPPORT: "문제가 지속되면 고객센터에 문의해주세요."
+};
+
+// Helper function to display user-friendly errors
+function showError(userMessage, technicalError = null, context = null) {
+  // Log technical error for debugging
+  if (technicalError) {
+    console.error('[Error]', context || 'Unknown', technicalError);
+  }
+
+  // Report to error tracking system
+  if (typeof ERROR_TRACKING !== 'undefined' && ERROR_TRACKING.reportError) {
+    ERROR_TRACKING.reportError({
+      type: 'userError',
+      message: userMessage,
+      technicalError: technicalError?.message || String(technicalError),
+      context: context
+    });
+  }
+
+  return userMessage;
+}
+
+// Helper function to create inline error message element
+function createInlineError(message, actionCallback = null, actionText = '다시 시도') {
+  const container = document.createElement('div');
+  container.style.cssText = 'padding:20px;text-align:center;background:#0f172a;border:1px solid #334155;border-radius:12px;margin:16px 0';
+
+  const icon = document.createElement('div');
+  icon.style.cssText = 'font-size:32px;margin-bottom:12px;color:#ef4444';
+  icon.textContent = '⚠️';
+
+  const messageEl = document.createElement('div');
+  messageEl.style.cssText = 'color:#f8fafc;font-weight:700;font-size:14px;margin-bottom:8px';
+  messageEl.textContent = message;
+
+  container.appendChild(icon);
+  container.appendChild(messageEl);
+
+  if (actionCallback) {
+    const button = document.createElement('button');
+    button.style.cssText = 'margin-top:12px;padding:8px 16px;background:#0ea5e9;color:#f8fafc;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.2s';
+    button.textContent = actionText;
+    button.onmouseover = () => button.style.background = '#0284c7';
+    button.onmouseout = () => button.style.background = '#0ea5e9';
+    button.onclick = actionCallback;
+    container.appendChild(button);
+  }
+
+  return container;
+}
+
 async function fetchWithRetry(url, options, maxRetries = 2) {
   let attempt = 0;
   while (attempt <= maxRetries) {
@@ -825,8 +922,9 @@ async function fetchWithRetry(url, options, maxRetries = 2) {
       clearTimeout(timeoutId);
       if (e.name === 'AbortError') {
         console.error('[fetchWithRetry] Request timeout:', url);
+        throw new Error(ERROR_MESSAGES.REQUEST_TIMEOUT);
       }
-      if (attempt === maxRetries) throw e;
+      if (attempt === maxRetries) throw new Error(ERROR_MESSAGES.MAX_RETRIES_EXCEEDED);
     }
     attempt++;
     if (attempt <= maxRetries) {
@@ -835,7 +933,7 @@ async function fetchWithRetry(url, options, maxRetries = 2) {
       await new Promise((r) => setTimeout(r, delay + jitter));
     }
   }
-  throw new Error("Max retries exceeded");
+  throw new Error(ERROR_MESSAGES.MAX_RETRIES_EXCEEDED);
 }
 
 // Tooltip helper functions
@@ -2707,7 +2805,7 @@ const inflightDiagnosisMeta = {};
  */
 async function fetchExposeData(site, options) {
   if (!encId || typeof encId !== 'string') {
-    console.error('[fetchExposeData] Invalid encId:', encId);
+    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchExposeData');
     return null;
   }
   if (memCache[site] && !shouldFetchField(memCache[site], "expose", options)) {
@@ -2737,6 +2835,7 @@ async function fetchExposeData(site, options) {
         detailLoaded: false,
       });
     } catch (e) {
+      showError(ERROR_MESSAGES.DATA_LOAD_FAILED, e, 'fetchExposeData');
       return persistSiteData(site, {
         expose: null,
         exposeFetchState: "failure",
@@ -2759,7 +2858,7 @@ async function fetchExposeData(site, options) {
  */
 async function fetchCrawlData(site, options) {
   if (!encId || typeof encId !== 'string') {
-    console.error('[fetchCrawlData] Invalid encId:', encId);
+    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchCrawlData');
     return null;
   }
   const baseData = await fetchExposeData(site, options);
@@ -2800,6 +2899,7 @@ async function fetchCrawlData(site, options) {
         detailLoaded: baseData.detailLoaded,
       });
     } catch (e) {
+      showError(ERROR_MESSAGES.DETAIL_DATA_MISSING, e, 'fetchCrawlData');
       return persistSiteData(site, {
         ...baseData,
         crawl: null,
@@ -2824,7 +2924,7 @@ async function fetchCrawlData(site, options) {
  */
 async function fetchBacklinkData(site, options) {
   if (!encId || typeof encId !== 'string') {
-    console.error('[fetchBacklinkData] Invalid encId:', encId);
+    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchBacklinkData');
     return null;
   }
   const baseData = await fetchExposeData(site, options);
@@ -2864,6 +2964,7 @@ async function fetchBacklinkData(site, options) {
         detailLoaded: baseData.detailLoaded,
       });
     } catch (e) {
+      showError(ERROR_MESSAGES.DETAIL_DATA_MISSING, e, 'fetchBacklinkData');
       return persistSiteData(site, {
         ...baseData,
         backlink: null,
@@ -2888,7 +2989,7 @@ async function fetchBacklinkData(site, options) {
  */
 async function fetchSiteData(site, options) {
   if (!encId || typeof encId !== 'string') {
-    console.error('[fetchSiteData] Invalid encId:', encId);
+    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchSiteData');
     return null;
   }
   const baseData = await fetchDiagnosisMeta(site, null, options);
@@ -2929,7 +3030,8 @@ async function fetchSiteData(site, options) {
                   fetchedAt: Date.now(),
                 };
               })
-              .catch(function () {
+              .catch(function (e) {
+                showError(ERROR_MESSAGES.DETAIL_DATA_MISSING, e, 'fetchSiteData-crawl');
                 return {
                   key: "crawl",
                   ok: false,
@@ -2967,7 +3069,8 @@ async function fetchSiteData(site, options) {
                   fetchedAt: Date.now(),
                 };
               })
-              .catch(function () {
+              .catch(function (e) {
+                showError(ERROR_MESSAGES.DETAIL_DATA_MISSING, e, 'fetchSiteData-backlink');
                 return {
                   key: "backlink",
                   ok: false,
@@ -3010,7 +3113,7 @@ async function fetchSiteData(site, options) {
  */
 async function fetchDiagnosisMeta(site, seedData, options) {
   if (!encId || typeof encId !== 'string') {
-    console.error('[fetchDiagnosisMeta] Invalid encId:', encId);
+    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchDiagnosisMeta');
     return null;
   }
   const baseData = seedData || (await fetchExposeData(site, options));
@@ -3043,7 +3146,7 @@ async function fetchDiagnosisMeta(site, seedData, options) {
           diagnosisMetaFetchState = "success";
         }
       } catch (e) {
-        console.error('[fetchDiagnosisMeta] Error:', e);
+        showError(ERROR_MESSAGES.DATA_LOAD_ERROR, e, 'fetchDiagnosisMeta');
       }
       return persistSiteData(site, {
         ...baseData,
@@ -3947,7 +4050,7 @@ function injectDemoData() {
           try {
             site = atob(match[1]);
           } catch (decodeError) {
-            console.error('[Export] Invalid Base64 encoding in key:', key, decodeError);
+            showError(ERROR_MESSAGES.DATA_INCONSISTENCY, decodeError, 'exportSingleAccount-decode');
             continue;
           }
 
@@ -3976,7 +4079,7 @@ function injectDemoData() {
             detailLoaded: data.detailLoaded || false
           };
         } catch (e) {
-          console.error('[Export] Error processing key:', key, e);
+          showError(ERROR_MESSAGES.EXPORT_INCOMPLETE, e, 'exportSingleAccount');
         }
       }
 
@@ -4053,7 +4156,7 @@ function injectDemoData() {
       if (accountKeys.length === 0) {
         return {
           success: false,
-          error: 'No accounts found in export data'
+          error: ERROR_MESSAGES.NO_VALID_ACCOUNTS
         };
       }
 
@@ -4069,7 +4172,7 @@ function injectDemoData() {
       // V2 포맷이 아닌 레거시 데이터는 지원하지 않음
       return {
         success: false,
-        error: 'Unsupported data format. Please use V2 format with __meta and accounts fields.'
+        error: ERROR_MESSAGES.IMPORT_FORMAT_ERROR
       };
     }
 
@@ -4136,7 +4239,7 @@ function injectDemoData() {
 
       } catch (e) {
         errors.push({ site, error: e.message });
-        console.error('[Import] Error importing site:', site, e);
+        showError(`${ERROR_MESSAGES.IMPORT_FAILED}: ${site}`, e, 'importAccountData');
       }
     }
 
@@ -5388,7 +5491,7 @@ async function renderAllSites() {
 
   if (!allSites.length) {
     bdEl.innerHTML =
-      '<div style="padding:30px 20px;text-align:center"><div style="font-size:32px">↻</div><div style="color:#ffca28;font-weight:700;margin:10px 0">사이트 목록을 찾을 수 없어요</div><div style="color:#7a9ab8;font-size:12px;line-height:2">↻ 버튼을 눌러 새로고침 해보세요<br>또는 서치어드바이저 콘솔 페이지에서 실행해주세요</div></div>';
+      '<div style="padding:30px 20px;text-align:center"><div style="font-size:32px">⚠️</div><div style="color:#ffca28;font-weight:700;margin:10px 0">사이트 목록을 찾을 수 없어요</div><div style="color:#7a9ab8;font-size:12px;line-height:2">↻ 버튼을 눌러 새로고침 해보세요<br>또는 서치어드바이저 콘솔 페이지에서 실행해주세요</div></div>';
     return;
   }
   const sitesToLoad = allSites;
@@ -5450,14 +5553,11 @@ async function renderAllSites() {
         // 실패한 사이트 에러 추적
         failedCount++;
         const errorDetail = result.reason?.message || result.reason || '알 수 없는 오류';
-        ERROR_TRACKING.reportError({
-          type: 'dataLoadError',
-          phase: 'expose',
-          site: batchSites[offset],
-          error: errorDetail,
-          batchIndex: i + offset,
-          totalSites: sitesToLoad.length
-        });
+        showError(
+          `${batchSites[offset]} 사이트 데이터 로딩 실패`,
+          result.reason,
+          'renderAllSites-expose'
+        );
       }
     });
     // 배치 실패 시 진행률 메타에 표시
@@ -5790,8 +5890,12 @@ function savedAtIso(d) {
         URL.revokeObjectURL(link.href);
       }, 1000);
     } catch (e) {
-      console.error(e);
-      alert("HTML 저장 중 오류가 발생했어요. 다시 시도해주세요.");
+      showError(ERROR_MESSAGES.HTML_SAVE_ERROR, e, 'downloadSnapshot');
+      bdEl.innerHTML = createInlineError(
+        ERROR_MESSAGES.HTML_SAVE_ERROR,
+        () => downloadSnapshot(),
+        '다시 시도'
+      ).outerHTML;
     } finally {
       btn.disabled = false;
       btn.textContent = originalText;
@@ -6714,11 +6818,28 @@ function savedAtIso(d) {
   }
 
   async function loadSiteView(site) {
-    if (!site) return;
+    if (!site) {
+      bdEl.innerHTML = createInlineError(
+        ERROR_MESSAGES.SITE_NOT_FOUND,
+        () => window.location.reload(),
+        '새로고침'
+      ).outerHTML;
+      return;
+    }
     const requestId = ++siteViewReqId;
     labelEl.innerHTML = `<span>${escHtml(getSiteLabel(site))}</span>`;
     bdEl.innerHTML = `<div style="padding:50px 20px;text-align:center;color:#64748b"><div style="display:inline-flex;align-items:center;gap:8px">${ICONS.refresh.replace('width="13" height="13"','width="16" height="16"')} 로딩 중...</div></div>`;
-    const d = await fetchSiteData(site);
+    let d;
+    try {
+      d = await fetchSiteData(site);
+    } catch (e) {
+      bdEl.innerHTML = createInlineError(
+        ERROR_MESSAGES.DATA_LOAD_FAILED,
+        () => loadSiteView(site),
+        '다시 시도'
+      ).outerHTML;
+      return;
+    }
     if (requestId !== siteViewReqId || site !== curSite) return;
     if (!d || !d.expose || !d.expose.items || !d.expose.items.length) {
       bdEl.innerHTML =

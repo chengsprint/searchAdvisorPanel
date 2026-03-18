@@ -633,6 +633,103 @@ const FULL_REFRESH_BATCH_SIZE = 1;
 const FULL_REFRESH_SITE_DELAY_MS = 350;
 const FULL_REFRESH_JITTER_MS = 150;
 
+// ============================================================
+// P1: USER-FRIENDLY ERROR MESSAGES
+// ============================================================
+const ERROR_MESSAGES = {
+  // Network/Fetch Errors
+  NETWORK_ERROR: "네트워크 연결을 확인하고 다시 시도해주세요.",
+  REQUEST_TIMEOUT: "요청 시간이 초과했어요. 잠시 후 다시 시도해주세요.",
+  MAX_RETRIES_EXCEEDED: "데이터를 불러오는 데 실패했습니다. 잠시 후 다시 시도해주세요.",
+  INVALID_ENCID: "사용자 정보를 찾을 수 없어요. 서치어드바이저 페이지에서 다시 실행해주세요.",
+
+  // Data Loading Errors
+  DATA_LOAD_ERROR: "데이터를 불러오는 중 오류가 발생했어요.",
+  DATA_LOAD_FAILED: "데이터를 불러오는 데 실패했습니다. 잠시 후 다시 시도해주세요.",
+  NO_SITE_DATA: "이 사이트의 데이터가 없습니다.",
+  EXPOSE_DATA_MISSING: "기본 리포트 데이터가 없어요.",
+  DETAIL_DATA_MISSING: "상세 정보를 불러올 수 없어요.",
+
+  // Download/Export Errors
+  DOWNLOAD_FAILED: "파일 다운로드에 실패했어요. 다시 시도해주세요.",
+  HTML_SAVE_ERROR: "HTML 저장 중 오류가 발생했어요. 다시 시도해주세요.",
+  EXPORT_INCOMPLETE: "일부 사이트 데이터를 내보내지 못했어요.",
+
+  // Import/Merge Errors
+  IMPORT_FAILED: "데이터 가져오기에 실패했어요.",
+  IMPORT_FORMAT_ERROR: "지원하지 않는 파일 형식이에요. V2 형식 파일을 사용해주세요.",
+  MERGE_FAILED: "데이터 병합에 실패했어요.",
+  NO_VALID_ACCOUNTS: "가져올 계정 데이터가 없어요.",
+
+  // UI Errors
+  SITE_NOT_FOUND: "사이트를 찾을 수 없어요.",
+  SNAPSHOT_PANEL_NOT_FOUND: "패널을 찾을 수 없어요.",
+  RENDER_ERROR: "화면 표시 중 오류가 발생했어요.",
+
+  // Storage Errors
+  STORAGE_ERROR: "데이터 저장 중 오류가 발생했어요.",
+  CACHE_ERROR: "캐시 데이터를 읽는 중 오류가 발생했어요.",
+
+  // Validation Errors
+  INVALID_PAYLOAD: "데이터 형식이 올바르지 않아요.",
+  INVALID_ACCOUNT_DATA: "계정 데이터가 올바르지 않아요.",
+  DATA_INCONSISTENCY: "데이터 일관성 검사에 실패했어요.",
+
+  // Generic Errors
+  UNKNOWN_ERROR: "알 수 없는 오류가 발생했어요. 잠시 후 다시 시도해주세요.",
+  RETRY_LATER: "잠시 후 다시 시도해주세요.",
+  CONTACT_SUPPORT: "문제가 지속되면 고객센터에 문의해주세요."
+};
+
+// Helper function to display user-friendly errors
+function showError(userMessage, technicalError = null, context = null) {
+  // Log technical error for debugging
+  if (technicalError) {
+    console.error('[Error]', context || 'Unknown', technicalError);
+  }
+
+  // Report to error tracking system
+  if (typeof ERROR_TRACKING !== 'undefined' && ERROR_TRACKING.reportError) {
+    ERROR_TRACKING.reportError({
+      type: 'userError',
+      message: userMessage,
+      technicalError: technicalError?.message || String(technicalError),
+      context: context
+    });
+  }
+
+  return userMessage;
+}
+
+// Helper function to create inline error message element
+function createInlineError(message, actionCallback = null, actionText = '다시 시도') {
+  const container = document.createElement('div');
+  container.style.cssText = 'padding:20px;text-align:center;background:#0f172a;border:1px solid #334155;border-radius:12px;margin:16px 0';
+
+  const icon = document.createElement('div');
+  icon.style.cssText = 'font-size:32px;margin-bottom:12px;color:#ef4444';
+  icon.textContent = '⚠️';
+
+  const messageEl = document.createElement('div');
+  messageEl.style.cssText = 'color:#f8fafc;font-weight:700;font-size:14px;margin-bottom:8px';
+  messageEl.textContent = message;
+
+  container.appendChild(icon);
+  container.appendChild(messageEl);
+
+  if (actionCallback) {
+    const button = document.createElement('button');
+    button.style.cssText = 'margin-top:12px;padding:8px 16px;background:#0ea5e9;color:#f8fafc;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.2s';
+    button.textContent = actionText;
+    button.onmouseover = () => button.style.background = '#0284c7';
+    button.onmouseout = () => button.style.background = '#0ea5e9';
+    button.onclick = actionCallback;
+    container.appendChild(button);
+  }
+
+  return container;
+}
+
 async function fetchWithRetry(url, options, maxRetries = 2) {
   let attempt = 0;
   while (attempt <= maxRetries) {
@@ -650,8 +747,9 @@ async function fetchWithRetry(url, options, maxRetries = 2) {
       clearTimeout(timeoutId);
       if (e.name === 'AbortError') {
         console.error('[fetchWithRetry] Request timeout:', url);
+        throw new Error(ERROR_MESSAGES.REQUEST_TIMEOUT);
       }
-      if (attempt === maxRetries) throw e;
+      if (attempt === maxRetries) throw new Error(ERROR_MESSAGES.MAX_RETRIES_EXCEEDED);
     }
     attempt++;
     if (attempt <= maxRetries) {
@@ -660,5 +758,5 @@ async function fetchWithRetry(url, options, maxRetries = 2) {
       await new Promise((r) => setTimeout(r, delay + jitter));
     }
   }
-  throw new Error("Max retries exceeded");
+  throw new Error(ERROR_MESSAGES.MAX_RETRIES_EXCEEDED);
 }

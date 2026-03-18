@@ -380,7 +380,7 @@
           try {
             site = atob(match[1]);
           } catch (decodeError) {
-            console.error('[Export] Invalid Base64 encoding in key:', key, decodeError);
+            showError(ERROR_MESSAGES.DATA_INCONSISTENCY, decodeError, 'exportSingleAccount-decode');
             continue;
           }
 
@@ -409,7 +409,7 @@
             detailLoaded: data.detailLoaded || false
           };
         } catch (e) {
-          console.error('[Export] Error processing key:', key, e);
+          showError(ERROR_MESSAGES.EXPORT_INCOMPLETE, e, 'exportSingleAccount');
         }
       }
 
@@ -486,7 +486,7 @@
       if (accountKeys.length === 0) {
         return {
           success: false,
-          error: 'No accounts found in export data'
+          error: ERROR_MESSAGES.NO_VALID_ACCOUNTS
         };
       }
 
@@ -502,7 +502,7 @@
       // V2 포맷이 아닌 레거시 데이터는 지원하지 않음
       return {
         success: false,
-        error: 'Unsupported data format. Please use V2 format with __meta and accounts fields.'
+        error: ERROR_MESSAGES.IMPORT_FORMAT_ERROR
       };
     }
 
@@ -569,7 +569,7 @@
 
       } catch (e) {
         errors.push({ site, error: e.message });
-        console.error('[Import] Error importing site:', site, e);
+        showError(`${ERROR_MESSAGES.IMPORT_FAILED}: ${site}`, e, 'importAccountData');
       }
     }
 
