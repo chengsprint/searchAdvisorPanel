@@ -2,6 +2,13 @@
 // DATA-MANAGER - Data storage and caching utilities
 // ============================================================
 //
+// ⚠️ 내부용 로컬 전용 모듈 (INTERNAL LOCAL-ONLY MODULE)
+//
+// 이 모듈은 각 사용자의 로컬 환경에서만 사용됩니다:
+// - 브라우저 콘솔에서 직접 실행
+// - 외부 패키지로 배포하지 않음
+// - ES6 import/export 사용하지 않음
+//
 // This module is the entry point for data management functionality.
 // It has been split into 4 focused modules:
 //

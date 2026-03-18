@@ -1,3 +1,17 @@
+/**
+ * ========================================================================
+ * SearchAdvisor DOM Initialization - 내부용 로컬 전용 모듈
+ * ========================================================================
+ *
+ * ⚠️ INTERNAL LOCAL-ONLY MODULE
+ *
+ * 이 모듈은 각 사용자의 로컬 브라우저 환경에서만 사용됩니다.
+ * 외부 배포 or npm 패키지로 제공하지 않습니다.
+ *
+ * @internal
+ * @private
+ */
+
 // DOM Initialization Module
 // This module handles the creation and initialization of the SearchAdvisor UI DOM elements
 // P0 SECURITY: All innerHTML usage now uses sanitizeHTML() for XSS prevention

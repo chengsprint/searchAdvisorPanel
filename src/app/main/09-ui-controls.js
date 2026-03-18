@@ -1,3 +1,17 @@
+/**
+ * ========================================================================
+ * SearchAdvisor UI Controls - 내부용 로컬 전용 모듈
+ * ========================================================================
+ *
+ * ⚠️ INTERNAL LOCAL-ONLY MODULE
+ *
+ * 이 모듈은 각 사용자의 로컬 브라우저 환경에서만 사용됩니다.
+ * 외부 배포 or npm 패키지로 제공하지 않습니다.
+ *
+ * @internal
+ * @private
+ */
+
   /**
  * Assign colors to all sites from the color palette
  * Each site gets a consistent color based on its index

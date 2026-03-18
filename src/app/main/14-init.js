@@ -1,5 +1,19 @@
-  // Async initialization - wait for site list to load
-  console.log('[Init] Starting async initialization...');
+/**
+ * ========================================================================
+ * SearchAdvisor Runtime - 내부용 로컬 전용 모듈
+ * ========================================================================
+ *
+ * ⚠️ IMPORTANT: 이 모듈은 각 사용자의 로컬 환경에서만 사용됩니다.
+ * - 브라우저 콘솔에서 직접 실행
+ * - 외부 패키지로 배포하지 않음
+ * - ES6 import/export 사용하지 않음 (IIFE 패턴)
+ *
+ * @internal
+ * @private
+ */
+
+// Async initialization - wait for site list to load
+console.log('[Init] Starting async initialization...');
   /**
    * Initialize the SearchAdvisor application
    * Loads site list, sets up UI state, and renders initial view
