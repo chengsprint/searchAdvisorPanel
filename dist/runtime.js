@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-19T17:44:49Z";
-var __SADV_GIT_HEAD__="7b69356";
+var __SADV_BUILD_STAMP__="2026-03-19T17:50:20Z";
+var __SADV_GIT_HEAD__="0efee92";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -10614,6 +10614,7 @@ function savedAtIso(d) {
     const CONFIG = ${JSON.stringify(CONFIG)};
     const ICONS = ${JSON.stringify(ICONS)};
     const C = ${JSON.stringify(C)};
+    const S = ${JSON.stringify(S)};
     const COLORS = ${JSON.stringify(COLORS)};
     const DOW = ${JSON.stringify(DOW)};
     const PNL = ${JSON.stringify(PNL)};
