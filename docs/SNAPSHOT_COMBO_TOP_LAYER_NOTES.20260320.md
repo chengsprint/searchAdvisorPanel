@@ -108,7 +108,7 @@ style.setProperty(name, value, "important")
 
 `src/app/main/12-snapshot.js` 에서:
 
-1. `#sadv-combo-drop`를 `document.body`로 이동
+1. `#sadv-combo-drop`를 `#sadv-p` 하위 top-layer portal로 이동
 2. `position: fixed`
 3. `top/left/width/max-height/z-index/display`를
    `style.setProperty(..., "important")`로 지정
@@ -202,3 +202,16 @@ style.setProperty(name, value, "important")
 - `dist/runtime.js`
 - `src/app/main/09-ui-controls.js`
 
+## 추가 메모: 왜 `document.body`가 아니라 `#sadv-p`인가?
+
+초기 실험에서 `document.body` portal은 레이어 자체는 해결했지만,
+`#sadv-p`에 정의된 다음 값들의 상속이 끊겨 디자인 드리프트가 발생했습니다.
+
+- `--sadv-layer-01`
+- `--sadv-border`
+- `--sadv-text*`
+- 기타 warm theme 토큰
+
+따라서 snapshot popup은 **body 최상단이 아니라 panel root(`#sadv-p`) 하위**에 두고,
+대신 `position: fixed` + high z-index로 떠 있게 만드는 것이
+레이어와 디자인 동기화를 동시에 만족하는 더 좋은 해법입니다.

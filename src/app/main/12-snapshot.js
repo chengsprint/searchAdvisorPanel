@@ -881,11 +881,17 @@
      *   inline style assignment is not strong enough to override its absolute positioning.
      *
      * Therefore snapshot HTML must:
-     * 1) detach the dropdown into a top-layer portal (document.body),
+     * 1) detach the dropdown into a top-layer portal under #sadv-p,
      * 2) position it with viewport-based fixed coordinates,
      * 3) write critical layout properties with style.setProperty(..., "important"),
      * 4) retry positioning until the combo button has a non-zero rect,
      * 5) keep close/open/resize/scroll behavior in sync so saved HTML stays usable offline.
+     *
+     * NOTE:
+     * - document.body portal can solve layering, but it breaks #sadv-p CSS variable inheritance
+     *   and causes visual drift from the live panel.
+     * - keeping the portal under #sadv-p preserves the original theme tokens while still letting
+     *   the dropdown float above #sadv-bd.
      *
      * If this block is changed later, verify against:
      * - saved HTML generated from the latest runtime
@@ -939,7 +945,7 @@
     }
     if (snapshotComboDrop) {
       snapshotComboDrop.classList.add("sadv-snapshot-combo-drop");
-      if (snapshotComboDrop.parentElement !== document.body) document.body.appendChild(snapshotComboDrop);
+      if (snapshotComboDrop.parentElement !== p) p.appendChild(snapshotComboDrop);
       snapshotComboDrop.style.setProperty("display", "none", "important");
     }
     if (snapshotComboWrap && snapshotComboDrop) {

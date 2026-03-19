@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-19T16:16:41Z";
-var __SADV_GIT_HEAD__="f5b1a86";
+var __SADV_BUILD_STAMP__="2026-03-19T17:07:36Z";
+var __SADV_GIT_HEAD__="3c00432";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -10857,6 +10857,36 @@ function savedAtIso(d) {
         setTab(t.dataset.t);
       });
     }
+    /**
+     * Snapshot combo dropdown layering contract
+     * -----------------------------------------
+     * Live runtime and saved HTML do not share the exact same stacking context.
+     *
+     * In saved HTML:
+     * - #sadv-bd can visually overlap the combo dropdown if the dropdown remains inside
+     *   the header/site-bar DOM flow.
+     * - Base panel CSS already defines #sadv-combo-drop with !important rules, so plain
+     *   inline style assignment is not strong enough to override its absolute positioning.
+     *
+     * Therefore snapshot HTML must:
+     * 1) detach the dropdown into a top-layer portal under #sadv-p,
+     * 2) position it with viewport-based fixed coordinates,
+     * 3) write critical layout properties with style.setProperty(..., "important"),
+     * 4) retry positioning until the combo button has a non-zero rect,
+     * 5) keep close/open/resize/scroll behavior in sync so saved HTML stays usable offline.
+     *
+     * NOTE:
+     * - document.body portal can solve layering, but it breaks #sadv-p CSS variable inheritance
+     *   and causes visual drift from the live panel.
+     * - keeping the portal under #sadv-p preserves the original theme tokens while still letting
+     *   the dropdown float above #sadv-bd.
+     *
+     * If this block is changed later, verify against:
+     * - saved HTML generated from the latest runtime
+     * - site mode > combo open
+     * - lower half of the popup using elementFromPoint(...)
+     * - visual comparison versus the live panel
+     */
     const snapshotComboBtn = document.getElementById("sadv-combo-btn");
     const snapshotComboWrap = document.getElementById("sadv-combo-wrap");
     const snapshotComboDrop = document.getElementById("sadv-combo-drop");
@@ -10903,7 +10933,7 @@ function savedAtIso(d) {
     }
     if (snapshotComboDrop) {
       snapshotComboDrop.classList.add("sadv-snapshot-combo-drop");
-      if (snapshotComboDrop.parentElement !== document.body) document.body.appendChild(snapshotComboDrop);
+      if (snapshotComboDrop.parentElement !== p) p.appendChild(snapshotComboDrop);
       snapshotComboDrop.style.setProperty("display", "none", "important");
     }
     if (snapshotComboWrap && snapshotComboDrop) {
