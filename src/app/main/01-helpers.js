@@ -7,7 +7,7 @@ const SANITIZE_DEFAULT_ALLOWED_TAGS = [
   'br', 'hr', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
   'table', 'thead', 'tbody', 'tr', 'td', 'th',
   'button', 'input',
-  'svg', 'path', 'line', 'circle', 'rect', 'defs', 'linearGradient',
+  'svg', 'path', 'line', 'circle', 'rect', 'ellipse', 'polyline', 'polygon', 'defs', 'linearGradient',
   'text', 'g', 'stop', 'style'
 ];
 
@@ -18,7 +18,7 @@ const SANITIZE_DEFAULT_ALLOWED_ATTR = [
   'width', 'height', 'viewBox', 'preserveAspectRatio', 'cx', 'cy',
   'r', 'x', 'x1', 'x2', 'y', 'y1', 'y2', 'fill', 'stroke',
   'stroke-width', 'stroke-dasharray', 'opacity', 'stop-color',
-  'stop-opacity', 'offset', 'd', 'text-anchor', 'dominant-baseline',
+  'stop-opacity', 'offset', 'd', 'points', 'xmlns', 'text-anchor', 'dominant-baseline',
   'font-size', 'font-weight', 'letter-spacing', 'paint-order',
   'stroke-linejoin', 'stroke-linecap', 'rx', 'ry', 'transform',
   'color', 'background', 'border', 'padding', 'margin', 'display',
@@ -607,6 +607,20 @@ function createStateCard(title, description, iconHtml, tone = "neutral") {
     accent +
     ";margin-bottom:14px";
   iconBox.innerHTML = sanitizeHTML(iconHtml || ICONS.lightbulb);
+  let iconSvg = iconBox.querySelector("svg");
+  const hasRenderableShape = iconSvg && iconSvg.querySelector("path,line,circle,rect,ellipse,polyline,polygon");
+  if (!hasRenderableShape) {
+    iconBox.innerHTML = sanitizeHTML(
+      ICONS.lightbulb.replace('width="13" height="13"', 'width="20" height="20"')
+    );
+    iconSvg = iconBox.querySelector("svg");
+  }
+  if (iconSvg) {
+    iconSvg.setAttribute("width", iconSvg.getAttribute("width") || "20");
+    iconSvg.setAttribute("height", iconSvg.getAttribute("height") || "20");
+    iconSvg.style.display = "block";
+    iconSvg.style.flexShrink = "0";
+  }
   const titleEl = document.createElement("div");
   titleEl.style.cssText =
     "font-size:15px;font-weight:700;color:var(--sadv-text,#fffdf5);margin-bottom:6px;letter-spacing:-0.01em";
