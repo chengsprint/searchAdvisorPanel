@@ -1342,7 +1342,7 @@ function barchart(vals, labels, H, col, unit) {
     const shellState = buildSnapshotShellState(payload);
     html = html.replace(
       "</head>",
-      `<style id="sadv-react-style">${reactShellCss}</style><style id="sadv-snapshot-shell-hide">#sadv-header,#sadv-mode-bar,#sadv-site-bar{display:none !important}#sadv-react-shell-host{display:block !important;width:100% !important;flex-shrink:0}</style></head>`,
+      `<style id="sadv-react-style">${reactShellCss}</style><style id="sadv-snapshot-shell-hide">#sadv-react-shell-host{display:block !important;width:100% !important;flex-shrink:0}</style></head>`,
     );
     html = html.replace(
       "<body>",
