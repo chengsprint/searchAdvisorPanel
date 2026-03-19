@@ -54,7 +54,9 @@
     const summary = isMergedReport() && mergedMeta && mergedMeta.sourceCount
       ? `${allSites.length}개 사이트 등록됨 · ${mergedMeta.sourceCount}개 스냅샷 병합`
       : `${allSites.length}개 사이트 등록됨`;
-    labelEl.textContent = summary;
+    const labelTextEl = labelEl.querySelector("span");
+    if (labelTextEl) labelTextEl.textContent = summary;
+    else labelEl.textContent = summary;
   }
   function formatCacheMetaTime(dateLike) {
     const date = dateLike instanceof Date ? dateLike : new Date(dateLike);
@@ -108,17 +110,17 @@
       ? T.dangerSoftBg
       : isNearExpiry
         ? T.warningSoftBorder
-        : T.accentSoftBorder;
+        : "rgba(255,212,0,0.12)";
     const bgCol = isExpired
       ? T.dangerSoftBg
       : isNearExpiry
         ? T.warningSoftBg
-        : T.accentSoftBg;
+        : "rgba(255,255,255,0.02)";
     const textCol = isExpired
       ? C.red
       : isNearExpiry
         ? C.amber
-        : "var(--sadv-text-secondary,#ffe9a8)";
+        : "var(--sadv-text-tertiary,#b9a55a)";
     const titleParts = [
       `캐시저장 ${formatCacheMetaTime(cacheMeta.updatedAt)}`,
       remainingLabel ? `자동갱신까지 ${remainingLabel}` : null,
