@@ -544,11 +544,11 @@ function xlbl(arr) {
 function chartCard(title, valueStr, valueCol, svgEl, labelsArr) {
   const wrap = document.createElement("div");
   wrap.style.cssText =
-    "background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1)";
+    "background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);border-radius:0;padding:16px 16px 14px;margin-bottom:16px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.28)";
   const hd = document.createElement("div");
   hd.style.cssText =
-    "display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px";
-  hd.innerHTML = sanitizeHTML(`<span style="font-size:12px;line-height:1.4;color:#94a3b8;font-weight:600">${escHtml(title)}</span><span style="font-size:14px;line-height:1.2;font-weight:800;color:${valueCol};text-align:right;letter-spacing:-0.01em">${escHtml(valueStr)}</span>`);
+    "display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px";
+  hd.innerHTML = sanitizeHTML(`<span style="font-size:12px;line-height:1.4;color:var(--sadv-text-secondary,#c6c6c6);font-weight:600;letter-spacing:0.01em">${escHtml(title)}</span><span style="font-size:15px;line-height:1.2;font-weight:700;color:${valueCol};text-align:right;letter-spacing:-0.01em">${escHtml(valueStr)}</span>`);
   wrap.appendChild(hd);
   wrap.appendChild(svgEl);
   if (labelsArr) {
@@ -562,13 +562,13 @@ function chartCard(title, valueStr, valueCol, svgEl, labelsArr) {
 // KPI grid function
 function kpiGrid(items) {
   const g = document.createElement("div");
-  g.style.cssText = `display:grid;grid-template-columns:repeat(${Math.min(items.length, 4)},minmax(0,1fr));gap:8px;margin-bottom:12px`;
+  g.style.cssText = `display:grid;grid-template-columns:repeat(${Math.min(items.length, 4)},minmax(0,1fr));gap:12px;margin-bottom:16px`;
   items.forEach(function (it) {
     const d = document.createElement("div");
     d.style.cssText =
-      "background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px 8px;text-align:center;min-width:0;min-height:90px;display:flex;flex-direction:column;justify-content:center;align-items:center;transition:all 0.2s;box-shadow:0 1px 2px rgba(0,0,0,0.05)";
-    const iconHtml = it.icon ? `<div style="margin-bottom:8px;color:${it.color || '#94a3b8'};opacity:0.8">${it.icon}</div>` : "";
-    d.innerHTML = sanitizeHTML(`${iconHtml}<div style="font-size:16px;font-weight:800;color:${it.color || C.text};line-height:1.1;letter-spacing:-0.02em;word-break:keep-all">${escHtml(it.value)}</div><div style="font-size:10px;color:#64748b;line-height:1.4;margin-top:4px;visibility:${it.sub ? "visible" : "hidden"}">${escHtml(it.sub || "&nbsp;")}</div><div style="font-size:10px;color:#94a3b8;line-height:1.4;margin-top:6px;word-break:keep-all;font-weight:500">${escHtml(it.label)}</div>`);
+      "background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);border-radius:0;padding:16px 12px;text-align:left;min-width:0;min-height:104px;display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start;transition:all 0.2s;box-shadow:0 6px 20px rgba(0,0,0,0.18)";
+    const iconHtml = it.icon ? `<div style="margin-bottom:10px;color:${it.color || 'var(--sadv-text-secondary,#c6c6c6)'};opacity:0.92">${it.icon}</div>` : "";
+    d.innerHTML = sanitizeHTML(`${iconHtml}<div style="font-size:11px;color:var(--sadv-text-tertiary,#8d8d8d);line-height:1.4;margin-bottom:8px;word-break:keep-all;font-weight:600;text-transform:uppercase;letter-spacing:0.04em">${escHtml(it.label)}</div><div style="font-size:22px;font-weight:700;color:${it.color || C.text};line-height:1.05;letter-spacing:-0.03em;word-break:keep-all">${escHtml(it.value)}</div><div style="font-size:11px;color:var(--sadv-text-secondary,#c6c6c6);line-height:1.4;margin-top:8px;visibility:${it.sub ? "visible" : "hidden"}">${escHtml(it.sub || "&nbsp;")}</div>`);
     g.appendChild(d);
   });
   return g;
@@ -578,10 +578,10 @@ function kpiGrid(items) {
 function secTitle(t) {
   const d = document.createElement("div");
   d.style.cssText =
-    "font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#64748b;margin:24px 0 12px;display:flex;align-items:center;gap:10px";
+    "font-size:12px;font-weight:600;letter-spacing:0.02em;text-transform:none;color:var(--sadv-text-secondary,#c6c6c6);margin:28px 0 14px;display:flex;align-items:center;gap:12px";
   d.innerHTML = sanitizeHTML(
     String(t || "") +
-    ' <span style="flex:1;height:1px;background:#334155;display:inline-block;opacity:0.3"></span>'
+    ' <span style="flex:1;height:1px;background:var(--sadv-border-subtle,#393939);display:inline-block;opacity:1"></span>'
   );
   return d;
 }
@@ -595,7 +595,7 @@ function ibox(type, html) {
     { green: C.green, amber: C.amber, red: C.red, blue: C.blue }[type] ||
       C.blue;
   const d = document.createElement("div");
-  d.style.cssText = `border-left:3px solid ${col};background:${col}0d;border-radius:12px;padding:16px;margin-bottom:12px;font-size:12px;line-height:1.6;color:#94a3b8;border:1px solid ${col}22`;
+  d.style.cssText = `border-left:4px solid ${col};background:color-mix(in srgb, ${col} 12%, transparent);border-radius:0;padding:16px;margin-bottom:16px;font-size:12px;line-height:1.6;color:var(--sadv-text-secondary,#c6c6c6);border:1px solid color-mix(in srgb, ${col} 35%, transparent)`;
   // P0 SECURITY: Apply DOMPurify sanitization
   d.innerHTML = sanitizeHTML(html);
   return d;
@@ -605,16 +605,16 @@ function ibox(type, html) {
 function ctrBadge(v) {
   const n = parseFloat(v);
   if (isNaN(n)) {
-    return '<span style="display:inline-block;background:#1e293b;border:1px solid #334155;color:#64748b;font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px">-</span>';
+    return '<span style="display:inline-block;background:var(--sadv-layer-02,#393939);border:1px solid var(--sadv-border-subtle,#393939);color:var(--sadv-text-tertiary,#8d8d8d);font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px">-</span>';
   }
   const col = n >= 3 ? C.green : n >= 1.5 ? C.amber : C.blue;
-  return `<span style="display:inline-block;background:${col}18;border:1px solid ${col}44;color:${col};font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px">${n.toFixed(2)}%</span>`;
+  return `<span style="display:inline-block;background:color-mix(in srgb, ${col} 14%, transparent);border:1px solid color-mix(in srgb, ${col} 35%, transparent);color:${col};font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px">${n.toFixed(2)}%</span>`;
 }
 
 // Horizontal bar function
 function hbar(v, mx, col) {
   const pct = mx ? Math.round((v / mx) * 100) : 0;
-  return `<div style="height:6px;background:#1e293b;border-radius:3px;margin:8px 0 10px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${col};border-radius:3px;transition:width 0.5s ease-out"></div></div>`;
+  return `<div style="height:8px;background:var(--sadv-layer-02,#393939);border-radius:999px;margin:10px 0 12px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${col};border-radius:999px;transition:width 0.5s ease-out"></div></div>`;
 }
 
 // Statistics function (mean, std, cv, slope, outliers)
