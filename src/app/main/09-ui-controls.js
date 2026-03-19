@@ -91,7 +91,7 @@
       typeof cacheMeta.ttlMs === "number" && cacheMeta.ttlMs > 0
         ? Math.round(cacheMeta.ttlMs / 3600000)
         : null;
-    const chipStyle = "display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;border:1px solid #1e293b;background:rgba(15,23,42,0.6);color:#8fb4d6;font-size:10px;font-weight:600;line-height:1.2";
+    const chipStyle = "display:inline-flex;align-items:center;min-height:24px;padding:3px 10px;border-radius:999px;border:1px solid rgba(120,169,255,0.18);background:rgba(120,169,255,0.1);color:var(--sadv-text-secondary,#c6c6c6);font-size:10px;font-weight:600;line-height:1.2";
     const parts = [
       `<span style="${chipStyle}">캐시저장 ${escHtml(formatCacheMetaTime(cacheMeta.updatedAt))}</span>`,
     ];
@@ -138,23 +138,23 @@
     const searchDiv = document.createElement("div");
     const isMobile = window.innerWidth <= 768;
     searchDiv.style.cssText = isMobile
-      ? "padding:8px 8px 6px;position:relative"
-      : "padding:6px 6px 4px;position:relative";
+      ? "padding:12px 12px 10px;position:sticky;top:0;z-index:1;background:var(--sadv-layer-01,#262626);border-bottom:1px solid var(--sadv-border-subtle,#393939)"
+      : "padding:12px 12px 10px;position:sticky;top:0;z-index:1;background:var(--sadv-layer-01,#262626);border-bottom:1px solid var(--sadv-border-subtle,#393939)";
 
     const input = document.createElement("input");
     input.id = "sadv-combo-search";
     input.placeholder = "사이트 검색...";
-    if (isMobile) {
-      input.style.cssText = "width:100%;padding:10px 12px;font-size:14px;min-height:44px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#f8fafc;box-sizing:border-box";
-    }
+    input.style.cssText = isMobile
+      ? "width:100%;padding:0 12px;font-size:14px;min-height:44px;border-radius:0;border:1px solid var(--sadv-border,#525252);background:var(--sadv-bg,#161616);color:var(--sadv-text,#f4f4f4);box-sizing:border-box"
+      : "width:100%;padding:0 12px;font-size:13px;min-height:40px;border-radius:0;border:1px solid var(--sadv-border,#525252);background:var(--sadv-bg,#161616);color:var(--sadv-text,#f4f4f4);box-sizing:border-box";
 
     searchDiv.appendChild(input);
 
     // Create count display
     const countDiv = document.createElement("div");
     countDiv.style.cssText = isMobile
-      ? "font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#3d5a78;padding:4px 12px 8px;border-bottom:1px solid #1a2d45;margin-bottom:4px"
-      : "font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#3d5a78;padding:3px 9px 6px;border-bottom:1px solid #1a2d45;margin-bottom:3px";
+      ? "font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--sadv-text-tertiary,#8d8d8d);padding:10px 14px 8px;background:var(--sadv-layer-01,#262626)"
+      : "font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--sadv-text-tertiary,#8d8d8d);padding:10px 14px 8px;background:var(--sadv-layer-01,#262626)";
     countDiv.textContent = "전체 " + orderedSites.length + " 개 · 클릭많은순";
 
     drop.replaceChildren(searchDiv, countDiv);

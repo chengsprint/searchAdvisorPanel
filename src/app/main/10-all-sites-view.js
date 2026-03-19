@@ -15,7 +15,7 @@ async function renderAllSites() {
   setAllSitesLabel();
   const loading = document.createElement("div");
   loading.style.cssText =
-    "padding:24px 18px 20px;color:#7a9ab8;text-align:left;line-height:1.6";
+    "padding:20px 18px;color:var(--sadv-text-secondary,#c6c6c6);text-align:left;line-height:1.6;background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);box-shadow:0 8px 24px rgba(0,0,0,0.22)";
 
   // 예상 소요 시간 계산 (사이트당 약 0.5초로 가정)
   const estimatedTimeSeconds = Math.ceil(allSites.length * 0.5);
@@ -24,11 +24,11 @@ async function renderAllSites() {
     : `${estimatedTimeSeconds}초`;
 
   loading.innerHTML = sanitizeHTML(
-    '<div style="font-size:13px;font-weight:700;color:#d4ecff;margin-bottom:8px">전체 현황을 준비 중입니다</div>' +
+    '<div style="font-size:13px;font-weight:700;color:var(--sadv-text,#f4f4f4);margin-bottom:8px">전체 현황을 준비 중입니다</div>' +
     `<div id="sadv-all-progress-detail" style="font-size:11px;margin-bottom:10px">기본 리포트를 불러오는 중입니다. (예상: ${estimatedTimeText})</div>` +
-    '<div style="height:10px;border-radius:999px;background:#0d1829;border:1px solid #1a2d45;overflow:hidden"><div id="sadv-all-progress-bar" style="width:6%;height:100%;background:linear-gradient(90deg,#40c4ff,#00e676)"></div></div>' +
-    '<div id="sadv-all-progress-meta" style="font-size:10px;color:#3d5a78;margin-top:8px">메타 진단은 2개씩 천천히 요청합니다.</div>' +
-    '<div id="sadv-all-progress-percent" style="font-size:11px;color:#40c4ff;margin-top:4px;font-weight:600">0%</div>'
+    '<div style="height:10px;border-radius:999px;background:var(--sadv-layer-02,#393939);border:1px solid var(--sadv-border-subtle,#393939);overflow:hidden"><div id="sadv-all-progress-bar" style="width:6%;height:100%;background:linear-gradient(90deg,#78a9ff,#42be65)"></div></div>' +
+    '<div id="sadv-all-progress-meta" style="font-size:10px;color:var(--sadv-text-tertiary,#8d8d8d);margin-top:8px">메타 진단은 2개씩 천천히 요청합니다.</div>' +
+    '<div id="sadv-all-progress-percent" style="font-size:11px;color:#78a9ff;margin-top:4px;font-weight:600">0%</div>'
   );
   bdEl.innerHTML = "";
   bdEl.appendChild(loading);
@@ -59,7 +59,7 @@ async function renderAllSites() {
       const percent = Math.round(ratio * 100);
       loadingPercent.textContent = `${percent}%`;
       // 진행률 색상 변경 (완료 시 녹색)
-      loadingPercent.style.color = percent >= 100 ? '#00e676' : '#40c4ff';
+      loadingPercent.style.color = percent >= 100 ? C.green : C.blue;
     }
     if (loadingMeta && note) loadingMeta.textContent = note;
 
@@ -177,11 +177,11 @@ async function renderAllSites() {
 
     kpiData.forEach(kpi => {
       const kpiCard = document.createElement("div");
-      kpiCard.style.cssText = `background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px;text-align:center`;
+      kpiCard.style.cssText = `background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);border-radius:0;padding:16px;text-align:left;box-shadow:0 8px 24px rgba(0,0,0,0.18)`;
       kpiCard.innerHTML = sanitizeHTML(`
-        <div style="font-size:11px;color:#94a3b8;margin-bottom:4px">${escHtml(kpi.label)}</div>
-        <div style="font-size:20px;font-weight:800;color:${kpi.color};line-height:1.1;margin-bottom:4px">${escHtml(kpi.value)}</div>
-        <div style="font-size:10px;color:#64748b">${escHtml(kpi.sub)}</div>
+        <div style="font-size:11px;color:var(--sadv-text-tertiary,#8d8d8d);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em">${escHtml(kpi.label)}</div>
+        <div style="font-size:22px;font-weight:700;color:${kpi.color};line-height:1.1;margin-bottom:6px">${escHtml(kpi.value)}</div>
+        <div style="font-size:11px;color:var(--sadv-text-secondary,#c6c6c6)">${escHtml(kpi.sub)}</div>
       `);
       mobileKpiWrapper.appendChild(kpiCard);
     });
@@ -225,7 +225,7 @@ async function renderAllSites() {
     // PRIORITY: Use accountLabel first (from siteOwnership), fallback to sourceAccount
     const displayAccount = r.accountLabel || r.sourceAccount;
     const accountBadge = displayAccount && (typeof displayAccount === "string" ? displayAccount.trim() : "")
-      ? `<span style="font-size:10px;color:#0ea5e9;background:rgba(14,165,233,0.1);padding:2px 6px;border-radius:4px;margin-left:8px;white-space:nowrap;border:1px solid rgba(14,165,233,0.2)" title="${escHtml(displayAccount)}">${escHtml(displayAccount.includes("@") ? displayAccount.split("@")[0] : displayAccount)}</span>`
+      ? `<span style="font-size:10px;color:${C.blue};background:rgba(120,169,255,0.12);padding:3px 8px;border-radius:999px;margin-left:8px;white-space:nowrap;border:1px solid rgba(120,169,255,0.2)" title="${escHtml(displayAccount)}">${escHtml(displayAccount.includes("@") ? displayAccount.split("@")[0] : displayAccount)}</span>`
       : "";
 
     // Responsive card layout
