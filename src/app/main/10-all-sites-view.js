@@ -334,7 +334,7 @@ async function renderAllSites() {
   wrap.addEventListener("mouseleave", function (e) {
     const card = e.target.closest(".sadv-allcard");
     if (card && card.dataset.col) {
-      card.style.borderColor = "#334155";
+      card.style.borderColor = "var(--sadv-border-subtle,#2b2200)";
       card.style.borderTopColor = card.dataset.col + "44";
     }
   }, true);
