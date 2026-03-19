@@ -9234,7 +9234,10 @@ function getAvailableRenderers() {
       siteBar.classList.add("show");
       tabsEl.classList.add("show");
       ensureCurrentSite();
-      if (curSite) loadSiteView(curSite);
+      if (curSite) {
+        setComboSite(curSite);
+        loadSiteView(curSite);
+      }
     }
     setCachedUiState();
     if (typeof notifySnapshotShellState === "function") notifySnapshotShellState();
