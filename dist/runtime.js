@@ -11036,11 +11036,22 @@ function savedAtIso(d) {
       "})();",
     ].join("\n");
   }
+
+  function escapeInlineStyleText(text) {
+    return String(text || "").replace(/<\/style/gi, "<\\/style");
+  }
+
+  function escapeInlineScriptText(text) {
+    return String(text || "").replace(/<\/script/gi, "<\\/script");
+  }
+
   function injectSnapshotReactShell(html, payload) {
     if (!html.includes('<div id="sadv-bd">')) {
       throw new Error("snapshot panel not found");
     }
-    const reactShellCss = vS(document.getElementById("sadv-react-style")?.textContent || "");
+    const reactShellCss = escapeInlineStyleText(
+      document.getElementById("sadv-react-style")?.textContent || "",
+    );
     const shellState = buildSnapshotShellState(payload);
     html = html.replace(
       "</head>",
@@ -11053,7 +11064,7 @@ function savedAtIso(d) {
     html = html.replace('<div id="sadv-bd">', `<div id="sadv-react-shell-host"></div><div id="sadv-bd">`);
     html = html.replace(
       "</body>",
-      `<script>${gS(buildSnapshotShellBootstrapScript())}<\/script></body>`,
+      `<script>${escapeInlineScriptText(buildSnapshotShellBootstrapScript())}<\/script></body>`,
     );
     return html;
   }
