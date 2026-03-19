@@ -366,7 +366,7 @@
       btn.setAttribute("role", "tab");
       btn.setAttribute("aria-selected", t.id === curTab ? "true" : "false");
       btn.setAttribute("aria-controls", "sadv-tabpanel");
-      btn.style.cssText = "display:inline-flex;align-items:center;gap:5px";
+      btn.style.cssText = "display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;flex:0 0 auto";
       btn.innerHTML = `${t.icon}${escHtml(t.label)}`;
       return btn;
     }));
