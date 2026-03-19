@@ -184,6 +184,8 @@ const T = {
   accentSoftBorder: "rgba(255,212,0,0.24)",
   accentSoftBorderStrong: "rgba(255,212,0,0.26)",
   accentSoftText: "#ffd400",
+  warningSoftBg: "rgba(255,159,28,0.14)",
+  warningSoftBorder: "rgba(255,159,28,0.24)",
   warmDarkBg: "rgba(32,22,0,.72)",
   dangerSoftBg: "rgba(255,90,54,0.12)",
   radiusNone: "0",

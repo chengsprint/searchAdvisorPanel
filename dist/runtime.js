@@ -904,6 +904,8 @@ const T = {
   accentSoftBorder: "rgba(255,212,0,0.24)",
   accentSoftBorderStrong: "rgba(255,212,0,0.26)",
   accentSoftText: "#ffd400",
+  warningSoftBg: "rgba(255,159,28,0.14)",
+  warningSoftBorder: "rgba(255,159,28,0.24)",
   warmDarkBg: "rgba(32,22,0,.72)",
   dangerSoftBg: "rgba(255,90,54,0.12)",
   radiusNone: "0",
@@ -2875,9 +2877,12 @@ siteUiStyle.textContent = `
 }
 #sadv-cache-meta{
   display:flex !important;
-  flex-wrap:wrap !important;
-  gap:8px !important;
-  margin-top:8px !important;
+  align-items:center !important;
+  gap:6px !important;
+  margin-top:6px !important;
+  min-height:22px !important;
+  max-width:100% !important;
+  overflow:hidden !important;
 }
 #sadv-account-badge{
   border-radius:4px !important;
@@ -8693,19 +8698,57 @@ function getAvailableRenderers() {
       typeof cacheMeta.ttlMs === "number" && cacheMeta.ttlMs > 0
         ? Math.round(cacheMeta.ttlMs / 3600000)
         : null;
-    const chipStyle = "display:inline-flex;align-items:center;min-height:24px;padding:3px 10px;border-radius:999px;border:1px solid " + T.accentSoftBorder + ";background:" + T.accentSoftBg + ";color:var(--sadv-text-secondary,#ffe9a8);font-size:10px;font-weight:600;line-height:1.2";
-    const parts = [
-      `<span style="${chipStyle}">캐시저장 ${escHtml(formatCacheMetaTime(cacheMeta.updatedAt))}</span>`,
-    ];
-    if (typeof cacheMeta.remainingMs === "number") {
-      parts.push(
-        `<span style="${chipStyle}">자동갱신까지 ${escHtml(formatRemainingMsLabel(cacheMeta.remainingMs))}</span>`
-      );
-    }
-    if (ttlHours) {
-      parts.push(`<span style="${chipStyle}">${escHtml(String(ttlHours))}시간 TTL</span>`);
-    }
-    metaEl.innerHTML = sanitizeHTML(parts.join(""));
+    const remainingLabel =
+      typeof cacheMeta.remainingMs === "number"
+        ? formatRemainingMsLabel(cacheMeta.remainingMs)
+        : null;
+    const isNearExpiry =
+      typeof cacheMeta.remainingMs === "number" &&
+      Number.isFinite(cacheMeta.remainingMs) &&
+      cacheMeta.remainingMs > 0 &&
+      cacheMeta.remainingMs <= 60 * 60 * 1000;
+    const isExpired =
+      typeof cacheMeta.remainingMs === "number" &&
+      Number.isFinite(cacheMeta.remainingMs) &&
+      cacheMeta.remainingMs <= 0;
+    const borderCol = isExpired
+      ? T.dangerSoftBg
+      : isNearExpiry
+        ? T.warningSoftBorder
+        : T.accentSoftBorder;
+    const bgCol = isExpired
+      ? T.dangerSoftBg
+      : isNearExpiry
+        ? T.warningSoftBg
+        : T.accentSoftBg;
+    const textCol = isExpired
+      ? C.red
+      : isNearExpiry
+        ? C.amber
+        : "var(--sadv-text-secondary,#ffe9a8)";
+    const titleParts = [
+      `캐시저장 ${formatCacheMetaTime(cacheMeta.updatedAt)}`,
+      remainingLabel ? `자동갱신까지 ${remainingLabel}` : null,
+      ttlHours ? `${ttlHours}시간 TTL` : null,
+    ].filter(Boolean);
+    const compactParts = [
+      `캐시 ${formatCacheMetaTime(cacheMeta.updatedAt)}`,
+      ttlHours ? `${ttlHours}h` : null,
+      remainingLabel,
+    ].filter(Boolean);
+    const chipStyle =
+      "display:inline-flex;align-items:center;max-width:100%;min-height:22px;padding:2px 10px;border-radius:" +
+      T.radiusPill +
+      ";border:1px solid " +
+      borderCol +
+      ";background:" +
+      bgCol +
+      ";color:" +
+      textCol +
+      ";font-size:10px;font-weight:600;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis";
+    metaEl.innerHTML = sanitizeHTML(
+      `<span style="${chipStyle}" title="${escHtml(titleParts.join(" · "))}">${escHtml(compactParts.join(" · "))}</span>`
+    );
   }
   /**
  * Build the site selector combo box dropdown
