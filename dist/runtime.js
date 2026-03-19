@@ -8001,7 +8001,7 @@ function createCrawlRenderer(data) {
         const d = document.createElement("div");
         d.style.cssText =
           "background:var(--sadv-layer-01,#0d0d0f);border:1px solid " +
-          (hasServerErr ? "#ff525233" : has404 ? "#ffca2833" : "#1a2d45") +
+          (hasServerErr ? "rgba(255,90,54,0.22)" : has404 ? "rgba(255,159,28,0.22)" : "var(--sadv-border-subtle,#2b2200)") +
           ";padding:10px 12px;margin-bottom:6px";
         const errs =
           [
@@ -8212,7 +8212,7 @@ function createDiagnosisRenderer(data) {
       const row = document.createElement("div");
       row.style.cssText =
         "background:var(--sadv-layer-01,#0d0d0f);border:1px solid " +
-        (error > 0 || dropped > 0 ? "#ff525222" : "#1a2d45") +
+        (error > 0 || dropped > 0 ? "rgba(255,90,54,0.18)" : "var(--sadv-border-subtle,#2b2200)") +
         ";padding:10px 12px;margin-bottom:6px";
 
       row.innerHTML = sanitizeHTML(`
@@ -8224,13 +8224,13 @@ function createDiagnosisRenderer(data) {
           <div style="flex:${indexed};background:${C.purple};border-radius:2px 0 0 2px;min-width:${indexed > 0 ? 2 : 0}px"></div>
           <div style="flex:${pending};background:${C.amber};min-width:${pending > 0 ? 2 : 0}px"></div>
           <div style="flex:${error};background:${C.red};min-width:${error > 0 ? 2 : 0}px"></div>
-          <div style="flex:${dropped};background:#ff525288;border-radius:0 2px 2px 0;min-width:${dropped > 0 ? 2 : 0}px"></div>
+          <div style="flex:${dropped};background:color-mix(in srgb, ${C.red} 70%, transparent);border-radius:0 2px 2px 0;min-width:${dropped > 0 ? 2 : 0}px"></div>
         </div>
         <div style="display:flex;gap:12px;font-size:10px;color:var(--sadv-text-tertiary,#b9a55a)">
           <span style="color:${C.purple}">색인 <b>${escHtml(fmt(indexed))}</b></span>
           <span style="color:${C.amber}">대기 <b>${escHtml(fmt(pending))}</b></span>
           ${error > 0 ? `<span style="color:${C.red}">오류 <b>${escHtml(fmt(error))}</b></span>` : ""}
-          ${dropped > 0 ? `<span style="color:#ff5252">에러 <b>${escHtml(fmt(dropped))}</b></span>` : ""}
+          ${dropped > 0 ? `<span style="color:${C.red}">에러 <b>${escHtml(fmt(dropped))}</b></span>` : ""}
         </div>
       `);
       wrap.appendChild(row);
@@ -8244,7 +8244,7 @@ function createDiagnosisRenderer(data) {
       <span style="font-size:10px;color:${C.purple}">■ 색인</span>
       <span style="font-size:10px;color:${C.amber}">■ 대기중</span>
       <span style="font-size:10px;color:${C.red}">■ 오류</span>
-      <span style="font-size:10px;color:#ff5252">■ 색인에러</span>
+      <span style="font-size:10px;color:${C.red}">■ 색인에러</span>
     `);
     wrap.appendChild(legend);
 
@@ -9927,7 +9927,7 @@ function savedAtIso(d) {
     if (topRow && topRow.lastElementChild) {
       const meta = document.createElement("div");
       meta.style.cssText =
-        "display:flex;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid #284766;color:#d4ecff;background:rgba(7,13,22,.62);font-size:10px;font-weight:800";
+        "display:flex;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,212,0,0.24);color:#ffd400;background:rgba(32,22,0,.72);font-size:10px;font-weight:800";
       meta.textContent = "Saved " + savedLabel;
       topRow.lastElementChild.replaceWith(meta);
     }
@@ -9938,9 +9938,9 @@ function savedAtIso(d) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${escHtml("SearchAdvisor Snapshot - " + siteLabel)}</title>
   <style>
-    html,body{margin:0;padding:0;background:#06101a;color:#e0ecff;font-family:Apple SD Gothic Neo,system-ui,sans-serif}
+    html,body{margin:0;padding:0;background:#050505;color:#fff7dd;font-family:Apple SD Gothic Neo,system-ui,sans-serif}
     body{padding:28px 18px 40px}
-    a{color:#40c4ff}
+    a{color:#ffd400}
     :root{--snapshot-panel-width:520px}
     .snapshot-meta{
       width:min(100%,var(--snapshot-panel-width));
@@ -10945,15 +10945,15 @@ function renderFullRefreshProgress(label, detail, progress, stats) {
   if (st.success > 0 || st.partial > 0 || st.failed > 0) {
     statsHtml =
       '<div style="display:flex;gap:12px;margin-top:8px;font-size:10px">' +
-      '<span style="color:#4ade80">' + st.success + ' success</span>' +
-      '<span style="color:#fbbf24">' + st.partial + ' partial</span>' +
-      '<span style="color:#f87171">' + st.failed + ' failed</span>' +
+      '<span style="color:' + C.green + '">' + st.success + ' success</span>' +
+      '<span style="color:' + C.amber + '">' + st.partial + ' partial</span>' +
+      '<span style="color:' + C.red + '">' + st.failed + ' failed</span>' +
       "</div>";
   }
   let errorsHtml = "";
   if (st.errors && st.errors.length > 0 && st.errors.length <= 3) {
     errorsHtml =
-      '<div style="margin-top:10px;font-size:10px;color:#f87171;line-height:1.4">' +
+      '<div style="margin-top:10px;font-size:10px;color:' + C.red + ';line-height:1.4">' +
       st.errors.map(function (e) { return escHtml(e.site) + ": " + escHtml(e.error); }).join("<br>") +
       "</div>";
   }
@@ -10971,7 +10971,7 @@ function renderFullRefreshProgress(label, detail, progress, stats) {
     escHtml(String(pct)) +
     '%;height:100%;background:linear-gradient(90deg,#ffd400,#ff7a00)"></div>' +
     "</div>" +
-    '<span style="font-size:11px;font-weight:700;color:#d4ecff;min-width:48px;text-align:right">' +
+    '<span style="font-size:11px;font-weight:700;color:var(--sadv-accent,#ffd400);min-width:48px;text-align:right">' +
     escHtml(String(pct)) +
     "%</span>" +
     "</div>" +
@@ -11139,7 +11139,7 @@ function renderFailureSummary(stats) {
   const summaryEl = document.createElement("div");
   summaryEl.id = "sadv-failure-summary";
   summaryEl.style.cssText =
-    "position:fixed;bottom:12px;right:12px;background:#1a1a2e;border:1px solid #f87171;border-radius:8px;padding:12px 16px;font-size:11px;color:#f87171;max-width:320px;z-index:10000000;box-shadow:0 4px 20px rgba(0,0,0,.5);font-family:Apple SD Gothic Neo,system-ui";
+    "position:fixed;bottom:12px;right:12px;background:#120d0a;border:1px solid rgba(255,90,54,0.45);border-radius:0;padding:12px 16px;font-size:11px;color:#ff5a36;max-width:320px;z-index:10000000;box-shadow:0 10px 28px rgba(0,0,0,.42);font-family:Apple SD Gothic Neo,system-ui";
   const failedCount = stats.failed || 0;
   const partialCount = stats.partial || 0;
   const errorItems = (stats.errors || []).slice(0, 5);
@@ -11151,17 +11151,17 @@ function renderFailureSummary(stats) {
   headerRow.appendChild(titleSpan);
   const closeBtn = document.createElement("button");
   closeBtn.textContent = "\u00d7";
-  closeBtn.style.cssText = "background:none;border:none;color:#f87171;cursor:pointer;font-size:14px;padding:0 4px";
+  closeBtn.style.cssText = "background:none;border:none;color:#ff5a36;cursor:pointer;font-size:14px;padding:0 4px";
   closeBtn.onclick = function () { summaryEl.remove(); };
   headerRow.appendChild(closeBtn);
   summaryEl.appendChild(headerRow);
   const countDiv = document.createElement("div");
-  countDiv.style.color = "#fcd34d";
+  countDiv.style.color = C.amber;
   countDiv.textContent = failedCount + " failed" + (partialCount > 0 ? ", " + partialCount + " partial" : "");
   summaryEl.appendChild(countDiv);
   if (errorItems.length > 0) {
     const errorDiv = document.createElement("div");
-    errorDiv.style.cssText = "margin-top:8px;padding-top:8px;border-top:1px solid #f8717155;font-size:10px;line-height:1.5";
+    errorDiv.style.cssText = "margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,90,54,0.25);font-size:10px;line-height:1.5";
     errorItems.forEach(function (e) {
       const line = document.createElement("div");
       const siteShort = e.site ? e.site.replace(/^https?:\/\//, "").slice(0, 30) : "unknown";
@@ -11170,7 +11170,7 @@ function renderFailureSummary(stats) {
     });
     if (stats.errors.length > 5) {
       const moreLine = document.createElement("div");
-      moreLine.style.color = "#fbbf24";
+      moreLine.style.color = C.amber;
       moreLine.textContent = "... +" + (stats.errors.length - 5) + " more";
       errorDiv.appendChild(moreLine);
     }

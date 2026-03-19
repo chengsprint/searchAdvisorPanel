@@ -110,7 +110,7 @@ function createDiagnosisRenderer(data) {
       const row = document.createElement("div");
       row.style.cssText =
         "background:var(--sadv-layer-01,#0d0d0f);border:1px solid " +
-        (error > 0 || dropped > 0 ? "#ff525222" : "#1a2d45") +
+        (error > 0 || dropped > 0 ? "rgba(255,90,54,0.18)" : "var(--sadv-border-subtle,#2b2200)") +
         ";padding:10px 12px;margin-bottom:6px";
 
       row.innerHTML = sanitizeHTML(`
@@ -122,13 +122,13 @@ function createDiagnosisRenderer(data) {
           <div style="flex:${indexed};background:${C.purple};border-radius:2px 0 0 2px;min-width:${indexed > 0 ? 2 : 0}px"></div>
           <div style="flex:${pending};background:${C.amber};min-width:${pending > 0 ? 2 : 0}px"></div>
           <div style="flex:${error};background:${C.red};min-width:${error > 0 ? 2 : 0}px"></div>
-          <div style="flex:${dropped};background:#ff525288;border-radius:0 2px 2px 0;min-width:${dropped > 0 ? 2 : 0}px"></div>
+          <div style="flex:${dropped};background:color-mix(in srgb, ${C.red} 70%, transparent);border-radius:0 2px 2px 0;min-width:${dropped > 0 ? 2 : 0}px"></div>
         </div>
         <div style="display:flex;gap:12px;font-size:10px;color:var(--sadv-text-tertiary,#b9a55a)">
           <span style="color:${C.purple}">색인 <b>${escHtml(fmt(indexed))}</b></span>
           <span style="color:${C.amber}">대기 <b>${escHtml(fmt(pending))}</b></span>
           ${error > 0 ? `<span style="color:${C.red}">오류 <b>${escHtml(fmt(error))}</b></span>` : ""}
-          ${dropped > 0 ? `<span style="color:#ff5252">에러 <b>${escHtml(fmt(dropped))}</b></span>` : ""}
+          ${dropped > 0 ? `<span style="color:${C.red}">에러 <b>${escHtml(fmt(dropped))}</b></span>` : ""}
         </div>
       `);
       wrap.appendChild(row);
@@ -142,7 +142,7 @@ function createDiagnosisRenderer(data) {
       <span style="font-size:10px;color:${C.purple}">■ 색인</span>
       <span style="font-size:10px;color:${C.amber}">■ 대기중</span>
       <span style="font-size:10px;color:${C.red}">■ 오류</span>
-      <span style="font-size:10px;color:#ff5252">■ 색인에러</span>
+      <span style="font-size:10px;color:${C.red}">■ 색인에러</span>
     `);
     wrap.appendChild(legend);
 

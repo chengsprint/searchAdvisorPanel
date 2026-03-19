@@ -24,15 +24,15 @@ function renderFullRefreshProgress(label, detail, progress, stats) {
   if (st.success > 0 || st.partial > 0 || st.failed > 0) {
     statsHtml =
       '<div style="display:flex;gap:12px;margin-top:8px;font-size:10px">' +
-      '<span style="color:#4ade80">' + st.success + ' success</span>' +
-      '<span style="color:#fbbf24">' + st.partial + ' partial</span>' +
-      '<span style="color:#f87171">' + st.failed + ' failed</span>' +
+      '<span style="color:' + C.green + '">' + st.success + ' success</span>' +
+      '<span style="color:' + C.amber + '">' + st.partial + ' partial</span>' +
+      '<span style="color:' + C.red + '">' + st.failed + ' failed</span>' +
       "</div>";
   }
   let errorsHtml = "";
   if (st.errors && st.errors.length > 0 && st.errors.length <= 3) {
     errorsHtml =
-      '<div style="margin-top:10px;font-size:10px;color:#f87171;line-height:1.4">' +
+      '<div style="margin-top:10px;font-size:10px;color:' + C.red + ';line-height:1.4">' +
       st.errors.map(function (e) { return escHtml(e.site) + ": " + escHtml(e.error); }).join("<br>") +
       "</div>";
   }
@@ -50,7 +50,7 @@ function renderFullRefreshProgress(label, detail, progress, stats) {
     escHtml(String(pct)) +
     '%;height:100%;background:linear-gradient(90deg,#ffd400,#ff7a00)"></div>' +
     "</div>" +
-    '<span style="font-size:11px;font-weight:700;color:#d4ecff;min-width:48px;text-align:right">' +
+    '<span style="font-size:11px;font-weight:700;color:var(--sadv-accent,#ffd400);min-width:48px;text-align:right">' +
     escHtml(String(pct)) +
     "%</span>" +
     "</div>" +
@@ -218,7 +218,7 @@ function renderFailureSummary(stats) {
   const summaryEl = document.createElement("div");
   summaryEl.id = "sadv-failure-summary";
   summaryEl.style.cssText =
-    "position:fixed;bottom:12px;right:12px;background:#1a1a2e;border:1px solid #f87171;border-radius:8px;padding:12px 16px;font-size:11px;color:#f87171;max-width:320px;z-index:10000000;box-shadow:0 4px 20px rgba(0,0,0,.5);font-family:Apple SD Gothic Neo,system-ui";
+    "position:fixed;bottom:12px;right:12px;background:#120d0a;border:1px solid rgba(255,90,54,0.45);border-radius:0;padding:12px 16px;font-size:11px;color:#ff5a36;max-width:320px;z-index:10000000;box-shadow:0 10px 28px rgba(0,0,0,.42);font-family:Apple SD Gothic Neo,system-ui";
   const failedCount = stats.failed || 0;
   const partialCount = stats.partial || 0;
   const errorItems = (stats.errors || []).slice(0, 5);
@@ -230,17 +230,17 @@ function renderFailureSummary(stats) {
   headerRow.appendChild(titleSpan);
   const closeBtn = document.createElement("button");
   closeBtn.textContent = "\u00d7";
-  closeBtn.style.cssText = "background:none;border:none;color:#f87171;cursor:pointer;font-size:14px;padding:0 4px";
+  closeBtn.style.cssText = "background:none;border:none;color:#ff5a36;cursor:pointer;font-size:14px;padding:0 4px";
   closeBtn.onclick = function () { summaryEl.remove(); };
   headerRow.appendChild(closeBtn);
   summaryEl.appendChild(headerRow);
   const countDiv = document.createElement("div");
-  countDiv.style.color = "#fcd34d";
+  countDiv.style.color = C.amber;
   countDiv.textContent = failedCount + " failed" + (partialCount > 0 ? ", " + partialCount + " partial" : "");
   summaryEl.appendChild(countDiv);
   if (errorItems.length > 0) {
     const errorDiv = document.createElement("div");
-    errorDiv.style.cssText = "margin-top:8px;padding-top:8px;border-top:1px solid #f8717155;font-size:10px;line-height:1.5";
+    errorDiv.style.cssText = "margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,90,54,0.25);font-size:10px;line-height:1.5";
     errorItems.forEach(function (e) {
       const line = document.createElement("div");
       const siteShort = e.site ? e.site.replace(/^https?:\/\//, "").slice(0, 30) : "unknown";
@@ -249,7 +249,7 @@ function renderFailureSummary(stats) {
     });
     if (stats.errors.length > 5) {
       const moreLine = document.createElement("div");
-      moreLine.style.color = "#fbbf24";
+      moreLine.style.color = C.amber;
       moreLine.textContent = "... +" + (stats.errors.length - 5) + " more";
       errorDiv.appendChild(moreLine);
     }

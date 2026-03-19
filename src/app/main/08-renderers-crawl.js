@@ -99,7 +99,7 @@ function createCrawlRenderer(data) {
         const d = document.createElement("div");
         d.style.cssText =
           "background:var(--sadv-layer-01,#0d0d0f);border:1px solid " +
-          (hasServerErr ? "#ff525233" : has404 ? "#ffca2833" : "#1a2d45") +
+          (hasServerErr ? "rgba(255,90,54,0.22)" : has404 ? "rgba(255,159,28,0.22)" : "var(--sadv-border-subtle,#2b2200)") +
           ";padding:10px 12px;margin-bottom:6px";
         const errs =
           [

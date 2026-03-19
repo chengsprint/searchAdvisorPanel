@@ -215,7 +215,7 @@
     if (topRow && topRow.lastElementChild) {
       const meta = document.createElement("div");
       meta.style.cssText =
-        "display:flex;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid #284766;color:#d4ecff;background:rgba(7,13,22,.62);font-size:10px;font-weight:800";
+        "display:flex;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,212,0,0.24);color:#ffd400;background:rgba(32,22,0,.72);font-size:10px;font-weight:800";
       meta.textContent = "Saved " + savedLabel;
       topRow.lastElementChild.replaceWith(meta);
     }
@@ -226,9 +226,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${escHtml("SearchAdvisor Snapshot - " + siteLabel)}</title>
   <style>
-    html,body{margin:0;padding:0;background:#06101a;color:#e0ecff;font-family:Apple SD Gothic Neo,system-ui,sans-serif}
+    html,body{margin:0;padding:0;background:#050505;color:#fff7dd;font-family:Apple SD Gothic Neo,system-ui,sans-serif}
     body{padding:28px 18px 40px}
-    a{color:#40c4ff}
+    a{color:#ffd400}
     :root{--snapshot-panel-width:520px}
     .snapshot-meta{
       width:min(100%,var(--snapshot-panel-width));
