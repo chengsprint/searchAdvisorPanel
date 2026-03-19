@@ -182,11 +182,11 @@ async function renderAllSites() {
 
     kpiData.forEach(kpi => {
       const kpiCard = document.createElement("div");
-      kpiCard.style.cssText = `background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);border-radius:0;padding:16px;text-align:left;box-shadow:0 8px 24px rgba(0,0,0,0.18)`;
+      kpiCard.style.cssText = `background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);border-radius:0;padding:16px 18px;text-align:left;box-shadow:0 8px 24px rgba(0,0,0,0.18);overflow:hidden`;
       kpiCard.innerHTML = sanitizeHTML(`
-        <div style="font-size:11px;color:var(--sadv-text-tertiary,#8d8d8d);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em">${escHtml(kpi.label)}</div>
-        <div style="font-size:22px;font-weight:700;color:${kpi.color};line-height:1.1;margin-bottom:6px">${escHtml(kpi.value)}</div>
-        <div style="font-size:11px;color:var(--sadv-text-secondary,#c6c6c6)">${escHtml(kpi.sub)}</div>
+        <div style="width:100%;font-size:11px;color:var(--sadv-text-tertiary,#8d8d8d);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em">${escHtml(kpi.label)}</div>
+        <div style="width:100%;font-size:20px;font-weight:700;color:${kpi.color};line-height:1.08;margin-bottom:6px;letter-spacing:-0.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:2px">${escHtml(kpi.value)}</div>
+        <div style="width:100%;font-size:11px;color:var(--sadv-text-secondary,#c6c6c6)">${escHtml(kpi.sub)}</div>
       `);
       mobileKpiWrapper.appendChild(kpiCard);
     });
