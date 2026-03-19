@@ -9,6 +9,15 @@
  */
 async function loadSiteList(refresh = false) {
   console.log('[loadSiteList] Called with refresh:', refresh);
+  const cacheSites = function (sites) {
+    if (!Array.isArray(sites) || !sites.length) return;
+    lsSet(getSiteListCacheKey(), {
+      ts: Date.now(),
+      sites: sites.slice(),
+    }).catch(function (e) {
+      console.warn('[loadSiteList] Failed to cache sites:', e);
+    });
+  };
 
   // Check V2 format EXPORT_PAYLOAD first
   const exportPayload = window.__SEARCHADVISOR_EXPORT_PAYLOAD__;
@@ -81,6 +90,7 @@ async function loadSiteList(refresh = false) {
     const allSites = getAllSites();
     allSites.length = 0;
     allSites.push(...sites);
+    cacheSites(sites);
     return sites;
   }
 
@@ -92,6 +102,7 @@ async function loadSiteList(refresh = false) {
     const allSites = getAllSites();
     allSites.length = 0;
     allSites.push(...sites);
+    cacheSites(sites);
     return sites;
   }
 

@@ -71,12 +71,50 @@ function renderFullRefreshProgress(label, detail, progress, stats) {
 function shouldBootstrapFullRefresh() {
   if (!allSites.length) return false;
   const now = Date.now();
+  const ttlMs = getDataTtlMs();
   const siteListTs = getSiteListCacheStamp();
-  if (!(typeof siteListTs === "number") || now - siteListTs >= DATA_TTL) return true;
+  if (!(typeof siteListTs === "number") || now - siteListTs >= ttlMs) return true;
   return allSites.some(function (site) {
     const siteTs = getSiteDataCacheStamp(site);
-    return !(typeof siteTs === "number") || now - siteTs >= DATA_TTL;
+    return !(typeof siteTs === "number") || now - siteTs >= ttlMs;
   });
+}
+
+let fullRefreshInFlightPromise = null;
+let cacheExpiryMonitorId = null;
+
+function stopCacheExpiryMonitor() {
+  if (cacheExpiryMonitorId) {
+    clearInterval(cacheExpiryMonitorId);
+    cacheExpiryMonitorId = null;
+    recordRuntimeEvent("cache-monitor-stop", null);
+  }
+}
+
+function startCacheExpiryMonitor() {
+  if (typeof window === "undefined" || typeof window.setInterval !== "function") return null;
+  stopCacheExpiryMonitor();
+  const intervalMs = getCacheMonitorIntervalMs();
+  cacheExpiryMonitorId = window.setInterval(function () {
+    try {
+      const panelExists = !!document.getElementById("sadv-p");
+      if (!panelExists) {
+        stopCacheExpiryMonitor();
+        return;
+      }
+      if (!shouldBootstrapFullRefresh()) return;
+      runFullRefreshPipeline({ trigger: "cache-expiry" }).catch(function (e) {
+        console.error("[Cache Monitor] Auto refresh failed:", e);
+      });
+    } catch (e) {
+      console.error("[Cache Monitor] Tick failed:", e);
+    }
+  }, intervalMs);
+  recordRuntimeEvent("cache-monitor-start", {
+    intervalMs: intervalMs,
+    ttlMs: getDataTtlMs(),
+  });
+  return cacheExpiryMonitorId;
 }
 
 /**
@@ -92,6 +130,8 @@ function shouldBootstrapFullRefresh() {
  * @see {renderFullRefreshProgress}
  */
 async function runFullRefreshPipeline(options = {}) {
+  if (fullRefreshInFlightPromise) return fullRefreshInFlightPromise;
+  fullRefreshInFlightPromise = (async function () {
   const trigger = options && options.trigger ? options.trigger : "manual";
   const triggerLabel =
     trigger === "cache-expiry"
@@ -101,6 +141,11 @@ async function runFullRefreshPipeline(options = {}) {
     trigger === "cache-expiry"
       ? "\uc804\uccb4\ud604\ud669\uacfc \uc0ac\uc774\ud2b8\ubcc4 \uc0c1\uc138\ud0ed\uc744 \ubaa8\ub450 \ucd5c\uc2e0 \uc0c1\ud0dc\ub85c \ub9de\ucd94\ub294 \uc911\uc785\ub2c8\ub2e4."
       : "\uc0ac\uc774\ud2b8 \ubaa9\ub85d\ubd80\ud130 expose, diagnosisMeta, crawl, backlink\uae4c\uc9c0 \uc21c\uc11c\ub300\ub85c \uac31\uc2e0\ud569\ub2c8\ub2e4.";
+  recordRuntimeEvent("full-refresh-start", {
+    trigger: trigger,
+    ttlMs: getDataTtlMs(),
+    siteCount: allSites.length,
+  });
   renderFullRefreshProgress(triggerLabel, triggerDetail, 0);
   labelEl.innerHTML = sanitizeHTML("<span>\uc804\uccb4 \uc7ac\uc218\uc9d1 \uc9c4\ud589 \uc911</span>");
   const btn = options && options.button ? options.button : null;
@@ -136,7 +181,24 @@ async function runFullRefreshPipeline(options = {}) {
   if (payload.stats && (payload.stats.failed > 0 || payload.stats.errors.length > 0)) {
     renderFailureSummary(payload.stats);
   }
+  recordRuntimeEvent("full-refresh-complete", {
+    trigger: trigger,
+    siteCount: payload.summaryRows.length,
+    stats: payload.stats || null,
+  });
   return payload;
+  })();
+  try {
+    return await fullRefreshInFlightPromise;
+  } catch (e) {
+    recordRuntimeEvent("full-refresh-failure", {
+      trigger: options && options.trigger ? options.trigger : "manual",
+      message: e && e.message ? e.message : String(e),
+    });
+    throw e;
+  } finally {
+    fullRefreshInFlightPromise = null;
+  }
 }
 
 /**

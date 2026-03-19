@@ -1035,6 +1035,34 @@ const DATA_LS_PREFIX = "sadv_data_v2_";
 const UI_STATE_LS_KEY = "sadv_ui_state_v1";
 const DATA_TTL = 12 * 60 * 60 * 1000;
 
+function getDataTtlMs() {
+  try {
+    const override = Number(window.__SADV_TEST_TTL_MS);
+    if (Number.isFinite(override) && override > 0) return override;
+  } catch (e) {}
+  return DATA_TTL;
+}
+
+function getCacheMonitorIntervalMs() {
+  try {
+    const override = Number(window.__SADV_TEST_CACHE_MONITOR_INTERVAL_MS);
+    if (Number.isFinite(override) && override > 0) return override;
+  } catch (e) {}
+  const ttlMs = getDataTtlMs();
+  return Math.max(1000, Math.min(30000, Math.floor(ttlMs / 4) || 30000));
+}
+
+function recordRuntimeEvent(type, detail) {
+  try {
+    if (!Array.isArray(window.__SADV_TEST_EVENTS)) return;
+    window.__SADV_TEST_EVENTS.push({
+      type: String(type || "unknown"),
+      detail: detail && typeof detail === "object" ? detail : detail ?? null,
+      at: Date.now(),
+    });
+  } catch (e) {}
+}
+
 // ============================================================
 // P0-3: ACCOUNT_UTILS - 계정 유틸리티 통합
 // ============================================================
@@ -3288,6 +3316,7 @@ function safeWrite(key, writeFn, options = {}) {
   // Add to write queue for serialization
   writeQueue = writeQueue.then(async () => {
     let attempt = 0;
+    let lockId = null;
 
     while (attempt <= retries) {
       try {
@@ -3307,7 +3336,7 @@ function safeWrite(key, writeFn, options = {}) {
         }
 
         // Acquire lock
-        const lockId = Math.random().toString(36).substr(2, 9);
+        lockId = Math.random().toString(36).substr(2, 9);
         if (!skipLock) {
           writeLocks.set(key, { id: lockId, timestamp: Date.now() });
         }
@@ -3385,7 +3414,7 @@ function cleanupOldCache() {
 
     // Remove oldest entries that are expired
     for (const entry of cacheEntries) {
-      if (now - entry.timestamp > DATA_TTL) {
+      if (now - entry.timestamp > getDataTtlMs()) {
         localStorage.removeItem(entry.key);
         cleaned = true;
         console.log(`[cleanupOldCache] Removed expired cache: ${entry.key}`);
@@ -3463,7 +3492,7 @@ function getCachedData(site) {
   if (!d) return null;
   if (!d.data || typeof d.data !== "object") return null;
   // TTL 검증 (타입 체크 추가)
-  if (d.ts && typeof d.ts === "number" && Date.now() - d.ts > DATA_TTL) return null;
+  if (d.ts && typeof d.ts === "number" && Date.now() - d.ts > getDataTtlMs()) return null;
   return {
     ...d.data,
     __cacheSavedAt: typeof d.ts === "number" ? d.ts : null,
@@ -4290,7 +4319,11 @@ function getFieldSnapshotFetchedAt(data, key) {
  */
 function hasFreshFieldSnapshot(data, key, ttlMs = FIELD_SUCCESS_TTL_MS) {
   const fetchedAt = getFieldSnapshotFetchedAt(data, key);
-  return typeof fetchedAt === "number" && Date.now() - fetchedAt < ttlMs;
+  const effectiveTtlMs =
+    typeof ttlMs === "number" && Number.isFinite(ttlMs) && ttlMs > 0
+      ? ttlMs
+      : getDataTtlMs();
+  return typeof fetchedAt === "number" && Date.now() - fetchedAt < effectiveTtlMs;
 }
 
 /**
@@ -4820,6 +4853,15 @@ async function fetchBacklinkData(site, options = {}) {
  */
 async function loadSiteList(refresh = false) {
   console.log('[loadSiteList] Called with refresh:', refresh);
+  const cacheSites = function (sites) {
+    if (!Array.isArray(sites) || !sites.length) return;
+    lsSet(getSiteListCacheKey(), {
+      ts: Date.now(),
+      sites: sites.slice(),
+    }).catch(function (e) {
+      console.warn('[loadSiteList] Failed to cache sites:', e);
+    });
+  };
 
   // Check V2 format EXPORT_PAYLOAD first
   const exportPayload = window.__SEARCHADVISOR_EXPORT_PAYLOAD__;
@@ -4892,6 +4934,7 @@ async function loadSiteList(refresh = false) {
     const allSites = getAllSites();
     allSites.length = 0;
     allSites.push(...sites);
+    cacheSites(sites);
     return sites;
   }
 
@@ -4903,6 +4946,7 @@ async function loadSiteList(refresh = false) {
     const allSites = getAllSites();
     allSites.length = 0;
     allSites.push(...sites);
+    cacheSites(sites);
     return sites;
   }
 
@@ -5272,6 +5316,7 @@ const inflightExpose = {};
 const inflightCrawl = {};
 const inflightBacklink = {};
 const inflightDiagnosisMeta = {};
+const inflightDetail = {};
 
 /**
  * Fetch expose data for a site
@@ -5957,6 +6002,15 @@ function injectDemoData() {
   if (!isDemoMode) return false;
 
   console.log('[Demo Mode] Setting up demo sites and data...');
+  if ((!encId || typeof encId !== "string") && DEMO_ENC_ID) {
+    encId = DEMO_ENC_ID;
+  }
+  if ((!accountLabel || typeof accountLabel !== "string") && typeof window !== "undefined") {
+    accountLabel = window.__sadvInitData?.currentAccount || "demo@searchadvisor.local";
+    if (typeof applyAccountBadge === "function") {
+      applyAccountBadge(accountLabel);
+    }
+  }
 
   // Check for custom injected data first (from generate-html-files.js)
   const customInitData = window.__sadvInitData;
@@ -7091,33 +7145,27 @@ function isMergedReport() {
 // ============================================================================
 // 전역 노출 (IIFE로 감싸진 환경에서도 접근 가능하도록)
 // ============================================================================
+function defineMutableWindowState(name, getter, setter) {
+  if (typeof window === "undefined") return;
+  const existing = Object.getOwnPropertyDescriptor(window, name);
+  if (existing && existing.configurable === false) {
+    return;
+  }
+  Object.defineProperty(window, name, {
+    get: getter,
+    set: setter,
+    enumerable: true,
+    configurable: true,
+  });
+}
+
 if (typeof window !== "undefined") {
   // UI 상태 변수들을 window 객체에 노출
-  Object.defineProperty(window, "curMode", {
-    get: function() { return curMode; },
-    set: function(v) { curMode = v; },
-    enumerable: true
-  });
-  Object.defineProperty(window, "curSite", {
-    get: function() { return curSite; },
-    set: function(v) { curSite = v; },
-    enumerable: true
-  });
-  Object.defineProperty(window, "curTab", {
-    get: function() { return curTab; },
-    set: function(v) { curTab = v; },
-    enumerable: true
-  });
-  Object.defineProperty(window, "siteViewReqId", {
-    get: function() { return siteViewReqId; },
-    set: function(v) { siteViewReqId = v; },
-    enumerable: true
-  });
-  Object.defineProperty(window, "allViewReqId", {
-    get: function() { return allViewReqId; },
-    set: function(v) { allViewReqId = v; },
-    enumerable: true
-  });
+  defineMutableWindowState("curMode", function() { return curMode; }, function(v) { curMode = v; });
+  defineMutableWindowState("curSite", function() { return curSite; }, function(v) { curSite = v; });
+  defineMutableWindowState("curTab", function() { return curTab; }, function(v) { curTab = v; });
+  defineMutableWindowState("siteViewReqId", function() { return siteViewReqId; }, function(v) { siteViewReqId = v; });
+  defineMutableWindowState("allViewReqId", function() { return allViewReqId; }, function(v) { allViewReqId = v; });
 
   // React 18 호환 상태 관리 노출
   // React 18 Concurrent Mode에서도 안전하게 상태를 구독할 수 있습니다.
@@ -9119,7 +9167,10 @@ async function collectExportData(onProgress, options) {
         __source: {
           accountLabel: accountLabel || "unknown",
           accountEncId: encId || "unknown",
-          fetchedAt: siteData.__cacheSavedAt || new Date().toISOString(),
+          fetchedAt:
+            siteData && typeof siteData.__cacheSavedAt === "number"
+              ? siteData.__cacheSavedAt
+              : new Date().toISOString(),
           exportedAt: savedAtIso(new Date()),
         }
       };
@@ -10457,12 +10508,50 @@ function renderFullRefreshProgress(label, detail, progress, stats) {
 function shouldBootstrapFullRefresh() {
   if (!allSites.length) return false;
   const now = Date.now();
+  const ttlMs = getDataTtlMs();
   const siteListTs = getSiteListCacheStamp();
-  if (!(typeof siteListTs === "number") || now - siteListTs >= DATA_TTL) return true;
+  if (!(typeof siteListTs === "number") || now - siteListTs >= ttlMs) return true;
   return allSites.some(function (site) {
     const siteTs = getSiteDataCacheStamp(site);
-    return !(typeof siteTs === "number") || now - siteTs >= DATA_TTL;
+    return !(typeof siteTs === "number") || now - siteTs >= ttlMs;
   });
+}
+
+let fullRefreshInFlightPromise = null;
+let cacheExpiryMonitorId = null;
+
+function stopCacheExpiryMonitor() {
+  if (cacheExpiryMonitorId) {
+    clearInterval(cacheExpiryMonitorId);
+    cacheExpiryMonitorId = null;
+    recordRuntimeEvent("cache-monitor-stop", null);
+  }
+}
+
+function startCacheExpiryMonitor() {
+  if (typeof window === "undefined" || typeof window.setInterval !== "function") return null;
+  stopCacheExpiryMonitor();
+  const intervalMs = getCacheMonitorIntervalMs();
+  cacheExpiryMonitorId = window.setInterval(function () {
+    try {
+      const panelExists = !!document.getElementById("sadv-p");
+      if (!panelExists) {
+        stopCacheExpiryMonitor();
+        return;
+      }
+      if (!shouldBootstrapFullRefresh()) return;
+      runFullRefreshPipeline({ trigger: "cache-expiry" }).catch(function (e) {
+        console.error("[Cache Monitor] Auto refresh failed:", e);
+      });
+    } catch (e) {
+      console.error("[Cache Monitor] Tick failed:", e);
+    }
+  }, intervalMs);
+  recordRuntimeEvent("cache-monitor-start", {
+    intervalMs: intervalMs,
+    ttlMs: getDataTtlMs(),
+  });
+  return cacheExpiryMonitorId;
 }
 
 /**
@@ -10478,6 +10567,8 @@ function shouldBootstrapFullRefresh() {
  * @see {renderFullRefreshProgress}
  */
 async function runFullRefreshPipeline(options = {}) {
+  if (fullRefreshInFlightPromise) return fullRefreshInFlightPromise;
+  fullRefreshInFlightPromise = (async function () {
   const trigger = options && options.trigger ? options.trigger : "manual";
   const triggerLabel =
     trigger === "cache-expiry"
@@ -10487,6 +10578,11 @@ async function runFullRefreshPipeline(options = {}) {
     trigger === "cache-expiry"
       ? "\uc804\uccb4\ud604\ud669\uacfc \uc0ac\uc774\ud2b8\ubcc4 \uc0c1\uc138\ud0ed\uc744 \ubaa8\ub450 \ucd5c\uc2e0 \uc0c1\ud0dc\ub85c \ub9de\ucd94\ub294 \uc911\uc785\ub2c8\ub2e4."
       : "\uc0ac\uc774\ud2b8 \ubaa9\ub85d\ubd80\ud130 expose, diagnosisMeta, crawl, backlink\uae4c\uc9c0 \uc21c\uc11c\ub300\ub85c \uac31\uc2e0\ud569\ub2c8\ub2e4.";
+  recordRuntimeEvent("full-refresh-start", {
+    trigger: trigger,
+    ttlMs: getDataTtlMs(),
+    siteCount: allSites.length,
+  });
   renderFullRefreshProgress(triggerLabel, triggerDetail, 0);
   labelEl.innerHTML = sanitizeHTML("<span>\uc804\uccb4 \uc7ac\uc218\uc9d1 \uc9c4\ud589 \uc911</span>");
   const btn = options && options.button ? options.button : null;
@@ -10522,7 +10618,24 @@ async function runFullRefreshPipeline(options = {}) {
   if (payload.stats && (payload.stats.failed > 0 || payload.stats.errors.length > 0)) {
     renderFailureSummary(payload.stats);
   }
+  recordRuntimeEvent("full-refresh-complete", {
+    trigger: trigger,
+    siteCount: payload.summaryRows.length,
+    stats: payload.stats || null,
+  });
   return payload;
+  })();
+  try {
+    return await fullRefreshInFlightPromise;
+  } catch (e) {
+    recordRuntimeEvent("full-refresh-failure", {
+      trigger: options && options.trigger ? options.trigger : "manual",
+      message: e && e.message ? e.message : String(e),
+    });
+    throw e;
+  } finally {
+    fullRefreshInFlightPromise = null;
+  }
 }
 
 /**
@@ -10688,6 +10801,7 @@ console.log('[Init] Starting async initialization...');
         renderAllSites();
       }
       setCachedUiState();
+      startCacheExpiryMonitor();
       __sadvMarkReady();
     };
 

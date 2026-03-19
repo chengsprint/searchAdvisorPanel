@@ -101,6 +101,7 @@ const inflightExpose = {};
 const inflightCrawl = {};
 const inflightBacklink = {};
 const inflightDiagnosisMeta = {};
+const inflightDetail = {};
 
 /**
  * Fetch expose data for a site

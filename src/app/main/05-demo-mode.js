@@ -246,6 +246,15 @@ function injectDemoData() {
   if (!isDemoMode) return false;
 
   console.log('[Demo Mode] Setting up demo sites and data...');
+  if ((!encId || typeof encId !== "string") && DEMO_ENC_ID) {
+    encId = DEMO_ENC_ID;
+  }
+  if ((!accountLabel || typeof accountLabel !== "string") && typeof window !== "undefined") {
+    accountLabel = window.__sadvInitData?.currentAccount || "demo@searchadvisor.local";
+    if (typeof applyAccountBadge === "function") {
+      applyAccountBadge(accountLabel);
+    }
+  }
 
   // Check for custom injected data first (from generate-html-files.js)
   const customInitData = window.__sadvInitData;

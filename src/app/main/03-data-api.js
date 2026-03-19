@@ -37,7 +37,11 @@ function getFieldSnapshotFetchedAt(data, key) {
  */
 function hasFreshFieldSnapshot(data, key, ttlMs = FIELD_SUCCESS_TTL_MS) {
   const fetchedAt = getFieldSnapshotFetchedAt(data, key);
-  return typeof fetchedAt === "number" && Date.now() - fetchedAt < ttlMs;
+  const effectiveTtlMs =
+    typeof ttlMs === "number" && Number.isFinite(ttlMs) && ttlMs > 0
+      ? ttlMs
+      : getDataTtlMs();
+  return typeof fetchedAt === "number" && Date.now() - fetchedAt < effectiveTtlMs;
 }
 
 /**

@@ -218,6 +218,7 @@ function safeWrite(key, writeFn, options = {}) {
   // Add to write queue for serialization
   writeQueue = writeQueue.then(async () => {
     let attempt = 0;
+    let lockId = null;
 
     while (attempt <= retries) {
       try {
@@ -237,7 +238,7 @@ function safeWrite(key, writeFn, options = {}) {
         }
 
         // Acquire lock
-        const lockId = Math.random().toString(36).substr(2, 9);
+        lockId = Math.random().toString(36).substr(2, 9);
         if (!skipLock) {
           writeLocks.set(key, { id: lockId, timestamp: Date.now() });
         }
@@ -315,7 +316,7 @@ function cleanupOldCache() {
 
     // Remove oldest entries that are expired
     for (const entry of cacheEntries) {
-      if (now - entry.timestamp > DATA_TTL) {
+      if (now - entry.timestamp > getDataTtlMs()) {
         localStorage.removeItem(entry.key);
         cleaned = true;
         console.log(`[cleanupOldCache] Removed expired cache: ${entry.key}`);
@@ -393,7 +394,7 @@ function getCachedData(site) {
   if (!d) return null;
   if (!d.data || typeof d.data !== "object") return null;
   // TTL 검증 (타입 체크 추가)
-  if (d.ts && typeof d.ts === "number" && Date.now() - d.ts > DATA_TTL) return null;
+  if (d.ts && typeof d.ts === "number" && Date.now() - d.ts > getDataTtlMs()) return null;
   return {
     ...d.data,
     __cacheSavedAt: typeof d.ts === "number" ? d.ts : null,
