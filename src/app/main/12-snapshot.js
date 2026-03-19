@@ -18,7 +18,7 @@
         function (done, total) {
           btn.textContent = done + "/" + total;
         },
-        { refreshMode: "refresh" },
+        { refreshMode: "cache-first" },
       );
       const html = injectSnapshotReactShell(buildSnapshotHtml(savedAt, payload), payload);
       const fileName =
@@ -73,9 +73,9 @@
       summaryRows = payload.summaryRows || [];
       siteMeta = firstAccount?.siteMeta || {};
       savedAt = payload.__meta.savedAt;
-      curMode = payload.ui?.curMode || "all";
+      curMode = "all";
       curSite = payload.ui?.curSite || null;
-      curTab = payload.ui?.curTab || "overview";
+      curTab = "overview";
     } else {
       // V2 포맷이 아닌 경우 빈 값 반환
       accountLabel = "";
@@ -308,9 +308,9 @@
     let curMode, curSite, curTab, allSites;
     if (payload.__meta && payload.accounts) {
       // V2 format
-      curMode = payload.ui?.curMode || "all";
+      curMode = "all";
       curSite = payload.ui?.curSite || null;
-      curTab = payload.ui?.curTab || "overview";
+      curTab = "overview";
       const accountKeys = Object.keys(payload.accounts);
       allSites = accountKeys.length > 0 ? (payload.accounts[accountKeys[0]]?.sites || []) : [];
     } else {
@@ -348,6 +348,7 @@
       meta.textContent = "Saved " + savedLabel;
       topRow.lastElementChild.replaceWith(meta);
     }
+    const exportPayloadJson = stringifyForInlineJson(payload);
     const html = `<!doctype html>
 <html lang="ko">
 <head>
@@ -432,7 +433,7 @@
   ${clone.outerHTML}
   <script>
     // <!-- SADV_PAYLOAD_START -->
-    const EXPORT_PAYLOAD_RAW = ${JSON.stringify(payload)};
+    const EXPORT_PAYLOAD_RAW = ${exportPayloadJson};
     // Normalize V2 format to legacy format for snapshot HTML compatibility
     const EXPORT_PAYLOAD = (function normalizePayload(p) {
       if (p.__meta && p.accounts) {
@@ -450,13 +451,16 @@
           dataBySite: firstAccount?.dataBySite || {},
           siteMeta: firstAccount?.siteMeta || {},
           mergedMeta: p.mergedMeta || null,
-          curMode: p.ui?.curMode || "all",
+          curMode: "all",
           curSite: p.ui?.curSite || null,
-          curTab: p.ui?.curTab || "overview"
+          curTab: "overview"
         };
       }
       // Legacy format - return as is
-      return p;
+      return Object.assign({}, p, {
+        curMode: "all",
+        curTab: "overview",
+      });
     })(EXPORT_PAYLOAD_RAW);
     // <!-- SADV_PAYLOAD_END -->
     window.__SEARCHADVISOR_EXPORT_PAYLOAD__ = EXPORT_PAYLOAD;
@@ -557,7 +561,7 @@
         accountTitle: naverIds.join(", "),
         siteStatus: siteCount + " sites loaded",
         siteSummary: "All " + siteCount + " sites sorted by clicks",
-        currentSite: curSite || "",
+        currentSite: curMode === "site" ? curSite || "" : "",
       };
     }
     function applySnapshotReportDecorations(decoration) {
@@ -675,7 +679,7 @@
       });
     }
     let allSites = EXPORT_PAYLOAD.allSites || [];
-    const INITIAL_MODE = EXPORT_PAYLOAD.curMode || "all";
+    const INITIAL_MODE = "all";
     let curMode = null;  // Initialize to null so switchMode() triggers on first call
     let curSite = EXPORT_PAYLOAD.curSite || (allSites[0] || null);
     let curTab = EXPORT_PAYLOAD.curTab || "overview";
@@ -881,28 +885,13 @@
         setTab(tab);
       },
       refresh: function () {
-        alert("??ν\ube44 HTML? ?\ube60\uc744 ?\uc5bc\uaca9? 좌측 상단 메뉴에서 다운로드하세요.");
+        return false;
       },
       download: function () {
-        alert("??ν\ube33 HTML ?\ubd84\uc5d0 \ub2e4\uc2dc ?\uc800\uc7a5\ud560 \uc218 ?右?uc2b5\ub2c8\ub2e4. ??ν\uc6d0\ud3a0? ?\ub3d9\uc791? \uc774\uc0c1\uc774 ?\uc0ac\ub77c\uc9c0\uba74 ?\uc885\ub8cc\ud574 \uc8fc\uc138\uc694.");
+        return false;
       },
       close: function () {
-        const unmountShell = window.__SEARCHADVISOR_SNAPSHOT_SHELL_UNMOUNT__;
-        if (typeof unmountShell === "function") {
-          try {
-            unmountShell();
-          } catch (e) {
-            console.error('[close] Error:', e);
-          }
-        }
-        const panel = document.getElementById("sadv-p");
-        if (panel) panel.remove();
-        const meta = document.querySelector(".snapshot-meta");
-        if (meta) meta.remove();
-        const host = document.getElementById("sadv-react-shell-host");
-        if (host) host.remove();
-        delete window.__SEARCHADVISOR_SNAPSHOT_API__;
-        delete window.__SEARCHADVISOR_SNAPSHOT_SHELL_ROOT__;
+        return false;
       },
     };
     if (snapshotUiReady) {
@@ -1070,9 +1059,9 @@
       '    switchMode: function (mode) { if (typeof switchMode === "function") switchMode(mode); else { const button = document.querySelector("#sadv-mode-bar [data-m=\\"" + mode + "\\"]"); if (button) button.click(); } scheduleSync(); },',
       '    setSite: function (site) { if (typeof setComboSite === "function") setComboSite(site); else { const items = Array.from(document.querySelectorAll(".sadv-combo-item")); const button = items.find(function (item) { return (item.getAttribute("data-site") || "") === site; }); if (button) button.click(); } if (typeof switchMode === "function") switchMode("site"); scheduleSync(); },',
       '    setTab: function (tab) { if (typeof setTab === "function") setTab(tab); else { const button = document.querySelector("#sadv-tabs [data-t=\\"" + tab + "\\"]"); if (button) button.click(); } scheduleSync(); },',
-      '    refresh: function () { alert("\uc800\uc7a5\ub41c HTML\uc740 \uc815\uc801 \uc2a4\ub0c5\uc0f7\uc785\ub2c8\ub2e4. \uc6d0\ubcf8 \ud328\ub110\uc5d0\uc11c \ub2e4\uc2dc \uac31\uc2e0\ud574 \uc8fc\uc138\uc694."); },',
-      '    download: function () { alert("\uc800\uc7a5\ub41c HTML \ud30c\uc77c\uc5d0\uc11c\ub294 \ub2e4\uc2dc \uc800\uc7a5\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4. \uc6d0\ubcf8 \ud328\ub110\uc5d0\uc11c \ub2e4\uc2dc \uc800\uc7a5\ud574 \uc8fc\uc138\uc694."); },',
-      '    close: function () { const unmountShell = window.__SEARCHADVISOR_SNAPSHOT_SHELL_UNMOUNT__; if (typeof unmountShell === "function") { try { unmountShell(); } catch (_) {} } const panel = document.getElementById("sadv-p"); if (panel) panel.remove(); const meta = document.querySelector(".snapshot-meta"); if (meta) meta.remove(); const host = document.getElementById("sadv-react-shell-host"); if (host) host.remove(); delete window.__SEARCHADVISOR_SNAPSHOT_API__; delete window.__SEARCHADVISOR_SNAPSHOT_SHELL_ROOT__; },',
+      '    refresh: function () { return false; },',
+      '    download: function () { return false; },',
+      '    close: function () { return false; },',
       "  };",
       "  window.__SEARCHADVISOR_SNAPSHOT_API__ = api;",
       '  const target = document.getElementById("sadv-p") || document.body;',
@@ -1106,6 +1095,15 @@
     return String(text || "").replace(/<\/script/gi, "<\\/script");
   }
 
+  function stringifyForInlineJson(value) {
+    return JSON.stringify(value)
+      .replace(/</g, "\\u003C")
+      .replace(/>/g, "\\u003E")
+      .replace(/&/g, "\\u0026")
+      .replace(/\u2028/g, "\\u2028")
+      .replace(/\u2029/g, "\\u2029");
+  }
+
   function injectSnapshotReactShell(html, payload) {
     if (!html.includes('<div id="sadv-bd">')) {
       throw new Error("snapshot panel not found");
@@ -1120,7 +1118,7 @@
     );
     html = html.replace(
       "<body>",
-      `<body><script>window.__SEARCHADVISOR_SNAPSHOT_SHELL_STATE__=${JSON.stringify(shellState)};<\/script>`,
+      `<body><script>window.__SEARCHADVISOR_SNAPSHOT_SHELL_STATE__=${stringifyForInlineJson(shellState)};<\/script>`,
     );
     html = html.replace('<div id="sadv-bd">', `<div id="sadv-react-shell-host"></div><div id="sadv-bd">`);
     html = html.replace(
