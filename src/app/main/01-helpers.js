@@ -1078,6 +1078,15 @@ function getSiteLabel(siteUrl, payload) {
   return siteUrl || '';
 }
 
+function getSiteShortName(siteUrl, payload) {
+  const meta = getSiteMeta(siteUrl, payload);
+  const candidate = meta
+    ? meta.shortName || meta.displayLabel || meta[PAYLOAD_FIELDS.LABEL] || meta.label || siteUrl
+    : siteUrl;
+  const normalized = normalizeSiteUrl(candidate || siteUrl || '');
+  return normalized.replace(/^https?:\/\//i, "").split("/")[0] || candidate || '';
+}
+
 // ============================================================
 // UI STATE OPERATIONS
 // ============================================================

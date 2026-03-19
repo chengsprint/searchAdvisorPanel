@@ -73,10 +73,34 @@ function shouldBootstrapFullRefresh() {
   const now = Date.now();
   const ttlMs = getDataTtlMs();
   const siteListTs = getSiteListCacheStamp();
-  if (!(typeof siteListTs === "number") || now - siteListTs >= ttlMs) return true;
+  const memCache = typeof getMemCache === "function" ? getMemCache() : null;
+  const hasLiveSiteList = Array.isArray(allSites) && allSites.length > 0;
+  if (!(typeof siteListTs === "number")) {
+    if (!hasLiveSiteList) return true;
+  } else if (now - siteListTs >= ttlMs) {
+    return true;
+  }
   return allSites.some(function (site) {
     const siteTs = getSiteDataCacheStamp(site);
-    return !(typeof siteTs === "number") || now - siteTs >= ttlMs;
+    if (typeof siteTs === "number") return now - siteTs >= ttlMs;
+    const memData = memCache && memCache[site];
+    const initData =
+      (typeof window !== "undefined" && window.__sadvInitData && window.__sadvInitData.sites
+        ? window.__sadvInitData.sites[site]
+        : null) ||
+      (typeof window !== "undefined" && window.__sadvMergedData && window.__sadvMergedData.sites
+        ? window.__sadvMergedData.sites[site]
+        : null) ||
+      (typeof window !== "undefined" && window.__SEARCHADVISOR_EXPORT_PAYLOAD__ && window.__SEARCHADVISOR_EXPORT_PAYLOAD__.siteData
+        ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__.siteData[site]
+        : null);
+    const liveTs =
+      (memData && typeof memData.__cacheSavedAt === "number" && memData.__cacheSavedAt) ||
+      (initData && typeof initData.__cacheSavedAt === "number" && initData.__cacheSavedAt) ||
+      (initData && typeof initData.ts === "number" && initData.ts) ||
+      null;
+    if (typeof liveTs === "number") return now - liveTs >= ttlMs;
+    return false;
   });
 }
 
