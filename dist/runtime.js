@@ -10731,6 +10731,11 @@ function savedAtIso(d) {
     const snapshotTabsEl = window.__sadvTabsEl;
     const snapshotBdEl = document.getElementById("sadv-bd");
     const snapshotLabelEl = document.getElementById("sadv-site-label");
+    const modeBar = snapshotModeBar;
+    const siteBar = snapshotSiteBar;
+    const tabsEl = snapshotTabsEl;
+    const bdEl = snapshotBdEl;
+    const labelEl = snapshotLabelEl;
     const snapshotUiReady = !!(p && snapshotModeBar && snapshotSiteBar && snapshotTabsEl && snapshotBdEl && snapshotLabelEl);
     if (!snapshotUiReady) {
       console.error("[Snapshot] Required UI scaffold is incomplete.");
