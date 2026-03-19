@@ -652,7 +652,7 @@
     ${showTip.toString()}
     ${moveTip.toString()}
     ${hideTip.toString()}
-    ${isFiniteValue.toString()}
+    const isFiniteValue = ${isFiniteValue.toString()};
     ${sparkline.toString()}
     ${barchart.toString()}
     ${xlbl.toString()}
