@@ -1545,7 +1545,7 @@ function barchart(vals, labels, H, col, unit) {
     function getSiteShortName(a) {
       const s = a ? getSiteMetaMap()[a] || null : null;
       const f = s ? (s.displayLabel || s.label || s.shortName || "").trim() : "";
-      return f || (a ? a.replace(/^https?:\\\\/\\\\//, "") : "\uc0ac\uc774\ud2b8 \uc120\ud0dd");
+      return f || (a ? a.replace(/^https?:\\/\\//, "") : "\uc0ac\uc774\ud2b8 \uc120\ud0dd");
     }
     function getSiteLabel(a) {
       if (!a) return "\uc0ac\uc774\ud2b8 \uc120\ud0dd";
