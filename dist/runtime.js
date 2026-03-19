@@ -1433,10 +1433,13 @@ const ERROR_MESSAGES = {
   CONTACT_SUPPORT: "문제가 지속되면 고객센터에 문의해주세요."
 };
 
-const ERROR_DEDUPE_WINDOW_MS = 4000;
+const ERROR_DEDUPE_WINDOW_MS = 5000;
 const recentUserErrorMap = new Map();
 
-function buildUserErrorKey(userMessage, technicalError = null, context = null) {
+function buildUserErrorKey(userMessage, technicalError = null, context = null, options = null) {
+  if (options && typeof options.dedupeKey === "string" && options.dedupeKey) {
+    return options.dedupeKey;
+  }
   const technicalMessage =
     technicalError && typeof technicalError === "object" && technicalError.message
       ? technicalError.message
@@ -1446,26 +1449,32 @@ function buildUserErrorKey(userMessage, technicalError = null, context = null) {
   return [context || "unknown", String(userMessage || ""), technicalMessage].join("::");
 }
 
-function shouldSuppressDuplicateUserError(userMessage, technicalError = null, context = null) {
+function shouldSuppressDuplicateUserError(userMessage, technicalError = null, context = null, options = null) {
+  if (options && options.alwaysReport === true) return false;
+  if (options && options.dedupe === false) return false;
   const now = Date.now();
-  const key = buildUserErrorKey(userMessage, technicalError, context);
+  const dedupeWindowMs =
+    options && typeof options.dedupeWindowMs === "number" && options.dedupeWindowMs > 0
+      ? options.dedupeWindowMs
+      : ERROR_DEDUPE_WINDOW_MS;
+  const key = buildUserErrorKey(userMessage, technicalError, context, options);
   const previousAt = recentUserErrorMap.get(key);
   recentUserErrorMap.set(key, now);
 
   if (recentUserErrorMap.size > 80) {
     for (const [entryKey, entryAt] of recentUserErrorMap.entries()) {
-      if (now - entryAt > ERROR_DEDUPE_WINDOW_MS * 3) {
+      if (now - entryAt > dedupeWindowMs * 3) {
         recentUserErrorMap.delete(entryKey);
       }
     }
   }
 
-  return typeof previousAt === "number" && now - previousAt < ERROR_DEDUPE_WINDOW_MS;
+  return typeof previousAt === "number" && now - previousAt < dedupeWindowMs;
 }
 
 // Helper function to display user-friendly errors
-function showError(userMessage, technicalError = null, context = null) {
-  if (shouldSuppressDuplicateUserError(userMessage, technicalError, context)) {
+function showError(userMessage, technicalError = null, context = null, options = null) {
+  if (shouldSuppressDuplicateUserError(userMessage, technicalError, context, options)) {
     return userMessage;
   }
 
@@ -5719,7 +5728,7 @@ function getActiveEncId() {
 async function fetchExposeData(site, options) {
   const activeEncId = getActiveEncId();
   if (!activeEncId || typeof activeEncId !== 'string') {
-    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchExposeData');
+    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchExposeData', { dedupeKey: 'invalid-encid' });
     return null;
   }
   if (memCache[site] && !shouldFetchField(memCache[site], "expose", options)) {
@@ -5773,7 +5782,7 @@ async function fetchExposeData(site, options) {
 async function fetchCrawlData(site, options) {
   const activeEncId = getActiveEncId();
   if (!activeEncId || typeof activeEncId !== 'string') {
-    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchCrawlData');
+    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchCrawlData', { dedupeKey: 'invalid-encid' });
     return null;
   }
   const baseData = await fetchExposeData(site, options);
@@ -5840,7 +5849,7 @@ async function fetchCrawlData(site, options) {
 async function fetchBacklinkData(site, options) {
   const activeEncId = getActiveEncId();
   if (!activeEncId || typeof activeEncId !== 'string') {
-    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchBacklinkData');
+    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchBacklinkData', { dedupeKey: 'invalid-encid' });
     return null;
   }
   const baseData = await fetchExposeData(site, options);
@@ -5906,7 +5915,7 @@ async function fetchBacklinkData(site, options) {
 async function fetchSiteData(site, options) {
   const activeEncId = getActiveEncId();
   if (!activeEncId || typeof activeEncId !== 'string') {
-    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchSiteData');
+    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchSiteData', { dedupeKey: 'invalid-encid' });
     return null;
   }
   const baseData = await fetchDiagnosisMeta(site, null, options);
@@ -6050,7 +6059,7 @@ async function resolveExportSiteData(site, options) {
 async function fetchDiagnosisMeta(site, seedData, options) {
   const activeEncId = getActiveEncId();
   if (!activeEncId || typeof activeEncId !== 'string') {
-    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchDiagnosisMeta');
+    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchDiagnosisMeta', { dedupeKey: 'invalid-encid' });
     return null;
   }
   const baseData = seedData || (await fetchExposeData(site, options));
@@ -9500,25 +9509,26 @@ async function renderAllSites() {
     const batchResults = await Promise.allSettled(batchSites.map((site) => fetchExposeData(site)));
     if (requestId !== allViewReqId || curMode !== "all") return;
     let failedCount = 0;
+    let firstBatchError = null;
     batchResults.forEach(function (result, offset) {
       exposeResults[i + offset] = result;
       if (result.status === "fulfilled") {
         siteDataBySite[batchSites[offset]] = result.value;
       } else {
-        // 실패한 사이트 에러 추적
         failedCount++;
-        const errorDetail = result.reason?.message || result.reason || '알 수 없는 오류';
-        showError(
-          `${batchSites[offset]} 사이트 데이터 로딩 실패`,
-          result.reason,
-          'renderAllSites-expose'
-        );
+        if (!firstBatchError) firstBatchError = result.reason || new Error("expose data missing");
       }
     });
-    // 배치 실패 시 진행률 메타에 표시
-    if (failedCount > 0 && loadingMeta) {
-      const currentNote = loadingMeta.textContent;
-      loadingMeta.textContent = `${currentNote} (${failedCount}개 사이트 실패 - 나머지 사이트 계속 처리 중)`;
+    if (failedCount > 0) {
+      showError(
+        "일부 사이트 기본 데이터를 불러오지 못했습니다.",
+        firstBatchError,
+        "renderAllSites-expose",
+        { dedupeKey: "renderAllSites-expose-batch", dedupeWindowMs: 5000 },
+      );
+      if (loadingMeta) {
+        loadingMeta.textContent = `${failedCount}개 사이트 실패 · 나머지 데이터로 계속 진행합니다.`;
+      }
     }
   }
   const metaSitesToLoad = sitesToLoad.filter(function (site) {

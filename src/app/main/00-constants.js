@@ -713,10 +713,13 @@ const ERROR_MESSAGES = {
   CONTACT_SUPPORT: "문제가 지속되면 고객센터에 문의해주세요."
 };
 
-const ERROR_DEDUPE_WINDOW_MS = 4000;
+const ERROR_DEDUPE_WINDOW_MS = 5000;
 const recentUserErrorMap = new Map();
 
-function buildUserErrorKey(userMessage, technicalError = null, context = null) {
+function buildUserErrorKey(userMessage, technicalError = null, context = null, options = null) {
+  if (options && typeof options.dedupeKey === "string" && options.dedupeKey) {
+    return options.dedupeKey;
+  }
   const technicalMessage =
     technicalError && typeof technicalError === "object" && technicalError.message
       ? technicalError.message
@@ -726,26 +729,32 @@ function buildUserErrorKey(userMessage, technicalError = null, context = null) {
   return [context || "unknown", String(userMessage || ""), technicalMessage].join("::");
 }
 
-function shouldSuppressDuplicateUserError(userMessage, technicalError = null, context = null) {
+function shouldSuppressDuplicateUserError(userMessage, technicalError = null, context = null, options = null) {
+  if (options && options.alwaysReport === true) return false;
+  if (options && options.dedupe === false) return false;
   const now = Date.now();
-  const key = buildUserErrorKey(userMessage, technicalError, context);
+  const dedupeWindowMs =
+    options && typeof options.dedupeWindowMs === "number" && options.dedupeWindowMs > 0
+      ? options.dedupeWindowMs
+      : ERROR_DEDUPE_WINDOW_MS;
+  const key = buildUserErrorKey(userMessage, technicalError, context, options);
   const previousAt = recentUserErrorMap.get(key);
   recentUserErrorMap.set(key, now);
 
   if (recentUserErrorMap.size > 80) {
     for (const [entryKey, entryAt] of recentUserErrorMap.entries()) {
-      if (now - entryAt > ERROR_DEDUPE_WINDOW_MS * 3) {
+      if (now - entryAt > dedupeWindowMs * 3) {
         recentUserErrorMap.delete(entryKey);
       }
     }
   }
 
-  return typeof previousAt === "number" && now - previousAt < ERROR_DEDUPE_WINDOW_MS;
+  return typeof previousAt === "number" && now - previousAt < dedupeWindowMs;
 }
 
 // Helper function to display user-friendly errors
-function showError(userMessage, technicalError = null, context = null) {
-  if (shouldSuppressDuplicateUserError(userMessage, technicalError, context)) {
+function showError(userMessage, technicalError = null, context = null, options = null) {
+  if (shouldSuppressDuplicateUserError(userMessage, technicalError, context, options)) {
     return userMessage;
   }
 
