@@ -2591,6 +2591,15 @@ function getSiteLabel(siteUrl, payload) {
   return siteUrl || '';
 }
 
+function getSiteShortName(siteUrl, payload) {
+  const meta = getSiteMeta(siteUrl, payload);
+  const candidate = meta
+    ? meta.shortName || meta.displayLabel || meta[PAYLOAD_FIELDS.LABEL] || meta.label || siteUrl
+    : siteUrl;
+  const normalized = normalizeSiteUrl(candidate || siteUrl || '');
+  return normalized.replace(/^https?:\/\//i, "").split("/")[0] || candidate || '';
+}
+
 // ============================================================
 // UI STATE OPERATIONS
 // ============================================================
@@ -8753,7 +8762,9 @@ function getAvailableRenderers() {
     drop.replaceChildren(searchDiv, countDiv);
     orderedSites.forEach(function (s) {
       const col = SITE_COLORS_MAP[s] || C.muted,
-        shortName = getSiteLabel(s),
+        fullLabel = getSiteLabel(s),
+        shortName = getSiteShortName(s),
+        siteUrlLabel = normalizeSiteUrl(s),
         row = rowsMap[s],
         clickStr = row ? fmt(row.totalC) + "\uD074\uB9AD" : "—",
         clickCol = row ? C.green : C.muted;
@@ -8764,7 +8775,7 @@ function getAvailableRenderers() {
       item.setAttribute("role", "option");
       item.setAttribute("aria-selected", s === curSite ? "true" : "false");
       item.style.cursor = "pointer";
-      item.innerHTML = `<div class="sadv-combo-item-dot" style="background:${col}"></div><div class="sadv-combo-item-info"><div class="sadv-combo-item-name">${escHtml(shortName.split("/")[0])}</div><div class="sadv-combo-item-url">${escHtml(shortName)}</div></div><div class="sadv-combo-item-click" style="color:${clickCol}">${escHtml(clickStr)}</div>`;
+      item.innerHTML = `<div class="sadv-combo-item-dot" style="background:${col}"></div><div class="sadv-combo-item-info"><div class="sadv-combo-item-name">${escHtml(shortName || fullLabel || s)}</div><div class="sadv-combo-item-url">${escHtml(siteUrlLabel || fullLabel || s)}</div></div><div class="sadv-combo-item-click" style="color:${clickCol}">${escHtml(clickStr)}</div>`;
       item.addEventListener("click", function () {
         setComboSite(s);
         const wrap = document.getElementById("sadv-combo-wrap");
@@ -11012,10 +11023,34 @@ function shouldBootstrapFullRefresh() {
   const now = Date.now();
   const ttlMs = getDataTtlMs();
   const siteListTs = getSiteListCacheStamp();
-  if (!(typeof siteListTs === "number") || now - siteListTs >= ttlMs) return true;
+  const memCache = typeof getMemCache === "function" ? getMemCache() : null;
+  const hasLiveSiteList = Array.isArray(allSites) && allSites.length > 0;
+  if (!(typeof siteListTs === "number")) {
+    if (!hasLiveSiteList) return true;
+  } else if (now - siteListTs >= ttlMs) {
+    return true;
+  }
   return allSites.some(function (site) {
     const siteTs = getSiteDataCacheStamp(site);
-    return !(typeof siteTs === "number") || now - siteTs >= ttlMs;
+    if (typeof siteTs === "number") return now - siteTs >= ttlMs;
+    const memData = memCache && memCache[site];
+    const initData =
+      (typeof window !== "undefined" && window.__sadvInitData && window.__sadvInitData.sites
+        ? window.__sadvInitData.sites[site]
+        : null) ||
+      (typeof window !== "undefined" && window.__sadvMergedData && window.__sadvMergedData.sites
+        ? window.__sadvMergedData.sites[site]
+        : null) ||
+      (typeof window !== "undefined" && window.__SEARCHADVISOR_EXPORT_PAYLOAD__ && window.__SEARCHADVISOR_EXPORT_PAYLOAD__.siteData
+        ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__.siteData[site]
+        : null);
+    const liveTs =
+      (memData && typeof memData.__cacheSavedAt === "number" && memData.__cacheSavedAt) ||
+      (initData && typeof initData.__cacheSavedAt === "number" && initData.__cacheSavedAt) ||
+      (initData && typeof initData.ts === "number" && initData.ts) ||
+      null;
+    if (typeof liveTs === "number") return now - liveTs >= ttlMs;
+    return false;
   });
 }
 

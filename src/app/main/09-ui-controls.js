@@ -160,7 +160,9 @@
     drop.replaceChildren(searchDiv, countDiv);
     orderedSites.forEach(function (s) {
       const col = SITE_COLORS_MAP[s] || C.muted,
-        shortName = getSiteLabel(s),
+        fullLabel = getSiteLabel(s),
+        shortName = getSiteShortName(s),
+        siteUrlLabel = normalizeSiteUrl(s),
         row = rowsMap[s],
         clickStr = row ? fmt(row.totalC) + "\uD074\uB9AD" : "—",
         clickCol = row ? C.green : C.muted;
@@ -171,7 +173,7 @@
       item.setAttribute("role", "option");
       item.setAttribute("aria-selected", s === curSite ? "true" : "false");
       item.style.cursor = "pointer";
-      item.innerHTML = `<div class="sadv-combo-item-dot" style="background:${col}"></div><div class="sadv-combo-item-info"><div class="sadv-combo-item-name">${escHtml(shortName.split("/")[0])}</div><div class="sadv-combo-item-url">${escHtml(shortName)}</div></div><div class="sadv-combo-item-click" style="color:${clickCol}">${escHtml(clickStr)}</div>`;
+      item.innerHTML = `<div class="sadv-combo-item-dot" style="background:${col}"></div><div class="sadv-combo-item-info"><div class="sadv-combo-item-name">${escHtml(shortName || fullLabel || s)}</div><div class="sadv-combo-item-url">${escHtml(siteUrlLabel || fullLabel || s)}</div></div><div class="sadv-combo-item-click" style="color:${clickCol}">${escHtml(clickStr)}</div>`;
       item.addEventListener("click", function () {
         setComboSite(s);
         const wrap = document.getElementById("sadv-combo-wrap");
