@@ -897,6 +897,16 @@ const C = {
   muted: "#b9a55a",
   sub: "#ffe9a8",
 };
+const T = {
+  fontSans: '"IBM Plex Sans KR","IBM Plex Sans",Pretendard,system-ui',
+  accentSoftBg: "rgba(255,212,0,0.12)",
+  accentSoftBgStrong: "rgba(255,212,0,0.16)",
+  accentSoftBorder: "rgba(255,212,0,0.24)",
+  accentSoftBorderStrong: "rgba(255,212,0,0.26)",
+  accentSoftText: "#ffd400",
+  warmDarkBg: "rgba(32,22,0,.72)",
+  dangerSoftBg: "rgba(255,90,54,0.12)",
+};
 const COLORS = [C.green, C.blue, C.amber, C.teal, C.purple, C.orange, C.pink];
 
 // ============================================================
@@ -2854,8 +2864,8 @@ siteUiStyle.textContent = `
 }
 #sadv-account-badge{
   border-radius:4px !important;
-  background:rgba(255,212,0,0.12) !important;
-  border:1px solid rgba(255,212,0,0.26) !important;
+  background:${T.accentSoftBg} !important;
+  border:1px solid ${T.accentSoftBorderStrong} !important;
   color:var(--sadv-accent) !important;
 }
 #sadv-mode-bar{
@@ -2889,7 +2899,7 @@ siteUiStyle.textContent = `
   color:var(--sadv-text) !important;
 }
 .sadv-mode.on{
-  background:rgba(255,212,0,0.16) !important;
+  background:${T.accentSoftBgStrong} !important;
   color:var(--sadv-accent) !important;
   box-shadow:inset 0 -2px 0 var(--sadv-accent) !important;
 }
@@ -3092,7 +3102,7 @@ siteUiStyle.textContent = `
 #sadv-x:hover {
   border-color:var(--sadv-danger) !important;
   color:var(--sadv-danger) !important;
-  background:rgba(250,77,86,0.08) !important;
+  background:${T.dangerSoftBg} !important;
 }
 #sadv-bd,
 #sadv-tabpanel{
@@ -8666,7 +8676,7 @@ function getAvailableRenderers() {
       typeof cacheMeta.ttlMs === "number" && cacheMeta.ttlMs > 0
         ? Math.round(cacheMeta.ttlMs / 3600000)
         : null;
-    const chipStyle = "display:inline-flex;align-items:center;min-height:24px;padding:3px 10px;border-radius:999px;border:1px solid rgba(255,212,0,0.24);background:rgba(255,212,0,0.14);color:var(--sadv-text-secondary,#ffe9a8);font-size:10px;font-weight:600;line-height:1.2";
+    const chipStyle = "display:inline-flex;align-items:center;min-height:24px;padding:3px 10px;border-radius:999px;border:1px solid " + T.accentSoftBorder + ";background:" + T.accentSoftBg + ";color:var(--sadv-text-secondary,#ffe9a8);font-size:10px;font-weight:600;line-height:1.2";
     const parts = [
       `<span style="${chipStyle}">캐시저장 ${escHtml(formatCacheMetaTime(cacheMeta.updatedAt))}</span>`,
     ];
@@ -9437,7 +9447,7 @@ async function renderAllSites() {
     // PRIORITY: Use accountLabel first (from siteOwnership), fallback to sourceAccount
     const displayAccount = r.accountLabel || r.sourceAccount;
     const accountBadge = displayAccount && (typeof displayAccount === "string" ? displayAccount.trim() : "")
-      ? `<span style="font-size:10px;color:${C.blue};background:rgba(255,212,0,0.12);padding:3px 8px;border-radius:999px;margin-left:8px;white-space:nowrap;border:1px solid rgba(255,212,0,0.22)" title="${escHtml(displayAccount)}">${escHtml(displayAccount.includes("@") ? displayAccount.split("@")[0] : displayAccount)}</span>`
+      ? `<span style="font-size:10px;color:${T.accentSoftText};background:${T.accentSoftBg};padding:3px 8px;border-radius:999px;margin-left:8px;white-space:nowrap;border:1px solid ${T.accentSoftBorder}" title="${escHtml(displayAccount)}">${escHtml(displayAccount.includes("@") ? displayAccount.split("@")[0] : displayAccount)}</span>`
       : "";
 
     // Responsive card layout
@@ -9918,7 +9928,7 @@ function savedAtIso(d) {
     const comboWrap = clone.querySelector("#sadv-combo-wrap");
     if (comboWrap) comboWrap.classList.remove("open");
     if (siteLabelEl) {
-      siteLabelEl.innerHTML = `<span>${escHtml(siteLabel)}</span><span style="display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;border:1px solid rgba(255,212,0,0.26);color:#ffd400;background:rgba(32,22,0,.72)">${escHtml(activeTabLabel)}</span>`;
+      siteLabelEl.innerHTML = `<span>${escHtml(siteLabel)}</span><span style="display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;border:1px solid ${T.accentSoftBorderStrong};color:${T.accentSoftText};background:${T.warmDarkBg}">${escHtml(activeTabLabel)}</span>`;
     }
     ["sadv-refresh-btn", "sadv-save-btn", "sadv-x"].forEach(function (id) {
       const el = clone.querySelector("#" + id);
@@ -9927,7 +9937,7 @@ function savedAtIso(d) {
     if (topRow && topRow.lastElementChild) {
       const meta = document.createElement("div");
       meta.style.cssText =
-        "display:flex;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,212,0,0.24);color:#ffd400;background:rgba(32,22,0,.72);font-size:10px;font-weight:800";
+        "display:flex;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid " + T.accentSoftBorder + ";color:" + T.accentSoftText + ";background:" + T.warmDarkBg + ";font-size:10px;font-weight:800";
       meta.textContent = "Saved " + savedLabel;
       topRow.lastElementChild.replaceWith(meta);
     }
@@ -10712,7 +10722,7 @@ function savedAtIso(d) {
     const accountLabels = validAccounts.map((acc, i) => {
       const fullLabel = acc.label || acc.encId?.slice(0, 8) || `계정${i + 1}`;
       const shortLabel = fullLabel.includes('@') ? fullLabel.split('@')[0] : fullLabel;
-      return `<span tabindex="0" role="button" aria-describedby="merged-acc-full-${i}" style="display:inline-block;background:rgba(255,212,0,0.12);color:#ffd400;padding:3px 8px;border:1px solid rgba(255,212,0,0.24);border-radius:4px;font-size:11px;margin:2px;cursor:default" title="${escHtml(fullLabel)}">${escHtml(shortLabel)}<span id="merged-acc-full-${i}" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">전체: ${escHtml(fullLabel)}</span></span>`;
+      return `<span tabindex="0" role="button" aria-describedby="merged-acc-full-${i}" style="display:inline-block;background:${T.accentSoftBg};color:${T.accentSoftText};padding:3px 8px;border:1px solid ${T.accentSoftBorder};border-radius:4px;font-size:11px;margin:2px;cursor:default" title="${escHtml(fullLabel)}">${escHtml(shortLabel)}<span id="merged-acc-full-${i}" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">전체: ${escHtml(fullLabel)}</span></span>`;
     }).join(" ");
     mergedInfo.setAttribute("role", "region");
     mergedInfo.setAttribute("aria-label", `병합된 계정 정보, ${validAccounts.length}개 계정`);
@@ -10720,7 +10730,7 @@ function savedAtIso(d) {
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
           <span style="font-size:16px" aria-hidden="true">🔀</span>
           <span style="font-size:13px;font-weight:700;color:#fff8df">병합된 계정</span>
-          <span style="font-size:10px;color:#ffe9a8;background:rgba(255,212,0,0.12);padding:2px 6px;border:1px solid rgba(255,212,0,0.22);border-radius:4px">${validAccounts.length}개 계정</span>
+          <span style="font-size:10px;color:${C.sub};background:${T.accentSoftBg};padding:2px 6px;border:1px solid ${T.accentSoftBorder};border-radius:4px">${validAccounts.length}개 계정</span>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:4px">${accountLabels}</div>
         <div style="font-size:9px;color:#d7bf78;margin-top:8px">병합 시각: ${mergedMeta.mergedAt ? new Date(mergedMeta.mergedAt).toLocaleString('ko-KR') : '-'}</div>
@@ -10765,7 +10775,7 @@ function savedAtIso(d) {
     if (accountLabel) {
       labelEl.innerHTML = sanitizeHTML(
         labelContent +
-        `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;border:1px solid rgba(255,212,0,0.22);color:#ffd400;background:rgba(255,212,0,0.12);font-size:10px;font-weight:600;margin-left:8px" title="${escHtml(accountLabel)}">${escHtml(accountLabel.includes("@") ? accountLabel.split("@")[0] : accountLabel)}</span>`
+        `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;border:1px solid ${T.accentSoftBorder};color:${T.accentSoftText};background:${T.accentSoftBg};font-size:10px;font-weight:600;margin-left:8px" title="${escHtml(accountLabel)}">${escHtml(accountLabel.includes("@") ? accountLabel.split("@")[0] : accountLabel)}</span>`
       );
     } else {
       labelEl.innerHTML = sanitizeHTML(labelContent);
