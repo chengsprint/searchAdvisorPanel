@@ -1433,8 +1433,42 @@ const ERROR_MESSAGES = {
   CONTACT_SUPPORT: "문제가 지속되면 고객센터에 문의해주세요."
 };
 
+const ERROR_DEDUPE_WINDOW_MS = 4000;
+const recentUserErrorMap = new Map();
+
+function buildUserErrorKey(userMessage, technicalError = null, context = null) {
+  const technicalMessage =
+    technicalError && typeof technicalError === "object" && technicalError.message
+      ? technicalError.message
+      : technicalError == null
+        ? "null"
+        : String(technicalError);
+  return [context || "unknown", String(userMessage || ""), technicalMessage].join("::");
+}
+
+function shouldSuppressDuplicateUserError(userMessage, technicalError = null, context = null) {
+  const now = Date.now();
+  const key = buildUserErrorKey(userMessage, technicalError, context);
+  const previousAt = recentUserErrorMap.get(key);
+  recentUserErrorMap.set(key, now);
+
+  if (recentUserErrorMap.size > 80) {
+    for (const [entryKey, entryAt] of recentUserErrorMap.entries()) {
+      if (now - entryAt > ERROR_DEDUPE_WINDOW_MS * 3) {
+        recentUserErrorMap.delete(entryKey);
+      }
+    }
+  }
+
+  return typeof previousAt === "number" && now - previousAt < ERROR_DEDUPE_WINDOW_MS;
+}
+
 // Helper function to display user-friendly errors
 function showError(userMessage, technicalError = null, context = null) {
+  if (shouldSuppressDuplicateUserError(userMessage, technicalError, context)) {
+    return userMessage;
+  }
+
   // Log technical error for debugging
   if (technicalError) {
     console.error('[Error]', context || 'Unknown', technicalError);
@@ -8872,7 +8906,6 @@ function getAvailableRenderers() {
  * @see {setComboSite}
  */
   function buildCombo(rows) {
-    console.log('[buildCombo] Called, allSites:', allSites, 'rows:', rows);
     const drop = document.getElementById("sadv-combo-drop");
     if (!drop) {
       console.error('[buildCombo] sadv-combo-drop not found!');
@@ -8889,7 +8922,6 @@ function getAvailableRenderers() {
         : [];
     const restSites = allSites.filter((s) => !rowsMap[s]);
     const orderedSites = [...rowSites, ...restSites];
-    console.log('[buildCombo] orderedSites:', orderedSites);
 
     // Create search container
     const searchDiv = document.createElement("div");
@@ -8976,27 +9008,6 @@ function getAvailableRenderers() {
       });
       drop.appendChild(item);
     });
-    console.log('[buildCombo] Built', orderedSites.length, 'combo items');
-  }
-  function setComboSite(site) {
-    if (!site || !allSites.includes(site)) return;
-    const sameSite = curSite === site;
-    curSite = site;
-    const col = SITE_COLORS_MAP[site] || C.muted,
-      shortName = getSiteLabel(site);
-    const comboDot = document.getElementById("sadv-combo-dot");
-    const comboLabel = document.getElementById("sadv-combo-label");
-    if (comboDot) comboDot.style.background = col;
-    if (comboLabel) comboLabel.textContent = shortName;
-    document.querySelectorAll(".sadv-combo-item[data-site]").forEach((el) => {
-      const isActive = el.dataset.site === site;
-      el.classList.toggle("active", isActive);
-      el.setAttribute("aria-selected", isActive ? "true" : "false");
-    });
-    setCachedUiState();
-    if (typeof notifySnapshotShellState === "function") notifySnapshotShellState();
-    if (curMode === CONFIG.MODE.SITE && !sameSite) loadSiteView(site);
-    __sadvNotify();
   }
   /**
  * Set the currently selected site in the combo box
@@ -9507,7 +9518,7 @@ async function renderAllSites() {
     // 배치 실패 시 진행률 메타에 표시
     if (failedCount > 0 && loadingMeta) {
       const currentNote = loadingMeta.textContent;
-      loadingMeta.textContent = `${currentNote} (${failedCount}개 사이트 실패 - 자동 재시도됨)`;
+      loadingMeta.textContent = `${currentNote} (${failedCount}개 사이트 실패 - 나머지 사이트 계속 처리 중)`;
     }
   }
   const metaSitesToLoad = sitesToLoad.filter(function (site) {
@@ -9795,6 +9806,12 @@ async function collectExportData(onProgress, options) {
   const summaryRows = [];
   const batchSize = FULL_REFRESH_BATCH_SIZE;
   const refreshMode = options && options.refreshMode === "refresh" ? "refresh" : "cache-first";
+  const liveAccountInfo =
+    typeof ACCOUNT_UTILS !== "undefined" && ACCOUNT_UTILS && typeof ACCOUNT_UTILS.getAccountInfo === "function"
+      ? ACCOUNT_UTILS.getAccountInfo()
+      : { accountLabel: accountLabel || "", encId: encId || "" };
+  const exportAccountLabel = liveAccountInfo?.accountLabel || accountLabel || "";
+  const exportEncId = liveAccountInfo?.encId || encId || "unknown";
   await ensureExportSiteList(refreshMode);
   const total = allSites.length;
   let done = 0;
@@ -9837,8 +9854,8 @@ async function collectExportData(onProgress, options) {
       dataBySite[site] = {
         ...siteData,
         __source: {
-          accountLabel: accountLabel || "unknown",
-          accountEncId: encId || "unknown",
+          accountLabel: exportAccountLabel || "unknown",
+          accountEncId: exportEncId,
           fetchedAt:
             siteData && typeof siteData.__cacheSavedAt === "number"
               ? siteData.__cacheSavedAt
@@ -9861,8 +9878,8 @@ async function collectExportData(onProgress, options) {
 
   // V2: Nested accounts structure
   // Use email as key (fallback to unknown@naver.com if not available)
-  const accountEmail = (accountLabel && accountLabel.includes('@'))
-    ? accountLabel
+  const accountEmail = (exportAccountLabel && exportAccountLabel.includes('@'))
+    ? exportAccountLabel
     : 'unknown@naver.com';
 
   const savedAt = savedAtIso(new Date());
@@ -9877,7 +9894,7 @@ async function collectExportData(onProgress, options) {
     },
     accounts: {
       [accountEmail]: {
-        encId: encId || "unknown",
+        encId: exportEncId,
         sites: [...allSites],
         siteMeta: typeof getSiteMetaMap === "function" ? getSiteMetaMap() : {},
         dataBySite: dataBySite

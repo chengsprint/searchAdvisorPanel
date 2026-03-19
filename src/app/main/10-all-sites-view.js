@@ -113,7 +113,7 @@ async function renderAllSites() {
     // 배치 실패 시 진행률 메타에 표시
     if (failedCount > 0 && loadingMeta) {
       const currentNote = loadingMeta.textContent;
-      loadingMeta.textContent = `${currentNote} (${failedCount}개 사이트 실패 - 자동 재시도됨)`;
+      loadingMeta.textContent = `${currentNote} (${failedCount}개 사이트 실패 - 나머지 사이트 계속 처리 중)`;
     }
   }
   const metaSitesToLoad = sitesToLoad.filter(function (site) {
@@ -401,6 +401,12 @@ async function collectExportData(onProgress, options) {
   const summaryRows = [];
   const batchSize = FULL_REFRESH_BATCH_SIZE;
   const refreshMode = options && options.refreshMode === "refresh" ? "refresh" : "cache-first";
+  const liveAccountInfo =
+    typeof ACCOUNT_UTILS !== "undefined" && ACCOUNT_UTILS && typeof ACCOUNT_UTILS.getAccountInfo === "function"
+      ? ACCOUNT_UTILS.getAccountInfo()
+      : { accountLabel: accountLabel || "", encId: encId || "" };
+  const exportAccountLabel = liveAccountInfo?.accountLabel || accountLabel || "";
+  const exportEncId = liveAccountInfo?.encId || encId || "unknown";
   await ensureExportSiteList(refreshMode);
   const total = allSites.length;
   let done = 0;
@@ -443,8 +449,8 @@ async function collectExportData(onProgress, options) {
       dataBySite[site] = {
         ...siteData,
         __source: {
-          accountLabel: accountLabel || "unknown",
-          accountEncId: encId || "unknown",
+          accountLabel: exportAccountLabel || "unknown",
+          accountEncId: exportEncId,
           fetchedAt:
             siteData && typeof siteData.__cacheSavedAt === "number"
               ? siteData.__cacheSavedAt
@@ -467,8 +473,8 @@ async function collectExportData(onProgress, options) {
 
   // V2: Nested accounts structure
   // Use email as key (fallback to unknown@naver.com if not available)
-  const accountEmail = (accountLabel && accountLabel.includes('@'))
-    ? accountLabel
+  const accountEmail = (exportAccountLabel && exportAccountLabel.includes('@'))
+    ? exportAccountLabel
     : 'unknown@naver.com';
 
   const savedAt = savedAtIso(new Date());
@@ -483,7 +489,7 @@ async function collectExportData(onProgress, options) {
     },
     accounts: {
       [accountEmail]: {
-        encId: encId || "unknown",
+        encId: exportEncId,
         sites: [...allSites],
         siteMeta: typeof getSiteMetaMap === "function" ? getSiteMetaMap() : {},
         dataBySite: dataBySite

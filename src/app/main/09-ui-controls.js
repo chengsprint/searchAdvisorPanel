@@ -157,7 +157,6 @@
  * @see {setComboSite}
  */
   function buildCombo(rows) {
-    console.log('[buildCombo] Called, allSites:', allSites, 'rows:', rows);
     const drop = document.getElementById("sadv-combo-drop");
     if (!drop) {
       console.error('[buildCombo] sadv-combo-drop not found!');
@@ -174,7 +173,6 @@
         : [];
     const restSites = allSites.filter((s) => !rowsMap[s]);
     const orderedSites = [...rowSites, ...restSites];
-    console.log('[buildCombo] orderedSites:', orderedSites);
 
     // Create search container
     const searchDiv = document.createElement("div");
@@ -261,27 +259,6 @@
       });
       drop.appendChild(item);
     });
-    console.log('[buildCombo] Built', orderedSites.length, 'combo items');
-  }
-  function setComboSite(site) {
-    if (!site || !allSites.includes(site)) return;
-    const sameSite = curSite === site;
-    curSite = site;
-    const col = SITE_COLORS_MAP[site] || C.muted,
-      shortName = getSiteLabel(site);
-    const comboDot = document.getElementById("sadv-combo-dot");
-    const comboLabel = document.getElementById("sadv-combo-label");
-    if (comboDot) comboDot.style.background = col;
-    if (comboLabel) comboLabel.textContent = shortName;
-    document.querySelectorAll(".sadv-combo-item[data-site]").forEach((el) => {
-      const isActive = el.dataset.site === site;
-      el.classList.toggle("active", isActive);
-      el.setAttribute("aria-selected", isActive ? "true" : "false");
-    });
-    setCachedUiState();
-    if (typeof notifySnapshotShellState === "function") notifySnapshotShellState();
-    if (curMode === CONFIG.MODE.SITE && !sameSite) loadSiteView(site);
-    __sadvNotify();
   }
   /**
  * Set the currently selected site in the combo box
