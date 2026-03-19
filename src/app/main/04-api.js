@@ -130,7 +130,7 @@ function getActiveEncId() {
 async function fetchExposeData(site, options) {
   const activeEncId = getActiveEncId();
   if (!activeEncId || typeof activeEncId !== 'string') {
-    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchExposeData');
+    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchExposeData', { dedupeKey: 'invalid-encid' });
     return null;
   }
   if (memCache[site] && !shouldFetchField(memCache[site], "expose", options)) {
@@ -184,7 +184,7 @@ async function fetchExposeData(site, options) {
 async function fetchCrawlData(site, options) {
   const activeEncId = getActiveEncId();
   if (!activeEncId || typeof activeEncId !== 'string') {
-    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchCrawlData');
+    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchCrawlData', { dedupeKey: 'invalid-encid' });
     return null;
   }
   const baseData = await fetchExposeData(site, options);
@@ -251,7 +251,7 @@ async function fetchCrawlData(site, options) {
 async function fetchBacklinkData(site, options) {
   const activeEncId = getActiveEncId();
   if (!activeEncId || typeof activeEncId !== 'string') {
-    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchBacklinkData');
+    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchBacklinkData', { dedupeKey: 'invalid-encid' });
     return null;
   }
   const baseData = await fetchExposeData(site, options);
@@ -317,7 +317,7 @@ async function fetchBacklinkData(site, options) {
 async function fetchSiteData(site, options) {
   const activeEncId = getActiveEncId();
   if (!activeEncId || typeof activeEncId !== 'string') {
-    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchSiteData');
+    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchSiteData', { dedupeKey: 'invalid-encid' });
     return null;
   }
   const baseData = await fetchDiagnosisMeta(site, null, options);
@@ -461,7 +461,7 @@ async function resolveExportSiteData(site, options) {
 async function fetchDiagnosisMeta(site, seedData, options) {
   const activeEncId = getActiveEncId();
   if (!activeEncId || typeof activeEncId !== 'string') {
-    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchDiagnosisMeta');
+    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchDiagnosisMeta', { dedupeKey: 'invalid-encid' });
     return null;
   }
   const baseData = seedData || (await fetchExposeData(site, options));

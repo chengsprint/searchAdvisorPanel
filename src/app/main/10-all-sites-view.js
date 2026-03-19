@@ -95,25 +95,26 @@ async function renderAllSites() {
     const batchResults = await Promise.allSettled(batchSites.map((site) => fetchExposeData(site)));
     if (requestId !== allViewReqId || curMode !== "all") return;
     let failedCount = 0;
+    let firstBatchError = null;
     batchResults.forEach(function (result, offset) {
       exposeResults[i + offset] = result;
       if (result.status === "fulfilled") {
         siteDataBySite[batchSites[offset]] = result.value;
       } else {
-        // 실패한 사이트 에러 추적
         failedCount++;
-        const errorDetail = result.reason?.message || result.reason || '알 수 없는 오류';
-        showError(
-          `${batchSites[offset]} 사이트 데이터 로딩 실패`,
-          result.reason,
-          'renderAllSites-expose'
-        );
+        if (!firstBatchError) firstBatchError = result.reason || new Error("expose data missing");
       }
     });
-    // 배치 실패 시 진행률 메타에 표시
-    if (failedCount > 0 && loadingMeta) {
-      const currentNote = loadingMeta.textContent;
-      loadingMeta.textContent = `${currentNote} (${failedCount}개 사이트 실패 - 나머지 사이트 계속 처리 중)`;
+    if (failedCount > 0) {
+      showError(
+        "일부 사이트 기본 데이터를 불러오지 못했습니다.",
+        firstBatchError,
+        "renderAllSites-expose",
+        { dedupeKey: "renderAllSites-expose-batch", dedupeWindowMs: 5000 },
+      );
+      if (loadingMeta) {
+        loadingMeta.textContent = `${failedCount}개 사이트 실패 · 나머지 데이터로 계속 진행합니다.`;
+      }
     }
   }
   const metaSitesToLoad = sitesToLoad.filter(function (site) {
