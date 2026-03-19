@@ -186,6 +186,14 @@ const T = {
   accentSoftText: "#ffd400",
   warmDarkBg: "rgba(32,22,0,.72)",
   dangerSoftBg: "rgba(255,90,54,0.12)",
+  radiusNone: "0",
+  radiusPill: "999px",
+  shadowCard: "0 8px 24px rgba(0,0,0,0.22)",
+  shadowCardStrong: "0 10px 28px rgba(0,0,0,0.24)",
+  shadowPanel: "0 16px 36px rgba(0,0,0,0.42)",
+  spaceCard: "16px",
+  spaceCardLg: "18px",
+  spaceCardXl: "20px",
 };
 const COLORS = [C.green, C.blue, C.amber, C.teal, C.purple, C.orange, C.pink];
 

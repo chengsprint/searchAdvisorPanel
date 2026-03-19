@@ -544,7 +544,7 @@ function xlbl(arr) {
 function chartCard(title, valueStr, valueCol, svgEl, labelsArr) {
   const wrap = document.createElement("div");
   wrap.style.cssText =
-    "background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);border-radius:0;padding:16px 16px 14px;margin-bottom:16px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.28)";
+    "background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);border-radius:" + T.radiusNone + ";padding:" + T.spaceCard + " " + T.spaceCard + " 14px;margin-bottom:" + T.spaceCard + ";overflow:hidden;box-shadow:" + T.shadowCardStrong;
   const hd = document.createElement("div");
   hd.style.cssText =
     "display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px";
@@ -562,11 +562,11 @@ function chartCard(title, valueStr, valueCol, svgEl, labelsArr) {
 // KPI grid function
 function kpiGrid(items) {
   const g = document.createElement("div");
-  g.style.cssText = `display:grid;grid-template-columns:repeat(${Math.min(items.length, 4)},minmax(0,1fr));gap:12px;margin-bottom:16px`;
+  g.style.cssText = `display:grid;grid-template-columns:repeat(${Math.min(items.length, 4)},minmax(0,1fr));gap:12px;margin-bottom:${T.spaceCard}`;
   items.forEach(function (it) {
     const d = document.createElement("div");
     d.style.cssText =
-      "background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);border-radius:0;padding:16px 12px;text-align:left;min-width:0;min-height:104px;display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start;transition:all 0.2s;box-shadow:0 6px 20px rgba(0,0,0,0.18)";
+      "background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);border-radius:" + T.radiusNone + ";padding:" + T.spaceCard + " 12px;text-align:left;min-width:0;min-height:104px;display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start;transition:all 0.2s;box-shadow:" + T.shadowCard;
     const iconHtml = it.icon ? `<div style="margin-bottom:10px;color:${it.color || 'var(--sadv-text-secondary,#c6c6c6)'};opacity:0.92">${it.icon}</div>` : "";
     d.innerHTML = sanitizeHTML(`${iconHtml}<div style="font-size:11px;color:var(--sadv-text-tertiary,#8d8d8d);line-height:1.4;margin-bottom:8px;word-break:keep-all;font-weight:600;text-transform:uppercase;letter-spacing:0.04em">${escHtml(it.label)}</div><div style="font-size:22px;font-weight:700;color:${it.color || C.text};line-height:1.05;letter-spacing:-0.03em;word-break:keep-all">${escHtml(it.value)}</div><div style="font-size:11px;color:var(--sadv-text-secondary,#c6c6c6);line-height:1.4;margin-top:8px;visibility:${it.sub ? "visible" : "hidden"}">${escHtml(it.sub || "&nbsp;")}</div>`);
     g.appendChild(d);
@@ -596,7 +596,7 @@ function createStateCard(title, description, iconHtml, tone = "neutral") {
   const accent = accentMap[tone] || accentMap.neutral;
   const wrap = document.createElement("div");
   wrap.style.cssText =
-    "display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:28px 20px;background:var(--sadv-layer-01,#0d0d0f);border:1px solid var(--sadv-border-subtle,#2b2200);box-shadow:0 10px 28px rgba(0,0,0,0.24);margin:8px 0 16px";
+    "display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:28px " + T.spaceCardXl + ";background:var(--sadv-layer-01,#0d0d0f);border:1px solid var(--sadv-border-subtle,#2b2200);box-shadow:" + T.shadowCardStrong + ";margin:8px 0 " + T.spaceCard;
   const iconBox = document.createElement("div");
   iconBox.style.cssText =
     "display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border:1px solid color-mix(in srgb, " +
@@ -605,7 +605,7 @@ function createStateCard(title, description, iconHtml, tone = "neutral") {
     accent +
     " 10%, transparent);color:" +
     accent +
-    ";margin-bottom:14px;box-shadow:0 10px 24px rgba(0,0,0,0.18)";
+    ";margin-bottom:14px;box-shadow:" + T.shadowCard;
   iconBox.innerHTML = sanitizeHTML(iconHtml || ICONS.lightbulb);
   let iconSvg = iconBox.querySelector("svg");
   const hasRenderableShape = iconSvg && iconSvg.querySelector("path,line,circle,rect,ellipse,polyline,polygon");
@@ -647,7 +647,7 @@ function ibox(type, html) {
     { green: C.green, amber: C.amber, red: C.red, blue: C.blue }[type] ||
       C.blue;
   const d = document.createElement("div");
-  d.style.cssText = `border-left:4px solid ${col};background:color-mix(in srgb, ${col} 12%, transparent);border-radius:0;padding:16px;margin-bottom:16px;font-size:12px;line-height:1.6;color:var(--sadv-text-secondary,#c6c6c6);border:1px solid color-mix(in srgb, ${col} 35%, transparent)`;
+  d.style.cssText = `border-left:4px solid ${col};background:color-mix(in srgb, ${col} 12%, transparent);border-radius:${T.radiusNone};padding:${T.spaceCard};margin-bottom:${T.spaceCard};font-size:12px;line-height:1.6;color:var(--sadv-text-secondary,#c6c6c6);border:1px solid color-mix(in srgb, ${col} 35%, transparent)`;
   // P0 SECURITY: Apply DOMPurify sanitization
   d.innerHTML = sanitizeHTML(html);
   return d;
