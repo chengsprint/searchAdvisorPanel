@@ -79,3 +79,15 @@
 1. 실페이지 체감 테스트
 2. 남는 이슈만 수집
 3. 필요 시 `02-dom-init.js` seed shell 완전 정리
+
+## 2026-03-20 추가 메모: Snapshot 콤보 top-layer
+
+- 저장본(snapshot)에서 `사이트별 > 콤보 하단 팝업`은 live panel과 stacking context가 달라 별도 처리 필요
+- `#sadv-combo-drop` 기본 CSS에 `!important`가 있어 JS에서 일반 inline style만 넣어선 override되지 않음
+- 현재 snapshot 쪽은:
+  - top-layer portal
+  - viewport 기준 fixed 위치
+  - `style.setProperty(..., "important")`
+  - rect retry sync
+  방식을 사용
+- 상세 설명은 `docs/SNAPSHOT_COMBO_TOP_LAYER_NOTES.20260320.md` 참고
