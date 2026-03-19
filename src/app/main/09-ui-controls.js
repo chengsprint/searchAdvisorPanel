@@ -55,8 +55,10 @@
       ? `${allSites.length}개 사이트 등록됨 · ${mergedMeta.sourceCount}개 스냅샷 병합`
       : `${allSites.length}개 사이트 등록됨`;
     const labelTextEl = labelEl.querySelector("span");
+    labelEl.classList.remove("sadv-meta-hidden");
     if (labelTextEl) labelTextEl.textContent = summary;
     else labelEl.textContent = summary;
+    labelEl.title = summary;
   }
   function formatCacheMetaTime(dateLike) {
     const date = dateLike instanceof Date ? dateLike : new Date(dateLike);

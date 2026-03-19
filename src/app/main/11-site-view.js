@@ -30,16 +30,12 @@
       }
     }
 
-    // Update label with account info
-    const labelContent = `<span>${escHtml(getSiteLabel(site))}</span>`;
-    if (accountLabel) {
-      labelEl.innerHTML = sanitizeHTML(
-        labelContent +
-        `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;border:1px solid ${T.accentSoftBorder};color:${T.accentSoftText};background:${T.accentSoftBg};font-size:10px;font-weight:600;margin-left:8px" title="${escHtml(accountLabel)}">${escHtml(accountLabel.includes("@") ? accountLabel.split("@")[0] : accountLabel)}</span>`
-      );
-    } else {
-      labelEl.innerHTML = sanitizeHTML(labelContent);
-    }
+    // Keep header meta concise in site mode; current site is already visible in the combo box.
+    labelEl.innerHTML = sanitizeHTML(`<span></span>`);
+    labelEl.classList.add("sadv-meta-hidden");
+    labelEl.title = accountLabel
+      ? `${getSiteLabel(site)} · ${accountLabel}`
+      : getSiteLabel(site);
 
     bdEl.replaceChildren(
       createStateCard(

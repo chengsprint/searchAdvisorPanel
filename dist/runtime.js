@@ -2928,9 +2928,9 @@ siteUiStyle.textContent = `
   flex-shrink:0 !important;
 }
 .sadv-header-meta{
-  display:flex !important;
+  display:grid !important;
+  grid-template-columns:auto minmax(0,1fr) auto !important;
   align-items:center !important;
-  flex-wrap:wrap !important;
   gap:8px !important;
   margin-top:10px !important;
   min-height:24px !important;
@@ -2941,7 +2941,7 @@ siteUiStyle.textContent = `
 #sadv-site-label{
   color:var(--sadv-text-secondary) !important;
   margin-top:0 !important;
-  font-size:12px !important;
+  font-size:11px !important;
   display:inline-flex !important;
   align-items:center !important;
   max-width:100% !important;
@@ -2951,6 +2951,9 @@ siteUiStyle.textContent = `
   white-space:nowrap !important;
   line-height:1.2 !important;
 }
+#sadv-site-label.sadv-meta-hidden{
+  display:none !important;
+}
 #sadv-cache-meta{
   display:flex !important;
   align-items:center !important;
@@ -2959,6 +2962,7 @@ siteUiStyle.textContent = `
   min-height:22px !important;
   max-width:100% !important;
   overflow:hidden !important;
+  justify-self:end !important;
 }
 #sadv-account-badge{
   min-height:22px !important;
@@ -2968,7 +2972,7 @@ siteUiStyle.textContent = `
   border:1px solid rgba(255,212,0,0.16) !important;
   color:#ffe082 !important;
   font-size:10px !important;
-  max-width:min(100%,240px) !important;
+  max-width:min(100%,180px) !important;
 }
 #sadv-mode-bar{
   display:grid !important;
@@ -3246,6 +3250,8 @@ siteUiStyle.textContent = `
     justify-content:flex-start !important;
   }
   .sadv-header-meta{
+    display:flex !important;
+    flex-wrap:wrap !important;
     margin-top:8px !important;
     gap:6px !important;
   }
@@ -8751,8 +8757,10 @@ function getAvailableRenderers() {
       ? `${allSites.length}개 사이트 등록됨 · ${mergedMeta.sourceCount}개 스냅샷 병합`
       : `${allSites.length}개 사이트 등록됨`;
     const labelTextEl = labelEl.querySelector("span");
+    labelEl.classList.remove("sadv-meta-hidden");
     if (labelTextEl) labelTextEl.textContent = summary;
     else labelEl.textContent = summary;
+    labelEl.title = summary;
   }
   function formatCacheMetaTime(dateLike) {
     const date = dateLike instanceof Date ? dateLike : new Date(dateLike);
@@ -10923,16 +10931,12 @@ function savedAtIso(d) {
       }
     }
 
-    // Update label with account info
-    const labelContent = `<span>${escHtml(getSiteLabel(site))}</span>`;
-    if (accountLabel) {
-      labelEl.innerHTML = sanitizeHTML(
-        labelContent +
-        `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;border:1px solid ${T.accentSoftBorder};color:${T.accentSoftText};background:${T.accentSoftBg};font-size:10px;font-weight:600;margin-left:8px" title="${escHtml(accountLabel)}">${escHtml(accountLabel.includes("@") ? accountLabel.split("@")[0] : accountLabel)}</span>`
-      );
-    } else {
-      labelEl.innerHTML = sanitizeHTML(labelContent);
-    }
+    // Keep header meta concise in site mode; current site is already visible in the combo box.
+    labelEl.innerHTML = sanitizeHTML(`<span></span>`);
+    labelEl.classList.add("sadv-meta-hidden");
+    labelEl.title = accountLabel
+      ? `${getSiteLabel(site)} · ${accountLabel}`
+      : getSiteLabel(site);
 
     bdEl.replaceChildren(
       createStateCard(
