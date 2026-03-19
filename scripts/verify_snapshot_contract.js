@@ -14,6 +14,10 @@
  *
  * This script is intentionally static and fast. It fails the build/check
  * pipeline if the known-bad patterns come back.
+ *
+ * See also:
+ * - src/app/main/SNAPSHOT_EXPORT_CONTRACT.md
+ * - docs/SNAPSHOT_CONTRACT_GUARDRAILS.20260320.md
  */
 
 const fs = require('fs');
