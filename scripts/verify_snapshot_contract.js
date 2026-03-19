@@ -46,14 +46,14 @@ function assertNotIncludes(label, source, pattern, reason) {
 assertIncludes(
   'src/app/main/12-snapshot.js',
   files.modularSnapshot,
-  '${isFiniteValue.toString()}',
+  'const isFiniteValue = ${isFiniteValue.toString()};',
   'snapshot HTML must embed isFiniteValue helper before sparkline/barchart usage',
 );
 
 assertIncludes(
   'src/app/main.js',
   files.legacyMain,
-  '${isFiniteValue.toString()}',
+  'const isFiniteValue = ${isFiniteValue.toString()};',
   'legacy snapshot path must stay aligned with modular snapshot helper set',
 );
 
@@ -74,7 +74,7 @@ assertNotIncludes(
 assertIncludes(
   'dist/runtime.js',
   files.runtime,
-  '${isFiniteValue.toString()}',
+  'const isFiniteValue = ${isFiniteValue.toString()};',
   'built runtime must embed snapshot helper serialization',
 );
 

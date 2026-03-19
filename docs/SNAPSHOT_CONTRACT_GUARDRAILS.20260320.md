@@ -17,12 +17,18 @@
 
 `src/app/main/12-snapshot.js` 의 snapshot bootstrap 직렬화 구간에
 
-- `isFiniteValue.toString()`
+- `const isFiniteValue = ${isFiniteValue.toString()};`
 
-를 명시적으로 포함했다.
+를 명시적으로 포함한다.
 
 이 helper는 `sparkline()` / `barchart()` 류의 오프라인 차트 렌더에서 사용되므로,
 누락되면 저장본에서만 ReferenceError가 발생한다.
+
+주의:
+
+- 단순히 `${isFiniteValue.toString()}` 만 넣으면 이름 없는 화살표 함수 조각만 삽입되어
+  실제 바인딩이 생기지 않는다.
+- 반드시 `const isFiniteValue = ...;` 형태로 넣어야 한다.
 
 ### 2) 레거시 경로 동기화
 
