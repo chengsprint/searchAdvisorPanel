@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-19T17:07:36Z";
-var __SADV_GIT_HEAD__="3c00432";
+var __SADV_BUILD_STAMP__="2026-03-19T17:40:02Z";
+var __SADV_GIT_HEAD__="0eefe70";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -9120,11 +9120,13 @@ function getAvailableRenderers() {
               document
                 .querySelectorAll(".sadv-combo-item[data-site]")
                 .forEach(function (el) {
-                  el.style.display =
+                  // Combo rows are styled as CSS grid in the shell theme.
+                  // When search filtering shows them again, restore `grid` instead of `flex`
+                  // to avoid subtle layout drift between normal and filtered states.
+                  const isVisible =
                     !q ||
-                    (((el.dataset.site || "") + " " + getSiteLabel(el.dataset.site || "")).toLowerCase().includes(q))
-                      ? "flex"
-                      : "none";
+                    (((el.dataset.site || "") + " " + getSiteLabel(el.dataset.site || "")).toLowerCase().includes(q));
+                  el.style.setProperty("display", isVisible ? "grid" : "none", "important");
                 });
             };
           }
@@ -10630,10 +10632,17 @@ function savedAtIso(d) {
       return String(dirty == null ? "" : dirty);
     }
     function __sadvNotify() {}
+    // IMPORTANT: every helper referenced by serialized render/chart functions
+    // must be embedded here explicitly. The offline snapshot HTML is a
+    // self-contained runtime and cannot rely on outer closure helpers from the
+    // live panel bundle. A prior regression omitted the isFiniteValue helper,
+    // which made sparkline/barchart code throw ReferenceError only inside
+    // saved HTML.
     ${tip.toString()}
     ${showTip.toString()}
     ${moveTip.toString()}
     ${hideTip.toString()}
+    ${isFiniteValue.toString()}
     ${sparkline.toString()}
     ${barchart.toString()}
     ${xlbl.toString()}
@@ -10966,7 +10975,10 @@ function savedAtIso(d) {
                 const q = inp.value.toLowerCase();
                 document.querySelectorAll(".sadv-combo-item[data-site]").forEach(function (el) {
                   const searchTarget = ((el.dataset.site || "") + " " + getSiteLabel(el.dataset.site || "")).toLowerCase();
-                  el.style.display = !q || searchTarget.includes(q) ? "flex" : "none";
+                  // Snapshot popup shares the same grid row styling as the live popup.
+                  // Re-open filtered rows as grid, not flex, so the offline HTML
+                  // keeps the same visual structure as the live panel.
+                  el.style.setProperty("display", !q || searchTarget.includes(q) ? "grid" : "none", "important");
                 });
                 scheduleSnapshotComboDropPositionSync(0);
               };

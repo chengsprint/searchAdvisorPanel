@@ -314,11 +314,13 @@
               document
                 .querySelectorAll(".sadv-combo-item[data-site]")
                 .forEach(function (el) {
-                  el.style.display =
+                  // Combo rows are styled as CSS grid in the shell theme.
+                  // When search filtering shows them again, restore `grid` instead of `flex`
+                  // to avoid subtle layout drift between normal and filtered states.
+                  const isVisible =
                     !q ||
-                    (((el.dataset.site || "") + " " + getSiteLabel(el.dataset.site || "")).toLowerCase().includes(q))
-                      ? "flex"
-                      : "none";
+                    (((el.dataset.site || "") + " " + getSiteLabel(el.dataset.site || "")).toLowerCase().includes(q));
+                  el.style.setProperty("display", isVisible ? "grid" : "none", "important");
                 });
             };
           }

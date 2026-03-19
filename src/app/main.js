@@ -1660,6 +1660,7 @@ function barchart(vals, labels, H, col, unit) {
     ${showTip.toString()}
     ${moveTip.toString()}
     ${hideTip.toString()}
+    ${isFiniteValue.toString()}
     ${sparkline.toString()}
     ${barchart.toString()}
     ${xlbl.toString()}
@@ -1865,7 +1866,7 @@ function barchart(vals, labels, H, col, unit) {
                 const q = inp.value.toLowerCase();
                 document.querySelectorAll(".sadv-combo-item[data-site]").forEach(function (el) {
                   const searchTarget = ((el.dataset.site || "") + " " + getSiteLabel(el.dataset.site || "")).toLowerCase();
-                  el.style.display = !q || searchTarget.includes(q) ? "flex" : "none";
+                  el.style.setProperty("display", !q || searchTarget.includes(q) ? "grid" : "none", "important");
                 });
               };
             }
