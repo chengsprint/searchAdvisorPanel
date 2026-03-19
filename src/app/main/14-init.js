@@ -99,6 +99,7 @@ console.log('[Init] Starting async initialization...');
         renderAllSites();
       }
       setCachedUiState();
+      startCacheExpiryMonitor();
       __sadvMarkReady();
     };
 

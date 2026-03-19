@@ -260,33 +260,27 @@ function isMergedReport() {
 // ============================================================================
 // 전역 노출 (IIFE로 감싸진 환경에서도 접근 가능하도록)
 // ============================================================================
+function defineMutableWindowState(name, getter, setter) {
+  if (typeof window === "undefined") return;
+  const existing = Object.getOwnPropertyDescriptor(window, name);
+  if (existing && existing.configurable === false) {
+    return;
+  }
+  Object.defineProperty(window, name, {
+    get: getter,
+    set: setter,
+    enumerable: true,
+    configurable: true,
+  });
+}
+
 if (typeof window !== "undefined") {
   // UI 상태 변수들을 window 객체에 노출
-  Object.defineProperty(window, "curMode", {
-    get: function() { return curMode; },
-    set: function(v) { curMode = v; },
-    enumerable: true
-  });
-  Object.defineProperty(window, "curSite", {
-    get: function() { return curSite; },
-    set: function(v) { curSite = v; },
-    enumerable: true
-  });
-  Object.defineProperty(window, "curTab", {
-    get: function() { return curTab; },
-    set: function(v) { curTab = v; },
-    enumerable: true
-  });
-  Object.defineProperty(window, "siteViewReqId", {
-    get: function() { return siteViewReqId; },
-    set: function(v) { siteViewReqId = v; },
-    enumerable: true
-  });
-  Object.defineProperty(window, "allViewReqId", {
-    get: function() { return allViewReqId; },
-    set: function(v) { allViewReqId = v; },
-    enumerable: true
-  });
+  defineMutableWindowState("curMode", function() { return curMode; }, function(v) { curMode = v; });
+  defineMutableWindowState("curSite", function() { return curSite; }, function(v) { curSite = v; });
+  defineMutableWindowState("curTab", function() { return curTab; }, function(v) { curTab = v; });
+  defineMutableWindowState("siteViewReqId", function() { return siteViewReqId; }, function(v) { siteViewReqId = v; });
+  defineMutableWindowState("allViewReqId", function() { return allViewReqId; }, function(v) { allViewReqId = v; });
 
   // React 18 호환 상태 관리 노출
   // React 18 Concurrent Mode에서도 안전하게 상태를 구독할 수 있습니다.

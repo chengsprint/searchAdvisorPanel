@@ -315,6 +315,34 @@ const DATA_LS_PREFIX = "sadv_data_v2_";
 const UI_STATE_LS_KEY = "sadv_ui_state_v1";
 const DATA_TTL = 12 * 60 * 60 * 1000;
 
+function getDataTtlMs() {
+  try {
+    const override = Number(window.__SADV_TEST_TTL_MS);
+    if (Number.isFinite(override) && override > 0) return override;
+  } catch (e) {}
+  return DATA_TTL;
+}
+
+function getCacheMonitorIntervalMs() {
+  try {
+    const override = Number(window.__SADV_TEST_CACHE_MONITOR_INTERVAL_MS);
+    if (Number.isFinite(override) && override > 0) return override;
+  } catch (e) {}
+  const ttlMs = getDataTtlMs();
+  return Math.max(1000, Math.min(30000, Math.floor(ttlMs / 4) || 30000));
+}
+
+function recordRuntimeEvent(type, detail) {
+  try {
+    if (!Array.isArray(window.__SADV_TEST_EVENTS)) return;
+    window.__SADV_TEST_EVENTS.push({
+      type: String(type || "unknown"),
+      detail: detail && typeof detail === "object" ? detail : detail ?? null,
+      at: Date.now(),
+    });
+  } catch (e) {}
+}
+
 // ============================================================
 // P0-3: ACCOUNT_UTILS - 계정 유틸리티 통합
 // ============================================================

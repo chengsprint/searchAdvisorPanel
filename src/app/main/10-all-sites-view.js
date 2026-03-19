@@ -427,7 +427,10 @@ async function collectExportData(onProgress, options) {
         __source: {
           accountLabel: accountLabel || "unknown",
           accountEncId: encId || "unknown",
-          fetchedAt: siteData.__cacheSavedAt || new Date().toISOString(),
+          fetchedAt:
+            siteData && typeof siteData.__cacheSavedAt === "number"
+              ? siteData.__cacheSavedAt
+              : new Date().toISOString(),
           exportedAt: savedAtIso(new Date()),
         }
       };
