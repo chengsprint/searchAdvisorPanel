@@ -642,10 +642,17 @@
       return String(dirty == null ? "" : dirty);
     }
     function __sadvNotify() {}
+    // IMPORTANT: every helper referenced by serialized render/chart functions
+    // must be embedded here explicitly. The offline snapshot HTML is a
+    // self-contained runtime and cannot rely on outer closure helpers from the
+    // live panel bundle. A prior regression omitted the isFiniteValue helper,
+    // which made sparkline/barchart code throw ReferenceError only inside
+    // saved HTML.
     ${tip.toString()}
     ${showTip.toString()}
     ${moveTip.toString()}
     ${hideTip.toString()}
+    ${isFiniteValue.toString()}
     ${sparkline.toString()}
     ${barchart.toString()}
     ${xlbl.toString()}
@@ -978,7 +985,10 @@
                 const q = inp.value.toLowerCase();
                 document.querySelectorAll(".sadv-combo-item[data-site]").forEach(function (el) {
                   const searchTarget = ((el.dataset.site || "") + " " + getSiteLabel(el.dataset.site || "")).toLowerCase();
-                  el.style.display = !q || searchTarget.includes(q) ? "flex" : "none";
+                  // Snapshot popup shares the same grid row styling as the live popup.
+                  // Re-open filtered rows as grid, not flex, so the offline HTML
+                  // keeps the same visual structure as the live panel.
+                  el.style.setProperty("display", !q || searchTarget.includes(q) ? "grid" : "none", "important");
                 });
                 scheduleSnapshotComboDropPositionSync(0);
               };
