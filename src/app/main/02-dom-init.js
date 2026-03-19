@@ -123,9 +123,12 @@ siteUiStyle.textContent = `
 }
 #sadv-cache-meta{
   display:flex !important;
-  flex-wrap:wrap !important;
-  gap:8px !important;
-  margin-top:8px !important;
+  align-items:center !important;
+  gap:6px !important;
+  margin-top:6px !important;
+  min-height:22px !important;
+  max-width:100% !important;
+  overflow:hidden !important;
 }
 #sadv-account-badge{
   border-radius:4px !important;

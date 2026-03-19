@@ -91,19 +91,57 @@
       typeof cacheMeta.ttlMs === "number" && cacheMeta.ttlMs > 0
         ? Math.round(cacheMeta.ttlMs / 3600000)
         : null;
-    const chipStyle = "display:inline-flex;align-items:center;min-height:24px;padding:3px 10px;border-radius:999px;border:1px solid " + T.accentSoftBorder + ";background:" + T.accentSoftBg + ";color:var(--sadv-text-secondary,#ffe9a8);font-size:10px;font-weight:600;line-height:1.2";
-    const parts = [
-      `<span style="${chipStyle}">캐시저장 ${escHtml(formatCacheMetaTime(cacheMeta.updatedAt))}</span>`,
-    ];
-    if (typeof cacheMeta.remainingMs === "number") {
-      parts.push(
-        `<span style="${chipStyle}">자동갱신까지 ${escHtml(formatRemainingMsLabel(cacheMeta.remainingMs))}</span>`
-      );
-    }
-    if (ttlHours) {
-      parts.push(`<span style="${chipStyle}">${escHtml(String(ttlHours))}시간 TTL</span>`);
-    }
-    metaEl.innerHTML = sanitizeHTML(parts.join(""));
+    const remainingLabel =
+      typeof cacheMeta.remainingMs === "number"
+        ? formatRemainingMsLabel(cacheMeta.remainingMs)
+        : null;
+    const isNearExpiry =
+      typeof cacheMeta.remainingMs === "number" &&
+      Number.isFinite(cacheMeta.remainingMs) &&
+      cacheMeta.remainingMs > 0 &&
+      cacheMeta.remainingMs <= 60 * 60 * 1000;
+    const isExpired =
+      typeof cacheMeta.remainingMs === "number" &&
+      Number.isFinite(cacheMeta.remainingMs) &&
+      cacheMeta.remainingMs <= 0;
+    const borderCol = isExpired
+      ? T.dangerSoftBg
+      : isNearExpiry
+        ? T.warningSoftBorder
+        : T.accentSoftBorder;
+    const bgCol = isExpired
+      ? T.dangerSoftBg
+      : isNearExpiry
+        ? T.warningSoftBg
+        : T.accentSoftBg;
+    const textCol = isExpired
+      ? C.red
+      : isNearExpiry
+        ? C.amber
+        : "var(--sadv-text-secondary,#ffe9a8)";
+    const titleParts = [
+      `캐시저장 ${formatCacheMetaTime(cacheMeta.updatedAt)}`,
+      remainingLabel ? `자동갱신까지 ${remainingLabel}` : null,
+      ttlHours ? `${ttlHours}시간 TTL` : null,
+    ].filter(Boolean);
+    const compactParts = [
+      `캐시 ${formatCacheMetaTime(cacheMeta.updatedAt)}`,
+      ttlHours ? `${ttlHours}h` : null,
+      remainingLabel,
+    ].filter(Boolean);
+    const chipStyle =
+      "display:inline-flex;align-items:center;max-width:100%;min-height:22px;padding:2px 10px;border-radius:" +
+      T.radiusPill +
+      ";border:1px solid " +
+      borderCol +
+      ";background:" +
+      bgCol +
+      ";color:" +
+      textCol +
+      ";font-size:10px;font-weight:600;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis";
+    metaEl.innerHTML = sanitizeHTML(
+      `<span style="${chipStyle}" title="${escHtml(titleParts.join(" · "))}">${escHtml(compactParts.join(" · "))}</span>`
+    );
   }
   /**
  * Build the site selector combo box dropdown
