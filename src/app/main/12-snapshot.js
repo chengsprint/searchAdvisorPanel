@@ -206,7 +206,7 @@
     const comboWrap = clone.querySelector("#sadv-combo-wrap");
     if (comboWrap) comboWrap.classList.remove("open");
     if (siteLabelEl) {
-      siteLabelEl.innerHTML = `<span>${escHtml(siteLabel)}</span><span style="display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;border:1px solid #284766;color:#a8d8ff;background:rgba(12,23,38,.72)">${escHtml(activeTabLabel)}</span>`;
+      siteLabelEl.innerHTML = `<span>${escHtml(siteLabel)}</span><span style="display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;border:1px solid rgba(255,212,0,0.26);color:#ffd400;background:rgba(32,22,0,.72)">${escHtml(activeTabLabel)}</span>`;
     }
     ["sadv-refresh-btn", "sadv-save-btn", "sadv-x"].forEach(function (id) {
       const el = clone.querySelector("#" + id);
@@ -226,7 +226,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${escHtml("SearchAdvisor Snapshot - " + siteLabel)}</title>
   <style>
-    html,body{margin:0;padding:0;background:#050505;color:#fff7dd;font-family:Apple SD Gothic Neo,system-ui,sans-serif}
+    html,body{margin:0;padding:0;background:#050505;color:#fff7dd;font-family:"IBM Plex Sans KR","IBM Plex Sans",Pretendard,system-ui,sans-serif}
     body{padding:28px 18px 40px}
     a{color:#ffd400}
     :root{--snapshot-panel-width:520px}
@@ -235,11 +235,11 @@
       box-sizing:border-box;
       margin:0 auto 12px;
       padding:10px 12px;
-      border:1px solid #1a2d45;
+      border:1px solid #4a3b00;
       border-radius:20px;
       background:
-        radial-gradient(circle at top right, rgba(64,196,255,.12), transparent 34%),
-        linear-gradient(180deg, rgba(13,24,41,.98), rgba(7,13,22,.98));
+        radial-gradient(circle at top right, rgba(255,122,0,.12), transparent 34%),
+        linear-gradient(180deg, rgba(18,13,8,.98), rgba(8,8,8,.98));
       box-shadow:0 26px 60px rgba(0,0,0,.3);
       overflow:hidden;
     }
@@ -269,8 +269,8 @@
       color:#8fb4d6;
     }
     .snapshot-meta-details[open] .snapshot-meta-summary::after{content:"\uba54\ud0c0 \uc811\uae30"}
-    .snapshot-meta-title{font-size:13px;font-weight:800;line-height:1.2;color:#f3fbff}
-    .snapshot-meta-copy{margin-top:6px;font-size:11px;line-height:1.7;color:#7f9cbc}
+    .snapshot-meta-title{font-size:13px;font-weight:800;line-height:1.2;color:#fff8df}
+    .snapshot-meta-copy{margin-top:6px;font-size:11px;line-height:1.7;color:#d7bf78}
     #sadv-p{
       position:relative !important;
       top:auto !important;
@@ -279,7 +279,7 @@
       box-sizing:border-box !important;
       height:auto !important;
       margin:0 auto !important;
-      border:1px solid #1a2d45 !important;
+      border:1px solid #4a3b00 !important;
       border-radius:20px !important;
       overflow:hidden !important;
       box-shadow:0 26px 60px rgba(0,0,0,.3) !important;
@@ -995,23 +995,23 @@
    */
   function createMergedAccountsInfo(mergedMeta) {
     const mergedInfo = document.createElement("div");
-    mergedInfo.style.cssText = "background:linear-gradient(135deg,#1a2d45,#0d1829);border:1px solid #2a4060;border-radius:8px;padding:12px 16px;margin-bottom:16px";
+    mergedInfo.style.cssText = "background:linear-gradient(135deg,#17110a,#080808);border:1px solid #4a3b00;border-radius:0;padding:12px 16px;margin-bottom:16px";
     const validAccounts = mergedMeta.accounts.filter(Boolean);
     const accountLabels = validAccounts.map((acc, i) => {
       const fullLabel = acc.label || acc.encId?.slice(0, 8) || `계정${i + 1}`;
       const shortLabel = fullLabel.includes('@') ? fullLabel.split('@')[0] : fullLabel;
-      return `<span tabindex="0" role="button" aria-describedby="merged-acc-full-${i}" style="display:inline-block;background:#2a4060;color:#8bb8e8;padding:3px 8px;border-radius:4px;font-size:11px;margin:2px;cursor:default" title="${escHtml(fullLabel)}">${escHtml(shortLabel)}<span id="merged-acc-full-${i}" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">전체: ${escHtml(fullLabel)}</span></span>`;
+      return `<span tabindex="0" role="button" aria-describedby="merged-acc-full-${i}" style="display:inline-block;background:rgba(255,212,0,0.12);color:#ffd400;padding:3px 8px;border:1px solid rgba(255,212,0,0.24);border-radius:4px;font-size:11px;margin:2px;cursor:default" title="${escHtml(fullLabel)}">${escHtml(shortLabel)}<span id="merged-acc-full-${i}" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">전체: ${escHtml(fullLabel)}</span></span>`;
     }).join(" ");
     mergedInfo.setAttribute("role", "region");
     mergedInfo.setAttribute("aria-label", `병합된 계정 정보, ${validAccounts.length}개 계정`);
     mergedInfo.innerHTML = `
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
           <span style="font-size:16px" aria-hidden="true">🔀</span>
-          <span style="font-size:13px;font-weight:700;color:#e0ecff">병합된 계정</span>
-          <span style="font-size:10px;color:#6482a2;background:#0d1829;padding:2px 6px;border-radius:4px">${validAccounts.length}개 계정</span>
+          <span style="font-size:13px;font-weight:700;color:#fff8df">병합된 계정</span>
+          <span style="font-size:10px;color:#ffe9a8;background:rgba(255,212,0,0.12);padding:2px 6px;border:1px solid rgba(255,212,0,0.22);border-radius:4px">${validAccounts.length}개 계정</span>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:4px">${accountLabels}</div>
-        <div style="font-size:9px;color:#6482a2;margin-top:8px">병합 시각: ${mergedMeta.mergedAt ? new Date(mergedMeta.mergedAt).toLocaleString('ko-KR') : '-'}</div>
+        <div style="font-size:9px;color:#d7bf78;margin-top:8px">병합 시각: ${mergedMeta.mergedAt ? new Date(mergedMeta.mergedAt).toLocaleString('ko-KR') : '-'}</div>
       `;
     return mergedInfo;
   }
