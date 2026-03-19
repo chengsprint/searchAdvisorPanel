@@ -1647,6 +1647,7 @@ function barchart(vals, labels, H, col, unit) {
     };
     const ICONS = ${JSON.stringify(ICONS)};
     const C = ${JSON.stringify(C)};
+    const S = ${JSON.stringify(S)};
     const COLORS = ${JSON.stringify(COLORS)};
     const DOW = ${JSON.stringify(DOW)};
     const PNL = ${JSON.stringify(PNL)};

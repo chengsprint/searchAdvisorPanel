@@ -51,10 +51,24 @@ assertIncludes(
 );
 
 assertIncludes(
+  'src/app/main/12-snapshot.js',
+  files.modularSnapshot,
+  'const S = ${JSON.stringify(S)};',
+  'snapshot HTML must embed shared style token map used by renderers',
+);
+
+assertIncludes(
   'src/app/main.js',
   files.legacyMain,
   'const isFiniteValue = ${isFiniteValue.toString()};',
   'legacy snapshot path must stay aligned with modular snapshot helper set',
+);
+
+assertIncludes(
+  'src/app/main.js',
+  files.legacyMain,
+  'const S = ${JSON.stringify(S)};',
+  'legacy snapshot path must embed shared style token map used by renderers',
 );
 
 assertNotIncludes(
@@ -76,6 +90,13 @@ assertIncludes(
   files.runtime,
   'const isFiniteValue = ${isFiniteValue.toString()};',
   'built runtime must embed snapshot helper serialization',
+);
+
+assertIncludes(
+  'dist/runtime.js',
+  files.runtime,
+  'const S = ${JSON.stringify(S)};',
+  'built runtime must embed shared renderer style map in snapshot bootstrap',
 );
 
 assertIncludes(

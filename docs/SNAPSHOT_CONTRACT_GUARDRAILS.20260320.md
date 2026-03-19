@@ -18,11 +18,16 @@
 `src/app/main/12-snapshot.js` 의 snapshot bootstrap 직렬화 구간에
 
 - `const isFiniteValue = ${isFiniteValue.toString()};`
+- `const S = ${JSON.stringify(S)};`
 
 를 명시적으로 포함한다.
 
 이 helper는 `sparkline()` / `barchart()` 류의 오프라인 차트 렌더에서 사용되므로,
 누락되면 저장본에서만 ReferenceError가 발생한다.
+
+`S` 는 렌더러 공통 row/card style map 이다.
+일부 overview / queries / pages / pattern / backlink 렌더러가 `S.row` 를 사용하므로,
+누락되면 사이트별 진입 시 `ReferenceError: S is not defined` 가 발생한다.
 
 주의:
 
