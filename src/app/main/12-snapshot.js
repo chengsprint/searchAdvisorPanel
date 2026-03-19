@@ -613,17 +613,25 @@
       getSiteLabel,
       applyReportDecorations: applySnapshotReportDecorations,
     };
+    const CONFIG = ${JSON.stringify(CONFIG)};
     const ICONS = ${JSON.stringify(ICONS)};
     const C = ${JSON.stringify(C)};
     const COLORS = ${JSON.stringify(COLORS)};
     const DOW = ${JSON.stringify(DOW)};
     const PNL = ${JSON.stringify(PNL)};
+    const T = ${JSON.stringify(T)};
+    const ERROR_MESSAGES = ${JSON.stringify(ERROR_MESSAGES)};
     const CHART_W = PNL - 32;
     const TABS = ${JSON.stringify(TABS)};
     let TIP = null;
     const fmt = (v) => Number(v).toLocaleString();
     const fmtD = (s) => s ? s.slice(0, 4) + "-" + s.slice(4, 6) + "-" + s.slice(6, 8) : "";
     const fmtB = (s) => s ? s.slice(4, 6) + "/" + s.slice(6, 8) : "";
+    ${escHtml.toString()}
+    function sanitizeHTML(dirty) {
+      return String(dirty == null ? "" : dirty);
+    }
+    function __sadvNotify() {}
     ${tip.toString()}
     ${showTip.toString()}
     ${moveTip.toString()}
@@ -639,7 +647,32 @@
     ${hbar.toString()}
     ${st.toString()}
     ${pearson.toString()}
+    ${createInlineError.toString()}
+    ${createStateCard.toString()}
     ${buildSiteSummaryRow.toString()}
+    ${prepareRendererData.toString()}
+    ${createOverviewRenderer.toString()}
+    ${createDailyRenderer.toString()}
+    ${createQueriesRenderer.toString()}
+    ${createPagesRenderer.toString()}
+    ${createPatternRenderer.toString()}
+    ${createCrawlRenderer.toString()}
+    ${createBacklinkRenderer.toString()}
+    ${createDiagnosisRenderer.toString()}
+    ${createInsightRenderer.toString()}
+    const RENDERER_REGISTRY = {
+      overview: createOverviewRenderer,
+      daily: createDailyRenderer,
+      queries: createQueriesRenderer,
+      urls: createPagesRenderer,
+      pages: createPagesRenderer,
+      pattern: createPatternRenderer,
+      crawl: createCrawlRenderer,
+      backlink: createBacklinkRenderer,
+      indexed: createDiagnosisRenderer,
+      diagnosis: createDiagnosisRenderer,
+      insight: createInsightRenderer,
+    };
     ${buildRenderers.toString()}
     ${assignColors.toString()}
     ${ensureCurrentSite.toString()}
