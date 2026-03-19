@@ -35,7 +35,7 @@
     if (accountLabel) {
       labelEl.innerHTML = sanitizeHTML(
         labelContent +
-        `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;border:1px solid rgba(255,212,0,0.22);color:#ffd400;background:rgba(255,212,0,0.12);font-size:10px;font-weight:600;margin-left:8px" title="${escHtml(accountLabel)}">${escHtml(accountLabel.includes("@") ? accountLabel.split("@")[0] : accountLabel)}</span>`
+        `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;border:1px solid ${T.accentSoftBorder};color:${T.accentSoftText};background:${T.accentSoftBg};font-size:10px;font-weight:600;margin-left:8px" title="${escHtml(accountLabel)}">${escHtml(accountLabel.includes("@") ? accountLabel.split("@")[0] : accountLabel)}</span>`
       );
     } else {
       labelEl.innerHTML = sanitizeHTML(labelContent);

@@ -129,8 +129,8 @@ siteUiStyle.textContent = `
 }
 #sadv-account-badge{
   border-radius:4px !important;
-  background:rgba(255,212,0,0.12) !important;
-  border:1px solid rgba(255,212,0,0.26) !important;
+  background:${T.accentSoftBg} !important;
+  border:1px solid ${T.accentSoftBorderStrong} !important;
   color:var(--sadv-accent) !important;
 }
 #sadv-mode-bar{
@@ -164,7 +164,7 @@ siteUiStyle.textContent = `
   color:var(--sadv-text) !important;
 }
 .sadv-mode.on{
-  background:rgba(255,212,0,0.16) !important;
+  background:${T.accentSoftBgStrong} !important;
   color:var(--sadv-accent) !important;
   box-shadow:inset 0 -2px 0 var(--sadv-accent) !important;
 }
@@ -367,7 +367,7 @@ siteUiStyle.textContent = `
 #sadv-x:hover {
   border-color:var(--sadv-danger) !important;
   color:var(--sadv-danger) !important;
-  background:rgba(250,77,86,0.08) !important;
+  background:${T.dangerSoftBg} !important;
 }
 #sadv-bd,
 #sadv-tabpanel{

@@ -177,6 +177,16 @@ const C = {
   muted: "#b9a55a",
   sub: "#ffe9a8",
 };
+const T = {
+  fontSans: '"IBM Plex Sans KR","IBM Plex Sans",Pretendard,system-ui',
+  accentSoftBg: "rgba(255,212,0,0.12)",
+  accentSoftBgStrong: "rgba(255,212,0,0.16)",
+  accentSoftBorder: "rgba(255,212,0,0.24)",
+  accentSoftBorderStrong: "rgba(255,212,0,0.26)",
+  accentSoftText: "#ffd400",
+  warmDarkBg: "rgba(32,22,0,.72)",
+  dangerSoftBg: "rgba(255,90,54,0.12)",
+};
 const COLORS = [C.green, C.blue, C.amber, C.teal, C.purple, C.orange, C.pink];
 
 // ============================================================
