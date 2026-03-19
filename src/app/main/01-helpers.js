@@ -182,7 +182,7 @@ function tip() {
   if (!TIP) {
     TIP = document.createElement("div");
     TIP.style.cssText =
-      "position:fixed;background:rgba(15,23,42,0.9);backdrop-filter:blur(8px);border:1px solid #334155;border-radius:8px;padding:8px 12px;font-size:12px;color:#f8fafc;pointer-events:none;z-index:" + CONFIG.UI.Z_INDEX_TOOLTIP + ";display:none;white-space:nowrap;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);font-family:Pretendard,system-ui";
+      "position:fixed;background:rgba(13,13,15,0.94);backdrop-filter:blur(8px);border:1px solid var(--sadv-border-subtle,#2b2200);padding:8px 12px;font-size:12px;color:var(--sadv-text,#fffdf5);pointer-events:none;z-index:" + CONFIG.UI.Z_INDEX_TOOLTIP + ";display:none;white-space:nowrap;box-shadow:0 10px 20px rgba(0,0,0,0.28);font-family:Pretendard,system-ui";
     document.body.appendChild(TIP);
   }
   return TIP;
@@ -405,7 +405,7 @@ function sparkline(vals, labels, H, col, unit, opts) {
     }
     showTip(
       e,
-      '<span style="color:#7a9ab8;font-size:10px">' +
+      '<span style="color:var(--sadv-text-tertiary,#b9a55a);font-size:10px">' +
         ((labels && labels[idx]) || "") +
         '</span><br><b style="color:' +
         col +
@@ -502,7 +502,7 @@ function barchart(vals, labels, H, col, unit) {
       rect.setAttribute("opacity", "1");
       showTip(
         e,
-        `<span style="color:#7a9ab8;font-size:10px">${escHtml((labels && labels[i]) || "")}</span><br><b style="color:${col}">${fmt(v)}${unit}</b>`,
+        `<span style="color:var(--sadv-text-tertiary,#b9a55a);font-size:10px">${escHtml((labels && labels[i]) || "")}</span><br><b style="color:${col}">${fmt(v)}${unit}</b>`,
       );
     });
     rect.addEventListener("mouseleave", function () {
@@ -535,7 +535,7 @@ function xlbl(arr) {
   }
   return `<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 2px 0">${labels
     .map(function (label) {
-      return `<span style="font-size:9px;color:#3d5a78">${escHtml(label || "")}</span>`;
+      return `<span style="font-size:9px;color:var(--sadv-text-tertiary,#b9a55a)">${escHtml(label || "")}</span>`;
     })
     .join("")}</div>`;
 }
@@ -584,6 +584,41 @@ function secTitle(t) {
     ' <span style="flex:1;height:1px;background:var(--sadv-border-subtle,#393939);display:inline-block;opacity:1"></span>'
   );
   return d;
+}
+
+function createStateCard(title, description, iconHtml, tone = "neutral") {
+  const accentMap = {
+    neutral: "var(--sadv-accent,#ffd400)",
+    warning: C.amber,
+    danger: C.red,
+    success: C.blue,
+  };
+  const accent = accentMap[tone] || accentMap.neutral;
+  const wrap = document.createElement("div");
+  wrap.style.cssText =
+    "display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:28px 20px;background:var(--sadv-layer-01,#0d0d0f);border:1px solid var(--sadv-border-subtle,#2b2200);box-shadow:0 10px 28px rgba(0,0,0,0.24);margin:8px 0 16px";
+  const iconBox = document.createElement("div");
+  iconBox.style.cssText =
+    "display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;border:1px solid color-mix(in srgb, " +
+    accent +
+    " 28%, transparent);background:color-mix(in srgb, " +
+    accent +
+    " 10%, transparent);color:" +
+    accent +
+    ";margin-bottom:14px";
+  iconBox.innerHTML = sanitizeHTML(iconHtml || ICONS.lightbulb);
+  const titleEl = document.createElement("div");
+  titleEl.style.cssText =
+    "font-size:15px;font-weight:700;color:var(--sadv-text,#fffdf5);margin-bottom:6px;letter-spacing:-0.01em";
+  titleEl.textContent = title || "";
+  const descEl = document.createElement("div");
+  descEl.style.cssText =
+    "font-size:12px;line-height:1.7;color:var(--sadv-text-secondary,#ffe9a8);max-width:320px";
+  descEl.innerHTML = sanitizeHTML(description || "");
+  wrap.appendChild(iconBox);
+  wrap.appendChild(titleEl);
+  wrap.appendChild(descEl);
+  return wrap;
 }
 
 // Info box function

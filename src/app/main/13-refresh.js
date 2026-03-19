@@ -37,18 +37,18 @@ function renderFullRefreshProgress(label, detail, progress, stats) {
       "</div>";
   }
   bdEl.innerHTML = sanitizeHTML(
-    '<div style="padding:24px 18px 20px;color:#7a9ab8;text-align:left;line-height:1.6">' +
-    '<div style="font-size:13px;font-weight:700;color:#d4ecff;margin-bottom:8px">' +
+    '<div style="padding:24px 18px 20px;color:var(--sadv-text-secondary,#ffe9a8);text-align:left;line-height:1.6;background:var(--sadv-layer-01,#0d0d0f);border:1px solid var(--sadv-border-subtle,#2b2200);box-shadow:0 10px 28px rgba(0,0,0,0.24)">' +
+    '<div style="font-size:13px;font-weight:700;color:var(--sadv-text,#fffdf5);margin-bottom:8px">' +
     escHtml(label) +
     "</div>" +
     '<div style="font-size:11px;margin-bottom:10px">' +
     escHtml(detail || "") +
     "</div>" +
     '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">' +
-    '<div style="flex:1;height:10px;border-radius:999px;background:#0d1829;border:1px solid #1a2d45;overflow:hidden">' +
+    '<div style="flex:1;height:10px;border-radius:999px;background:var(--sadv-layer-02,#171717);border:1px solid var(--sadv-border-subtle,#2b2200);overflow:hidden">' +
     '<div style="width:' +
     escHtml(String(pct)) +
-    '%;height:100%;background:linear-gradient(90deg,#40c4ff,#00e676)"></div>' +
+    '%;height:100%;background:linear-gradient(90deg,#ffd400,#ff7a00)"></div>' +
     "</div>" +
     '<span style="font-size:11px;font-weight:700;color:#d4ecff;min-width:48px;text-align:right">' +
     escHtml(String(pct)) +

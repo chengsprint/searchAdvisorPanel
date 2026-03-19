@@ -1013,11 +1013,11 @@ const PAYLOAD_V2 = {
 
 // Performance: Reusable style strings (reduces string allocation)
 const S = {
-  card: "background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1)",
-  row: "display:flex;justify-content:space-between;align-items:center;padding:16px;background:#0f172a;border:1px solid #334155;border-radius:12px;margin-bottom:12px;transition:all 0.2s",
+  card: "background:var(--sadv-layer-01,#0d0d0f);border:1px solid var(--sadv-border-subtle,#2b2200);border-radius:0;padding:16px;margin-bottom:12px;box-shadow:0 8px 24px rgba(0,0,0,0.18)",
+  row: "display:flex;justify-content:space-between;align-items:center;padding:16px;background:var(--sadv-layer-01,#0d0d0f);border:1px solid var(--sadv-border-subtle,#2b2200);border-radius:0;margin-bottom:12px;transition:all 0.2s",
   flexBetween: "display:flex;justify-content:space-between;align-items:center",
-  muted: "font-size:12px;color:#94a3b8",
-  valueGreen: "font-size:12px;font-weight:600;color:#10b981",
+  muted: "font-size:12px;color:var(--sadv-text-secondary,#ffe9a8)",
+  valueGreen: "font-size:12px;font-weight:600;color:#ffd400",
 };
 
 // Performance: Hoisted helper functions (avoids recreation on each call)
@@ -1436,14 +1436,14 @@ function showError(userMessage, technicalError = null, context = null) {
 // Helper function to create inline error message element
 function createInlineError(message, actionCallback = null, actionText = '다시 시도') {
   const container = document.createElement('div');
-  container.style.cssText = 'padding:20px;text-align:center;background:#0f172a;border:1px solid #334155;border-radius:12px;margin:16px 0';
+  container.style.cssText = 'padding:20px;text-align:center;background:var(--sadv-layer-01,#0d0d0f);border:1px solid rgba(255,90,54,0.28);margin:16px 0;box-shadow:0 10px 28px rgba(0,0,0,0.24)';
 
   const icon = document.createElement('div');
-  icon.style.cssText = 'font-size:32px;margin-bottom:12px;color:#ef4444';
+  icon.style.cssText = 'font-size:32px;margin-bottom:12px;color:#ff5a36';
   icon.textContent = '⚠️';
 
   const messageEl = document.createElement('div');
-  messageEl.style.cssText = 'color:#f8fafc;font-weight:700;font-size:14px;margin-bottom:8px';
+  messageEl.style.cssText = 'color:var(--sadv-text,#fffdf5);font-weight:700;font-size:14px;margin-bottom:8px';
   messageEl.textContent = message;
 
   container.appendChild(icon);
@@ -1451,10 +1451,10 @@ function createInlineError(message, actionCallback = null, actionText = '다시 
 
   if (actionCallback) {
     const button = document.createElement('button');
-    button.style.cssText = 'margin-top:12px;padding:8px 16px;background:#0ea5e9;color:#f8fafc;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.2s';
+    button.style.cssText = 'margin-top:12px;padding:10px 16px;background:#ffd400;color:#111;font-weight:700;border:none;font-size:13px;cursor:pointer;transition:filter 0.2s';
     button.textContent = actionText;
-    button.onmouseover = () => button.style.background = '#0284c7';
-    button.onmouseout = () => button.style.background = '#0ea5e9';
+    button.onmouseover = () => button.style.filter = 'brightness(1.08)';
+    button.onmouseout = () => button.style.filter = 'none';
     button.onclick = actionCallback;
     container.appendChild(button);
   }
@@ -1677,7 +1677,7 @@ function tip() {
   if (!TIP) {
     TIP = document.createElement("div");
     TIP.style.cssText =
-      "position:fixed;background:rgba(15,23,42,0.9);backdrop-filter:blur(8px);border:1px solid #334155;border-radius:8px;padding:8px 12px;font-size:12px;color:#f8fafc;pointer-events:none;z-index:" + CONFIG.UI.Z_INDEX_TOOLTIP + ";display:none;white-space:nowrap;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);font-family:Pretendard,system-ui";
+      "position:fixed;background:rgba(13,13,15,0.94);backdrop-filter:blur(8px);border:1px solid var(--sadv-border-subtle,#2b2200);padding:8px 12px;font-size:12px;color:var(--sadv-text,#fffdf5);pointer-events:none;z-index:" + CONFIG.UI.Z_INDEX_TOOLTIP + ";display:none;white-space:nowrap;box-shadow:0 10px 20px rgba(0,0,0,0.28);font-family:Pretendard,system-ui";
     document.body.appendChild(TIP);
   }
   return TIP;
@@ -1900,7 +1900,7 @@ function sparkline(vals, labels, H, col, unit, opts) {
     }
     showTip(
       e,
-      '<span style="color:#7a9ab8;font-size:10px">' +
+      '<span style="color:var(--sadv-text-tertiary,#b9a55a);font-size:10px">' +
         ((labels && labels[idx]) || "") +
         '</span><br><b style="color:' +
         col +
@@ -1997,7 +1997,7 @@ function barchart(vals, labels, H, col, unit) {
       rect.setAttribute("opacity", "1");
       showTip(
         e,
-        `<span style="color:#7a9ab8;font-size:10px">${escHtml((labels && labels[i]) || "")}</span><br><b style="color:${col}">${fmt(v)}${unit}</b>`,
+        `<span style="color:var(--sadv-text-tertiary,#b9a55a);font-size:10px">${escHtml((labels && labels[i]) || "")}</span><br><b style="color:${col}">${fmt(v)}${unit}</b>`,
       );
     });
     rect.addEventListener("mouseleave", function () {
@@ -2030,7 +2030,7 @@ function xlbl(arr) {
   }
   return `<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 2px 0">${labels
     .map(function (label) {
-      return `<span style="font-size:9px;color:#3d5a78">${escHtml(label || "")}</span>`;
+      return `<span style="font-size:9px;color:var(--sadv-text-tertiary,#b9a55a)">${escHtml(label || "")}</span>`;
     })
     .join("")}</div>`;
 }
@@ -2079,6 +2079,41 @@ function secTitle(t) {
     ' <span style="flex:1;height:1px;background:var(--sadv-border-subtle,#393939);display:inline-block;opacity:1"></span>'
   );
   return d;
+}
+
+function createStateCard(title, description, iconHtml, tone = "neutral") {
+  const accentMap = {
+    neutral: "var(--sadv-accent,#ffd400)",
+    warning: C.amber,
+    danger: C.red,
+    success: C.blue,
+  };
+  const accent = accentMap[tone] || accentMap.neutral;
+  const wrap = document.createElement("div");
+  wrap.style.cssText =
+    "display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:28px 20px;background:var(--sadv-layer-01,#0d0d0f);border:1px solid var(--sadv-border-subtle,#2b2200);box-shadow:0 10px 28px rgba(0,0,0,0.24);margin:8px 0 16px";
+  const iconBox = document.createElement("div");
+  iconBox.style.cssText =
+    "display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;border:1px solid color-mix(in srgb, " +
+    accent +
+    " 28%, transparent);background:color-mix(in srgb, " +
+    accent +
+    " 10%, transparent);color:" +
+    accent +
+    ";margin-bottom:14px";
+  iconBox.innerHTML = sanitizeHTML(iconHtml || ICONS.lightbulb);
+  const titleEl = document.createElement("div");
+  titleEl.style.cssText =
+    "font-size:15px;font-weight:700;color:var(--sadv-text,#fffdf5);margin-bottom:6px;letter-spacing:-0.01em";
+  titleEl.textContent = title || "";
+  const descEl = document.createElement("div");
+  descEl.style.cssText =
+    "font-size:12px;line-height:1.7;color:var(--sadv-text-secondary,#ffe9a8);max-width:320px";
+  descEl.innerHTML = sanitizeHTML(description || "");
+  wrap.appendChild(iconBox);
+  wrap.appendChild(titleEl);
+  wrap.appendChild(descEl);
+  return wrap;
 }
 
 // Info box function
@@ -7550,7 +7585,7 @@ function createOverviewRenderer(data) {
       .forEach(function (r, i) {
         const d = document.createElement("div");
         d.style.cssText = S.row + ";border-color:" + (i === 0 ? C.green + "44" : C.border);
-        d.innerHTML = sanitizeHTML(`<span>${["🥇", "🥈", "🥉"][i]} <span style="font-size:12px;color:#94a3b8;margin-left:8px">${escHtml(fmtD(r.date))}</span></span><b style="color:${C.green};font-size:14px">${escHtml(fmt(r.clickCount))}회</b>`);
+        d.innerHTML = sanitizeHTML(`<span>${["🥇", "🥈", "🥉"][i]} <span style="font-size:12px;color:var(--sadv-text-secondary,#ffe9a8);margin-left:8px">${escHtml(fmtD(r.date))}</span></span><b style="color:${C.green};font-size:14px">${escHtml(fmt(r.clickCount))}회</b>`);
         topEl.appendChild(d);
       });
     wrap.appendChild(topEl);
@@ -7593,7 +7628,7 @@ function createDailyRenderer(data) {
       const isOut = cSt.outliers && cSt.outliers.includes(r.clickCount);
       const d = document.createElement("div");
       d.style.cssText = "margin-bottom:12px;padding:4px 0";
-      d.innerHTML = sanitizeHTML(`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="font-size:12px;color:#94a3b8;font-weight:500">${escHtml(fmtD(r.date))} (${escHtml(DOW[new Date(fmtD(r.date)).getDay()])})${isOut ? ' <span style="color:' + C.red + ';font-size:10px;background:' + C.red + '15;padding:1px 4px;border-radius:4px">이상치</span>' : ""}</span><span style="font-size:13px;font-weight:700;color:${r.clickCount >= (cSt.mean || 0) ? C.green : C.text}">${escHtml(fmt(r.clickCount))}회</span></div>${hbar(r.clickCount, mxC, r.clickCount >= (cSt.mean || 0) ? C.green : C.blue)}<div style="display:flex;gap:12px;font-size:11px;color:#64748b;margin-top:4px"><span>노출 <b style="color:#94a3b8">${escHtml(fmt(r.exposeCount))}</b></span><span>CTR ${ctrBadge(r.ctr)}</span></div>`);
+      d.innerHTML = sanitizeHTML(`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="font-size:12px;color:var(--sadv-text-secondary,#ffe9a8);font-weight:500">${escHtml(fmtD(r.date))} (${escHtml(DOW[new Date(fmtD(r.date)).getDay()])})${isOut ? ' <span style="color:' + C.red + ';font-size:10px;background:' + C.red + '15;padding:1px 4px;border-radius:4px">이상치</span>' : ""}</span><span style="font-size:13px;font-weight:700;color:${r.clickCount >= (cSt.mean || 0) ? C.green : C.text}">${escHtml(fmt(r.clickCount))}회</span></div>${hbar(r.clickCount, mxC, r.clickCount >= (cSt.mean || 0) ? C.green : C.blue)}<div style="display:flex;gap:12px;font-size:11px;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px"><span>노출 <b style="color:var(--sadv-text-secondary,#ffe9a8)">${escHtml(fmt(r.exposeCount))}</b></span><span>CTR ${ctrBadge(r.ctr)}</span></div>`);
       wrap.appendChild(d);
     });
 
@@ -7618,10 +7653,14 @@ function createQueriesRenderer(data) {
     const mxC = Math.max(...queries.map((q) => q.clickCount)) || 1;
 
     if (!queries.length) {
-      const em = document.createElement("div");
-      em.style.cssText = "text-align:center;padding:40px 20px;color:#64748b;font-size:13px";
-      em.innerHTML = sanitizeHTML(`<div style="margin-bottom:12px;opacity:0.5">${ICONS.search}</div>검색어 데이터 없음`);
-      wrap.appendChild(em);
+      wrap.appendChild(
+        createStateCard(
+          "검색어 데이터 없음",
+          "검색어별 클릭/노출 데이터가 아직 없습니다.",
+          ICONS.search.replace('width="14" height="14"', 'width="20" height="20"'),
+          "neutral",
+        )
+      );
       return wrap;
     }
 
@@ -7650,7 +7689,7 @@ function createQueriesRenderer(data) {
       const safeKey = escHtml(q.key);
       const d = document.createElement("div");
       d.style.cssText = S.row + ";flex-direction:column;align-items:stretch;gap:8px;border-color:" + (i === 0 ? C.teal + "44" : C.border);
-      d.innerHTML = sanitizeHTML(`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div style="display:flex;align-items:center;gap:8px;min-width:0"><span style="font-size:11px;font-weight:800;color:${i < 3 ? C.teal : "#64748b"}">#${i + 1}</span><a href="${searchUrl}" target="_blank" rel="noopener noreferrer" style="font-size:13px;font-weight:600;color:${C.blue};text-decoration:none;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${safeKey}</a><span style="opacity:0.5">${ICONS.external}</span></div><span style="font-size:13px;font-weight:700;color:${C.green}">${escHtml(fmt(q.clickCount))}회</span></div>${hbar(q.clickCount, mxC, C.teal)}<div style="display:flex;gap:12px;font-size:11px;color:#64748b"><span>노출 <b style="color:#94a3b8">${escHtml(fmt(q.exposeCount))}</b></span><span>CTR ${ctrBadge(q.ctr)}</span></div>`);
+      d.innerHTML = sanitizeHTML(`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div style="display:flex;align-items:center;gap:8px;min-width:0"><span style="font-size:11px;font-weight:800;color:${i < 3 ? C.teal : "var(--sadv-text-tertiary,#b9a55a)"}">#${i + 1}</span><a href="${searchUrl}" target="_blank" rel="noopener noreferrer" style="font-size:13px;font-weight:600;color:${C.blue};text-decoration:none;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${safeKey}</a><span style="opacity:0.5">${ICONS.external}</span></div><span style="font-size:13px;font-weight:700;color:${C.green}">${escHtml(fmt(q.clickCount))}회</span></div>${hbar(q.clickCount, mxC, C.teal)}<div style="display:flex;gap:12px;font-size:11px;color:var(--sadv-text-tertiary,#b9a55a)"><span>노출 <b style="color:var(--sadv-text-secondary,#ffe9a8)">${escHtml(fmt(q.exposeCount))}</b></span><span>CTR ${ctrBadge(q.ctr)}</span></div>`);
       wrap.appendChild(d);
     });
 
@@ -7675,10 +7714,14 @@ function createPagesRenderer(data) {
     const mxC = Math.max(...urls.map((u) => u.clickCount)) || 1;
 
     if (!urls.length) {
-      const em = document.createElement("div");
-      em.style.cssText = "text-align:center;padding:40px 20px;color:#64748b;font-size:13px";
-      em.innerHTML = sanitizeHTML(`<div style="margin-bottom:12px;opacity:0.5">${ICONS.link}</div>URL 데이터 없음`);
-      wrap.appendChild(em);
+      wrap.appendChild(
+        createStateCard(
+          "URL 데이터 없음",
+          "URL별 클릭/노출 데이터가 아직 없습니다.",
+          ICONS.link.replace('width="14" height="14"', 'width="20" height="20"'),
+          "neutral",
+        )
+      );
       return wrap;
     }
 
@@ -7714,7 +7757,7 @@ function createPagesRenderer(data) {
           pageUrl.length > 92 ? pageUrl.slice(0, 92) + "..." : pageUrl;
       const d = document.createElement("div");
       d.style.cssText = S.row + ";flex-direction:column;align-items:stretch;gap:8px;border-color:" + (i === 0 ? C.green + "44" : C.border);
-      d.innerHTML = sanitizeHTML(`<div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:11px;font-weight:800;color:${i === 0 ? C.green : "#64748b"};min-width:24px;margin-top:2px">#${i + 1}</span><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><a href="${pageUrl.replace(/"/g, "&quot;")}" target="_blank" rel="noopener noreferrer" style="font-size:12px;color:${C.blue};line-height:1.4;word-break:break-all;text-decoration:none;font-weight:500">${escHtml(linkLabel)}</a><span style="flex-shrink:0;opacity:0.5">${ICONS.external}</span></div>${hbar(u.clickCount, mxC, i === 0 ? C.green : C.blue)}<div style="display:flex;gap:12px;font-size:11px;color:#64748b"><span>클릭 <b style="color:${C.green}">${escHtml(fmt(u.clickCount))}</b></span><span>노출 <b style="color:${C.blue}">${escHtml(fmt(u.exposeCount))}</b></span><span>CTR ${ctrBadge(u.ctr)}</span></div></div></div>`);
+      d.innerHTML = sanitizeHTML(`<div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:11px;font-weight:800;color:${i === 0 ? C.green : "var(--sadv-text-tertiary,#b9a55a)"};min-width:24px;margin-top:2px">#${i + 1}</span><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><a href="${pageUrl.replace(/"/g, "&quot;")}" target="_blank" rel="noopener noreferrer" style="font-size:12px;color:${C.blue};line-height:1.4;word-break:break-all;text-decoration:none;font-weight:500">${escHtml(linkLabel)}</a><span style="flex-shrink:0;opacity:0.5">${ICONS.external}</span></div>${hbar(u.clickCount, mxC, i === 0 ? C.green : C.blue)}<div style="display:flex;gap:12px;font-size:11px;color:var(--sadv-text-tertiary,#b9a55a)"><span>클릭 <b style="color:${C.green}">${escHtml(fmt(u.clickCount))}</b></span><span>노출 <b style="color:${C.blue}">${escHtml(fmt(u.exposeCount))}</b></span><span>CTR ${ctrBadge(u.ctr)}</span></div></div></div>`);
       wrap.appendChild(d);
     });
 
@@ -7768,10 +7811,10 @@ function createPatternRenderer(data) {
       const hh = d.avgC ? Math.max(4, Math.round((d.avgC / mxC) * 40)) : 2;
       const cell = document.createElement("div");
       cell.style.cssText =
-        "background:#1e293b;border:1px solid " +
+        "background:var(--sadv-layer-02,#171717);border:1px solid " +
         (isB ? C.green + "44" : isW ? C.red + "44" : C.border) +
         ";border-radius:10px;padding:10px 4px;text-align:center;transition:all 0.2s";
-      cell.innerHTML = sanitizeHTML(`<div style="font-size:11px;color:#94a3b8;margin-bottom:6px;font-weight:600">${escHtml(d.label)}</div><div style="height:40px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:8px"><div style="height:${hh}px;background:${isB ? C.green : isW ? C.red : C.blue};border-radius:3px;width:16px;min-height:2px;opacity:0.8;box-shadow:0 0 8px ${isB ? C.green : isW ? C.red : C.blue}33"></div></div><div style="font-size:11px;font-weight:700;color:${isB ? C.green : isW ? C.red : C.text}">${d.avgC ? escHtml(fmt(d.avgC)) : "-"}</div><div style="font-size:10px;color:#64748b;margin-top:2px">${escHtml(d.n)}일</div>`);
+      cell.innerHTML = sanitizeHTML(`<div style="font-size:11px;color:var(--sadv-text-secondary,#ffe9a8);margin-bottom:6px;font-weight:600">${escHtml(d.label)}</div><div style="height:40px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:8px"><div style="height:${hh}px;background:${isB ? C.green : isW ? C.red : C.blue};border-radius:3px;width:16px;min-height:2px;opacity:0.8;box-shadow:0 0 8px ${isB ? C.green : isW ? C.red : C.blue}33"></div></div><div style="font-size:11px;font-weight:700;color:${isB ? C.green : isW ? C.red : C.text}">${d.avgC ? escHtml(fmt(d.avgC)) : "-"}</div><div style="font-size:10px;color:var(--sadv-text-tertiary,#b9a55a);margin-top:2px">${escHtml(d.n)}일</div>`);
       grid.appendChild(cell);
     });
 
@@ -7817,7 +7860,7 @@ function createPatternRenderer(data) {
       fc.forEach(function (x, i) {
         const d = document.createElement("div");
         d.style.cssText = S.row + ";margin-bottom:6px";
-        d.innerHTML = sanitizeHTML(`<span style="font-size:12px;color:#94a3b8;font-weight:500">${escHtml(x.date)} (${escHtml(x.dow)}) <span style="font-size:10px;color:#64748b;margin-left:4px">+${i + 1}일</span></span><b style="color:${cSt.slope >= 0 ? C.green : C.red};font-size:14px">약 ${escHtml(fmt(x.pred))}회</b>`);
+        d.innerHTML = sanitizeHTML(`<span style="font-size:12px;color:var(--sadv-text-secondary,#ffe9a8);font-weight:500">${escHtml(x.date)} (${escHtml(x.dow)}) <span style="font-size:10px;color:var(--sadv-text-tertiary,#b9a55a);margin-left:4px">+${i + 1}일</span></span><b style="color:${cSt.slope >= 0 ? C.green : C.red};font-size:14px">약 ${escHtml(fmt(x.pred))}회</b>`);
         wrap.appendChild(d);
       });
     }
@@ -7842,8 +7885,13 @@ function createCrawlRenderer(data) {
     const wrap = document.createElement("div");
 
     if (!crawlSorted.length) {
-      wrap.innerHTML = sanitizeHTML(
-        '<div style="padding:30px;text-align:center;color:#3d5a78">크롤 데이터 없음</div>'
+      wrap.replaceChildren(
+        createStateCard(
+          "크롤 데이터 없음",
+          "크롤 통계와 오류 데이터가 아직 없습니다.",
+          ICONS.activity.replace('width="13" height="13"', 'width="20" height="20"'),
+          "neutral",
+        )
       );
       return wrap;
     }
@@ -7907,20 +7955,23 @@ function createCrawlRenderer(data) {
       .reverse();
 
     if (!errRows.length) {
-      const ok = document.createElement("div");
-      ok.style.cssText =
-        "text-align:center;padding:20px;color:#00e676;font-size:13px";
-      ok.innerHTML = sanitizeHTML(`<span style="display:inline-flex;align-items:center;gap:6px;color:#10b981">${ICONS.trendUp} 크롤 상태 양호!</span>`);
-      wrap.appendChild(ok);
+      wrap.appendChild(
+        createStateCard(
+          "크롤 상태 양호",
+          "최근 크롤 에러/404 이슈가 감지되지 않았습니다.",
+          ICONS.trendUp.replace('width="13" height="13"', 'width="20" height="20"'),
+          "success",
+        )
+      );
     } else {
       errRows.forEach(function (r) {
         const hasServerErr = r.sumErrorCount > 0;
         const has404 = r.notFound > 0;
         const d = document.createElement("div");
         d.style.cssText =
-          "background:#0d1829;border:1px solid " +
+          "background:var(--sadv-layer-01,#0d0d0f);border:1px solid " +
           (hasServerErr ? "#ff525233" : has404 ? "#ffca2833" : "#1a2d45") +
-          ";border-radius:9px;padding:10px 12px;margin-bottom:6px";
+          ";padding:10px 12px;margin-bottom:6px";
         const errs =
           [
             r.serverError && `서버오류 ${escHtml(r.serverError)}`,
@@ -7930,7 +7981,7 @@ function createCrawlRenderer(data) {
             .filter(Boolean)
             .join(" · ") || "-";
         const dispErrCnt = (r.sumErrorCount || 0) + (r.notFound || 0);
-        d.innerHTML = sanitizeHTML(`<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:12px;color:#94a3b8;font-weight:500">${escHtml(fmtD(r.date))}</span><span style="font-size:13px;font-weight:700;color:${hasServerErr ? C.red : C.amber}">에러·404 ${escHtml(fmt(dispErrCnt))}건</span></div><div style="font-size:11px;color:${hasServerErr ? C.red : C.amber};opacity:0.8">${escHtml(errs)}</div><div style="font-size:10px;color:#64748b;margin-top:4px">크롤 ${escHtml(fmt(r.pageCount))}p · 시도 ${escHtml(fmt(r.sumTryCount))}</div>`);
+        d.innerHTML = sanitizeHTML(`<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:12px;color:var(--sadv-text-secondary,#ffe9a8);font-weight:500">${escHtml(fmtD(r.date))}</span><span style="font-size:13px;font-weight:700;color:${hasServerErr ? C.red : C.amber}">에러·404 ${escHtml(fmt(dispErrCnt))}건</span></div><div style="font-size:11px;color:${hasServerErr ? C.red : C.amber};opacity:0.9">${escHtml(errs)}</div><div style="font-size:10px;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">크롤 ${escHtml(fmt(r.pageCount))}p · 시도 ${escHtml(fmt(r.sumTryCount))}</div>`);
         wrap.appendChild(d);
       });
     }
@@ -7956,8 +8007,13 @@ function createBacklinkRenderer(data) {
     const wrap = document.createElement("div");
 
     if (!blTime.length) {
-      wrap.innerHTML = sanitizeHTML(
-        '<div style="padding:40px 20px;text-align:center;color:#64748b;font-size:13px"><div style="margin-bottom:12px;opacity:0.5">' + ICONS.link + '</div>백링크 데이터 없음</div>'
+      wrap.replaceChildren(
+        createStateCard(
+          "백링크 데이터 없음",
+          "연결 도메인/백링크 데이터가 아직 없습니다.",
+          ICONS.link.replace('width="14" height="14"', 'width="20" height="20"'),
+          "neutral",
+        )
       );
       return wrap;
     }
@@ -7996,7 +8052,7 @@ function createBacklinkRenderer(data) {
     if (blTopDomains.length) {
       wrap.appendChild(
         secTitle(
-          '탑 도메인 <span style="font-size:10px;font-weight:400;letter-spacing:0;text-transform:none;color:#64748b;margin-left:6px">도메인별 누적 링크수</span>',
+          '탑 도메인 <span style="font-size:10px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--sadv-text-tertiary,#b9a55a);margin-left:6px">도메인별 누적 링크수</span>',
         ),
       );
 
@@ -8004,7 +8060,7 @@ function createBacklinkRenderer(data) {
       blTopDomains.forEach(function (d, i) {
         const row = document.createElement("div");
         row.style.cssText = S.row + ";flex-direction:column;align-items:stretch;gap:8px;border-color:" + (i === 0 ? C.teal + "44" : C.border);
-        row.innerHTML = sanitizeHTML(`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:11px;font-weight:800;color:${i === 0 ? C.teal : "#64748b"}">#${i + 1}</span><span style="font-size:13px;color:#f8fafc;font-weight:600">${escHtml(d.domain)}</span></div><span style="font-size:13px;color:${C.teal};font-weight:700">${escHtml(fmt(d.backlinkCnt))}개</span></div>${hbar(d.backlinkCnt, mxD, C.teal)}`);
+        row.innerHTML = sanitizeHTML(`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:11px;font-weight:800;color:${i === 0 ? C.teal : "var(--sadv-text-tertiary,#b9a55a)"}">#${i + 1}</span><span style="font-size:13px;color:var(--sadv-text,#fffdf5);font-weight:600">${escHtml(d.domain)}</span></div><span style="font-size:13px;color:${C.teal};font-weight:700">${escHtml(fmt(d.backlinkCnt))}개</span></div>${hbar(d.backlinkCnt, mxD, C.teal)}`);
         wrap.appendChild(row);
       });
     }
@@ -8029,8 +8085,13 @@ function createDiagnosisRenderer(data) {
     const wrap = document.createElement("div");
 
     if (!diagnosisLogs.length) {
-      wrap.innerHTML = sanitizeHTML(
-        '<div style="padding:30px;text-align:center;color:#3d5a78">색인 데이터 없음</div>'
+      wrap.replaceChildren(
+        createStateCard(
+          "색인 데이터 없음",
+          "색인 상태/진단 로그가 아직 없습니다.",
+          ICONS.database.replace('width="13" height="13"', 'width="20" height="20"'),
+          "neutral",
+        )
       );
       return wrap;
     }
@@ -8119,13 +8180,13 @@ function createDiagnosisRenderer(data) {
 
       const row = document.createElement("div");
       row.style.cssText =
-        "background:#0d1829;border:1px solid " +
+        "background:var(--sadv-layer-01,#0d0d0f);border:1px solid " +
         (error > 0 || dropped > 0 ? "#ff525222" : "#1a2d45") +
-        ";border-radius:9px;padding:10px 12px;margin-bottom:6px";
+        ";padding:10px 12px;margin-bottom:6px";
 
       row.innerHTML = sanitizeHTML(`
         <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-          <span style="font-size:11px;color:#7a9ab8">${escHtml(fmtD(r.date))}</span>
+          <span style="font-size:11px;color:var(--sadv-text-secondary,#ffe9a8)">${escHtml(fmtD(r.date))}</span>
           <span style="font-size:11px;font-weight:700;color:${C.purple}">색인 ${escHtml(fmt(indexed))}건</span>
         </div>
         <div style="display:flex;gap:2px;height:8px;margin-bottom:4px">
@@ -8134,7 +8195,7 @@ function createDiagnosisRenderer(data) {
           <div style="flex:${error};background:${C.red};min-width:${error > 0 ? 2 : 0}px"></div>
           <div style="flex:${dropped};background:#ff525288;border-radius:0 2px 2px 0;min-width:${dropped > 0 ? 2 : 0}px"></div>
         </div>
-        <div style="display:flex;gap:12px;font-size:10px;color:#3d5a78">
+        <div style="display:flex;gap:12px;font-size:10px;color:var(--sadv-text-tertiary,#b9a55a)">
           <span style="color:${C.purple}">색인 <b>${escHtml(fmt(indexed))}</b></span>
           <span style="color:${C.amber}">대기 <b>${escHtml(fmt(pending))}</b></span>
           ${error > 0 ? `<span style="color:${C.red}">오류 <b>${escHtml(fmt(error))}</b></span>` : ""}
@@ -8147,7 +8208,7 @@ function createDiagnosisRenderer(data) {
     // Legend
     const legend = document.createElement("div");
     legend.style.cssText =
-      "display:flex;gap:16px;justify-content:center;padding:10px;background:#0d1829;border-radius:8px;margin-top:8px";
+      "display:flex;gap:16px;justify-content:center;padding:10px;background:var(--sadv-layer-01,#0d0d0f);border:1px solid var(--sadv-border-subtle,#2b2200);margin-top:8px";
     legend.innerHTML = sanitizeHTML(`
       <span style="font-size:10px;color:${C.purple}">■ 색인</span>
       <span style="font-size:10px;color:${C.amber}">■ 대기중</span>
@@ -8190,7 +8251,7 @@ function createInsightRenderer(data) {
     wrap.appendChild(
       ibox(
         cSt.slope >= 0 ? "green" : "red",
-        `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.trendUp}</span><b>클릭 추세:</b> ${cSt.slope >= 0 ? '하루 평균 <b style="color:#10b981">+' + fmt(Math.round(cSt.slope)) + '회</b> 증가' : '하루 평균 <b style="color:#ef4444">' + fmt(Math.round(Math.abs(cSt.slope || 0))) + '회</b> 감소'}`,
+        `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.trendUp}</span><b>클릭 추세:</b> ${cSt.slope >= 0 ? '하루 평균 <b style="color:' + C.blue + '">+' + fmt(Math.round(cSt.slope)) + '회</b> 증가' : '하루 평균 <b style="color:' + C.red + '">' + fmt(Math.round(Math.abs(cSt.slope || 0))) + '회</b> 감소'}`,
       ),
     );
 
@@ -8246,7 +8307,7 @@ function createInsightRenderer(data) {
       wrap.appendChild(
         ibox(
           "blue",
-          `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.dashboard}</span><b>최고 URL:</b> "${escHtml(slug.replace(/-/g, " ").slice(0, 30))}…" CTR <b style="color:#f59e0b">${top.ctr}%</b> 클릭 <b style="color:#10b981">${fmt(top.clickCount)}회</b>`,
+          `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.dashboard}</span><b>최고 URL:</b> "${escHtml(slug.replace(/-/g, " ").slice(0, 30))}…" CTR <b style="color:${C.amber}">${top.ctr}%</b> 클릭 <b style="color:${C.blue}">${fmt(top.clickCount)}회</b>`,
         ),
       );
     }
@@ -8254,9 +8315,9 @@ function createInsightRenderer(data) {
     // Action items
     const todo = document.createElement("div");
     todo.style.cssText =
-      "background:#0d1829;border:1px solid #00e67622;border-radius:9px;padding:11px 13px;margin-top:6px";
+      "background:var(--sadv-layer-01,#0d0d0f);border:1px solid rgba(255,212,0,0.18);padding:12px 14px;margin-top:8px;box-shadow:0 8px 24px rgba(0,0,0,0.16)";
     todo.innerHTML = sanitizeHTML(
-      `<div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#f8fafc;margin-bottom:10px"><span style="display:inline-flex;color:#10b981">${ICONS.lightbulb}</span>지금 바로 해볼 것</div>` +
+      `<div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--sadv-text,#fffdf5);margin-bottom:10px"><span style="display:inline-flex;color:${C.blue}">${ICONS.lightbulb}</span>지금 바로 해볼 것</div>` +
       [
         bestDow
           ? bestDow.label + "요일에 신규 콘텐츠 집중 발행"
@@ -8273,7 +8334,7 @@ function createInsightRenderer(data) {
       ]
         .map(
           (a) =>
-            `<div style="font-size:12px;color:#7a9ab8;padding:5px 0;border-bottom:1px solid #1a2d45;display:flex;gap:7px"><span style="color:#00e676">→</span>${escHtml(a)}</div>`,
+            `<div style="font-size:12px;color:var(--sadv-text-secondary,#ffe9a8);padding:6px 0;border-bottom:1px solid var(--sadv-border-subtle,#2b2200);display:flex;gap:7px"><span style="color:${C.blue}">→</span>${escHtml(a)}</div>`,
         )
         .join("")
     );
@@ -9149,8 +9210,13 @@ async function renderAllSites() {
   bdEl.appendChild(loading);
 
   if (!allSites.length) {
-    bdEl.innerHTML = sanitizeHTML(
-      '<div style="padding:30px 20px;text-align:center"><div style="font-size:32px">⚠️</div><div style="color:#ffca28;font-weight:700;margin:10px 0">사이트 목록을 찾을 수 없어요</div><div style="color:#7a9ab8;font-size:12px;line-height:2">↻ 버튼을 눌러 새로고침 해보세요<br>또는 서치어드바이저 콘솔 페이지에서 실행해주세요</div></div>'
+    bdEl.replaceChildren(
+      createStateCard(
+        "사이트 목록을 찾을 수 없어요",
+        "↻ 버튼을 눌러 새로고침 해보세요.<br>또는 서치어드바이저 콘솔 페이지에서 다시 실행해주세요.",
+        ICONS.layers.replace('width="14" height="14"', 'width="20" height="20"'),
+        "warning",
+      )
     );
     return;
   }
@@ -9309,7 +9375,7 @@ async function renderAllSites() {
     secTitle(
       "클릭 랭킹 TOP " +
         Math.min(rows.length, 30) +
-        ' <span style="font-size:9px;font-weight:400;color:#3d5a78;letter-spacing:0">90일 합계</span>',
+        ' <span style="font-size:9px;font-weight:400;color:var(--sadv-text-tertiary,#b9a55a);letter-spacing:0">90일 합계</span>',
     ),
   );
   const top30 = rows.slice(0, 30);
@@ -9355,13 +9421,13 @@ async function renderAllSites() {
       col +
       ';flex-shrink:0;box-shadow:0 0 0 4px ' +
       col +
-      '15"></div><span style="font-size:14px;font-weight:700;line-height:1.3;color:#f8fafc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px">' +
+      '15"></div><span style="font-size:14px;font-weight:700;line-height:1.3;color:var(--sadv-text,#fffdf5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px">' +
       escHtml(shortName) +
       '</span>' +
       accountBadge +
       '</div></div><div style="display:grid;' +
       gridTemplate +
-      ';margin-bottom:12px"><div style="text-align:center;min-width:0;background:rgba(30,41,59,0.3);' +
+      ';margin-bottom:12px"><div style="text-align:center;min-width:0;background:rgba(255,255,255,0.03);' +
       paddingStyle +
       ';border-radius:8px"><div style="' +
       fontSizeValue +
@@ -9371,7 +9437,7 @@ async function renderAllSites() {
       escHtml(fmt(r.totalC)) +
       '</div><div style="' +
       fontSizeLabel +
-      ';line-height:1.4;color:#64748b;margin-top:4px">클릭</div></div><div style="text-align:center;min-width:0;background:rgba(30,41,59,0.3);' +
+      ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">클릭</div></div><div style="text-align:center;min-width:0;background:rgba(255,255,255,0.03);' +
       paddingStyle +
       ';border-radius:8px"><div style="' +
       fontSizeValue +
@@ -9381,7 +9447,7 @@ async function renderAllSites() {
       escHtml((r.totalE / 10000).toFixed(1)) +
       '만</div><div style="' +
       fontSizeLabel +
-      ';line-height:1.4;color:#64748b;margin-top:4px">노출</div></div><div style="text-align:center;min-width:0;background:rgba(30,41,59,0.3);' +
+      ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">노출</div></div><div style="text-align:center;min-width:0;background:rgba(255,255,255,0.03);' +
       paddingStyle +
       ';border-radius:8px"><div style="' +
       fontSizeValue +
@@ -9391,7 +9457,7 @@ async function renderAllSites() {
       escHtml(r.avgCtr) +
       '%</div><div style="' +
       fontSizeLabel +
-      ';line-height:1.4;color:#64748b;margin-top:4px">CTR</div></div></div>'
+      ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">CTR</div></div></div>'
     );
     // Add keyboard accessibility
     card.setAttribute("tabindex", "0");
@@ -9406,10 +9472,10 @@ async function renderAllSites() {
       card.appendChild(mini);
     }
     const indexBlock = document.createElement("div");
-    indexBlock.style.cssText = "margin-top:12px;padding-top:12px;border-top:1px solid #334155";
+    indexBlock.style.cssText = "margin-top:12px;padding-top:12px;border-top:1px solid var(--sadv-border-subtle,#2b2200)";
     if (r.diagnosisIndexedValues && r.diagnosisIndexedValues.length > 1) {
       indexBlock.innerHTML = sanitizeHTML(
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px"><span style="font-size:11px;font-weight:700;color:#94a3b8">색인 추이</span><span style="font-size:13px;font-weight:800;color:' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px"><span style="font-size:11px;font-weight:700;color:var(--sadv-text-secondary,#ffe9a8)">색인 추이</span><span style="font-size:13px;font-weight:800;color:' +
         col +
         '">' +
         escHtml(fmt(r.diagnosisIndexedCurrent)) +
@@ -9422,7 +9488,7 @@ async function renderAllSites() {
       const metaCode = r.diagnosisMetaCode == null ? "-" : String(r.diagnosisMetaCode);
       const httpText = r.diagnosisMetaStatus == null ? "-" : String(r.diagnosisMetaStatus);
       indexBlock.innerHTML = sanitizeHTML(
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px"><span style="font-size:11px;font-weight:700;color:#94a3b8">색인 추이</span><span style="font-size:12px;color:#64748b">응답 확인</span></div><div style="font-size:11px;line-height:1.5;color:#64748b">HTTP ' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px"><span style="font-size:11px;font-weight:700;color:var(--sadv-text-secondary,#ffe9a8)">색인 추이</span><span style="font-size:12px;color:var(--sadv-text-tertiary,#b9a55a)">응답 확인</span></div><div style="font-size:11px;line-height:1.5;color:var(--sadv-text-tertiary,#b9a55a)">HTTP ' +
         escHtml(httpText) +
         " / code " +
         escHtml(metaCode) +
@@ -10668,13 +10734,20 @@ function savedAtIso(d) {
     if (accountLabel) {
       labelEl.innerHTML = sanitizeHTML(
         labelContent +
-        `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;border:1px solid rgba(14,165,233,0.2);color:#0ea5e9;background:rgba(14,165,233,0.1);font-size:10px;font-weight:600;margin-left:8px" title="${escHtml(accountLabel)}">${escHtml(accountLabel.includes("@") ? accountLabel.split("@")[0] : accountLabel)}</span>`
+        `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;border:1px solid rgba(255,212,0,0.22);color:#ffd400;background:rgba(255,212,0,0.12);font-size:10px;font-weight:600;margin-left:8px" title="${escHtml(accountLabel)}">${escHtml(accountLabel.includes("@") ? accountLabel.split("@")[0] : accountLabel)}</span>`
       );
     } else {
       labelEl.innerHTML = sanitizeHTML(labelContent);
     }
 
-    bdEl.innerHTML = sanitizeHTML(`<div style="padding:50px 20px;text-align:center;color:#64748b"><div style="display:inline-flex;align-items:center;gap:8px">${ICONS.refresh.replace('width="13" height="13"','width="16" height="16"')} 로딩 중...</div></div>`);
+    bdEl.replaceChildren(
+      createStateCard(
+        "로딩 중",
+        "사이트 데이터를 불러오고 있습니다.",
+        ICONS.refresh.replace('width="13" height="13"', 'width="18" height="18"'),
+        "neutral",
+      )
+    );
     let d;
     try {
       d = await fetchSiteData(site);
@@ -10688,8 +10761,13 @@ function savedAtIso(d) {
     }
     if (requestId !== siteViewReqId || site !== curSite) return;
     if (!d || !d.expose || !d.expose.items || !d.expose.items.length) {
-      bdEl.innerHTML = sanitizeHTML(
-        `<div style="padding:40px 20px;text-align:center"><div style="display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;background:#0f172a;border:1px solid #334155;border-radius:12px;margin-bottom:16px;color:#ef4444">${ICONS.xMark.replace('width="14" height="14"','width="22" height="22"')}</div><div style="color:#f8fafc;font-weight:700;font-size:14px;margin-bottom:6px">데이터 없음</div><div style="color:#64748b;font-size:12px">이 사이트의 데이터가 없습니다</div></div>`
+      bdEl.replaceChildren(
+        createStateCard(
+          "데이터 없음",
+          "이 사이트의 데이터가 없습니다.",
+          ICONS.xMark.replace('width="14" height="14"', 'width="22" height="22"'),
+          "warning",
+        )
       );
       return;
     }
@@ -10849,18 +10927,18 @@ function renderFullRefreshProgress(label, detail, progress, stats) {
       "</div>";
   }
   bdEl.innerHTML = sanitizeHTML(
-    '<div style="padding:24px 18px 20px;color:#7a9ab8;text-align:left;line-height:1.6">' +
-    '<div style="font-size:13px;font-weight:700;color:#d4ecff;margin-bottom:8px">' +
+    '<div style="padding:24px 18px 20px;color:var(--sadv-text-secondary,#ffe9a8);text-align:left;line-height:1.6;background:var(--sadv-layer-01,#0d0d0f);border:1px solid var(--sadv-border-subtle,#2b2200);box-shadow:0 10px 28px rgba(0,0,0,0.24)">' +
+    '<div style="font-size:13px;font-weight:700;color:var(--sadv-text,#fffdf5);margin-bottom:8px">' +
     escHtml(label) +
     "</div>" +
     '<div style="font-size:11px;margin-bottom:10px">' +
     escHtml(detail || "") +
     "</div>" +
     '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">' +
-    '<div style="flex:1;height:10px;border-radius:999px;background:#0d1829;border:1px solid #1a2d45;overflow:hidden">' +
+    '<div style="flex:1;height:10px;border-radius:999px;background:var(--sadv-layer-02,#171717);border:1px solid var(--sadv-border-subtle,#2b2200);overflow:hidden">' +
     '<div style="width:' +
     escHtml(String(pct)) +
-    '%;height:100%;background:linear-gradient(90deg,#40c4ff,#00e676)"></div>' +
+    '%;height:100%;background:linear-gradient(90deg,#ffd400,#ff7a00)"></div>' +
     "</div>" +
     '<span style="font-size:11px;font-weight:700;color:#d4ecff;min-width:48px;text-align:right">' +
     escHtml(String(pct)) +

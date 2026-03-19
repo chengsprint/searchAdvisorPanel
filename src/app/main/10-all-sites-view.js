@@ -34,8 +34,13 @@ async function renderAllSites() {
   bdEl.appendChild(loading);
 
   if (!allSites.length) {
-    bdEl.innerHTML = sanitizeHTML(
-      '<div style="padding:30px 20px;text-align:center"><div style="font-size:32px">⚠️</div><div style="color:#ffca28;font-weight:700;margin:10px 0">사이트 목록을 찾을 수 없어요</div><div style="color:#7a9ab8;font-size:12px;line-height:2">↻ 버튼을 눌러 새로고침 해보세요<br>또는 서치어드바이저 콘솔 페이지에서 실행해주세요</div></div>'
+    bdEl.replaceChildren(
+      createStateCard(
+        "사이트 목록을 찾을 수 없어요",
+        "↻ 버튼을 눌러 새로고침 해보세요.<br>또는 서치어드바이저 콘솔 페이지에서 다시 실행해주세요.",
+        ICONS.layers.replace('width="14" height="14"', 'width="20" height="20"'),
+        "warning",
+      )
     );
     return;
   }
@@ -194,7 +199,7 @@ async function renderAllSites() {
     secTitle(
       "클릭 랭킹 TOP " +
         Math.min(rows.length, 30) +
-        ' <span style="font-size:9px;font-weight:400;color:#3d5a78;letter-spacing:0">90일 합계</span>',
+        ' <span style="font-size:9px;font-weight:400;color:var(--sadv-text-tertiary,#b9a55a);letter-spacing:0">90일 합계</span>',
     ),
   );
   const top30 = rows.slice(0, 30);
@@ -240,13 +245,13 @@ async function renderAllSites() {
       col +
       ';flex-shrink:0;box-shadow:0 0 0 4px ' +
       col +
-      '15"></div><span style="font-size:14px;font-weight:700;line-height:1.3;color:#f8fafc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px">' +
+      '15"></div><span style="font-size:14px;font-weight:700;line-height:1.3;color:var(--sadv-text,#fffdf5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px">' +
       escHtml(shortName) +
       '</span>' +
       accountBadge +
       '</div></div><div style="display:grid;' +
       gridTemplate +
-      ';margin-bottom:12px"><div style="text-align:center;min-width:0;background:rgba(30,41,59,0.3);' +
+      ';margin-bottom:12px"><div style="text-align:center;min-width:0;background:rgba(255,255,255,0.03);' +
       paddingStyle +
       ';border-radius:8px"><div style="' +
       fontSizeValue +
@@ -256,7 +261,7 @@ async function renderAllSites() {
       escHtml(fmt(r.totalC)) +
       '</div><div style="' +
       fontSizeLabel +
-      ';line-height:1.4;color:#64748b;margin-top:4px">클릭</div></div><div style="text-align:center;min-width:0;background:rgba(30,41,59,0.3);' +
+      ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">클릭</div></div><div style="text-align:center;min-width:0;background:rgba(255,255,255,0.03);' +
       paddingStyle +
       ';border-radius:8px"><div style="' +
       fontSizeValue +
@@ -266,7 +271,7 @@ async function renderAllSites() {
       escHtml((r.totalE / 10000).toFixed(1)) +
       '만</div><div style="' +
       fontSizeLabel +
-      ';line-height:1.4;color:#64748b;margin-top:4px">노출</div></div><div style="text-align:center;min-width:0;background:rgba(30,41,59,0.3);' +
+      ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">노출</div></div><div style="text-align:center;min-width:0;background:rgba(255,255,255,0.03);' +
       paddingStyle +
       ';border-radius:8px"><div style="' +
       fontSizeValue +
@@ -276,7 +281,7 @@ async function renderAllSites() {
       escHtml(r.avgCtr) +
       '%</div><div style="' +
       fontSizeLabel +
-      ';line-height:1.4;color:#64748b;margin-top:4px">CTR</div></div></div>'
+      ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">CTR</div></div></div>'
     );
     // Add keyboard accessibility
     card.setAttribute("tabindex", "0");
@@ -291,10 +296,10 @@ async function renderAllSites() {
       card.appendChild(mini);
     }
     const indexBlock = document.createElement("div");
-    indexBlock.style.cssText = "margin-top:12px;padding-top:12px;border-top:1px solid #334155";
+    indexBlock.style.cssText = "margin-top:12px;padding-top:12px;border-top:1px solid var(--sadv-border-subtle,#2b2200)";
     if (r.diagnosisIndexedValues && r.diagnosisIndexedValues.length > 1) {
       indexBlock.innerHTML = sanitizeHTML(
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px"><span style="font-size:11px;font-weight:700;color:#94a3b8">색인 추이</span><span style="font-size:13px;font-weight:800;color:' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px"><span style="font-size:11px;font-weight:700;color:var(--sadv-text-secondary,#ffe9a8)">색인 추이</span><span style="font-size:13px;font-weight:800;color:' +
         col +
         '">' +
         escHtml(fmt(r.diagnosisIndexedCurrent)) +
@@ -307,7 +312,7 @@ async function renderAllSites() {
       const metaCode = r.diagnosisMetaCode == null ? "-" : String(r.diagnosisMetaCode);
       const httpText = r.diagnosisMetaStatus == null ? "-" : String(r.diagnosisMetaStatus);
       indexBlock.innerHTML = sanitizeHTML(
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px"><span style="font-size:11px;font-weight:700;color:#94a3b8">색인 추이</span><span style="font-size:12px;color:#64748b">응답 확인</span></div><div style="font-size:11px;line-height:1.5;color:#64748b">HTTP ' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px"><span style="font-size:11px;font-weight:700;color:var(--sadv-text-secondary,#ffe9a8)">색인 추이</span><span style="font-size:12px;color:var(--sadv-text-tertiary,#b9a55a)">응답 확인</span></div><div style="font-size:11px;line-height:1.5;color:var(--sadv-text-tertiary,#b9a55a)">HTTP ' +
         escHtml(httpText) +
         " / code " +
         escHtml(metaCode) +

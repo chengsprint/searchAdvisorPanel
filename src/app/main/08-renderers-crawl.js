@@ -14,8 +14,13 @@ function createCrawlRenderer(data) {
     const wrap = document.createElement("div");
 
     if (!crawlSorted.length) {
-      wrap.innerHTML = sanitizeHTML(
-        '<div style="padding:30px;text-align:center;color:#3d5a78">크롤 데이터 없음</div>'
+      wrap.replaceChildren(
+        createStateCard(
+          "크롤 데이터 없음",
+          "크롤 통계와 오류 데이터가 아직 없습니다.",
+          ICONS.activity.replace('width="13" height="13"', 'width="20" height="20"'),
+          "neutral",
+        )
       );
       return wrap;
     }
@@ -79,20 +84,23 @@ function createCrawlRenderer(data) {
       .reverse();
 
     if (!errRows.length) {
-      const ok = document.createElement("div");
-      ok.style.cssText =
-        "text-align:center;padding:20px;color:#00e676;font-size:13px";
-      ok.innerHTML = sanitizeHTML(`<span style="display:inline-flex;align-items:center;gap:6px;color:#10b981">${ICONS.trendUp} 크롤 상태 양호!</span>`);
-      wrap.appendChild(ok);
+      wrap.appendChild(
+        createStateCard(
+          "크롤 상태 양호",
+          "최근 크롤 에러/404 이슈가 감지되지 않았습니다.",
+          ICONS.trendUp.replace('width="13" height="13"', 'width="20" height="20"'),
+          "success",
+        )
+      );
     } else {
       errRows.forEach(function (r) {
         const hasServerErr = r.sumErrorCount > 0;
         const has404 = r.notFound > 0;
         const d = document.createElement("div");
         d.style.cssText =
-          "background:#0d1829;border:1px solid " +
+          "background:var(--sadv-layer-01,#0d0d0f);border:1px solid " +
           (hasServerErr ? "#ff525233" : has404 ? "#ffca2833" : "#1a2d45") +
-          ";border-radius:9px;padding:10px 12px;margin-bottom:6px";
+          ";padding:10px 12px;margin-bottom:6px";
         const errs =
           [
             r.serverError && `서버오류 ${escHtml(r.serverError)}`,
@@ -102,7 +110,7 @@ function createCrawlRenderer(data) {
             .filter(Boolean)
             .join(" · ") || "-";
         const dispErrCnt = (r.sumErrorCount || 0) + (r.notFound || 0);
-        d.innerHTML = sanitizeHTML(`<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:12px;color:#94a3b8;font-weight:500">${escHtml(fmtD(r.date))}</span><span style="font-size:13px;font-weight:700;color:${hasServerErr ? C.red : C.amber}">에러·404 ${escHtml(fmt(dispErrCnt))}건</span></div><div style="font-size:11px;color:${hasServerErr ? C.red : C.amber};opacity:0.8">${escHtml(errs)}</div><div style="font-size:10px;color:#64748b;margin-top:4px">크롤 ${escHtml(fmt(r.pageCount))}p · 시도 ${escHtml(fmt(r.sumTryCount))}</div>`);
+        d.innerHTML = sanitizeHTML(`<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:12px;color:var(--sadv-text-secondary,#ffe9a8);font-weight:500">${escHtml(fmtD(r.date))}</span><span style="font-size:13px;font-weight:700;color:${hasServerErr ? C.red : C.amber}">에러·404 ${escHtml(fmt(dispErrCnt))}건</span></div><div style="font-size:11px;color:${hasServerErr ? C.red : C.amber};opacity:0.9">${escHtml(errs)}</div><div style="font-size:10px;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">크롤 ${escHtml(fmt(r.pageCount))}p · 시도 ${escHtml(fmt(r.sumTryCount))}</div>`);
         wrap.appendChild(d);
       });
     }
