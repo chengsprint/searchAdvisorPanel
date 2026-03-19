@@ -14,6 +14,62 @@ const __sadvListeners = new Set();
 let __sadvInitialReady = false;
 const __sadvReadyResolvers = [];
 
+function getLiveCacheMeta() {
+  const timestamps = [];
+  const siteListTs = getSiteListCacheStamp();
+  if (typeof siteListTs === "number") timestamps.push(siteListTs);
+
+  const memCache = typeof getMemCache === "function" ? getMemCache() : null;
+  allSites.forEach(function (site) {
+    const siteTs = getSiteDataCacheStamp(site);
+    if (typeof siteTs === "number") {
+      timestamps.push(siteTs);
+      return;
+    }
+    const memData = memCache && memCache[site];
+    if (memData && typeof memData.__cacheSavedAt === "number") {
+      timestamps.push(memData.__cacheSavedAt);
+    }
+  });
+
+  if (!timestamps.length) return null;
+
+  const ttlMs = getDataTtlMs();
+  const newestTs = Math.max.apply(null, timestamps);
+  const oldestTs = Math.min.apply(null, timestamps);
+
+  return {
+    label: "live-cache",
+    updatedAt: new Date(newestTs),
+    remainingMs: Math.max(0, oldestTs + ttlMs - Date.now()),
+    sourceCount: Array.isArray(allSites) ? allSites.length : 0,
+    measuredAt: Date.now(),
+    ttlMs: ttlMs,
+  };
+}
+
+function buildLiveShellState() {
+  const snapshotAccountLabel =
+    (typeof window !== "undefined" &&
+      window.__sadvAccountState &&
+      typeof window.__sadvAccountState.currentAccount === "string" &&
+      window.__sadvAccountState.currentAccount) ||
+    (ACCOUNT_UTILS.getAccountInfo().accountLabel || "") ||
+    accountLabel ||
+    "";
+
+  return {
+    curMode,
+    curSite,
+    curTab,
+    allSites: [...allSites],
+    rows: window.__sadvRows || [],
+    accountLabel: snapshotAccountLabel,
+    runtimeVersion: window.__SEARCHADVISOR_RUNTIME_VERSION__ || "runtime",
+    cacheMeta: getLiveCacheMeta(),
+  };
+}
+
 // ============================================================================
 // 스냅샷 상태 함수들
 // ============================================================================
@@ -26,21 +82,7 @@ const __sadvReadyResolvers = [];
  * console.log(snapshot.curMode); // "all" or "site"
  */
 function __sadvSnapshot() {
-  const snapshotAccountLabel =
-    (typeof window !== "undefined" &&
-      window.__sadvAccountState &&
-      typeof window.__sadvAccountState.currentAccount === "string" &&
-      window.__sadvAccountState.currentAccount) ||
-    (ACCOUNT_UTILS.getAccountInfo().accountLabel || "");
-
-  return {
-    curMode,
-    curSite,
-    curTab,
-    allSites: [...allSites],
-    rows: window.__sadvRows || [],
-    accountLabel: snapshotAccountLabel,
-  };
+  return buildLiveShellState();
 }
 
 /**
@@ -58,6 +100,13 @@ function __sadvNotify() {
       console.error('[__sadvNotify] Error:', e);
     }
   });
+  if (typeof syncLiveHeaderMeta === "function") {
+    try {
+      syncLiveHeaderMeta(snap);
+    } catch (e) {
+      console.error('[__sadvNotify] Header sync error:', e);
+    }
+  }
 }
 
 /**
@@ -287,12 +336,7 @@ if (typeof window !== "undefined") {
   window.__SEARCHADVISOR_UI_STATE__ = {
     getState: function() {
       return {
-        curMode: curMode,
-        curSite: curSite,
-        curTab: curTab,
-        allSites: [...allSites],
-        rows: window.__sadvRows || [],
-        accountLabel: accountLabel,
+        ...buildLiveShellState(),
         siteViewReqId: siteViewReqId,
         allViewReqId: allViewReqId
       };

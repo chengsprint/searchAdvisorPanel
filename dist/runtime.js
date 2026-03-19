@@ -2709,7 +2709,7 @@ document.head.appendChild(inj);
 const p = document.createElement("div");
 p.id = "sadv-p";
 p.style.cssText = `position:fixed;top:0;right:0;width:min(${PNL}px,100vw);max-width:100vw;height:100vh;display:flex;flex-direction:column;background:#020617;z-index:9999999;font-family:Pretendard,system-ui,sans-serif;font-size:13px;color:#f8fafc;border-left:1px solid #334155;box-sizing:border-box;box-shadow:-10px 0 15px -3px rgba(0,0,0,0.1)`;
-p.innerHTML = sanitizeHTML(`<style>#sadv-p *{box-sizing:border-box}#sadv-p ::-webkit-scrollbar{width:6px}#sadv-p ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}#sadv-header{padding:20px;border-bottom:1px solid #1e293b;background:rgba(2,6,23,0.8);backdrop-filter:blur(12px)}#sadv-mode-bar{display:flex;gap:4px;margin-top:16px;background:#0f172a;padding:4px;border-radius:12px;border:1px solid #334155}.sadv-mode{flex:1;background:transparent;border:none;color:#94a3b8;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}.sadv-mode.on{background:#1e293b;color:#0ea5e9;box-shadow:0 4px 6px -1px rgba(0,0,0,0.2)}#sadv-site-bar{margin-top:12px;position:relative;display:none}#sadv-site-bar.show{display:block}#sadv-combo-wrap{position:relative}#sadv-combo-btn{width:100%;background:#0f172a;border:1px solid #334155;color:#f8fafc;border-radius:10px;padding:10px 36px 10px 12px;font-size:13px;cursor:pointer;text-align:left;font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:10px}#sadv-combo-btn:hover{border-color:#0ea5e9;background:#1e293b}#sadv-combo-btn:focus-visible{outline:2px solid #0ea5e9;outline-offset:2px;box-shadow:0 0 0 4px rgba(14, 165, 233, 0.1)}#sadv-combo-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#64748b}#sadv-combo-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:500}#sadv-combo-arrow{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#64748b;font-size:12px;pointer-events:none;transition:transform .2s}#sadv-combo-wrap.open #sadv-combo-arrow{transform:translateY(-50%) rotate(180deg)}#sadv-combo-drop{display:none;position:absolute;top:calc(100% + 8px);left:0;right:0;background:#0f172a;border:1px solid #334155;border-radius:12px;padding:6px;z-index:100;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);max-height:300px;overflow-y:auto}#sadv-combo-wrap.open #sadv-combo-drop{display:block}.sadv-combo-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;cursor:pointer;transition:all .1s;border:1px solid transparent}.sadv-combo-item:hover{background:#1e293b}.sadv-combo-item:focus-visible{outline:2px solid #0ea5e9;outline-offset:-2px}.sadv-combo-item.active{background:#1e293b;border-color:#334155;color:#0ea5e9}#sadv-tabs{display:none;flex-wrap:wrap;gap:6px;padding:12px 20px;background:#020617;border-bottom:1px solid #1e293b;justify-content:center}#sadv-tabs.show{display:flex;justify-content:center}#sadv-tabs::-webkit-scrollbar{display:none}.sadv-t{background:transparent;border:1px solid transparent;color:#64748b;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}.sadv-t:hover{color:#f8fafc;background:#1e293b}.sadv-t.on{background:rgba(14,165,233,0.1);border-color:rgba(14,165,233,0.2);color:#0ea5e9}#sadv-refresh-btn,#sadv-save-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s;white-space:nowrap;flex-shrink:0;min-width:74px;line-height:1.1}#sadv-refresh-btn:hover,#sadv-save-btn:hover{border-color:#0ea5e9;color:#0ea5e9;background:#1e293b}#sadv-refresh-btn:focus-visible,#sadv-save-btn:focus-visible{outline:2px solid #0ea5e9;outline-offset:2px;box-shadow:0 0 0 4px rgba(14, 165, 233, 0.1)}#sadv-bd{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px}#sadv-tabpanel{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px}.sadv-allcard{background:#0f172a;border:1px solid #1e293b;border-radius:16px;padding:20px;margin-bottom:16px;cursor:pointer;transition:all .2s}.sadv-allcard:hover{border-color:#334155;transform:translateY(-2px)}</style><div id="sadv-header"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:7px;font-size:18px;font-weight:800;letter-spacing:-0.03em"><span style="display:inline-flex;opacity:0.95">${ICONS.logoSearch}</span>Search<span style="color:#10b981">Advisor</span></div><div id="sadv-account-badge" style="display:none;padding:4px 12px;border-radius:999px;border:1px solid #1e293b;color:#0ea5e9;background:rgba(15,23,42,0.6);font-size:11px;font-weight:600;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div></div><div id="sadv-site-label" style="font-size:11px;color:#64748b;margin-top:4px;display:flex;align-items:center;gap:4px">\ub85c\ub529 \uc911...</div></div><div style="display:flex;gap:8px;align-items:center"><button id="sadv-refresh-btn" class="sadv-btn" title="새로고침" style="display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;flex-shrink:0;min-width:74px">${ICONS.refresh} 새로고침</button><button id="sadv-save-btn" class="sadv-btn" title="현재 화면 저장" style="display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;flex-shrink:0;min-width:74px">${ICONS.save} 저장</button><button id="sadv-x" style="background:none;border:1px solid #1e293b;color:#475569;width:32px;height:32px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s">${ICONS.xMark}</button></div></div><div id="sadv-mode-bar"><button class="sadv-mode on" data-m="all" style="display:inline-flex;align-items:center;justify-content:center;gap:5px">${ICONS.globe} 전체현황</button><button class="sadv-mode" data-m="site" style="display:inline-flex;align-items:center;justify-content:center;gap:5px">${ICONS.layers} 사이트별</button></div><div id="sadv-site-bar"><div id="sadv-combo-wrap"><button id="sadv-combo-btn"><span id="sadv-combo-dot"></span><span id="sadv-combo-label">\uc0ac\uc774\ud2b8 \uc120\ud0dd</span></button><span id="sadv-combo-arrow" style="display:inline-flex;align-items:center">${ICONS.chevronDown}</span><div id="sadv-combo-drop"></div></div></div></div><div id="sadv-tabs"></div><div id="sadv-bd"><div style="padding:60px 20px;text-align:center;color:#64748b">⏳ \ub85c\ub529 \uc911...</div></div>`);
+p.innerHTML = sanitizeHTML(`<style>#sadv-p *{box-sizing:border-box}#sadv-p ::-webkit-scrollbar{width:6px}#sadv-p ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}#sadv-header{padding:20px;border-bottom:1px solid #1e293b;background:rgba(2,6,23,0.8);backdrop-filter:blur(12px)}#sadv-mode-bar{display:flex;gap:4px;margin-top:16px;background:#0f172a;padding:4px;border-radius:12px;border:1px solid #334155}.sadv-mode{flex:1;background:transparent;border:none;color:#94a3b8;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}.sadv-mode.on{background:#1e293b;color:#0ea5e9;box-shadow:0 4px 6px -1px rgba(0,0,0,0.2)}#sadv-site-bar{margin-top:12px;position:relative;display:none}#sadv-site-bar.show{display:block}#sadv-combo-wrap{position:relative}#sadv-combo-btn{width:100%;background:#0f172a;border:1px solid #334155;color:#f8fafc;border-radius:10px;padding:10px 36px 10px 12px;font-size:13px;cursor:pointer;text-align:left;font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:10px}#sadv-combo-btn:hover{border-color:#0ea5e9;background:#1e293b}#sadv-combo-btn:focus-visible{outline:2px solid #0ea5e9;outline-offset:2px;box-shadow:0 0 0 4px rgba(14, 165, 233, 0.1)}#sadv-combo-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#64748b}#sadv-combo-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:500}#sadv-combo-arrow{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#64748b;font-size:12px;pointer-events:none;transition:transform .2s}#sadv-combo-wrap.open #sadv-combo-arrow{transform:translateY(-50%) rotate(180deg)}#sadv-combo-drop{display:none;position:absolute;top:calc(100% + 8px);left:0;right:0;background:#0f172a;border:1px solid #334155;border-radius:12px;padding:6px;z-index:100;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);max-height:300px;overflow-y:auto}#sadv-combo-wrap.open #sadv-combo-drop{display:block}.sadv-combo-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;cursor:pointer;transition:all .1s;border:1px solid transparent}.sadv-combo-item:hover{background:#1e293b}.sadv-combo-item:focus-visible{outline:2px solid #0ea5e9;outline-offset:-2px}.sadv-combo-item.active{background:#1e293b;border-color:#334155;color:#0ea5e9}#sadv-tabs{display:none;flex-wrap:wrap;gap:6px;padding:12px 20px;background:#020617;border-bottom:1px solid #1e293b;justify-content:center}#sadv-tabs.show{display:flex;justify-content:center}#sadv-tabs::-webkit-scrollbar{display:none}.sadv-t{background:transparent;border:1px solid transparent;color:#64748b;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}.sadv-t:hover{color:#f8fafc;background:#1e293b}.sadv-t.on{background:rgba(14,165,233,0.1);border-color:rgba(14,165,233,0.2);color:#0ea5e9}#sadv-refresh-btn,#sadv-save-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s;white-space:nowrap;flex-shrink:0;min-width:74px;line-height:1.1}#sadv-refresh-btn:hover,#sadv-save-btn:hover{border-color:#0ea5e9;color:#0ea5e9;background:#1e293b}#sadv-refresh-btn:focus-visible,#sadv-save-btn:focus-visible{outline:2px solid #0ea5e9;outline-offset:2px;box-shadow:0 0 0 4px rgba(14, 165, 233, 0.1)}#sadv-cache-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}#sadv-bd{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px}#sadv-tabpanel{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px}.sadv-allcard{background:#0f172a;border:1px solid #1e293b;border-radius:16px;padding:20px;margin-bottom:16px;cursor:pointer;transition:all .2s}.sadv-allcard:hover{border-color:#334155;transform:translateY(-2px)}</style><div id="sadv-header"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:7px;font-size:18px;font-weight:800;letter-spacing:-0.03em"><span style="display:inline-flex;opacity:0.95">${ICONS.logoSearch}</span>Search<span style="color:#10b981">Advisor</span></div><div id="sadv-account-badge" style="display:none;padding:4px 12px;border-radius:999px;border:1px solid #1e293b;color:#0ea5e9;background:rgba(15,23,42,0.6);font-size:11px;font-weight:600;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div></div><div id="sadv-site-label" style="font-size:11px;color:#64748b;margin-top:4px;display:flex;align-items:center;gap:4px">\ub85c\ub529 \uc911...</div><div id="sadv-cache-meta"></div></div><div style="display:flex;gap:8px;align-items:center"><button id="sadv-refresh-btn" class="sadv-btn" title="새로고침" style="display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;flex-shrink:0;min-width:74px">${ICONS.refresh} 새로고침</button><button id="sadv-save-btn" class="sadv-btn" title="현재 화면 저장" style="display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;flex-shrink:0;min-width:74px">${ICONS.save} 저장</button><button id="sadv-x" style="background:none;border:1px solid #1e293b;color:#475569;width:32px;height:32px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s">${ICONS.xMark}</button></div></div><div id="sadv-mode-bar"><button class="sadv-mode on" data-m="all" style="display:inline-flex;align-items:center;justify-content:center;gap:5px">${ICONS.globe} 전체현황</button><button class="sadv-mode" data-m="site" style="display:inline-flex;align-items:center;justify-content:center;gap:5px">${ICONS.layers} 사이트별</button></div><div id="sadv-site-bar"><div id="sadv-combo-wrap"><button id="sadv-combo-btn"><span id="sadv-combo-dot"></span><span id="sadv-combo-label">\uc0ac\uc774\ud2b8 \uc120\ud0dd</span></button><span id="sadv-combo-arrow" style="display:inline-flex;align-items:center">${ICONS.chevronDown}</span><div id="sadv-combo-drop"></div></div></div></div><div id="sadv-tabs"></div><div id="sadv-bd"><div style="padding:60px 20px;text-align:center;color:#64748b">⏳ \ub85c\ub529 \uc911...</div></div>`);
 document.body.appendChild(p);
 
 const requiredShellIds = [
@@ -6899,6 +6899,62 @@ const __sadvListeners = new Set();
 let __sadvInitialReady = false;
 const __sadvReadyResolvers = [];
 
+function getLiveCacheMeta() {
+  const timestamps = [];
+  const siteListTs = getSiteListCacheStamp();
+  if (typeof siteListTs === "number") timestamps.push(siteListTs);
+
+  const memCache = typeof getMemCache === "function" ? getMemCache() : null;
+  allSites.forEach(function (site) {
+    const siteTs = getSiteDataCacheStamp(site);
+    if (typeof siteTs === "number") {
+      timestamps.push(siteTs);
+      return;
+    }
+    const memData = memCache && memCache[site];
+    if (memData && typeof memData.__cacheSavedAt === "number") {
+      timestamps.push(memData.__cacheSavedAt);
+    }
+  });
+
+  if (!timestamps.length) return null;
+
+  const ttlMs = getDataTtlMs();
+  const newestTs = Math.max.apply(null, timestamps);
+  const oldestTs = Math.min.apply(null, timestamps);
+
+  return {
+    label: "live-cache",
+    updatedAt: new Date(newestTs),
+    remainingMs: Math.max(0, oldestTs + ttlMs - Date.now()),
+    sourceCount: Array.isArray(allSites) ? allSites.length : 0,
+    measuredAt: Date.now(),
+    ttlMs: ttlMs,
+  };
+}
+
+function buildLiveShellState() {
+  const snapshotAccountLabel =
+    (typeof window !== "undefined" &&
+      window.__sadvAccountState &&
+      typeof window.__sadvAccountState.currentAccount === "string" &&
+      window.__sadvAccountState.currentAccount) ||
+    (ACCOUNT_UTILS.getAccountInfo().accountLabel || "") ||
+    accountLabel ||
+    "";
+
+  return {
+    curMode,
+    curSite,
+    curTab,
+    allSites: [...allSites],
+    rows: window.__sadvRows || [],
+    accountLabel: snapshotAccountLabel,
+    runtimeVersion: window.__SEARCHADVISOR_RUNTIME_VERSION__ || "runtime",
+    cacheMeta: getLiveCacheMeta(),
+  };
+}
+
 // ============================================================================
 // 스냅샷 상태 함수들
 // ============================================================================
@@ -6911,21 +6967,7 @@ const __sadvReadyResolvers = [];
  * console.log(snapshot.curMode); // "all" or "site"
  */
 function __sadvSnapshot() {
-  const snapshotAccountLabel =
-    (typeof window !== "undefined" &&
-      window.__sadvAccountState &&
-      typeof window.__sadvAccountState.currentAccount === "string" &&
-      window.__sadvAccountState.currentAccount) ||
-    (ACCOUNT_UTILS.getAccountInfo().accountLabel || "");
-
-  return {
-    curMode,
-    curSite,
-    curTab,
-    allSites: [...allSites],
-    rows: window.__sadvRows || [],
-    accountLabel: snapshotAccountLabel,
-  };
+  return buildLiveShellState();
 }
 
 /**
@@ -6943,6 +6985,13 @@ function __sadvNotify() {
       console.error('[__sadvNotify] Error:', e);
     }
   });
+  if (typeof syncLiveHeaderMeta === "function") {
+    try {
+      syncLiveHeaderMeta(snap);
+    } catch (e) {
+      console.error('[__sadvNotify] Header sync error:', e);
+    }
+  }
 }
 
 /**
@@ -7172,12 +7221,7 @@ if (typeof window !== "undefined") {
   window.__SEARCHADVISOR_UI_STATE__ = {
     getState: function() {
       return {
-        curMode: curMode,
-        curSite: curSite,
-        curTab: curTab,
-        allSites: [...allSites],
-        rows: window.__sadvRows || [],
-        accountLabel: accountLabel,
+        ...buildLiveShellState(),
         siteViewReqId: siteViewReqId,
         allViewReqId: allViewReqId
       };
@@ -8338,6 +8382,55 @@ function getAvailableRenderers() {
       : `${allSites.length}개 사이트 등록됨`;
     labelEl.textContent = summary;
   }
+  function formatCacheMetaTime(dateLike) {
+    const date = dateLike instanceof Date ? dateLike : new Date(dateLike);
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "-";
+    return date.toLocaleString("ko-KR", {
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  }
+  function formatRemainingMsLabel(ms) {
+    if (!(typeof ms === "number") || !Number.isFinite(ms)) return "-";
+    if (ms <= 0) return "곧 갱신";
+    const totalMinutes = Math.max(1, Math.ceil(ms / 60000));
+    const days = Math.floor(totalMinutes / 1440);
+    const hours = Math.floor((totalMinutes % 1440) / 60);
+    const minutes = totalMinutes % 60;
+    if (days > 0) return `${days}일 ${hours}시간`;
+    if (hours > 0) return `${hours}시간 ${minutes}분`;
+    return `${minutes}분`;
+  }
+  function syncLiveHeaderMeta(snapshot) {
+    const metaEl = document.getElementById("sadv-cache-meta");
+    if (!metaEl) return;
+    const state = snapshot && snapshot.cacheMeta ? snapshot : __sadvSnapshot();
+    const cacheMeta = state && state.cacheMeta ? state.cacheMeta : null;
+    if (!cacheMeta || !cacheMeta.updatedAt) {
+      metaEl.innerHTML = "";
+      return;
+    }
+    const ttlHours =
+      typeof cacheMeta.ttlMs === "number" && cacheMeta.ttlMs > 0
+        ? Math.round(cacheMeta.ttlMs / 3600000)
+        : null;
+    const chipStyle = "display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;border:1px solid #1e293b;background:rgba(15,23,42,0.6);color:#8fb4d6;font-size:10px;font-weight:600;line-height:1.2";
+    const parts = [
+      `<span style="${chipStyle}">캐시저장 ${escHtml(formatCacheMetaTime(cacheMeta.updatedAt))}</span>`,
+    ];
+    if (typeof cacheMeta.remainingMs === "number") {
+      parts.push(
+        `<span style="${chipStyle}">자동갱신까지 ${escHtml(formatRemainingMsLabel(cacheMeta.remainingMs))}</span>`
+      );
+    }
+    if (ttlHours) {
+      parts.push(`<span style="${chipStyle}">${escHtml(String(ttlHours))}시간 TTL</span>`);
+    }
+    metaEl.innerHTML = sanitizeHTML(parts.join(""));
+  }
   /**
  * Build the site selector combo box dropdown
  * Creates clickable items for each site with search functionality
@@ -8736,6 +8829,131 @@ function getAvailableRenderers() {
     setCachedUiState();
     if (typeof notifySnapshotShellState === "function") notifySnapshotShellState();
     __sadvNotify();
+  }
+
+  var sadvRefreshBtnEl = document.getElementById("sadv-refresh-btn");
+  if (sadvRefreshBtnEl) {
+    sadvRefreshBtnEl.addEventListener("click", async function () {
+      if (this.disabled || this.dataset.busy === "true") return;
+      const btn = this;
+      const originalHTML = btn.innerHTML;
+      btn.dataset.busy = "true";
+      btn.disabled = true;
+      btn.classList.add("spinning");
+      btn.innerHTML = ICONS.refresh + " 로딩 중...";
+      try {
+        await runFullRefreshPipeline({ trigger: "manual", button: btn });
+      } finally {
+        btn.classList.remove("spinning");
+        btn.disabled = false;
+        btn.dataset.busy = "false";
+        btn.innerHTML = originalHTML;
+        __sadvNotify();
+      }
+    });
+  } else {
+    console.warn("[UI Controls] #sadv-refresh-btn not found during initialization");
+  }
+
+  var sadvSaveBtnEl = document.getElementById("sadv-save-btn");
+  if (sadvSaveBtnEl) {
+    sadvSaveBtnEl.addEventListener("click", function () {
+      downloadSnapshot();
+    });
+  } else {
+    console.warn("[UI Controls] #sadv-save-btn not found during initialization");
+  }
+
+  var sadvCloseBtnEl = document.getElementById("sadv-x");
+  if (sadvCloseBtnEl) {
+    sadvCloseBtnEl.addEventListener("click", function () {
+      const panel = document.getElementById("sadv-p");
+      const inj = document.getElementById("sadv-inj");
+      if (typeof stopCacheExpiryMonitor === "function") stopCacheExpiryMonitor();
+      if (panel) panel.remove();
+      if (inj) inj.remove();
+      if (typeof window !== "undefined") delete window.__sadvApi;
+    });
+  } else {
+    console.warn("[UI Controls] #sadv-x not found during initialization");
+  }
+
+  if (typeof window !== "undefined") {
+    window.__sadvApi = {
+      getState: __sadvSnapshot,
+      isReady: function () {
+        return __sadvInitialReady;
+      },
+      waitUntilReady: function (timeoutMs) {
+        return new Promise(function (resolve, reject) {
+          if (__sadvInitialReady) {
+            resolve(true);
+            return;
+          }
+          let timer = null;
+          const done = function (ok) {
+            if (timer) clearTimeout(timer);
+            resolve(ok);
+          };
+          __sadvReadyResolvers.push(done);
+          if (timeoutMs && timeoutMs > 0) {
+            timer = setTimeout(function () {
+              const idx = __sadvReadyResolvers.indexOf(done);
+              if (idx >= 0) __sadvReadyResolvers.splice(idx, 1);
+              reject(new Error("legacy init timeout"));
+            }, timeoutMs);
+          }
+        });
+      },
+      subscribe: function (fn) {
+        __sadvListeners.add(fn);
+        return function () {
+          __sadvListeners.delete(fn);
+        };
+      },
+      switchMode: function (mode) {
+        switchMode(mode);
+      },
+      setSite: function (site) {
+        setComboSite(site);
+      },
+      setTab: function (tab) {
+        if (!tabsEl || !TABS.some(function (item) { return item.id === tab; }) || curTab === tab) return;
+        curTab = tab;
+        tabsEl.querySelectorAll(".sadv-t").forEach(function (b) {
+          b.classList.remove("on");
+          b.setAttribute("aria-selected", "false");
+        });
+        const btn = tabsEl.querySelector('[data-t="' + tab + '"]');
+        if (btn) {
+          btn.classList.add("on");
+          btn.setAttribute("aria-selected", "true");
+        }
+        if (window.__sadvR) renderTab(window.__sadvR);
+        __sadvNotify();
+      },
+      refresh: function () {
+        const btn = document.getElementById("sadv-refresh-btn");
+        if (btn) btn.click();
+      },
+      download: function () {
+        downloadSnapshot();
+      },
+      exportSnapshotData: function (onProgress, options) {
+        return collectExportData(onProgress, options);
+      },
+      buildLegacySnapshotHtml: function (savedAt, payload) {
+        return buildSnapshotHtml(savedAt, payload);
+      },
+      close: function () {
+        const panel = document.getElementById("sadv-p");
+        const inj = document.getElementById("sadv-inj");
+        if (typeof stopCacheExpiryMonitor === "function") stopCacheExpiryMonitor();
+        if (panel) panel.remove();
+        if (inj) inj.remove();
+        delete window.__sadvApi;
+      },
+    };
   }
 
 // ============================================================
