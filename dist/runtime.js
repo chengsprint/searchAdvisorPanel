@@ -881,14 +881,14 @@ const ICONS = {
   pieChart: '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>',
 };
 const C = {
-  green: "#ffe45e",
-  blue: "#ffd400",
-  amber: "#ff9f1c",
+  green: "#ffd400",
+  blue: "#ffb703",
+  amber: "#ff8c42",
   red: "#ff5a36",
-  purple: "#ff7a00",
-  teal: "#ffb703",
-  orange: "#ff7a00",
-  pink: "#ff6b00",
+  purple: "#f15bb5",
+  teal: "#fb8500",
+  orange: "#ff6b35",
+  pink: "#ff4d6d",
   bg0: "#050505",
   bg1: "#0d0d0f",
   bg2: "#171717",
@@ -917,7 +917,7 @@ const T = {
   spaceCardLg: "18px",
   spaceCardXl: "20px",
 };
-const COLORS = [C.green, C.blue, C.amber, C.teal, C.purple, C.orange, C.pink];
+const COLORS = [C.green, C.blue, C.amber, C.orange, C.pink, C.purple];
 
 // ============================================================
 // V2 PAYLOAD SCHEMA CONSTANTS
@@ -9586,8 +9586,9 @@ async function renderAllSites() {
   );
   wrap.appendChild(secTitle("사이트별 상세"));
   rows.forEach(function (r, i) {
-    const allCardColors = [C.green, C.blue, C.amber, C.teal, C.purple];
-    const col = allCardColors[i % allCardColors.length];
+    const col = SITE_COLORS_MAP[r.site] || COLORS[i % COLORS.length] || C.green;
+    const toneBg = col + "12";
+    const toneBorder = col + "2e";
     const card = document.createElement("div");
     card.className = "sadv-allcard";
     card.style.borderTop = "2px solid " + col + "44";
@@ -9617,32 +9618,44 @@ async function renderAllSites() {
       accountBadge +
       '</div></div><div style="display:grid;' +
       gridTemplate +
-      ';margin-bottom:12px"><div style="text-align:center;min-width:0;background:rgba(255,255,255,0.03);' +
+      ';margin-bottom:12px"><div style="text-align:center;min-width:0;background:' +
+      toneBg +
+      ';border:1px solid ' +
+      toneBorder +
+      ';' +
       paddingStyle +
       ';border-radius:8px"><div style="' +
       fontSizeValue +
       ';font-weight:800;line-height:1.1;color:' +
-      C.green +
+      col +
       '">' +
       escHtml(fmt(r.totalC)) +
       '</div><div style="' +
       fontSizeLabel +
-      ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">클릭</div></div><div style="text-align:center;min-width:0;background:rgba(255,255,255,0.03);' +
+      ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">클릭</div></div><div style="text-align:center;min-width:0;background:' +
+      toneBg +
+      ';border:1px solid ' +
+      toneBorder +
+      ';' +
       paddingStyle +
       ';border-radius:8px"><div style="' +
       fontSizeValue +
       ';font-weight:800;line-height:1.1;color:' +
-      C.blue +
+      col +
       '">' +
       escHtml((r.totalE / 10000).toFixed(1)) +
       '만</div><div style="' +
       fontSizeLabel +
-      ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">노출</div></div><div style="text-align:center;min-width:0;background:rgba(255,255,255,0.03);' +
+      ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">노출</div></div><div style="text-align:center;min-width:0;background:' +
+      toneBg +
+      ';border:1px solid ' +
+      toneBorder +
+      ';' +
       paddingStyle +
       ';border-radius:8px"><div style="' +
       fontSizeValue +
       ';font-weight:800;line-height:1.1;color:' +
-      C.amber +
+      col +
       '">' +
       escHtml(r.avgCtr) +
       '%</div><div style="' +
