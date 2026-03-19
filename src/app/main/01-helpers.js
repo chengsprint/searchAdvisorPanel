@@ -599,13 +599,13 @@ function createStateCard(title, description, iconHtml, tone = "neutral") {
     "display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:28px 20px;background:var(--sadv-layer-01,#0d0d0f);border:1px solid var(--sadv-border-subtle,#2b2200);box-shadow:0 10px 28px rgba(0,0,0,0.24);margin:8px 0 16px";
   const iconBox = document.createElement("div");
   iconBox.style.cssText =
-    "display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;border:1px solid color-mix(in srgb, " +
+    "display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border:1px solid color-mix(in srgb, " +
     accent +
     " 28%, transparent);background:color-mix(in srgb, " +
     accent +
     " 10%, transparent);color:" +
     accent +
-    ";margin-bottom:14px";
+    ";margin-bottom:14px;box-shadow:0 10px 24px rgba(0,0,0,0.18)";
   iconBox.innerHTML = sanitizeHTML(iconHtml || ICONS.lightbulb);
   let iconSvg = iconBox.querySelector("svg");
   const hasRenderableShape = iconSvg && iconSvg.querySelector("path,line,circle,rect,ellipse,polyline,polygon");
@@ -616,10 +616,13 @@ function createStateCard(title, description, iconHtml, tone = "neutral") {
     iconSvg = iconBox.querySelector("svg");
   }
   if (iconSvg) {
-    iconSvg.setAttribute("width", iconSvg.getAttribute("width") || "20");
-    iconSvg.setAttribute("height", iconSvg.getAttribute("height") || "20");
+    iconSvg.setAttribute("width", iconSvg.getAttribute("width") || "22");
+    iconSvg.setAttribute("height", iconSvg.getAttribute("height") || "22");
+    iconSvg.style.width = "22px";
+    iconSvg.style.height = "22px";
     iconSvg.style.display = "block";
     iconSvg.style.flexShrink = "0";
+    iconSvg.style.opacity = "0.96";
   }
   const titleEl = document.createElement("div");
   titleEl.style.cssText =
