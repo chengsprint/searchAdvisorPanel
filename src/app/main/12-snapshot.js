@@ -621,6 +621,22 @@
       getSiteLabel,
       applyReportDecorations: applySnapshotReportDecorations,
     };
+    // ---------------------------------------------------------------------
+    // Snapshot bootstrap contract
+    // ---------------------------------------------------------------------
+    // Every symbol referenced by serialized renderers/helpers below must be
+    // explicitly declared inside this offline runtime. Do not assume access to
+    // the live panel closure.
+    //
+    // When adding/changing renderer dependencies, update all three together:
+    //   1) this bootstrap block
+    //   2) scripts/verify_snapshot_contract.js
+    //   3) src/app/main/SNAPSHOT_EXPORT_CONTRACT.md
+    //
+    // Known past regressions:
+    //   - missing isFiniteValue binding -> ReferenceError in sparkline()
+    //   - missing S style map          -> ReferenceError in overview renderer
+    // ---------------------------------------------------------------------
     const CONFIG = ${JSON.stringify(CONFIG)};
     const ICONS = ${JSON.stringify(ICONS)};
     const C = ${JSON.stringify(C)};

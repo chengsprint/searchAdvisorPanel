@@ -1,5 +1,9 @@
 # Snapshot Contract Guardrails — 2026-03-20
 
+같이 봐야 하는 코드 근처 문서:
+
+- `src/app/main/SNAPSHOT_EXPORT_CONTRACT.md`
+
 ## 배경
 
 저장 HTML(snapshot)은 라이브 패널 DOM을 단순 복사하는 것이 아니라, 일부 UI/렌더/차트 함수 본문을 문자열로 직렬화해서 오프라인 HTML 안에 삽입한다.
