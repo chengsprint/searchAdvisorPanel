@@ -236,6 +236,9 @@
         C.green;
       const card = document.createElement("button");
       card.type = "button";
+      card.className = "sadv-allcard";
+      card.dataset.site = row.site || "";
+      card.setAttribute("aria-label", getSiteLabel(row.site) + " 사이트 상세 보기");
       card.style.cssText =
         "display:block;width:100%;text-align:left;padding:14px 16px;margin:0 0 12px;border:1px solid rgba(255,255,255,0.08);border-top:2px solid " +
         siteColor +
@@ -513,7 +516,7 @@
     function getSiteShortName(a) {
       const s = a ? getSiteMetaMap()[a] || null : null;
       const f = s ? (s.displayLabel || s.label || s.shortName || "").trim() : "";
-      return f || (a ? a.replace(/^https?:\\\\/\\\\//, "") : "\uc0ac\uc774\ud2b8 \uc120\ud0dd");
+      return f || (a ? a.replace(/^https?:\\/\\//, "") : "\uc0ac\uc774\ud2b8 \uc120\ud0dd");
     }
     function getSiteLabel(a) {
       if (!a) return "\uc0ac\uc774\ud2b8 \uc120\ud0dd";
@@ -628,6 +631,8 @@
     const fmtD = (s) => s ? s.slice(0, 4) + "-" + s.slice(4, 6) + "-" + s.slice(6, 8) : "";
     const fmtB = (s) => s ? s.slice(4, 6) + "/" + s.slice(6, 8) : "";
     ${escHtml.toString()}
+    ${normalizeSiteUrl.toString()}
+    ${setTrustedSvgMarkup.toString()}
     function sanitizeHTML(dirty) {
       return String(dirty == null ? "" : dirty);
     }
@@ -898,6 +903,28 @@
         switchMode(m.dataset.m);
       });
     }
+    function bindSnapshotAllCardLinks() {
+      document.querySelectorAll(".sadv-allcard[data-site]").forEach(function (card) {
+        if (card.dataset.snapshotBound === "true") return;
+        card.dataset.snapshotBound = "true";
+        card.setAttribute("tabindex", card.getAttribute("tabindex") || "0");
+        card.setAttribute("role", card.getAttribute("role") || "button");
+        const openSite = function () {
+          const site = card.getAttribute("data-site") || "";
+          if (!site) return;
+          curSite = site;
+          if (typeof setComboSite === "function") setComboSite(site);
+          switchMode("site");
+        };
+        card.addEventListener("click", openSite);
+        card.addEventListener("keydown", function (event) {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openSite();
+          }
+        });
+      });
+    }
     window.__SEARCHADVISOR_SNAPSHOT_API__ = {
       getState: cloneSnapshotShellState,
       isReady: function () {
@@ -942,6 +969,7 @@
       if (curSite) setComboSite(curSite);
       setAllSitesLabel();
       switchMode(INITIAL_MODE);
+      bindSnapshotAllCardLinks();
       applySnapshotReportDecorations();
       notifySnapshotShellState();
     }

@@ -381,6 +381,7 @@ async function renderAllSites() {
 
   if (requestId !== allViewReqId || curMode !== "all") return;
   bdEl.replaceChildren(wrap);
+  if (typeof bindSnapshotAllCardLinks === "function") bindSnapshotAllCardLinks();
   bdEl.scrollTop = 0;
 }
 
