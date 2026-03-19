@@ -24,9 +24,9 @@ function renderFullRefreshProgress(label, detail, progress, stats) {
   if (st.success > 0 || st.partial > 0 || st.failed > 0) {
     statsHtml =
       '<div style="display:flex;gap:12px;margin-top:8px;font-size:10px">' +
-      '<span style="color:' + C.green + '">' + st.success + ' success</span>' +
-      '<span style="color:' + C.amber + '">' + st.partial + ' partial</span>' +
-      '<span style="color:' + C.red + '">' + st.failed + ' failed</span>' +
+      '<span style="color:' + C.green + '">' + st.success + ' 완료</span>' +
+      '<span style="color:' + C.amber + '">' + st.partial + ' 부분</span>' +
+      '<span style="color:' + C.red + '">' + st.failed + ' 실패</span>' +
       "</div>";
   }
   let errorsHtml = "";
@@ -218,25 +218,29 @@ function renderFailureSummary(stats) {
   const summaryEl = document.createElement("div");
   summaryEl.id = "sadv-failure-summary";
   summaryEl.style.cssText =
-    "position:fixed;bottom:12px;right:12px;background:#120d0a;border:1px solid rgba(255,90,54,0.45);border-radius:0;padding:12px 16px;font-size:11px;color:#ff5a36;max-width:320px;z-index:10000000;box-shadow:0 10px 28px rgba(0,0,0,.42);font-family:Apple SD Gothic Neo,system-ui";
+    "position:fixed;bottom:12px;right:12px;background:#120d0a;border:1px solid rgba(255,90,54,0.45);border-radius:0;padding:12px 16px;font-size:11px;color:var(--sadv-text-secondary,#ffe9a8);max-width:340px;z-index:10000000;box-shadow:0 10px 28px rgba(0,0,0,.42);font-family:\"IBM Plex Sans KR\",\"IBM Plex Sans\",Pretendard,system-ui";
   const failedCount = stats.failed || 0;
   const partialCount = stats.partial || 0;
   const errorItems = (stats.errors || []).slice(0, 5);
   const headerRow = document.createElement("div");
-  headerRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-bottom:4px";
+  headerRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-bottom:6px";
   const titleSpan = document.createElement("span");
-  titleSpan.style.fontWeight = "700";
-  titleSpan.textContent = "Data Collection Issues";
+  titleSpan.style.cssText = "font-weight:800;color:var(--sadv-text,#fffdf5)";
+  titleSpan.textContent = "데이터 수집 이슈";
   headerRow.appendChild(titleSpan);
   const closeBtn = document.createElement("button");
   closeBtn.textContent = "\u00d7";
-  closeBtn.style.cssText = "background:none;border:none;color:#ff5a36;cursor:pointer;font-size:14px;padding:0 4px";
+  closeBtn.style.cssText = "background:transparent;border:1px solid rgba(255,90,54,0.35);color:#ff5a36;cursor:pointer;font-size:13px;padding:1px 7px;line-height:1.2";
   closeBtn.onclick = function () { summaryEl.remove(); };
   headerRow.appendChild(closeBtn);
   summaryEl.appendChild(headerRow);
   const countDiv = document.createElement("div");
-  countDiv.style.color = C.amber;
-  countDiv.textContent = failedCount + " failed" + (partialCount > 0 ? ", " + partialCount + " partial" : "");
+  countDiv.style.cssText = "color:var(--sadv-text-secondary,#ffe9a8);line-height:1.5";
+  countDiv.innerHTML = sanitizeHTML(
+    (failedCount > 0 ? '<span style="color:' + C.red + ';font-weight:700">실패 ' + escHtml(String(failedCount)) + '개</span>' : "") +
+    (failedCount > 0 && partialCount > 0 ? '<span style="color:var(--sadv-text-tertiary,#b9a55a)"> · </span>' : "") +
+    (partialCount > 0 ? '<span style="color:' + C.amber + ';font-weight:700">부분 ' + escHtml(String(partialCount)) + '개</span>' : "")
+  );
   summaryEl.appendChild(countDiv);
   if (errorItems.length > 0) {
     const errorDiv = document.createElement("div");
@@ -250,7 +254,7 @@ function renderFailureSummary(stats) {
     if (stats.errors.length > 5) {
       const moreLine = document.createElement("div");
       moreLine.style.color = C.amber;
-      moreLine.textContent = "... +" + (stats.errors.length - 5) + " more";
+      moreLine.textContent = "... +" + (stats.errors.length - 5) + "개 더 있음";
       errorDiv.appendChild(moreLine);
     }
     summaryEl.appendChild(errorDiv);

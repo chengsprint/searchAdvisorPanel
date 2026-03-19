@@ -8224,13 +8224,13 @@ function createDiagnosisRenderer(data) {
           <div style="flex:${indexed};background:${C.purple};border-radius:2px 0 0 2px;min-width:${indexed > 0 ? 2 : 0}px"></div>
           <div style="flex:${pending};background:${C.amber};min-width:${pending > 0 ? 2 : 0}px"></div>
           <div style="flex:${error};background:${C.red};min-width:${error > 0 ? 2 : 0}px"></div>
-          <div style="flex:${dropped};background:color-mix(in srgb, ${C.red} 70%, transparent);border-radius:0 2px 2px 0;min-width:${dropped > 0 ? 2 : 0}px"></div>
+          <div style="flex:${dropped};background:${C.orange};border-radius:0 2px 2px 0;min-width:${dropped > 0 ? 2 : 0}px"></div>
         </div>
         <div style="display:flex;gap:12px;font-size:10px;color:var(--sadv-text-tertiary,#b9a55a)">
           <span style="color:${C.purple}">색인 <b>${escHtml(fmt(indexed))}</b></span>
           <span style="color:${C.amber}">대기 <b>${escHtml(fmt(pending))}</b></span>
           ${error > 0 ? `<span style="color:${C.red}">오류 <b>${escHtml(fmt(error))}</b></span>` : ""}
-          ${dropped > 0 ? `<span style="color:${C.red}">에러 <b>${escHtml(fmt(dropped))}</b></span>` : ""}
+          ${dropped > 0 ? `<span style="color:${C.orange}">색인에러 <b>${escHtml(fmt(dropped))}</b></span>` : ""}
         </div>
       `);
       wrap.appendChild(row);
@@ -8244,7 +8244,7 @@ function createDiagnosisRenderer(data) {
       <span style="font-size:10px;color:${C.purple}">■ 색인</span>
       <span style="font-size:10px;color:${C.amber}">■ 대기중</span>
       <span style="font-size:10px;color:${C.red}">■ 오류</span>
-      <span style="font-size:10px;color:${C.red}">■ 색인에러</span>
+      <span style="font-size:10px;color:${C.orange}">■ 색인에러</span>
     `);
     wrap.appendChild(legend);
 
@@ -9918,7 +9918,7 @@ function savedAtIso(d) {
     const comboWrap = clone.querySelector("#sadv-combo-wrap");
     if (comboWrap) comboWrap.classList.remove("open");
     if (siteLabelEl) {
-      siteLabelEl.innerHTML = `<span>${escHtml(siteLabel)}</span><span style="display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;border:1px solid #284766;color:#a8d8ff;background:rgba(12,23,38,.72)">${escHtml(activeTabLabel)}</span>`;
+      siteLabelEl.innerHTML = `<span>${escHtml(siteLabel)}</span><span style="display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;border:1px solid rgba(255,212,0,0.26);color:#ffd400;background:rgba(32,22,0,.72)">${escHtml(activeTabLabel)}</span>`;
     }
     ["sadv-refresh-btn", "sadv-save-btn", "sadv-x"].forEach(function (id) {
       const el = clone.querySelector("#" + id);
@@ -9938,7 +9938,7 @@ function savedAtIso(d) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${escHtml("SearchAdvisor Snapshot - " + siteLabel)}</title>
   <style>
-    html,body{margin:0;padding:0;background:#050505;color:#fff7dd;font-family:Apple SD Gothic Neo,system-ui,sans-serif}
+    html,body{margin:0;padding:0;background:#050505;color:#fff7dd;font-family:"IBM Plex Sans KR","IBM Plex Sans",Pretendard,system-ui,sans-serif}
     body{padding:28px 18px 40px}
     a{color:#ffd400}
     :root{--snapshot-panel-width:520px}
@@ -9947,11 +9947,11 @@ function savedAtIso(d) {
       box-sizing:border-box;
       margin:0 auto 12px;
       padding:10px 12px;
-      border:1px solid #1a2d45;
+      border:1px solid #4a3b00;
       border-radius:20px;
       background:
-        radial-gradient(circle at top right, rgba(64,196,255,.12), transparent 34%),
-        linear-gradient(180deg, rgba(13,24,41,.98), rgba(7,13,22,.98));
+        radial-gradient(circle at top right, rgba(255,122,0,.12), transparent 34%),
+        linear-gradient(180deg, rgba(18,13,8,.98), rgba(8,8,8,.98));
       box-shadow:0 26px 60px rgba(0,0,0,.3);
       overflow:hidden;
     }
@@ -9981,8 +9981,8 @@ function savedAtIso(d) {
       color:#8fb4d6;
     }
     .snapshot-meta-details[open] .snapshot-meta-summary::after{content:"\uba54\ud0c0 \uc811\uae30"}
-    .snapshot-meta-title{font-size:13px;font-weight:800;line-height:1.2;color:#f3fbff}
-    .snapshot-meta-copy{margin-top:6px;font-size:11px;line-height:1.7;color:#7f9cbc}
+    .snapshot-meta-title{font-size:13px;font-weight:800;line-height:1.2;color:#fff8df}
+    .snapshot-meta-copy{margin-top:6px;font-size:11px;line-height:1.7;color:#d7bf78}
     #sadv-p{
       position:relative !important;
       top:auto !important;
@@ -9991,7 +9991,7 @@ function savedAtIso(d) {
       box-sizing:border-box !important;
       height:auto !important;
       margin:0 auto !important;
-      border:1px solid #1a2d45 !important;
+      border:1px solid #4a3b00 !important;
       border-radius:20px !important;
       overflow:hidden !important;
       box-shadow:0 26px 60px rgba(0,0,0,.3) !important;
@@ -10707,23 +10707,23 @@ function savedAtIso(d) {
    */
   function createMergedAccountsInfo(mergedMeta) {
     const mergedInfo = document.createElement("div");
-    mergedInfo.style.cssText = "background:linear-gradient(135deg,#1a2d45,#0d1829);border:1px solid #2a4060;border-radius:8px;padding:12px 16px;margin-bottom:16px";
+    mergedInfo.style.cssText = "background:linear-gradient(135deg,#17110a,#080808);border:1px solid #4a3b00;border-radius:0;padding:12px 16px;margin-bottom:16px";
     const validAccounts = mergedMeta.accounts.filter(Boolean);
     const accountLabels = validAccounts.map((acc, i) => {
       const fullLabel = acc.label || acc.encId?.slice(0, 8) || `계정${i + 1}`;
       const shortLabel = fullLabel.includes('@') ? fullLabel.split('@')[0] : fullLabel;
-      return `<span tabindex="0" role="button" aria-describedby="merged-acc-full-${i}" style="display:inline-block;background:#2a4060;color:#8bb8e8;padding:3px 8px;border-radius:4px;font-size:11px;margin:2px;cursor:default" title="${escHtml(fullLabel)}">${escHtml(shortLabel)}<span id="merged-acc-full-${i}" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">전체: ${escHtml(fullLabel)}</span></span>`;
+      return `<span tabindex="0" role="button" aria-describedby="merged-acc-full-${i}" style="display:inline-block;background:rgba(255,212,0,0.12);color:#ffd400;padding:3px 8px;border:1px solid rgba(255,212,0,0.24);border-radius:4px;font-size:11px;margin:2px;cursor:default" title="${escHtml(fullLabel)}">${escHtml(shortLabel)}<span id="merged-acc-full-${i}" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">전체: ${escHtml(fullLabel)}</span></span>`;
     }).join(" ");
     mergedInfo.setAttribute("role", "region");
     mergedInfo.setAttribute("aria-label", `병합된 계정 정보, ${validAccounts.length}개 계정`);
     mergedInfo.innerHTML = `
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
           <span style="font-size:16px" aria-hidden="true">🔀</span>
-          <span style="font-size:13px;font-weight:700;color:#e0ecff">병합된 계정</span>
-          <span style="font-size:10px;color:#6482a2;background:#0d1829;padding:2px 6px;border-radius:4px">${validAccounts.length}개 계정</span>
+          <span style="font-size:13px;font-weight:700;color:#fff8df">병합된 계정</span>
+          <span style="font-size:10px;color:#ffe9a8;background:rgba(255,212,0,0.12);padding:2px 6px;border:1px solid rgba(255,212,0,0.22);border-radius:4px">${validAccounts.length}개 계정</span>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:4px">${accountLabels}</div>
-        <div style="font-size:9px;color:#6482a2;margin-top:8px">병합 시각: ${mergedMeta.mergedAt ? new Date(mergedMeta.mergedAt).toLocaleString('ko-KR') : '-'}</div>
+        <div style="font-size:9px;color:#d7bf78;margin-top:8px">병합 시각: ${mergedMeta.mergedAt ? new Date(mergedMeta.mergedAt).toLocaleString('ko-KR') : '-'}</div>
       `;
     return mergedInfo;
   }
@@ -10945,9 +10945,9 @@ function renderFullRefreshProgress(label, detail, progress, stats) {
   if (st.success > 0 || st.partial > 0 || st.failed > 0) {
     statsHtml =
       '<div style="display:flex;gap:12px;margin-top:8px;font-size:10px">' +
-      '<span style="color:' + C.green + '">' + st.success + ' success</span>' +
-      '<span style="color:' + C.amber + '">' + st.partial + ' partial</span>' +
-      '<span style="color:' + C.red + '">' + st.failed + ' failed</span>' +
+      '<span style="color:' + C.green + '">' + st.success + ' 완료</span>' +
+      '<span style="color:' + C.amber + '">' + st.partial + ' 부분</span>' +
+      '<span style="color:' + C.red + '">' + st.failed + ' 실패</span>' +
       "</div>";
   }
   let errorsHtml = "";
@@ -11139,25 +11139,29 @@ function renderFailureSummary(stats) {
   const summaryEl = document.createElement("div");
   summaryEl.id = "sadv-failure-summary";
   summaryEl.style.cssText =
-    "position:fixed;bottom:12px;right:12px;background:#120d0a;border:1px solid rgba(255,90,54,0.45);border-radius:0;padding:12px 16px;font-size:11px;color:#ff5a36;max-width:320px;z-index:10000000;box-shadow:0 10px 28px rgba(0,0,0,.42);font-family:Apple SD Gothic Neo,system-ui";
+    "position:fixed;bottom:12px;right:12px;background:#120d0a;border:1px solid rgba(255,90,54,0.45);border-radius:0;padding:12px 16px;font-size:11px;color:var(--sadv-text-secondary,#ffe9a8);max-width:340px;z-index:10000000;box-shadow:0 10px 28px rgba(0,0,0,.42);font-family:\"IBM Plex Sans KR\",\"IBM Plex Sans\",Pretendard,system-ui";
   const failedCount = stats.failed || 0;
   const partialCount = stats.partial || 0;
   const errorItems = (stats.errors || []).slice(0, 5);
   const headerRow = document.createElement("div");
-  headerRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-bottom:4px";
+  headerRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-bottom:6px";
   const titleSpan = document.createElement("span");
-  titleSpan.style.fontWeight = "700";
-  titleSpan.textContent = "Data Collection Issues";
+  titleSpan.style.cssText = "font-weight:800;color:var(--sadv-text,#fffdf5)";
+  titleSpan.textContent = "데이터 수집 이슈";
   headerRow.appendChild(titleSpan);
   const closeBtn = document.createElement("button");
   closeBtn.textContent = "\u00d7";
-  closeBtn.style.cssText = "background:none;border:none;color:#ff5a36;cursor:pointer;font-size:14px;padding:0 4px";
+  closeBtn.style.cssText = "background:transparent;border:1px solid rgba(255,90,54,0.35);color:#ff5a36;cursor:pointer;font-size:13px;padding:1px 7px;line-height:1.2";
   closeBtn.onclick = function () { summaryEl.remove(); };
   headerRow.appendChild(closeBtn);
   summaryEl.appendChild(headerRow);
   const countDiv = document.createElement("div");
-  countDiv.style.color = C.amber;
-  countDiv.textContent = failedCount + " failed" + (partialCount > 0 ? ", " + partialCount + " partial" : "");
+  countDiv.style.cssText = "color:var(--sadv-text-secondary,#ffe9a8);line-height:1.5";
+  countDiv.innerHTML = sanitizeHTML(
+    (failedCount > 0 ? '<span style="color:' + C.red + ';font-weight:700">실패 ' + escHtml(String(failedCount)) + '개</span>' : "") +
+    (failedCount > 0 && partialCount > 0 ? '<span style="color:var(--sadv-text-tertiary,#b9a55a)"> · </span>' : "") +
+    (partialCount > 0 ? '<span style="color:' + C.amber + ';font-weight:700">부분 ' + escHtml(String(partialCount)) + '개</span>' : "")
+  );
   summaryEl.appendChild(countDiv);
   if (errorItems.length > 0) {
     const errorDiv = document.createElement("div");
@@ -11171,7 +11175,7 @@ function renderFailureSummary(stats) {
     if (stats.errors.length > 5) {
       const moreLine = document.createElement("div");
       moreLine.style.color = C.amber;
-      moreLine.textContent = "... +" + (stats.errors.length - 5) + " more";
+      moreLine.textContent = "... +" + (stats.errors.length - 5) + "개 더 있음";
       errorDiv.appendChild(moreLine);
     }
     summaryEl.appendChild(errorDiv);
