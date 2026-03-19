@@ -220,8 +220,9 @@ async function renderAllSites() {
   );
   wrap.appendChild(secTitle("사이트별 상세"));
   rows.forEach(function (r, i) {
-    const allCardColors = [C.green, C.blue, C.amber, C.teal, C.purple];
-    const col = allCardColors[i % allCardColors.length];
+    const col = SITE_COLORS_MAP[r.site] || COLORS[i % COLORS.length] || C.green;
+    const toneBg = col + "12";
+    const toneBorder = col + "2e";
     const card = document.createElement("div");
     card.className = "sadv-allcard";
     card.style.borderTop = "2px solid " + col + "44";
@@ -251,32 +252,44 @@ async function renderAllSites() {
       accountBadge +
       '</div></div><div style="display:grid;' +
       gridTemplate +
-      ';margin-bottom:12px"><div style="text-align:center;min-width:0;background:rgba(255,255,255,0.03);' +
+      ';margin-bottom:12px"><div style="text-align:center;min-width:0;background:' +
+      toneBg +
+      ';border:1px solid ' +
+      toneBorder +
+      ';' +
       paddingStyle +
       ';border-radius:8px"><div style="' +
       fontSizeValue +
       ';font-weight:800;line-height:1.1;color:' +
-      C.green +
+      col +
       '">' +
       escHtml(fmt(r.totalC)) +
       '</div><div style="' +
       fontSizeLabel +
-      ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">클릭</div></div><div style="text-align:center;min-width:0;background:rgba(255,255,255,0.03);' +
+      ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">클릭</div></div><div style="text-align:center;min-width:0;background:' +
+      toneBg +
+      ';border:1px solid ' +
+      toneBorder +
+      ';' +
       paddingStyle +
       ';border-radius:8px"><div style="' +
       fontSizeValue +
       ';font-weight:800;line-height:1.1;color:' +
-      C.blue +
+      col +
       '">' +
       escHtml((r.totalE / 10000).toFixed(1)) +
       '만</div><div style="' +
       fontSizeLabel +
-      ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">노출</div></div><div style="text-align:center;min-width:0;background:rgba(255,255,255,0.03);' +
+      ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">노출</div></div><div style="text-align:center;min-width:0;background:' +
+      toneBg +
+      ';border:1px solid ' +
+      toneBorder +
+      ';' +
       paddingStyle +
       ';border-radius:8px"><div style="' +
       fontSizeValue +
       ';font-weight:800;line-height:1.1;color:' +
-      C.amber +
+      col +
       '">' +
       escHtml(r.avgCtr) +
       '%</div><div style="' +
