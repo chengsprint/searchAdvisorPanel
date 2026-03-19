@@ -1139,14 +1139,12 @@ function barchart(vals, labels, H, col, unit) {
       rows: Array.isArray(payload.summaryRows) ? payload.summaryRows.slice() : [],
       siteMeta:
         payload.siteMeta && typeof payload.siteMeta === "object" ? payload.siteMeta : {},
-      curMode: payload.curMode === "site" ? "site" : "all",
+      curMode: "all",
       curSite:
         typeof payload.curSite === "string"
           ? payload.curSite
           : allSites[0] || null,
-      curTab: snapshotTabIds.indexOf(payload.curTab) !== -1
-        ? payload.curTab
-        : "overview",
+      curTab: "overview",
       runtimeVersion: window.__SEARCHADVISOR_RUNTIME_VERSION__ || "snapshot",
       cacheMeta: updatedAt
         ? {
@@ -1306,9 +1304,9 @@ function barchart(vals, labels, H, col, unit) {
       '    switchMode: function (mode) { if (typeof switchMode === "function") switchMode(mode); else { const button = document.querySelector("#sadv-mode-bar [data-m=\\"" + mode + "\\"]"); if (button) button.click(); } scheduleSync(); },',
       '    setSite: function (site) { if (typeof setComboSite === "function") setComboSite(site); else { const items = Array.from(document.querySelectorAll(".sadv-combo-item")); const button = items.find(function (item) { return (item.getAttribute("data-site") || "") === site; }); if (button) button.click(); } if (typeof switchMode === "function") switchMode("site"); scheduleSync(); },',
       '    setTab: function (tab) { if (typeof setTab === "function") setTab(tab); else { const button = document.querySelector("#sadv-tabs [data-t=\\"" + tab + "\\"]"); if (button) button.click(); } scheduleSync(); },',
-      '    refresh: function () { alert("\uc800\uc7a5\ub41c HTML\uc740 \uc815\uc801 \uc2a4\ub0c5\uc0f7\uc785\ub2c8\ub2e4. \uc6d0\ubcf8 \ud328\ub110\uc5d0\uc11c \ub2e4\uc2dc \uac31\uc2e0\ud574 \uc8fc\uc138\uc694."); },',
-      '    download: function () { alert("\uc800\uc7a5\ub41c HTML \ud30c\uc77c\uc5d0\uc11c\ub294 \ub2e4\uc2dc \uc800\uc7a5\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4. \uc6d0\ubcf8 \ud328\ub110\uc5d0\uc11c \ub2e4\uc2dc \uc800\uc7a5\ud574 \uc8fc\uc138\uc694."); },',
-      '    close: function () { const unmountShell = window.__SEARCHADVISOR_SNAPSHOT_SHELL_UNMOUNT__; if (typeof unmountShell === "function") { try { unmountShell(); } catch (_) {} } const panel = document.getElementById("sadv-p"); if (panel) panel.remove(); const meta = document.querySelector(".snapshot-meta"); if (meta) meta.remove(); const host = document.getElementById("sadv-react-shell-host"); if (host) host.remove(); delete window.__SEARCHADVISOR_SNAPSHOT_API__; delete window.__SEARCHADVISOR_SNAPSHOT_SHELL_ROOT__; },',
+      '    refresh: function () { return false; },',
+      '    download: function () { return false; },',
+      '    close: function () { return false; },',
       "  };",
       "  window.__SEARCHADVISOR_SNAPSHOT_API__ = api;",
       '  const target = document.getElementById("sadv-p") || document.body;',
@@ -1326,6 +1324,14 @@ function barchart(vals, labels, H, col, unit) {
   function escapeInlineScriptText(text) {
     return String(text || "").replace(/<\/script/gi, "<\\/script");
   }
+  function stringifyForInlineJson(value) {
+    return JSON.stringify(value)
+      .replace(/</g, "\\u003C")
+      .replace(/>/g, "\\u003E")
+      .replace(/&/g, "\\u0026")
+      .replace(/\u2028/g, "\\u2028")
+      .replace(/\u2029/g, "\\u2029");
+  }
   function injectSnapshotReactShell(html, payload) {
     if (!html.includes('<div id="sadv-bd">')) {
       throw new Error("snapshot panel not found");
@@ -1340,7 +1346,7 @@ function barchart(vals, labels, H, col, unit) {
     );
     html = html.replace(
       "<body>",
-      `<body><script>window.__SEARCHADVISOR_SNAPSHOT_SHELL_STATE__=${JSON.stringify(shellState)};<\/script>`,
+      `<body><script>window.__SEARCHADVISOR_SNAPSHOT_SHELL_STATE__=${stringifyForInlineJson(shellState)};<\/script>`,
     );
     html = html.replace('<div id="sadv-bd">', `<div id="sadv-react-shell-host"></div><div id="sadv-bd">`);
     html = html.replace(
@@ -1371,15 +1377,14 @@ function barchart(vals, labels, H, col, unit) {
     delete clone.dataset.sadvPrevBackground;
     delete clone.dataset.sadvPrevBorderLeftColor;
     const savedLabel = stampLabel(savedAt);
-    const modeLabel = payload.curMode === "site" ? "\uc0ac\uc774\ud2b8\ubcc4" : "\uc804\uccb4\ud604\ud669";
+    const snapshotCurMode = "all";
+    const snapshotCurTab = "overview";
+    const modeLabel = "\uc804\uccb4\ud604\ud669";
     const activeTab = TABS.find(function (t) {
-      return t.id === payload.curTab;
+      return t.id === snapshotCurTab;
     });
     const activeTabLabel = activeTab ? activeTab.label : modeLabel;
-    const siteLabel =
-      payload.curMode === "site" && payload.curSite
-        ? payload.curSite.replace(/^https?:\/\//, "")
-        : payload.allSites.length + "\uac1c \uc0ac\uc774\ud2b8";
+    const siteLabel = payload.allSites.length + "\uac1c \uc0ac\uc774\ud2b8";
     const topRow = clone.querySelector("#sadv-header > div");
     const siteLabelEl = clone.querySelector("#sadv-site-label");
     const comboWrap = clone.querySelector("#sadv-combo-wrap");
@@ -1398,6 +1403,12 @@ function barchart(vals, labels, H, col, unit) {
       meta.textContent = "Saved " + savedLabel;
       topRow.lastElementChild.replaceWith(meta);
     }
+    const exportPayloadJson = stringifyForInlineJson(
+      Object.assign({}, payload, {
+        curMode: snapshotCurMode,
+        curTab: snapshotCurTab,
+      }),
+    );
     const html = `<!doctype html>
 <html lang="ko">
 <head>
@@ -1482,7 +1493,7 @@ function barchart(vals, labels, H, col, unit) {
   ${clone.outerHTML}
   <script>
     // <!-- SADV_PAYLOAD_START -->
-    const EXPORT_PAYLOAD = ${JSON.stringify(payload)};
+    const EXPORT_PAYLOAD = ${exportPayloadJson};
     // <!-- SADV_PAYLOAD_END -->
     window.__SEARCHADVISOR_EXPORT_PAYLOAD__ = EXPORT_PAYLOAD;
     const SITE_META_MAP = EXPORT_PAYLOAD.siteMeta || {};
@@ -1582,7 +1593,7 @@ function barchart(vals, labels, H, col, unit) {
         accountTitle: naverIds.join(", "),
         siteStatus: siteCount + " sites loaded",
         siteSummary: "All " + siteCount + " sites sorted by clicks",
-        currentSite: curSite || "",
+        currentSite: curMode === "site" ? curSite || "" : "",
       };
     }
     function applySnapshotReportDecorations(decoration) {
@@ -1699,7 +1710,7 @@ function barchart(vals, labels, H, col, unit) {
       });
     }
     let allSites = EXPORT_PAYLOAD.allSites || [];
-    const INITIAL_MODE = EXPORT_PAYLOAD.curMode || "all";
+    const INITIAL_MODE = "all";
     let curMode = null;  // Initialize to null so switchMode() triggers on first call
     let curSite = EXPORT_PAYLOAD.curSite || (allSites[0] || null);
     let curTab = EXPORT_PAYLOAD.curTab || "overview";
@@ -1900,26 +1911,13 @@ function barchart(vals, labels, H, col, unit) {
         setTab(tab);
       },
       refresh: function () {
-        alert("??ν\ube33 HTML? ?\ubea4\uc7fb ?\u317B\uae44?\ub8f9\uc5ef?\ub348\ub58e. ?\uba2e\ub0af ?\ubdbe㈃?\uba2f\uaf4c ?\uafa9\uaedc ?ъ\ub2d4吏????\u317C\ub586 ??ν\ube50二\uc1f1\uaf6d??");
+        return false;
       },
       download: function () {
-        alert("??ν\ube33 HTML ?\ub349\ubfc9?\uc495\ub497 ?\u317C\ub586 ??ν\ube37 ???\ub181\ub4bf?\ub348\ub58e. ?\uba2e\ub0af ?\ubdbe㈃?\uba2f\uaf4c ?\u317C\ub586 ??ν\ube50二\uc1f1\uaf6d??");
+        return false;
       },
       close: function () {
-        const unmountShell = window.__SEARCHADVISOR_SNAPSHOT_SHELL_UNMOUNT__;
-        if (typeof unmountShell === "function") {
-          try {
-            unmountShell();
-          } catch (e) {}
-        }
-        const panel = document.getElementById("sadv-p");
-        if (panel) panel.remove();
-        const meta = document.querySelector(".snapshot-meta");
-        if (meta) meta.remove();
-        const host = document.getElementById("sadv-react-shell-host");
-        if (host) host.remove();
-        delete window.__SEARCHADVISOR_SNAPSHOT_API__;
-        delete window.__SEARCHADVISOR_SNAPSHOT_SHELL_ROOT__;
+        return false;
       },
     };
     if (snapshotUiReady) {
@@ -1951,7 +1949,7 @@ function barchart(vals, labels, H, col, unit) {
         function (done, total) {
           btn.textContent = done + "/" + total;
         },
-        { refreshMode: "refresh" },
+        { refreshMode: "cache-first" },
       );
       const html = injectSnapshotReactShell(buildSnapshotHtml(savedAt, payload), payload);
       const fileName =
