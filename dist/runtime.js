@@ -2807,6 +2807,58 @@ if (initialShellStyleEl) {
 }
 document.body.appendChild(p);
 
+const headerEl = document.getElementById("sadv-header");
+if (headerEl) {
+  const legacyTopRow = headerEl.firstElementChild;
+  const legacyLeft = legacyTopRow ? legacyTopRow.firstElementChild : null;
+  const legacyTitleRow = legacyLeft ? legacyLeft.firstElementChild : null;
+  const brandTitleEl = legacyTitleRow ? legacyTitleRow.firstElementChild : null;
+  const modeBarEl = document.getElementById("sadv-mode-bar");
+  const refreshBtnEl = document.getElementById("sadv-refresh-btn");
+  const saveBtnEl = document.getElementById("sadv-save-btn");
+  const closeBtnEl = document.getElementById("sadv-x");
+  const accountBadgeEl = document.getElementById("sadv-account-badge");
+  const siteLabelMetaEl = document.getElementById("sadv-site-label");
+  const cacheMetaEl = document.getElementById("sadv-cache-meta");
+
+  if (legacyTopRow && brandTitleEl && modeBarEl) {
+    const headerTopEl = document.createElement("div");
+    headerTopEl.className = "sadv-header-top";
+
+    const brandWrapEl = document.createElement("div");
+    brandWrapEl.className = "sadv-header-brand";
+    brandWrapEl.appendChild(brandTitleEl);
+
+    const actionsWrapEl = document.createElement("div");
+    actionsWrapEl.className = "sadv-header-actions";
+    [refreshBtnEl, saveBtnEl, closeBtnEl].forEach((node) => {
+      if (node) actionsWrapEl.appendChild(node);
+    });
+
+    const metaRowEl = document.createElement("div");
+    metaRowEl.className = "sadv-header-meta";
+
+    if (siteLabelMetaEl && !siteLabelMetaEl.querySelector("span")) {
+      const siteLabelText = siteLabelMetaEl.textContent || "";
+      siteLabelMetaEl.textContent = "";
+      const siteLabelSpan = document.createElement("span");
+      siteLabelSpan.textContent = siteLabelText;
+      siteLabelMetaEl.appendChild(siteLabelSpan);
+    }
+
+    [accountBadgeEl, siteLabelMetaEl, cacheMetaEl].forEach((node) => {
+      if (node) metaRowEl.appendChild(node);
+    });
+
+    headerTopEl.appendChild(brandWrapEl);
+    headerTopEl.appendChild(actionsWrapEl);
+
+    legacyTopRow.remove();
+    headerEl.insertBefore(headerTopEl, modeBarEl);
+    headerEl.insertBefore(metaRowEl, modeBarEl);
+  }
+}
+
 const requiredShellIds = [
   "sadv-mode-bar",
   "sadv-site-bar",
@@ -2848,53 +2900,81 @@ siteUiStyle.textContent = `
   position:relative !important;
   z-index:40 !important;
   overflow:visible !important;
-  padding:24px 24px 16px !important;
+  padding:20px 24px 14px !important;
   background:var(--sadv-bg) !important;
   border-bottom:1px solid var(--sadv-border-subtle) !important;
   backdrop-filter:none !important;
 }
-#sadv-header > div:first-child{
+.sadv-header-top{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) auto !important;
+  align-items:center !important;
+  column-gap:16px !important;
+  row-gap:10px !important;
+}
+.sadv-header-brand{
+  min-width:0 !important;
+  min-height:34px !important;
   display:flex !important;
-  justify-content:space-between !important;
-  align-items:flex-start !important;
-  gap:16px !important;
+  align-items:center !important;
 }
-#sadv-header > div:first-child > div:first-child{
-  min-width:0;
-  flex:1 1 auto;
-}
-#sadv-header > div:first-child > div:last-child{
+.sadv-header-actions{
   display:flex !important;
   gap:8px !important;
   align-items:center !important;
-  flex-wrap:wrap !important;
+  flex-wrap:nowrap !important;
   justify-content:flex-end !important;
+  white-space:nowrap !important;
+  flex-shrink:0 !important;
+}
+.sadv-header-meta{
+  display:flex !important;
+  align-items:center !important;
+  flex-wrap:wrap !important;
+  gap:8px !important;
+  margin-top:10px !important;
+  min-height:24px !important;
+}
+.sadv-header-meta > *{
+  min-width:0 !important;
 }
 #sadv-site-label{
   color:var(--sadv-text-secondary) !important;
-  margin-top:8px !important;
+  margin-top:0 !important;
   font-size:12px !important;
+  display:inline-flex !important;
+  align-items:center !important;
+  max-width:100% !important;
+  min-height:22px !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  white-space:nowrap !important;
+  line-height:1.2 !important;
 }
 #sadv-cache-meta{
   display:flex !important;
   align-items:center !important;
   gap:6px !important;
-  margin-top:6px !important;
+  margin-top:0 !important;
   min-height:22px !important;
   max-width:100% !important;
   overflow:hidden !important;
 }
 #sadv-account-badge{
-  border-radius:4px !important;
-  background:${T.accentSoftBg} !important;
-  border:1px solid ${T.accentSoftBorderStrong} !important;
-  color:var(--sadv-accent) !important;
+  min-height:22px !important;
+  padding:2px 9px !important;
+  border-radius:${T.radiusPill} !important;
+  background:rgba(255,212,0,0.08) !important;
+  border:1px solid rgba(255,212,0,0.16) !important;
+  color:#ffe082 !important;
+  font-size:10px !important;
+  max-width:min(100%,240px) !important;
 }
 #sadv-mode-bar{
   display:grid !important;
   grid-template-columns:1fr 1fr !important;
   gap:0 !important;
-  margin-top:20px !important;
+  margin-top:14px !important;
   background:var(--sadv-layer-01) !important;
   padding:0 !important;
   border-radius:0 !important;
@@ -2902,14 +2982,14 @@ siteUiStyle.textContent = `
   overflow:hidden !important;
 }
 .sadv-mode{
-  min-height:40px !important;
+  min-height:38px !important;
   padding:0 16px !important;
   border-radius:0 !important;
   border:none !important;
   border-right:1px solid var(--sadv-border-subtle) !important;
   background:transparent !important;
   color:var(--sadv-text-secondary) !important;
-  font-size:13px !important;
+  font-size:12px !important;
   font-weight:600 !important;
   transition:background-color .18s ease,color .18s ease,box-shadow .18s ease !important;
 }
@@ -2921,7 +3001,7 @@ siteUiStyle.textContent = `
   color:var(--sadv-text) !important;
 }
 .sadv-mode.on{
-  background:${T.accentSoftBgStrong} !important;
+  background:rgba(255,212,0,0.09) !important;
   color:var(--sadv-accent) !important;
   box-shadow:inset 0 -2px 0 var(--sadv-accent) !important;
 }
@@ -3100,7 +3180,7 @@ siteUiStyle.textContent = `
 #sadv-refresh-btn,
 #sadv-save-btn,
 #sadv-x{
-  min-height:40px !important;
+  min-height:36px !important;
   border-radius:0 !important;
 }
 #sadv-refresh-btn,
@@ -3108,7 +3188,9 @@ siteUiStyle.textContent = `
   background:var(--sadv-layer-01) !important;
   border:1px solid var(--sadv-border) !important;
   color:var(--sadv-text-secondary) !important;
-  padding:0 14px !important;
+  padding:0 12px !important;
+  min-width:0 !important;
+  font-size:12px !important;
 }
 #sadv-refresh-btn:hover,
 #sadv-save-btn:hover{
@@ -3120,6 +3202,8 @@ siteUiStyle.textContent = `
   background:transparent !important;
   border:1px solid var(--sadv-border-subtle) !important;
   color:var(--sadv-text-secondary) !important;
+  width:36px !important;
+  height:36px !important;
 }
 #sadv-x:hover {
   border-color:var(--sadv-danger) !important;
@@ -3153,15 +3237,20 @@ siteUiStyle.textContent = `
   #sadv-header {
     padding:18px 16px 14px !important;
   }
-  #sadv-header > div:first-child{
-    flex-direction:column !important;
+  .sadv-header-top{
+    grid-template-columns:1fr !important;
+    align-items:flex-start !important;
   }
-  #sadv-header > div:first-child > div:last-child{
+  .sadv-header-actions{
     width:100%;
     justify-content:flex-start !important;
   }
+  .sadv-header-meta{
+    margin-top:8px !important;
+    gap:6px !important;
+  }
   #sadv-mode-bar {
-    margin-top:16px !important;
+    margin-top:12px !important;
   }
   #sadv-combo-btn {
     min-height:44px !important;
@@ -8661,7 +8750,9 @@ function getAvailableRenderers() {
     const summary = isMergedReport() && mergedMeta && mergedMeta.sourceCount
       ? `${allSites.length}개 사이트 등록됨 · ${mergedMeta.sourceCount}개 스냅샷 병합`
       : `${allSites.length}개 사이트 등록됨`;
-    labelEl.textContent = summary;
+    const labelTextEl = labelEl.querySelector("span");
+    if (labelTextEl) labelTextEl.textContent = summary;
+    else labelEl.textContent = summary;
   }
   function formatCacheMetaTime(dateLike) {
     const date = dateLike instanceof Date ? dateLike : new Date(dateLike);
@@ -8715,17 +8806,17 @@ function getAvailableRenderers() {
       ? T.dangerSoftBg
       : isNearExpiry
         ? T.warningSoftBorder
-        : T.accentSoftBorder;
+        : "rgba(255,212,0,0.12)";
     const bgCol = isExpired
       ? T.dangerSoftBg
       : isNearExpiry
         ? T.warningSoftBg
-        : T.accentSoftBg;
+        : "rgba(255,255,255,0.02)";
     const textCol = isExpired
       ? C.red
       : isNearExpiry
         ? C.amber
-        : "var(--sadv-text-secondary,#ffe9a8)";
+        : "var(--sadv-text-tertiary,#b9a55a)";
     const titleParts = [
       `캐시저장 ${formatCacheMetaTime(cacheMeta.updatedAt)}`,
       remainingLabel ? `자동갱신까지 ${remainingLabel}` : null,
