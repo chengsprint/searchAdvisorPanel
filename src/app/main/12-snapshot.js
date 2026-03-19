@@ -422,6 +422,11 @@
       max-height:none !important;
       height:auto !important;
     }
+    .sadv-snapshot-combo-drop{
+      position:fixed !important;
+      z-index:2147483646 !important;
+      margin:0 !important;
+    }
   </style>
 </head>
 <body>
@@ -865,13 +870,74 @@
       });
     }
     const snapshotComboBtn = document.getElementById("sadv-combo-btn");
+    const snapshotComboWrap = document.getElementById("sadv-combo-wrap");
+    const snapshotComboDrop = document.getElementById("sadv-combo-drop");
+    function scheduleSnapshotComboDropPositionSync(attempt) {
+      const tries = typeof attempt === "number" ? attempt : 0;
+      if (!snapshotComboBtn || !snapshotComboDrop) return;
+      const rect = snapshotComboBtn.getBoundingClientRect();
+      if (rect && rect.width >= 40 && rect.height >= 24) {
+        syncSnapshotComboDropPosition();
+        return;
+      }
+      if (tries >= 10) return;
+      requestAnimationFrame(function () {
+        scheduleSnapshotComboDropPositionSync(tries + 1);
+      });
+    }
+    function syncSnapshotComboDropPosition() {
+      if (!snapshotComboBtn || !snapshotComboDrop) return;
+      const rect = snapshotComboBtn.getBoundingClientRect();
+      if (!rect || rect.width < 40 || rect.height < 24) return;
+      const maxWidth = Math.max(240, window.innerWidth - 24);
+      const width = Math.min(rect.width, maxWidth);
+      const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12));
+      const availableHeight = Math.max(160, Math.floor(window.innerHeight - rect.bottom - 16));
+      snapshotComboDrop.style.setProperty("position", "fixed", "important");
+      snapshotComboDrop.style.setProperty("top", Math.round(rect.bottom + 2) + "px", "important");
+      snapshotComboDrop.style.setProperty("left", Math.round(left) + "px", "important");
+      snapshotComboDrop.style.setProperty("right", "auto", "important");
+      snapshotComboDrop.style.setProperty("width", Math.round(width) + "px", "important");
+      snapshotComboDrop.style.setProperty("max-height", Math.min(420, availableHeight) + "px", "important");
+      snapshotComboDrop.style.setProperty("z-index", "2147483646", "important");
+      snapshotComboDrop.style.setProperty(
+        "display",
+        snapshotComboWrap && snapshotComboWrap.classList.contains("open") ? "block" : "none",
+        "important"
+      );
+    }
+    function closeSnapshotCombo() {
+      if (snapshotComboWrap) {
+        snapshotComboWrap.classList.remove("open");
+        snapshotComboWrap.setAttribute("aria-expanded", "false");
+      }
+      if (snapshotComboDrop) snapshotComboDrop.style.setProperty("display", "none", "important");
+    }
+    if (snapshotComboDrop) {
+      snapshotComboDrop.classList.add("sadv-snapshot-combo-drop");
+      if (snapshotComboDrop.parentElement !== document.body) document.body.appendChild(snapshotComboDrop);
+      snapshotComboDrop.style.setProperty("display", "none", "important");
+    }
+    if (snapshotComboWrap && snapshotComboDrop) {
+      const comboWrapObserver = new MutationObserver(function () {
+        syncSnapshotComboDropPosition();
+      });
+      comboWrapObserver.observe(snapshotComboWrap, {
+        attributes: true,
+        attributeFilter: ["class"],
+      });
+    }
     if (snapshotComboBtn) {
       snapshotComboBtn.addEventListener("click", function (e) {
         e.stopPropagation();
-        const wrap = document.getElementById("sadv-combo-wrap");
-        if (!wrap) return;
-        wrap.classList.toggle("open");
-        if (wrap.classList.contains("open")) {
+        if (!snapshotComboWrap) return;
+        snapshotComboWrap.classList.toggle("open");
+        snapshotComboWrap.setAttribute(
+          "aria-expanded",
+          snapshotComboWrap.classList.contains("open") ? "true" : "false"
+        );
+        if (snapshotComboWrap.classList.contains("open")) {
+          scheduleSnapshotComboDropPositionSync(0);
           setTimeout(function () {
             const inp = document.getElementById("sadv-combo-search");
             if (inp) {
@@ -884,9 +950,14 @@
                   const searchTarget = ((el.dataset.site || "") + " " + getSiteLabel(el.dataset.site || "")).toLowerCase();
                   el.style.display = !q || searchTarget.includes(q) ? "flex" : "none";
                 });
+                scheduleSnapshotComboDropPositionSync(0);
               };
+              scheduleSnapshotComboDropPositionSync(0);
             }
+            scheduleSnapshotComboDropPositionSync(0);
           }, 50);
+        } else {
+          closeSnapshotCombo();
         }
       });
     } else {
@@ -894,12 +965,24 @@
     }
     document.addEventListener("click", function (e) {
       const wrap = document.getElementById("sadv-combo-wrap");
-      if (wrap && !wrap.contains(e.target)) wrap.classList.remove("open");
+      const drop = document.getElementById("sadv-combo-drop");
+      if (wrap && drop && !wrap.contains(e.target) && !drop.contains(e.target)) {
+        closeSnapshotCombo();
+      }
     });
+    if (typeof window !== "undefined") {
+      window.addEventListener("resize", function () {
+        scheduleSnapshotComboDropPositionSync(0);
+      });
+      window.addEventListener("scroll", function () {
+        if (snapshotComboWrap && snapshotComboWrap.classList.contains("open")) scheduleSnapshotComboDropPositionSync(0);
+      }, true);
+    }
     if (snapshotModeBar) {
       snapshotModeBar.addEventListener("click", function (e) {
         const m = e.target.closest("[data-m]");
         if (!m) return;
+        closeSnapshotCombo();
         switchMode(m.dataset.m);
       });
     }
