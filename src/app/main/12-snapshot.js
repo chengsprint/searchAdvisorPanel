@@ -869,6 +869,30 @@
         setTab(t.dataset.t);
       });
     }
+    /**
+     * Snapshot combo dropdown layering contract
+     * -----------------------------------------
+     * Live runtime and saved HTML do not share the exact same stacking context.
+     *
+     * In saved HTML:
+     * - #sadv-bd can visually overlap the combo dropdown if the dropdown remains inside
+     *   the header/site-bar DOM flow.
+     * - Base panel CSS already defines #sadv-combo-drop with !important rules, so plain
+     *   inline style assignment is not strong enough to override its absolute positioning.
+     *
+     * Therefore snapshot HTML must:
+     * 1) detach the dropdown into a top-layer portal (document.body),
+     * 2) position it with viewport-based fixed coordinates,
+     * 3) write critical layout properties with style.setProperty(..., "important"),
+     * 4) retry positioning until the combo button has a non-zero rect,
+     * 5) keep close/open/resize/scroll behavior in sync so saved HTML stays usable offline.
+     *
+     * If this block is changed later, verify against:
+     * - saved HTML generated from the latest runtime
+     * - site mode > combo open
+     * - lower half of the popup using elementFromPoint(...)
+     * - visual comparison versus the live panel
+     */
     const snapshotComboBtn = document.getElementById("sadv-combo-btn");
     const snapshotComboWrap = document.getElementById("sadv-combo-wrap");
     const snapshotComboDrop = document.getElementById("sadv-combo-drop");
