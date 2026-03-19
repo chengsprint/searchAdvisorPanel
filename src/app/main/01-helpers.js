@@ -173,6 +173,15 @@ function sanitizeHTML(dirty, options = {}) {
   return fallbackSanitizeHTML(dirty, options);
 }
 
+// Internal SVG fragments are generated only from trusted code paths and
+// already escape dynamic values with escHtml(). Using sanitizeHTML() on raw
+// SVG fragments in HTML context can strip chart primitives (path/line/circle),
+// so we assign them directly to the SVG namespace host.
+function setTrustedSvgMarkup(svgEl, markup) {
+  if (!svgEl) return;
+  svgEl.innerHTML = String(markup || "");
+}
+
 // ============================================================
 // Tooltip helper functions
 // ============================================================
@@ -327,57 +336,33 @@ function sparkline(vals, labels, H, col, unit, opts) {
   svg.setAttribute("viewBox", "0 0 " + W2 + " " + H);
   svg.setAttribute("preserveAspectRatio", "none");
   svg.style.cssText = "display:block;width:100%;height:auto;cursor:crosshair";
-  svg.innerHTML = sanitizeHTML(
-
+  setTrustedSvgMarkup(
+    svg,
     '<defs><linearGradient id="' +
-
-    uid +
-
-    '" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="' +
-
-    escHtml(col) +
-
-    '" stop-opacity="0.22"/><stop offset="100%" stop-color="' +
-
-    escHtml(col) +
-
-    '" stop-opacity="0.01"/></linearGradient></defs>' +
-
-    guideMarkup +
-
-    '<path d="' +
-
-    escHtml(area) +
-
-    '" fill="url(#' +
-
-    escHtml(uid) +
-
-    ')"/><path d="' +
-
-    escHtml(path) +
-
-    '" fill="none" stroke="' +
-
-    escHtml(col) +
-
-    '" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/><line id="' +
-
-    escHtml(wid) +
-
-    '" x1="0" y1="0" x2="0" y2="' +
-
-    escHtml(H) +
-
-    '" stroke="#3d5a78" stroke-width="1" stroke-dasharray="3,2" opacity="0"/><circle id="' +
-
-    escHtml(cid) +
-
-    '" cx="0" cy="0" r="3.5" fill="' +
-
-    escHtml(col) +
-
-    '" stroke="#060b14" stroke-width="1.5" opacity="0"/>'
+      uid +
+      '" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="' +
+      escHtml(col) +
+      '" stop-opacity="0.22"/><stop offset="100%" stop-color="' +
+      escHtml(col) +
+      '" stop-opacity="0.01"/></linearGradient></defs>' +
+      guideMarkup +
+      '<path d="' +
+      escHtml(area) +
+      '" fill="url(#' +
+      escHtml(uid) +
+      ')"/><path d="' +
+      escHtml(path) +
+      '" fill="none" stroke="' +
+      escHtml(col) +
+      '" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/><line id="' +
+      escHtml(wid) +
+      '" x1="0" y1="0" x2="0" y2="' +
+      escHtml(H) +
+      '" stroke="#3d5a78" stroke-width="1" stroke-dasharray="3,2" opacity="0"/><circle id="' +
+      escHtml(cid) +
+      '" cx="0" cy="0" r="3.5" fill="' +
+      escHtml(col) +
+      '" stroke="#060b14" stroke-width="1.5" opacity="0"/>'
   );
 
   svg.addEventListener("mousemove", function (e) {
@@ -481,7 +466,10 @@ function barchart(vals, labels, H, col, unit) {
         })
         .join("")
       : "";
-  svg.innerHTML = sanitizeHTML(`<defs><linearGradient id="${escHtml(uid)}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${escHtml(col)}" stop-opacity="0.9"/><stop offset="100%" stop-color="${escHtml(col)}" stop-opacity="0.35"/></linearGradient></defs>${guideMarkup}`);
+  setTrustedSvgMarkup(
+    svg,
+    `<defs><linearGradient id="${escHtml(uid)}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${escHtml(col)}" stop-opacity="0.9"/><stop offset="100%" stop-color="${escHtml(col)}" stop-opacity="0.35"/></linearGradient></defs>${guideMarkup}`
+  );
   vals.forEach(function (v, i) {
     const bh = Math.max(2, (v / mx) * (H - 4)),
       x = gap + i * (bw + gap),
@@ -496,7 +484,7 @@ function barchart(vals, labels, H, col, unit) {
     rect.setAttribute("width", +bw.toFixed(1));
     rect.setAttribute("height", +bh.toFixed(1));
     rect.setAttribute("rx", "2");
-    rect.setAttribute("fill", isBest ? C.green : "url(#" + uid + ")");
+    rect.setAttribute("fill", isBest ? col : "url(#" + uid + ")");
     rect.setAttribute("opacity", isBest ? "1" : "0.7");
     rect.addEventListener("mouseenter", function (e) {
       rect.setAttribute("opacity", "1");
