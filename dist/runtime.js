@@ -875,27 +875,27 @@ const ICONS = {
   save: '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>',
   xMark: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
   chevronDown: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>',
-  logoSearch: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f1c21b" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
+  logoSearch: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffd400" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
   trendUp: '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>',
   linkInsight: '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
   pieChart: '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>',
 };
 const C = {
-  green: "#42be65",
-  blue: "#f1c21b",
-  amber: "#ffb000",
-  red: "#fa4d56",
-  purple: "#be95ff",
-  teal: "#08bdba",
-  orange: "#ff832b",
-  pink: "#ff7eb6",
-  bg0: "#0b0b0c",
-  bg1: "#141414",
-  bg2: "#1f1f1f",
-  border: "#403b18",
-  text: "#fff9db",
-  muted: "#a89f67",
-  sub: "#e6d98b",
+  green: "#ffe45e",
+  blue: "#ffd400",
+  amber: "#ff9f1c",
+  red: "#ff5a36",
+  purple: "#ff7a00",
+  teal: "#ffb703",
+  orange: "#ff7a00",
+  pink: "#ff6b00",
+  bg0: "#050505",
+  bg1: "#0d0d0f",
+  bg2: "#171717",
+  border: "#4a3b00",
+  text: "#fffdf5",
+  muted: "#b9a55a",
+  sub: "#ffe9a8",
 };
 const COLORS = [C.green, C.blue, C.amber, C.teal, C.purple, C.orange, C.pink];
 
@@ -2733,9 +2733,9 @@ siteUiStyle.textContent = `
   --sadv-bg:${C.bg0};
   --sadv-layer-01:${C.bg1};
   --sadv-layer-02:${C.bg2};
-  --sadv-layer-hover:#332b0b;
+  --sadv-layer-hover:#3b2d00;
   --sadv-border:${C.border};
-  --sadv-border-subtle:#2c2815;
+  --sadv-border-subtle:#2b2200;
   --sadv-text:${C.text};
   --sadv-text-secondary:${C.sub};
   --sadv-text-tertiary:${C.muted};
@@ -2788,8 +2788,8 @@ siteUiStyle.textContent = `
 }
 #sadv-account-badge{
   border-radius:4px !important;
-  background:rgba(241,194,27,0.12) !important;
-  border:1px solid rgba(241,194,27,0.24) !important;
+  background:rgba(255,212,0,0.12) !important;
+  border:1px solid rgba(255,212,0,0.26) !important;
   color:var(--sadv-accent) !important;
 }
 #sadv-mode-bar{
@@ -2823,7 +2823,7 @@ siteUiStyle.textContent = `
   color:var(--sadv-text) !important;
 }
 .sadv-mode.on{
-  background:rgba(241,194,27,0.14) !important;
+  background:rgba(255,212,0,0.16) !important;
   color:var(--sadv-accent) !important;
   box-shadow:inset 0 -2px 0 var(--sadv-accent) !important;
 }
@@ -2919,7 +2919,7 @@ siteUiStyle.textContent = `
   background:var(--sadv-layer-02) !important;
 }
 .sadv-combo-item.active{
-  background:rgba(241,194,27,0.12) !important;
+  background:rgba(255,212,0,0.12) !important;
   color:var(--sadv-text) !important;
   border-left-color:var(--sadv-accent) !important;
 }
@@ -8565,7 +8565,7 @@ function getAvailableRenderers() {
       typeof cacheMeta.ttlMs === "number" && cacheMeta.ttlMs > 0
         ? Math.round(cacheMeta.ttlMs / 3600000)
         : null;
-    const chipStyle = "display:inline-flex;align-items:center;min-height:24px;padding:3px 10px;border-radius:999px;border:1px solid rgba(241,194,27,0.22);background:rgba(241,194,27,0.12);color:var(--sadv-text-secondary,#e6d98b);font-size:10px;font-weight:600;line-height:1.2";
+    const chipStyle = "display:inline-flex;align-items:center;min-height:24px;padding:3px 10px;border-radius:999px;border:1px solid rgba(255,212,0,0.24);background:rgba(255,212,0,0.14);color:var(--sadv-text-secondary,#ffe9a8);font-size:10px;font-weight:600;line-height:1.2";
     const parts = [
       `<span style="${chipStyle}">캐시저장 ${escHtml(formatCacheMetaTime(cacheMeta.updatedAt))}</span>`,
     ];
@@ -9132,9 +9132,9 @@ async function renderAllSites() {
   loading.innerHTML = sanitizeHTML(
     '<div style="font-size:13px;font-weight:700;color:var(--sadv-text,#f4f4f4);margin-bottom:8px">전체 현황을 준비 중입니다</div>' +
     `<div id="sadv-all-progress-detail" style="font-size:11px;margin-bottom:10px">기본 리포트를 불러오는 중입니다. (예상: ${estimatedTimeText})</div>` +
-    '<div style="height:10px;border-radius:999px;background:var(--sadv-layer-02,#1f1f1f);border:1px solid var(--sadv-border-subtle,#2c2815);overflow:hidden"><div id="sadv-all-progress-bar" style="width:6%;height:100%;background:linear-gradient(90deg,#f1c21b,#ffb000)"></div></div>' +
-    '<div id="sadv-all-progress-meta" style="font-size:10px;color:var(--sadv-text-tertiary,#8d8d8d);margin-top:8px">메타 진단은 2개씩 천천히 요청합니다.</div>' +
-    '<div id="sadv-all-progress-percent" style="font-size:11px;color:#f1c21b;margin-top:4px;font-weight:600">0%</div>'
+    '<div style="height:10px;border-radius:999px;background:var(--sadv-layer-02,#171717);border:1px solid var(--sadv-border-subtle,#2b2200);overflow:hidden"><div id="sadv-all-progress-bar" style="width:6%;height:100%;background:linear-gradient(90deg,#ffd400,#ff7a00)"></div></div>' +
+    '<div id="sadv-all-progress-meta" style="font-size:10px;color:var(--sadv-text-tertiary,#b9a55a);margin-top:8px">메타 진단은 2개씩 천천히 요청합니다.</div>' +
+    '<div id="sadv-all-progress-percent" style="font-size:11px;color:#ffd400;margin-top:4px;font-weight:600">0%</div>'
   );
   bdEl.innerHTML = "";
   bdEl.appendChild(loading);
@@ -9331,7 +9331,7 @@ async function renderAllSites() {
     // PRIORITY: Use accountLabel first (from siteOwnership), fallback to sourceAccount
     const displayAccount = r.accountLabel || r.sourceAccount;
     const accountBadge = displayAccount && (typeof displayAccount === "string" ? displayAccount.trim() : "")
-      ? `<span style="font-size:10px;color:${C.blue};background:rgba(241,194,27,0.12);padding:3px 8px;border-radius:999px;margin-left:8px;white-space:nowrap;border:1px solid rgba(241,194,27,0.2)" title="${escHtml(displayAccount)}">${escHtml(displayAccount.includes("@") ? displayAccount.split("@")[0] : displayAccount)}</span>`
+      ? `<span style="font-size:10px;color:${C.blue};background:rgba(255,212,0,0.12);padding:3px 8px;border-radius:999px;margin-left:8px;white-space:nowrap;border:1px solid rgba(255,212,0,0.22)" title="${escHtml(displayAccount)}">${escHtml(displayAccount.includes("@") ? displayAccount.split("@")[0] : displayAccount)}</span>`
       : "";
 
     // Responsive card layout
