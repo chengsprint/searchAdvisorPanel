@@ -2071,9 +2071,9 @@ function kpiGrid(items) {
   items.forEach(function (it) {
     const d = document.createElement("div");
     d.style.cssText =
-      "background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);border-radius:" + T.radiusNone + ";padding:" + T.spaceCard + " 18px;text-align:left;min-width:0;min-height:104px;display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start;transition:all 0.2s;box-shadow:" + T.shadowCard + ";overflow:hidden";
+      "background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);border-radius:" + T.radiusNone + ";padding:" + T.spaceCard + " 18px;text-align:center;min-width:0;min-height:104px;display:flex;flex-direction:column;justify-content:flex-start;align-items:center;transition:all 0.2s;box-shadow:" + T.shadowCard + ";overflow:hidden";
     const iconHtml = it.icon ? `<div style="margin-bottom:10px;color:${it.color || 'var(--sadv-text-secondary,#c6c6c6)'};opacity:0.92">${it.icon}</div>` : "";
-    d.innerHTML = sanitizeHTML(`${iconHtml}<div style="width:100%;font-size:11px;color:var(--sadv-text-tertiary,#8d8d8d);line-height:1.4;margin-bottom:8px;word-break:keep-all;font-weight:600;text-transform:uppercase;letter-spacing:0.04em">${escHtml(it.label)}</div><div style="width:100%;font-size:${valueFontSize};font-weight:650;color:${it.color || C.text};line-height:1.06;letter-spacing:-0.01em;padding-right:4px;word-break:keep-all">${escHtml(it.value)}</div><div style="width:100%;font-size:11px;color:var(--sadv-text-secondary,#c6c6c6);line-height:1.4;margin-top:8px;visibility:${it.sub ? "visible" : "hidden"}">${escHtml(it.sub || "&nbsp;")}</div>`);
+    d.innerHTML = sanitizeHTML(`${iconHtml}<div style="width:100%;font-size:11px;color:var(--sadv-text-tertiary,#8d8d8d);line-height:1.4;margin-bottom:8px;word-break:keep-all;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;text-align:center">${escHtml(it.label)}</div><div style="width:100%;font-size:${valueFontSize};font-weight:650;color:${it.color || C.text};line-height:1.06;letter-spacing:-0.01em;word-break:keep-all;text-align:center">${escHtml(it.value)}</div><div style="width:100%;font-size:11px;color:var(--sadv-text-secondary,#c6c6c6);line-height:1.4;margin-top:8px;visibility:${it.sub ? "visible" : "hidden"};text-align:center">${escHtml(it.sub || "&nbsp;")}</div>`);
     g.appendChild(d);
   });
   return g;
@@ -9550,11 +9550,11 @@ async function renderAllSites() {
 
     kpiData.forEach(kpi => {
       const kpiCard = document.createElement("div");
-      kpiCard.style.cssText = `background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);border-radius:0;padding:16px 18px;text-align:left;box-shadow:0 8px 24px rgba(0,0,0,0.18);overflow:hidden`;
+      kpiCard.style.cssText = `background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);border-radius:0;padding:16px 18px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,0.18);overflow:hidden;display:flex;flex-direction:column;align-items:center`;
       kpiCard.innerHTML = sanitizeHTML(`
-        <div style="width:100%;font-size:11px;color:var(--sadv-text-tertiary,#8d8d8d);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em">${escHtml(kpi.label)}</div>
-        <div style="width:100%;font-size:17px;font-weight:650;color:${kpi.color};line-height:1.06;margin-bottom:6px;letter-spacing:-0.01em;padding-right:4px;word-break:keep-all">${escHtml(kpi.value)}</div>
-        <div style="width:100%;font-size:11px;color:var(--sadv-text-secondary,#c6c6c6)">${escHtml(kpi.sub)}</div>
+        <div style="width:100%;font-size:11px;color:var(--sadv-text-tertiary,#8d8d8d);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em;text-align:center">${escHtml(kpi.label)}</div>
+        <div style="width:100%;font-size:17px;font-weight:650;color:${kpi.color};line-height:1.06;margin-bottom:6px;letter-spacing:-0.01em;word-break:keep-all;text-align:center">${escHtml(kpi.value)}</div>
+        <div style="width:100%;font-size:11px;color:var(--sadv-text-secondary,#c6c6c6);text-align:center">${escHtml(kpi.sub)}</div>
       `);
       mobileKpiWrapper.appendChild(kpiCard);
     });
