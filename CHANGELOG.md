@@ -78,6 +78,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - API_REFERENCE_EN.md (API 문서)
 - 30개 상세 보고서/가이드
 
+## [2.0.2] - 2026-03-19
+
+### Fixed
+- SearchAdvisor 실페이지에서 `encId`를 찾지 못해 `fetchDiagnosisMeta`가 실패하던 문제 수정
+- `secTitle()`가 HTML 보조 라벨까지 escape하여 문자열로 노출되던 렌더링 문제 수정
+- 툴팁 HTML이 escape되어 강조/줄바꿈이 깨지던 문제 수정
+- 상단 `새로고침`/`저장` 버튼이 좁은 폭에서 줄바꿈되던 레이아웃 문제 수정
+
+### Changed
+- `ACCOUNT_UTILS.getEncId()`에 `enc_id`, window object scan, resource scan fallback 추가
+- shell 액션 버튼에 `nowrap`, `min-width`, `flex-shrink` 보정 적용
+
+### Validation
+- `npm run build` 통과
+- mock `authUser.enc_id` 주입 기준 badge/shell 렌더 확인
+
+### Documentation
+- `docs/RELEASE_NOTES_v2.0.2_20260319.md` 추가
+
 ## [2.0.1] - 2026-03-18
 
 ### Fixed

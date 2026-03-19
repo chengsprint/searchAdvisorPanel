@@ -189,7 +189,7 @@ function tip() {
 }
 function showTip(e, h) {
   const t = tip();
-  t.innerHTML = sanitizeHTML(escHtml(h));
+  t.innerHTML = sanitizeHTML(h);
   t.style.display = "block";
   moveTip(e);
 }
@@ -580,7 +580,7 @@ function secTitle(t) {
   d.style.cssText =
     "font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#64748b;margin:24px 0 12px;display:flex;align-items:center;gap:10px";
   d.innerHTML = sanitizeHTML(
-    escHtml(t) +
+    String(t || "") +
     ' <span style="flex:1;height:1px;background:#334155;display:inline-block;opacity:0.3"></span>'
   );
   return d;

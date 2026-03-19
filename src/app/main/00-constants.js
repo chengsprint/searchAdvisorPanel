@@ -318,10 +318,45 @@ const DATA_TTL = 12 * 60 * 60 * 1000;
 // ============================================================
 // P0-3: ACCOUNT_UTILS - 계정 유틸리티 통합
 // ============================================================
+function findNuxtAuthUser() {
+  try {
+    return window.__NUXT__?.state?.authUser || window.__NUXT__?.state?.user || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function findEncIdFallback() {
+  try {
+    const authUser = findNuxtAuthUser();
+    const directEncId = authUser?.encId || authUser?.enc_id || "";
+    if (typeof directEncId === "string" && directEncId) return directEncId;
+  } catch (e) {}
+
+  try {
+    for (const key of Object.keys(window)) {
+      const value = window[key];
+      const candidate = value?.encId || value?.enc_id || "";
+      if (typeof candidate === "string" && /^[a-f0-9]{64}$/i.test(candidate)) {
+        return candidate;
+      }
+    }
+  } catch (e) {}
+
+  try {
+    for (const entry of performance.getEntriesByType("resource")) {
+      const match = String(entry?.name || "").match(/([a-f0-9]{64})/i);
+      if (match) return match[1];
+    }
+  } catch (e) {}
+
+  return "";
+}
+
 const ACCOUNT_UTILS = {
   getAccountLabel: function() {
     try {
-      const authUser = window.__NUXT__?.state?.authUser;
+      const authUser = findNuxtAuthUser();
       return authUser?.email || "";
     } catch (e) {
       return "";
@@ -329,17 +364,17 @@ const ACCOUNT_UTILS = {
   },
   getEncId: function() {
     try {
-      return window.__NUXT__?.state?.authUser?.encId || "";
+      return findEncIdFallback();
     } catch (e) {
       return "";
     }
   },
   getAccountInfo: function() {
     try {
-      const authUser = window.__NUXT__?.state?.authUser;
+      const authUser = findNuxtAuthUser();
       return {
         accountLabel: authUser?.email || "",
-        encId: authUser?.encId || ""
+        encId: findEncIdFallback()
       };
     } catch (e) {
       return { accountLabel: "", encId: "" };
