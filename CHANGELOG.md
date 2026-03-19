@@ -7,76 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.0.1] - 2026-03-18
+## [2.0.3] - 2026-03-19
 
 ### Fixed
-- `sadv-combo-btn` 등 runtime shell DOM이 누락된 상태에서 `addEventListener`가 호출되던 오류 수정
-- DOMPurify 로드 실패 시 HTML이 문자열로 escape되어 UI shell이 깨지던 문제 수정
-- built-in fallback sanitizer를 도입해 DOMPurify 비가용 환경에서도 shell DOM이 정상 생성되도록 개선
-- `tabsEl`, `modeBar`, `siteBar`, `labelEl`, `bdEl` 등 주요 DOM 참조의 null 방어 및 초기화 가드 추가
-- modular runtime 경로에서 누락되던 `isMergedReport()` helper 추가
-- `accountLabel` TDZ/전역 참조 문제로 인한 초기화 단계 runtime error 수정
+- 모듈 빌드 경로에서 상단 `새로고침` 버튼이 실제 수동 전체 갱신으로 연결되지 않던 문제 수정
+- 모듈 빌드 runtime에서 `window.__sadvApi.refresh()`가 누락되어 외부 자동화/디버깅 진입점이 사라졌던 문제 수정
+- `닫기` / `저장` 액션 바인딩이 모듈 빌드 경로에 일관되게 반영되지 않던 문제 정리
 
 ### Changed
-- DOMPurify CDN 로딩 경로를 정리하고 SRI 의존으로 인한 차단 이슈를 제거
-- fallback sanitizer 경고를 1회만 출력하도록 조정하여 콘솔 노이즈 감소
+- 헤더에 `캐시저장`, `자동갱신까지`, `12시간 TTL` 메타 칩 표시 추가
+- UI snapshot/state 응답에 live cache metadata(`updatedAt`, `remainingMs`, `ttlMs`, `sourceCount`) 포함
+- 캐시 잔여시간이 세션 중에도 갱신되도록 header sync 경로 보강
 
-### Testing
-- Chromium 실검증에서 `#sadv-combo-btn`, `#sadv-tabs`, `#sadv-bd` 생성 확인
-- 실제 페이지 컨텍스트 주입 테스트에서 console error 0건 확인
+### Validation
 - `npm run build` 통과
+- Playwright 기반 검증에서 헤더 메타 표시 확인
+- Playwright 기반 검증에서 `#sadv-refresh-btn` 클릭 시 `trigger: "manual"` 이벤트 발생 확인
+- 브라우저 런타임 상태에서 `window.__SEARCHADVISOR_UI_STATE__.getState().cacheMeta` 노출 확인
 
 ### Documentation
-- runtime shell 초기화/DOMPurify fallback 관련 릴리즈 노트 추가
-
-### Added
-- 에러 추적 시스템 (ERROR_TRACKING) (P0)
-- React 18 호환성 계층 (00-react18-compat.js) (P2)
-- V1 마이그레이션 기능 (migrateV1ToV2) (P2)
-- 사용자 친화적 오류 메시지 (ERROR_MESSAGES) (P1)
-- localStorage 경합 조건 해결 (쓰기 큐) (P1)
-- 모바일 반응형 디자인 (768px 미디어 쿼리) (P1)
-- 키보드 내비게이션 지원 (WCAG 2.1 AA) (P1)
-- JSDoc 문서화 (85% 커버리지) (P1)
-- CI/CD 파이프라인 (.github/workflows/ci.yml) (P3)
-- 테스트 프레임워크 (Jest, Playwright) (P3)
-- 영문 문서화 (README_EN.md) (P3)
-
-### Changed
-- API 응답 검증 강화 (API_RESPONSE_SCHEMAS) (P2)
-- 번들 크기 최적화 (673KB → 672KB) (P2)
-- 캐시 TTL 설정 상수화 (CACHE_CONFIG)
-- 진행률 표시 개선 (예상 시간, 남은 시간)
-
-### Fixed
-- XSS 취약점 (escHtml 함수 보강)
-- localStorage 경합 조건 (낙관적 잠금)
-- 빌드 구문 오류 (중복 닫는 괄호)
-- curMode 초기화 타이밍 문제
-- SCHEMA_VERSIONS.compare() null 처리
-- atob() 예외처리 추가
-- exportSingleAccount() null 체크 강화
-
-### Security
-- CSRF 토큰 구현 (api-csrf-token)
-- DOMPurify로 innerHTML XSS 방지
-- Content Security Policy 고려
-
-### Performance
-- 쓰기 큐로 localStorage 경합 해결
-- LRU Cache로 memCache 무한 성장 방지
-- Code Splitting으로 번들 크기 최적화
-
-### Testing
-- 단위 테스트 23개 통과
-- 통합 테스트 10개 통과
-- E2E 테스트 15개 정의
-- 테스트 커버리지 60%+ 달성
-
-### Documentation
-- README_EN.md (영문 번역)
-- API_REFERENCE_EN.md (API 문서)
-- 30개 상세 보고서/가이드
+- `docs/RELEASE_NOTES_v2.0.3_20260319.md` 추가
 
 ## [2.0.2] - 2026-03-19
 
