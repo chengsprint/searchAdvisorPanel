@@ -17,6 +17,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
 const SRC_DIR = path.join(__dirname, 'src');
 const DIST_DIR = path.join(__dirname, 'dist');
@@ -64,6 +65,20 @@ const MODULES = [
 function build() {
   console.log('SearchAdvisor Runtime Bundler\n');
   console.log('Assembling modules...');
+
+  const buildStamp = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+  const gitHead = (() => {
+    try {
+      return execSync('git rev-parse --short=7 HEAD', {
+        cwd: __dirname,
+        stdio: ['ignore', 'pipe', 'ignore'],
+      })
+        .toString()
+        .trim();
+    } catch (_) {
+      return 'local';
+    }
+  })();
 
   // Ensure dist directory exists
   if (!fs.existsSync(DIST_DIR)) {
@@ -114,8 +129,14 @@ function build() {
 
 `;
 
+  const runtimePrelude = `var __SADV_BUILD_STAMP__=${JSON.stringify(buildStamp)};
+var __SADV_GIT_HEAD__=${JSON.stringify(gitHead)};
+var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\\/dist\\/runtime\\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\\/dist\\/runtime\\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
+if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
+`;
+
   // Wrap in IIFE to avoid "illegal return statement" errors when loaded as blob
-  output = header + `(function() {\n'use strict';\n${output}\n})();`;
+  output = header + `(function() {\n'use strict';\n${runtimePrelude}\n${output}\n})();`;
 
   // Write output
   fs.writeFileSync(OUTPUT_FILE, output);
@@ -131,7 +152,6 @@ function build() {
 
   // Verify syntax
   console.log('\nVerifying syntax...');
-  const { execSync } = require('child_process');
   try {
     execSync(`node --check "${OUTPUT_FILE}"`, { stdio: 'pipe' });
     console.log('   ✓ Syntax VALID');

@@ -74,6 +74,31 @@ if (headerEl) {
     const brandWrapEl = document.createElement("div");
     brandWrapEl.className = "sadv-header-brand";
     brandWrapEl.appendChild(brandTitleEl);
+    const runtimeRef =
+      typeof window !== "undefined" && typeof window.__SEARCHADVISOR_RUNTIME_REF__ === "string"
+        ? window.__SEARCHADVISOR_RUNTIME_REF__.trim()
+        : "";
+    const runtimeBuiltAt =
+      typeof window !== "undefined" && typeof window.__SEARCHADVISOR_RUNTIME_BUILD_AT__ === "string"
+        ? window.__SEARCHADVISOR_RUNTIME_BUILD_AT__.trim()
+        : "";
+    const runtimeBadgeText = runtimeRef
+      ? "@" + runtimeRef
+      : runtimeBuiltAt
+        ? runtimeBuiltAt.slice(5, 16).replace("T", " ")
+        : "";
+    if (runtimeBadgeText) {
+      const runtimeBadgeEl = document.createElement("span");
+      runtimeBadgeEl.id = "sadv-runtime-badge";
+      runtimeBadgeEl.textContent = runtimeBadgeText;
+      runtimeBadgeEl.title = [
+        runtimeRef ? "ref: " + runtimeRef : "",
+        runtimeBuiltAt ? "built: " + runtimeBuiltAt : "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      brandWrapEl.appendChild(runtimeBadgeEl);
+    }
 
     const actionsWrapEl = document.createElement("div");
     actionsWrapEl.className = "sadv-header-actions";
@@ -163,6 +188,24 @@ siteUiStyle.textContent = `
   min-height:34px !important;
   display:flex !important;
   align-items:center !important;
+  gap:8px !important;
+  flex-wrap:wrap !important;
+}
+#sadv-runtime-badge{
+  display:inline-flex !important;
+  align-items:center !important;
+  min-height:18px !important;
+  padding:1px 7px !important;
+  border-radius:999px !important;
+  border:1px solid rgba(255,212,0,0.18) !important;
+  background:rgba(255,212,0,0.08) !important;
+  color:#ffd966 !important;
+  font-size:10px !important;
+  line-height:1.1 !important;
+  font-weight:700 !important;
+  letter-spacing:0.01em !important;
+  white-space:nowrap !important;
+  flex-shrink:0 !important;
 }
 .sadv-header-actions{
   display:flex !important;
