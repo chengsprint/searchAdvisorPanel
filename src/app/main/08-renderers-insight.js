@@ -28,7 +28,7 @@ function createInsightRenderer(data) {
     wrap.appendChild(
       ibox(
         cSt.slope >= 0 ? "green" : "red",
-        `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.trendUp}</span><b>클릭 추세:</b> ${cSt.slope >= 0 ? '하루 평균 <b style="color:#10b981">+' + fmt(Math.round(cSt.slope)) + '회</b> 증가' : '하루 평균 <b style="color:#ef4444">' + fmt(Math.round(Math.abs(cSt.slope || 0))) + '회</b> 감소'}`,
+        `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.trendUp}</span><b>클릭 추세:</b> ${cSt.slope >= 0 ? '하루 평균 <b style="color:' + C.blue + '">+' + fmt(Math.round(cSt.slope)) + '회</b> 증가' : '하루 평균 <b style="color:' + C.red + '">' + fmt(Math.round(Math.abs(cSt.slope || 0))) + '회</b> 감소'}`,
       ),
     );
 
@@ -84,7 +84,7 @@ function createInsightRenderer(data) {
       wrap.appendChild(
         ibox(
           "blue",
-          `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.dashboard}</span><b>최고 URL:</b> "${escHtml(slug.replace(/-/g, " ").slice(0, 30))}…" CTR <b style="color:#f59e0b">${top.ctr}%</b> 클릭 <b style="color:#10b981">${fmt(top.clickCount)}회</b>`,
+          `<span style="display:inline-flex;vertical-align:text-bottom;margin-right:3px">${ICONS.dashboard}</span><b>최고 URL:</b> "${escHtml(slug.replace(/-/g, " ").slice(0, 30))}…" CTR <b style="color:${C.amber}">${top.ctr}%</b> 클릭 <b style="color:${C.blue}">${fmt(top.clickCount)}회</b>`,
         ),
       );
     }
@@ -92,9 +92,9 @@ function createInsightRenderer(data) {
     // Action items
     const todo = document.createElement("div");
     todo.style.cssText =
-      "background:#0d1829;border:1px solid #00e67622;border-radius:9px;padding:11px 13px;margin-top:6px";
+      "background:var(--sadv-layer-01,#0d0d0f);border:1px solid rgba(255,212,0,0.18);padding:12px 14px;margin-top:8px;box-shadow:0 8px 24px rgba(0,0,0,0.16)";
     todo.innerHTML = sanitizeHTML(
-      `<div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#f8fafc;margin-bottom:10px"><span style="display:inline-flex;color:#10b981">${ICONS.lightbulb}</span>지금 바로 해볼 것</div>` +
+      `<div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--sadv-text,#fffdf5);margin-bottom:10px"><span style="display:inline-flex;color:${C.blue}">${ICONS.lightbulb}</span>지금 바로 해볼 것</div>` +
       [
         bestDow
           ? bestDow.label + "요일에 신규 콘텐츠 집중 발행"
@@ -111,7 +111,7 @@ function createInsightRenderer(data) {
       ]
         .map(
           (a) =>
-            `<div style="font-size:12px;color:#7a9ab8;padding:5px 0;border-bottom:1px solid #1a2d45;display:flex;gap:7px"><span style="color:#00e676">→</span>${escHtml(a)}</div>`,
+            `<div style="font-size:12px;color:var(--sadv-text-secondary,#ffe9a8);padding:6px 0;border-bottom:1px solid var(--sadv-border-subtle,#2b2200);display:flex;gap:7px"><span style="color:${C.blue}">→</span>${escHtml(a)}</div>`,
         )
         .join("")
     );

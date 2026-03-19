@@ -44,10 +44,10 @@ function createPatternRenderer(data) {
       const hh = d.avgC ? Math.max(4, Math.round((d.avgC / mxC) * 40)) : 2;
       const cell = document.createElement("div");
       cell.style.cssText =
-        "background:#1e293b;border:1px solid " +
+        "background:var(--sadv-layer-02,#171717);border:1px solid " +
         (isB ? C.green + "44" : isW ? C.red + "44" : C.border) +
         ";border-radius:10px;padding:10px 4px;text-align:center;transition:all 0.2s";
-      cell.innerHTML = sanitizeHTML(`<div style="font-size:11px;color:#94a3b8;margin-bottom:6px;font-weight:600">${escHtml(d.label)}</div><div style="height:40px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:8px"><div style="height:${hh}px;background:${isB ? C.green : isW ? C.red : C.blue};border-radius:3px;width:16px;min-height:2px;opacity:0.8;box-shadow:0 0 8px ${isB ? C.green : isW ? C.red : C.blue}33"></div></div><div style="font-size:11px;font-weight:700;color:${isB ? C.green : isW ? C.red : C.text}">${d.avgC ? escHtml(fmt(d.avgC)) : "-"}</div><div style="font-size:10px;color:#64748b;margin-top:2px">${escHtml(d.n)}일</div>`);
+      cell.innerHTML = sanitizeHTML(`<div style="font-size:11px;color:var(--sadv-text-secondary,#ffe9a8);margin-bottom:6px;font-weight:600">${escHtml(d.label)}</div><div style="height:40px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:8px"><div style="height:${hh}px;background:${isB ? C.green : isW ? C.red : C.blue};border-radius:3px;width:16px;min-height:2px;opacity:0.8;box-shadow:0 0 8px ${isB ? C.green : isW ? C.red : C.blue}33"></div></div><div style="font-size:11px;font-weight:700;color:${isB ? C.green : isW ? C.red : C.text}">${d.avgC ? escHtml(fmt(d.avgC)) : "-"}</div><div style="font-size:10px;color:var(--sadv-text-tertiary,#b9a55a);margin-top:2px">${escHtml(d.n)}일</div>`);
       grid.appendChild(cell);
     });
 
@@ -93,7 +93,7 @@ function createPatternRenderer(data) {
       fc.forEach(function (x, i) {
         const d = document.createElement("div");
         d.style.cssText = S.row + ";margin-bottom:6px";
-        d.innerHTML = sanitizeHTML(`<span style="font-size:12px;color:#94a3b8;font-weight:500">${escHtml(x.date)} (${escHtml(x.dow)}) <span style="font-size:10px;color:#64748b;margin-left:4px">+${i + 1}일</span></span><b style="color:${cSt.slope >= 0 ? C.green : C.red};font-size:14px">약 ${escHtml(fmt(x.pred))}회</b>`);
+        d.innerHTML = sanitizeHTML(`<span style="font-size:12px;color:var(--sadv-text-secondary,#ffe9a8);font-weight:500">${escHtml(x.date)} (${escHtml(x.dow)}) <span style="font-size:10px;color:var(--sadv-text-tertiary,#b9a55a);margin-left:4px">+${i + 1}일</span></span><b style="color:${cSt.slope >= 0 ? C.green : C.red};font-size:14px">약 ${escHtml(fmt(x.pred))}회</b>`);
         wrap.appendChild(d);
       });
     }

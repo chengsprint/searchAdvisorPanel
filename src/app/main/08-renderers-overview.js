@@ -144,7 +144,7 @@ function createOverviewRenderer(data) {
       .forEach(function (r, i) {
         const d = document.createElement("div");
         d.style.cssText = S.row + ";border-color:" + (i === 0 ? C.green + "44" : C.border);
-        d.innerHTML = sanitizeHTML(`<span>${["🥇", "🥈", "🥉"][i]} <span style="font-size:12px;color:#94a3b8;margin-left:8px">${escHtml(fmtD(r.date))}</span></span><b style="color:${C.green};font-size:14px">${escHtml(fmt(r.clickCount))}회</b>`);
+        d.innerHTML = sanitizeHTML(`<span>${["🥇", "🥈", "🥉"][i]} <span style="font-size:12px;color:var(--sadv-text-secondary,#ffe9a8);margin-left:8px">${escHtml(fmtD(r.date))}</span></span><b style="color:${C.green};font-size:14px">${escHtml(fmt(r.clickCount))}회</b>`);
         topEl.appendChild(d);
       });
     wrap.appendChild(topEl);

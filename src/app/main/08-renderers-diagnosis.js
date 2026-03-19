@@ -14,8 +14,13 @@ function createDiagnosisRenderer(data) {
     const wrap = document.createElement("div");
 
     if (!diagnosisLogs.length) {
-      wrap.innerHTML = sanitizeHTML(
-        '<div style="padding:30px;text-align:center;color:#3d5a78">색인 데이터 없음</div>'
+      wrap.replaceChildren(
+        createStateCard(
+          "색인 데이터 없음",
+          "색인 상태/진단 로그가 아직 없습니다.",
+          ICONS.database.replace('width="13" height="13"', 'width="20" height="20"'),
+          "neutral",
+        )
       );
       return wrap;
     }
@@ -104,13 +109,13 @@ function createDiagnosisRenderer(data) {
 
       const row = document.createElement("div");
       row.style.cssText =
-        "background:#0d1829;border:1px solid " +
+        "background:var(--sadv-layer-01,#0d0d0f);border:1px solid " +
         (error > 0 || dropped > 0 ? "#ff525222" : "#1a2d45") +
-        ";border-radius:9px;padding:10px 12px;margin-bottom:6px";
+        ";padding:10px 12px;margin-bottom:6px";
 
       row.innerHTML = sanitizeHTML(`
         <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-          <span style="font-size:11px;color:#7a9ab8">${escHtml(fmtD(r.date))}</span>
+          <span style="font-size:11px;color:var(--sadv-text-secondary,#ffe9a8)">${escHtml(fmtD(r.date))}</span>
           <span style="font-size:11px;font-weight:700;color:${C.purple}">색인 ${escHtml(fmt(indexed))}건</span>
         </div>
         <div style="display:flex;gap:2px;height:8px;margin-bottom:4px">
@@ -119,7 +124,7 @@ function createDiagnosisRenderer(data) {
           <div style="flex:${error};background:${C.red};min-width:${error > 0 ? 2 : 0}px"></div>
           <div style="flex:${dropped};background:#ff525288;border-radius:0 2px 2px 0;min-width:${dropped > 0 ? 2 : 0}px"></div>
         </div>
-        <div style="display:flex;gap:12px;font-size:10px;color:#3d5a78">
+        <div style="display:flex;gap:12px;font-size:10px;color:var(--sadv-text-tertiary,#b9a55a)">
           <span style="color:${C.purple}">색인 <b>${escHtml(fmt(indexed))}</b></span>
           <span style="color:${C.amber}">대기 <b>${escHtml(fmt(pending))}</b></span>
           ${error > 0 ? `<span style="color:${C.red}">오류 <b>${escHtml(fmt(error))}</b></span>` : ""}
@@ -132,7 +137,7 @@ function createDiagnosisRenderer(data) {
     // Legend
     const legend = document.createElement("div");
     legend.style.cssText =
-      "display:flex;gap:16px;justify-content:center;padding:10px;background:#0d1829;border-radius:8px;margin-top:8px";
+      "display:flex;gap:16px;justify-content:center;padding:10px;background:var(--sadv-layer-01,#0d0d0f);border:1px solid var(--sadv-border-subtle,#2b2200);margin-top:8px";
     legend.innerHTML = sanitizeHTML(`
       <span style="font-size:10px;color:${C.purple}">■ 색인</span>
       <span style="font-size:10px;color:${C.amber}">■ 대기중</span>

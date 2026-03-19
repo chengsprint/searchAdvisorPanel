@@ -15,8 +15,13 @@ function createBacklinkRenderer(data) {
     const wrap = document.createElement("div");
 
     if (!blTime.length) {
-      wrap.innerHTML = sanitizeHTML(
-        '<div style="padding:40px 20px;text-align:center;color:#64748b;font-size:13px"><div style="margin-bottom:12px;opacity:0.5">' + ICONS.link + '</div>백링크 데이터 없음</div>'
+      wrap.replaceChildren(
+        createStateCard(
+          "백링크 데이터 없음",
+          "연결 도메인/백링크 데이터가 아직 없습니다.",
+          ICONS.link.replace('width="14" height="14"', 'width="20" height="20"'),
+          "neutral",
+        )
       );
       return wrap;
     }
@@ -55,7 +60,7 @@ function createBacklinkRenderer(data) {
     if (blTopDomains.length) {
       wrap.appendChild(
         secTitle(
-          '탑 도메인 <span style="font-size:10px;font-weight:400;letter-spacing:0;text-transform:none;color:#64748b;margin-left:6px">도메인별 누적 링크수</span>',
+          '탑 도메인 <span style="font-size:10px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--sadv-text-tertiary,#b9a55a);margin-left:6px">도메인별 누적 링크수</span>',
         ),
       );
 
@@ -63,7 +68,7 @@ function createBacklinkRenderer(data) {
       blTopDomains.forEach(function (d, i) {
         const row = document.createElement("div");
         row.style.cssText = S.row + ";flex-direction:column;align-items:stretch;gap:8px;border-color:" + (i === 0 ? C.teal + "44" : C.border);
-        row.innerHTML = sanitizeHTML(`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:11px;font-weight:800;color:${i === 0 ? C.teal : "#64748b"}">#${i + 1}</span><span style="font-size:13px;color:#f8fafc;font-weight:600">${escHtml(d.domain)}</span></div><span style="font-size:13px;color:${C.teal};font-weight:700">${escHtml(fmt(d.backlinkCnt))}개</span></div>${hbar(d.backlinkCnt, mxD, C.teal)}`);
+        row.innerHTML = sanitizeHTML(`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:11px;font-weight:800;color:${i === 0 ? C.teal : "var(--sadv-text-tertiary,#b9a55a)"}">#${i + 1}</span><span style="font-size:13px;color:var(--sadv-text,#fffdf5);font-weight:600">${escHtml(d.domain)}</span></div><span style="font-size:13px;color:${C.teal};font-weight:700">${escHtml(fmt(d.backlinkCnt))}개</span></div>${hbar(d.backlinkCnt, mxD, C.teal)}`);
         wrap.appendChild(row);
       });
     }

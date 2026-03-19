@@ -293,11 +293,11 @@ const PAYLOAD_V2 = {
 
 // Performance: Reusable style strings (reduces string allocation)
 const S = {
-  card: "background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1)",
-  row: "display:flex;justify-content:space-between;align-items:center;padding:16px;background:#0f172a;border:1px solid #334155;border-radius:12px;margin-bottom:12px;transition:all 0.2s",
+  card: "background:var(--sadv-layer-01,#0d0d0f);border:1px solid var(--sadv-border-subtle,#2b2200);border-radius:0;padding:16px;margin-bottom:12px;box-shadow:0 8px 24px rgba(0,0,0,0.18)",
+  row: "display:flex;justify-content:space-between;align-items:center;padding:16px;background:var(--sadv-layer-01,#0d0d0f);border:1px solid var(--sadv-border-subtle,#2b2200);border-radius:0;margin-bottom:12px;transition:all 0.2s",
   flexBetween: "display:flex;justify-content:space-between;align-items:center",
-  muted: "font-size:12px;color:#94a3b8",
-  valueGreen: "font-size:12px;font-weight:600;color:#10b981",
+  muted: "font-size:12px;color:var(--sadv-text-secondary,#ffe9a8)",
+  valueGreen: "font-size:12px;font-weight:600;color:#ffd400",
 };
 
 // Performance: Hoisted helper functions (avoids recreation on each call)
@@ -716,14 +716,14 @@ function showError(userMessage, technicalError = null, context = null) {
 // Helper function to create inline error message element
 function createInlineError(message, actionCallback = null, actionText = '다시 시도') {
   const container = document.createElement('div');
-  container.style.cssText = 'padding:20px;text-align:center;background:#0f172a;border:1px solid #334155;border-radius:12px;margin:16px 0';
+  container.style.cssText = 'padding:20px;text-align:center;background:var(--sadv-layer-01,#0d0d0f);border:1px solid rgba(255,90,54,0.28);margin:16px 0;box-shadow:0 10px 28px rgba(0,0,0,0.24)';
 
   const icon = document.createElement('div');
-  icon.style.cssText = 'font-size:32px;margin-bottom:12px;color:#ef4444';
+  icon.style.cssText = 'font-size:32px;margin-bottom:12px;color:#ff5a36';
   icon.textContent = '⚠️';
 
   const messageEl = document.createElement('div');
-  messageEl.style.cssText = 'color:#f8fafc;font-weight:700;font-size:14px;margin-bottom:8px';
+  messageEl.style.cssText = 'color:var(--sadv-text,#fffdf5);font-weight:700;font-size:14px;margin-bottom:8px';
   messageEl.textContent = message;
 
   container.appendChild(icon);
@@ -731,10 +731,10 @@ function createInlineError(message, actionCallback = null, actionText = '다시 
 
   if (actionCallback) {
     const button = document.createElement('button');
-    button.style.cssText = 'margin-top:12px;padding:8px 16px;background:#0ea5e9;color:#f8fafc;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.2s';
+    button.style.cssText = 'margin-top:12px;padding:10px 16px;background:#ffd400;color:#111;font-weight:700;border:none;font-size:13px;cursor:pointer;transition:filter 0.2s';
     button.textContent = actionText;
-    button.onmouseover = () => button.style.background = '#0284c7';
-    button.onmouseout = () => button.style.background = '#0ea5e9';
+    button.onmouseover = () => button.style.filter = 'brightness(1.08)';
+    button.onmouseout = () => button.style.filter = 'none';
     button.onclick = actionCallback;
     container.appendChild(button);
   }
