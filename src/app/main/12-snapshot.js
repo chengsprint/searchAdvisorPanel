@@ -141,6 +141,135 @@
         : null,
     };
   }
+
+  /**
+ * Render the all-sites view inside saved snapshot HTML without live network fetches.
+ * Uses the embedded EXPORT_PAYLOAD rows/dataBySite only.
+ * @returns {void}
+ */
+  function renderSnapshotAllSites() {
+    if (!bdEl) return;
+
+    const payloadRows =
+      typeof window !== "undefined" &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__ &&
+      Array.isArray(window.__SEARCHADVISOR_EXPORT_PAYLOAD__.summaryRows)
+        ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__.summaryRows
+        : [];
+    const payloadDataBySite =
+      typeof window !== "undefined" &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__ &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.dataBySite &&
+      typeof window.__SEARCHADVISOR_EXPORT_PAYLOAD__.dataBySite === "object"
+        ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__.dataBySite
+        : {};
+
+    const rows = (Array.isArray(payloadRows) && payloadRows.length
+      ? payloadRows.slice()
+      : (Array.isArray(allSites) ? allSites : []).map(function (site) {
+          return buildSiteSummaryRow(site, payloadDataBySite[site] || null);
+        })
+    ).sort(function (a, b) {
+      return (b.totalC || 0) - (a.totalC || 0);
+    });
+
+    window.__sadvRows = rows;
+    if (typeof assignColors === "function") assignColors();
+    if (typeof buildCombo === "function") buildCombo(rows);
+
+    if (!rows.length) {
+      bdEl.innerHTML =
+        '<div style="padding:18px;border:1px solid rgba(255,212,0,0.18);background:#171717;color:#f4f4f4">저장된 사이트 데이터가 없습니다.</div>';
+      return;
+    }
+
+    const totalClicks = rows.reduce(function (sum, row) {
+      return sum + (Number(row.totalC) || 0);
+    }, 0);
+    const totalExposes = rows.reduce(function (sum, row) {
+      return sum + (Number(row.totalE) || 0);
+    }, 0);
+    const avgCtr = totalExposes ? (totalClicks / totalExposes) * 100 : 0;
+    const activeSites = rows.filter(function (row) {
+      return (Number(row.totalC) || 0) > 0;
+    }).length;
+
+    const wrap = document.createElement("div");
+    wrap.appendChild(
+      kpiGrid([
+        { label: "전체 클릭", value: fmt(totalClicks), sub: "저장 시점 기준", color: C.green },
+        { label: "전체 노출", value: fmt(totalExposes), sub: "저장 시점 기준", color: C.blue },
+        { label: "평균CTR", value: avgCtr.toFixed(2) + "%", sub: "전체 사이트 평균", color: C.amber },
+        { label: "활성사이트", value: fmt(activeSites) + "개", sub: "클릭 발생 사이트", color: C.orange || C.red || C.green },
+      ]),
+    );
+
+    const topRows = rows.slice(0, 30);
+    wrap.appendChild(secTitle("클릭 랭킹 TOP " + topRows.length));
+    wrap.appendChild(
+      chartCard(
+        "TOP " + topRows.length + " 클릭",
+        "",
+        C.green,
+        barchart(
+          topRows.map(function (row) {
+            return Number(row.totalC) || 0;
+          }),
+          topRows.map(function (row) {
+            return getSiteLabel(row.site);
+          }),
+          72,
+          C.green,
+          "회",
+        ),
+        topRows.map(function (_, index) {
+          return "#" + (index + 1);
+        }),
+      ),
+    );
+
+    wrap.appendChild(secTitle("사이트별 상세"));
+    rows.forEach(function (row, index) {
+      const siteColor =
+        (typeof SITE_COLORS_MAP !== "undefined" && SITE_COLORS_MAP && SITE_COLORS_MAP[row.site]) ||
+        COLORS[index % COLORS.length] ||
+        C.green;
+      const card = document.createElement("button");
+      card.type = "button";
+      card.style.cssText =
+        "display:block;width:100%;text-align:left;padding:14px 16px;margin:0 0 12px;border:1px solid rgba(255,255,255,0.08);border-top:2px solid " +
+        siteColor +
+        ";background:#171717;color:#f4f4f4;cursor:pointer";
+      card.innerHTML =
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px">' +
+        '<div style="min-width:0">' +
+        '<div style="font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' +
+        escHtml(getSiteLabel(row.site)) +
+        "</div>" +
+        '<div style="font-size:11px;color:#b8b8b8;margin-top:4px">' +
+        escHtml(row.site || "") +
+        "</div>" +
+        "</div>" +
+        '<div style="font-size:11px;font-weight:700;color:' +
+        siteColor +
+        '">상세 보기</div>' +
+        "</div>" +
+        '<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px">' +
+        '<div style="padding:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02)"><div style="font-size:10px;color:#a8a8a8;margin-bottom:4px">클릭</div><div style="font-size:14px;font-weight:800;color:' + siteColor + '">' + escHtml(fmt(row.totalC || 0)) + "</div></div>" +
+        '<div style="padding:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02)"><div style="font-size:10px;color:#a8a8a8;margin-bottom:4px">노출</div><div style="font-size:14px;font-weight:800;color:' + (C.blue || siteColor) + '">' + escHtml(fmt(row.totalE || 0)) + "</div></div>" +
+        '<div style="padding:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02)"><div style="font-size:10px;color:#a8a8a8;margin-bottom:4px">CTR</div><div style="font-size:14px;font-weight:800;color:' + (C.amber || siteColor) + '">' + escHtml((Number(row.avgCtr) || 0).toFixed(2) + "%") + "</div></div>" +
+        '<div style="padding:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02)"><div style="font-size:10px;color:#a8a8a8;margin-bottom:4px">색인</div><div style="font-size:14px;font-weight:800;color:' + (C.orange || siteColor) + '">' + escHtml(fmt(row.diagnosisIndexedCurrent || 0)) + "</div></div>" +
+        "</div>";
+      card.addEventListener("click", function () {
+        if (typeof setComboSite === "function") setComboSite(row.site);
+        if (typeof switchMode === "function" && curMode !== "site") switchMode("site");
+      });
+      wrap.appendChild(card);
+    });
+
+    bdEl.innerHTML = "";
+    bdEl.appendChild(wrap);
+  }
   /**
  * Build standalone HTML snapshot string with embedded payload
  * Creates a complete HTML document with the SearchAdvisor UI and data
@@ -516,6 +645,7 @@
     ${switchMode.toString()}
     ${setAllSitesLabel.toString()}
     ${renderSnapshotAllSites.toString()}
+    const renderAllSites = renderSnapshotAllSites;
     ${loadSiteView.toString()}
     async function fetchExposeData(site) {
       return (
