@@ -104,13 +104,32 @@ const inflightDiagnosisMeta = {};
 const inflightDetail = {};
 
 /**
+ * Resolve the latest available encId at request time.
+ * The runtime may be injected before NUXT auth state is fully hydrated,
+ * so the boot-time global encId can be empty even though it becomes
+ * available a moment later.
+ * @returns {string}
+ */
+function getActiveEncId() {
+  try {
+    const liveEncId = ACCOUNT_UTILS.getEncId();
+    if (typeof liveEncId === "string" && liveEncId) {
+      encId = liveEncId;
+      return liveEncId;
+    }
+  } catch (e) {}
+  return typeof encId === "string" ? encId : "";
+}
+
+/**
  * Fetch expose data for a site
  * @param {string} site - Site URL
  * @param {object} options - Options { force, retryIncomplete }
  * @returns {Promise<object>} Site data with expose information
  */
 async function fetchExposeData(site, options) {
-  if (!encId || typeof encId !== 'string') {
+  const activeEncId = getActiveEncId();
+  if (!activeEncId || typeof activeEncId !== 'string') {
     showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchExposeData');
     return null;
   }
@@ -129,7 +148,7 @@ async function fetchExposeData(site, options) {
     try {
       const exposeFetchedAt = Date.now();
       const exposeRes = await fetchWithRetry(
-        base + "/expose/" + encId + "?site=" + enc + "&period=90&device=&topN=50",
+        base + "/expose/" + activeEncId + "?site=" + enc + "&period=90&device=&topN=50",
         { credentials: "include", headers: { accept: "application/json" } },
       );
       const expose = exposeRes.ok ? await safeParseJson(exposeRes, 'EXPOSE') : null;
@@ -163,7 +182,8 @@ async function fetchExposeData(site, options) {
  * @returns {Promise<object>} Site data with crawl information
  */
 async function fetchCrawlData(site, options) {
-  if (!encId || typeof encId !== 'string') {
+  const activeEncId = getActiveEncId();
+  if (!activeEncId || typeof activeEncId !== 'string') {
     showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchCrawlData');
     return null;
   }
@@ -185,7 +205,7 @@ async function fetchCrawlData(site, options) {
       const crawlRes = await fetchWithRetry(
         base +
           "/crawl/" +
-          encId +
+          activeEncId +
           "?site=" +
           enc +
           "&start_date=" +
@@ -229,7 +249,8 @@ async function fetchCrawlData(site, options) {
  * @returns {Promise<object>} Site data with backlink information
  */
 async function fetchBacklinkData(site, options) {
-  if (!encId || typeof encId !== 'string') {
+  const activeEncId = getActiveEncId();
+  if (!activeEncId || typeof activeEncId !== 'string') {
     showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchBacklinkData');
     return null;
   }
@@ -251,7 +272,7 @@ async function fetchBacklinkData(site, options) {
       const backlinkRes = await fetchWithRetry(
         base +
           "/backlink/" +
-          encId +
+          activeEncId +
           "?site=" +
           enc +
           "&start_date=" +
@@ -294,7 +315,8 @@ async function fetchBacklinkData(site, options) {
  * @returns {Promise<object>} Complete site data
  */
 async function fetchSiteData(site, options) {
-  if (!encId || typeof encId !== 'string') {
+  const activeEncId = getActiveEncId();
+  if (!activeEncId || typeof activeEncId !== 'string') {
     showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchSiteData');
     return null;
   }
@@ -314,10 +336,10 @@ async function fetchSiteData(site, options) {
     try {
       const requests = await Promise.all([
         needCrawl
-          ? fetchWithRetry(
-              base +
-                "/crawl/" +
-                encId +
+              ? fetchWithRetry(
+                base +
+                  "/crawl/" +
+                activeEncId +
                 "?site=" +
                 enc +
                 "&start_date=" +
@@ -354,10 +376,10 @@ async function fetchSiteData(site, options) {
               fetchedAt: baseData.crawlFetchedAt ?? null,
             }),
         needBacklink
-          ? fetchWithRetry(
-              base +
-                "/backlink/" +
-                encId +
+            ? fetchWithRetry(
+                base +
+                  "/backlink/" +
+                activeEncId +
                 "?site=" +
                 enc +
                 "&start_date=" +
@@ -437,7 +459,8 @@ async function resolveExportSiteData(site, options) {
  * @returns {Promise<object>} Site data with diagnosis meta information
  */
 async function fetchDiagnosisMeta(site, seedData, options) {
-  if (!encId || typeof encId !== 'string') {
+  const activeEncId = getActiveEncId();
+  if (!activeEncId || typeof activeEncId !== 'string') {
     showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchDiagnosisMeta');
     return null;
   }
@@ -457,7 +480,7 @@ async function fetchDiagnosisMeta(site, seedData, options) {
         response = await fetchWithRetry(
           base +
             "/diagnosis/meta/" +
-            encId +
+            activeEncId +
             "?site=" +
             enc +
             "&startDate=" +
