@@ -2066,12 +2066,14 @@ function chartCard(title, valueStr, valueCol, svgEl, labelsArr) {
 function kpiGrid(items) {
   const g = document.createElement("div");
   g.style.cssText = `display:grid;grid-template-columns:repeat(${Math.min(items.length, 4)},minmax(0,1fr));gap:12px;margin-bottom:${T.spaceCard}`;
+  const isCompactViewport = typeof window !== "undefined" && window.innerWidth <= 768;
+  const valueFontSize = isCompactViewport ? "19px" : "20px";
   items.forEach(function (it) {
     const d = document.createElement("div");
     d.style.cssText =
       "background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);border-radius:" + T.radiusNone + ";padding:" + T.spaceCard + " 18px;text-align:left;min-width:0;min-height:104px;display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start;transition:all 0.2s;box-shadow:" + T.shadowCard + ";overflow:hidden";
     const iconHtml = it.icon ? `<div style="margin-bottom:10px;color:${it.color || 'var(--sadv-text-secondary,#c6c6c6)'};opacity:0.92">${it.icon}</div>` : "";
-    d.innerHTML = sanitizeHTML(`${iconHtml}<div style="width:100%;font-size:11px;color:var(--sadv-text-tertiary,#8d8d8d);line-height:1.4;margin-bottom:8px;word-break:keep-all;font-weight:600;text-transform:uppercase;letter-spacing:0.04em">${escHtml(it.label)}</div><div style="width:100%;font-size:21px;font-weight:700;color:${it.color || C.text};line-height:1.08;letter-spacing:-0.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:2px">${escHtml(it.value)}</div><div style="width:100%;font-size:11px;color:var(--sadv-text-secondary,#c6c6c6);line-height:1.4;margin-top:8px;visibility:${it.sub ? "visible" : "hidden"}">${escHtml(it.sub || "&nbsp;")}</div>`);
+    d.innerHTML = sanitizeHTML(`${iconHtml}<div style="width:100%;font-size:11px;color:var(--sadv-text-tertiary,#8d8d8d);line-height:1.4;margin-bottom:8px;word-break:keep-all;font-weight:600;text-transform:uppercase;letter-spacing:0.04em">${escHtml(it.label)}</div><div style="width:100%;font-size:${valueFontSize};font-weight:700;color:${it.color || C.text};line-height:1.08;letter-spacing:-0.015em;padding-right:2px;word-break:keep-all">${escHtml(it.value)}</div><div style="width:100%;font-size:11px;color:var(--sadv-text-secondary,#c6c6c6);line-height:1.4;margin-top:8px;visibility:${it.sub ? "visible" : "hidden"}">${escHtml(it.sub || "&nbsp;")}</div>`);
     g.appendChild(d);
   });
   return g;
@@ -9551,7 +9553,7 @@ async function renderAllSites() {
       kpiCard.style.cssText = `background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);border-radius:0;padding:16px 18px;text-align:left;box-shadow:0 8px 24px rgba(0,0,0,0.18);overflow:hidden`;
       kpiCard.innerHTML = sanitizeHTML(`
         <div style="width:100%;font-size:11px;color:var(--sadv-text-tertiary,#8d8d8d);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em">${escHtml(kpi.label)}</div>
-        <div style="width:100%;font-size:20px;font-weight:700;color:${kpi.color};line-height:1.08;margin-bottom:6px;letter-spacing:-0.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:2px">${escHtml(kpi.value)}</div>
+        <div style="width:100%;font-size:18px;font-weight:700;color:${kpi.color};line-height:1.08;margin-bottom:6px;letter-spacing:-0.015em;padding-right:2px;word-break:keep-all">${escHtml(kpi.value)}</div>
         <div style="width:100%;font-size:11px;color:var(--sadv-text-secondary,#c6c6c6)">${escHtml(kpi.sub)}</div>
       `);
       mobileKpiWrapper.appendChild(kpiCard);
