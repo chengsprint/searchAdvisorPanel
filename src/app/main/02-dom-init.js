@@ -174,9 +174,9 @@ siteUiStyle.textContent = `
   flex-shrink:0 !important;
 }
 .sadv-header-meta{
-  display:flex !important;
+  display:grid !important;
+  grid-template-columns:auto minmax(0,1fr) auto !important;
   align-items:center !important;
-  flex-wrap:wrap !important;
   gap:8px !important;
   margin-top:10px !important;
   min-height:24px !important;
@@ -187,7 +187,7 @@ siteUiStyle.textContent = `
 #sadv-site-label{
   color:var(--sadv-text-secondary) !important;
   margin-top:0 !important;
-  font-size:12px !important;
+  font-size:11px !important;
   display:inline-flex !important;
   align-items:center !important;
   max-width:100% !important;
@@ -197,6 +197,9 @@ siteUiStyle.textContent = `
   white-space:nowrap !important;
   line-height:1.2 !important;
 }
+#sadv-site-label.sadv-meta-hidden{
+  display:none !important;
+}
 #sadv-cache-meta{
   display:flex !important;
   align-items:center !important;
@@ -205,6 +208,7 @@ siteUiStyle.textContent = `
   min-height:22px !important;
   max-width:100% !important;
   overflow:hidden !important;
+  justify-self:end !important;
 }
 #sadv-account-badge{
   min-height:22px !important;
@@ -214,7 +218,7 @@ siteUiStyle.textContent = `
   border:1px solid rgba(255,212,0,0.16) !important;
   color:#ffe082 !important;
   font-size:10px !important;
-  max-width:min(100%,240px) !important;
+  max-width:min(100%,180px) !important;
 }
 #sadv-mode-bar{
   display:grid !important;
@@ -492,6 +496,8 @@ siteUiStyle.textContent = `
     justify-content:flex-start !important;
   }
   .sadv-header-meta{
+    display:flex !important;
+    flex-wrap:wrap !important;
     margin-top:8px !important;
     gap:6px !important;
   }
