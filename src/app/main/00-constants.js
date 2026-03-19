@@ -713,8 +713,42 @@ const ERROR_MESSAGES = {
   CONTACT_SUPPORT: "문제가 지속되면 고객센터에 문의해주세요."
 };
 
+const ERROR_DEDUPE_WINDOW_MS = 4000;
+const recentUserErrorMap = new Map();
+
+function buildUserErrorKey(userMessage, technicalError = null, context = null) {
+  const technicalMessage =
+    technicalError && typeof technicalError === "object" && technicalError.message
+      ? technicalError.message
+      : technicalError == null
+        ? "null"
+        : String(technicalError);
+  return [context || "unknown", String(userMessage || ""), technicalMessage].join("::");
+}
+
+function shouldSuppressDuplicateUserError(userMessage, technicalError = null, context = null) {
+  const now = Date.now();
+  const key = buildUserErrorKey(userMessage, technicalError, context);
+  const previousAt = recentUserErrorMap.get(key);
+  recentUserErrorMap.set(key, now);
+
+  if (recentUserErrorMap.size > 80) {
+    for (const [entryKey, entryAt] of recentUserErrorMap.entries()) {
+      if (now - entryAt > ERROR_DEDUPE_WINDOW_MS * 3) {
+        recentUserErrorMap.delete(entryKey);
+      }
+    }
+  }
+
+  return typeof previousAt === "number" && now - previousAt < ERROR_DEDUPE_WINDOW_MS;
+}
+
 // Helper function to display user-friendly errors
 function showError(userMessage, technicalError = null, context = null) {
+  if (shouldSuppressDuplicateUserError(userMessage, technicalError, context)) {
+    return userMessage;
+  }
+
   // Log technical error for debugging
   if (technicalError) {
     console.error('[Error]', context || 'Unknown', technicalError);
