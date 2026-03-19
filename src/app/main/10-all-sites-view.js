@@ -15,7 +15,7 @@ async function renderAllSites() {
   setAllSitesLabel();
   const loading = document.createElement("div");
   loading.style.cssText =
-    "padding:20px 18px;color:var(--sadv-text-secondary,#c6c6c6);text-align:left;line-height:1.6;background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);box-shadow:0 8px 24px rgba(0,0,0,0.22)";
+    "padding:" + T.spaceCardXl + " " + T.spaceCardLg + ";color:var(--sadv-text-secondary,#c6c6c6);text-align:left;line-height:1.6;background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);box-shadow:" + T.shadowCard;
 
   // 예상 소요 시간 계산 (사이트당 약 0.5초로 가정)
   const estimatedTimeSeconds = Math.ceil(allSites.length * 0.5);
@@ -26,7 +26,7 @@ async function renderAllSites() {
   loading.innerHTML = sanitizeHTML(
     '<div style="font-size:13px;font-weight:700;color:var(--sadv-text,#f4f4f4);margin-bottom:8px">전체 현황을 준비 중입니다</div>' +
     `<div id="sadv-all-progress-detail" style="font-size:11px;margin-bottom:10px">기본 리포트를 불러오는 중입니다. (예상: ${estimatedTimeText})</div>` +
-    '<div style="height:10px;border-radius:999px;background:var(--sadv-layer-02,#171717);border:1px solid var(--sadv-border-subtle,#2b2200);overflow:hidden"><div id="sadv-all-progress-bar" style="width:6%;height:100%;background:linear-gradient(90deg,#ffd400,#ff7a00)"></div></div>' +
+    '<div style="height:10px;border-radius:' + T.radiusPill + ';background:var(--sadv-layer-02,#171717);border:1px solid var(--sadv-border-subtle,#2b2200);overflow:hidden"><div id="sadv-all-progress-bar" style="width:6%;height:100%;background:linear-gradient(90deg,#ffd400,#ff7a00)"></div></div>' +
     '<div id="sadv-all-progress-meta" style="font-size:10px;color:var(--sadv-text-tertiary,#b9a55a);margin-top:8px">메타 진단은 2개씩 천천히 요청합니다.</div>' +
     '<div id="sadv-all-progress-percent" style="font-size:11px;color:#ffd400;margin-top:4px;font-weight:600">0%</div>'
   );

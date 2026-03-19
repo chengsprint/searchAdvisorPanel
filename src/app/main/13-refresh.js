@@ -218,7 +218,7 @@ function renderFailureSummary(stats) {
   const summaryEl = document.createElement("div");
   summaryEl.id = "sadv-failure-summary";
   summaryEl.style.cssText =
-    "position:fixed;bottom:12px;right:12px;background:#120d0a;border:1px solid rgba(255,90,54,0.45);border-radius:0;padding:12px 16px;font-size:11px;color:var(--sadv-text-secondary,#ffe9a8);max-width:340px;z-index:10000000;box-shadow:0 10px 28px rgba(0,0,0,.42);font-family:\"IBM Plex Sans KR\",\"IBM Plex Sans\",Pretendard,system-ui";
+    "position:fixed;bottom:12px;right:12px;background:#120d0a;border:1px solid rgba(255,90,54,0.45);border-radius:" + T.radiusNone + ";padding:12px " + T.spaceCard + ";font-size:11px;color:var(--sadv-text-secondary,#ffe9a8);max-width:340px;z-index:10000000;box-shadow:" + T.shadowPanel + ";font-family:" + T.fontSans;
   const failedCount = stats.failed || 0;
   const partialCount = stats.partial || 0;
   const errorItems = (stats.errors || []).slice(0, 5);

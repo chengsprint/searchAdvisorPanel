@@ -906,6 +906,14 @@ const T = {
   accentSoftText: "#ffd400",
   warmDarkBg: "rgba(32,22,0,.72)",
   dangerSoftBg: "rgba(255,90,54,0.12)",
+  radiusNone: "0",
+  radiusPill: "999px",
+  shadowCard: "0 8px 24px rgba(0,0,0,0.22)",
+  shadowCardStrong: "0 10px 28px rgba(0,0,0,0.24)",
+  shadowPanel: "0 16px 36px rgba(0,0,0,0.42)",
+  spaceCard: "16px",
+  spaceCardLg: "18px",
+  spaceCardXl: "20px",
 };
 const COLORS = [C.green, C.blue, C.amber, C.teal, C.purple, C.orange, C.pink];
 
@@ -2049,7 +2057,7 @@ function xlbl(arr) {
 function chartCard(title, valueStr, valueCol, svgEl, labelsArr) {
   const wrap = document.createElement("div");
   wrap.style.cssText =
-    "background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);border-radius:0;padding:16px 16px 14px;margin-bottom:16px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.28)";
+    "background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);border-radius:" + T.radiusNone + ";padding:" + T.spaceCard + " " + T.spaceCard + " 14px;margin-bottom:" + T.spaceCard + ";overflow:hidden;box-shadow:" + T.shadowCardStrong;
   const hd = document.createElement("div");
   hd.style.cssText =
     "display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px";
@@ -2067,11 +2075,11 @@ function chartCard(title, valueStr, valueCol, svgEl, labelsArr) {
 // KPI grid function
 function kpiGrid(items) {
   const g = document.createElement("div");
-  g.style.cssText = `display:grid;grid-template-columns:repeat(${Math.min(items.length, 4)},minmax(0,1fr));gap:12px;margin-bottom:16px`;
+  g.style.cssText = `display:grid;grid-template-columns:repeat(${Math.min(items.length, 4)},minmax(0,1fr));gap:12px;margin-bottom:${T.spaceCard}`;
   items.forEach(function (it) {
     const d = document.createElement("div");
     d.style.cssText =
-      "background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);border-radius:0;padding:16px 12px;text-align:left;min-width:0;min-height:104px;display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start;transition:all 0.2s;box-shadow:0 6px 20px rgba(0,0,0,0.18)";
+      "background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);border-radius:" + T.radiusNone + ";padding:" + T.spaceCard + " 12px;text-align:left;min-width:0;min-height:104px;display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start;transition:all 0.2s;box-shadow:" + T.shadowCard;
     const iconHtml = it.icon ? `<div style="margin-bottom:10px;color:${it.color || 'var(--sadv-text-secondary,#c6c6c6)'};opacity:0.92">${it.icon}</div>` : "";
     d.innerHTML = sanitizeHTML(`${iconHtml}<div style="font-size:11px;color:var(--sadv-text-tertiary,#8d8d8d);line-height:1.4;margin-bottom:8px;word-break:keep-all;font-weight:600;text-transform:uppercase;letter-spacing:0.04em">${escHtml(it.label)}</div><div style="font-size:22px;font-weight:700;color:${it.color || C.text};line-height:1.05;letter-spacing:-0.03em;word-break:keep-all">${escHtml(it.value)}</div><div style="font-size:11px;color:var(--sadv-text-secondary,#c6c6c6);line-height:1.4;margin-top:8px;visibility:${it.sub ? "visible" : "hidden"}">${escHtml(it.sub || "&nbsp;")}</div>`);
     g.appendChild(d);
@@ -2101,7 +2109,7 @@ function createStateCard(title, description, iconHtml, tone = "neutral") {
   const accent = accentMap[tone] || accentMap.neutral;
   const wrap = document.createElement("div");
   wrap.style.cssText =
-    "display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:28px 20px;background:var(--sadv-layer-01,#0d0d0f);border:1px solid var(--sadv-border-subtle,#2b2200);box-shadow:0 10px 28px rgba(0,0,0,0.24);margin:8px 0 16px";
+    "display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:28px " + T.spaceCardXl + ";background:var(--sadv-layer-01,#0d0d0f);border:1px solid var(--sadv-border-subtle,#2b2200);box-shadow:" + T.shadowCardStrong + ";margin:8px 0 " + T.spaceCard;
   const iconBox = document.createElement("div");
   iconBox.style.cssText =
     "display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border:1px solid color-mix(in srgb, " +
@@ -2110,7 +2118,7 @@ function createStateCard(title, description, iconHtml, tone = "neutral") {
     accent +
     " 10%, transparent);color:" +
     accent +
-    ";margin-bottom:14px;box-shadow:0 10px 24px rgba(0,0,0,0.18)";
+    ";margin-bottom:14px;box-shadow:" + T.shadowCard;
   iconBox.innerHTML = sanitizeHTML(iconHtml || ICONS.lightbulb);
   let iconSvg = iconBox.querySelector("svg");
   const hasRenderableShape = iconSvg && iconSvg.querySelector("path,line,circle,rect,ellipse,polyline,polygon");
@@ -2152,7 +2160,7 @@ function ibox(type, html) {
     { green: C.green, amber: C.amber, red: C.red, blue: C.blue }[type] ||
       C.blue;
   const d = document.createElement("div");
-  d.style.cssText = `border-left:4px solid ${col};background:color-mix(in srgb, ${col} 12%, transparent);border-radius:0;padding:16px;margin-bottom:16px;font-size:12px;line-height:1.6;color:var(--sadv-text-secondary,#c6c6c6);border:1px solid color-mix(in srgb, ${col} 35%, transparent)`;
+  d.style.cssText = `border-left:4px solid ${col};background:color-mix(in srgb, ${col} 12%, transparent);border-radius:${T.radiusNone};padding:${T.spaceCard};margin-bottom:${T.spaceCard};font-size:12px;line-height:1.6;color:var(--sadv-text-secondary,#c6c6c6);border:1px solid color-mix(in srgb, ${col} 35%, transparent)`;
   // P0 SECURITY: Apply DOMPurify sanitization
   d.innerHTML = sanitizeHTML(html);
   return d;
@@ -9232,7 +9240,7 @@ async function renderAllSites() {
   setAllSitesLabel();
   const loading = document.createElement("div");
   loading.style.cssText =
-    "padding:20px 18px;color:var(--sadv-text-secondary,#c6c6c6);text-align:left;line-height:1.6;background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);box-shadow:0 8px 24px rgba(0,0,0,0.22)";
+    "padding:" + T.spaceCardXl + " " + T.spaceCardLg + ";color:var(--sadv-text-secondary,#c6c6c6);text-align:left;line-height:1.6;background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);box-shadow:" + T.shadowCard;
 
   // 예상 소요 시간 계산 (사이트당 약 0.5초로 가정)
   const estimatedTimeSeconds = Math.ceil(allSites.length * 0.5);
@@ -9243,7 +9251,7 @@ async function renderAllSites() {
   loading.innerHTML = sanitizeHTML(
     '<div style="font-size:13px;font-weight:700;color:var(--sadv-text,#f4f4f4);margin-bottom:8px">전체 현황을 준비 중입니다</div>' +
     `<div id="sadv-all-progress-detail" style="font-size:11px;margin-bottom:10px">기본 리포트를 불러오는 중입니다. (예상: ${estimatedTimeText})</div>` +
-    '<div style="height:10px;border-radius:999px;background:var(--sadv-layer-02,#171717);border:1px solid var(--sadv-border-subtle,#2b2200);overflow:hidden"><div id="sadv-all-progress-bar" style="width:6%;height:100%;background:linear-gradient(90deg,#ffd400,#ff7a00)"></div></div>' +
+    '<div style="height:10px;border-radius:' + T.radiusPill + ';background:var(--sadv-layer-02,#171717);border:1px solid var(--sadv-border-subtle,#2b2200);overflow:hidden"><div id="sadv-all-progress-bar" style="width:6%;height:100%;background:linear-gradient(90deg,#ffd400,#ff7a00)"></div></div>' +
     '<div id="sadv-all-progress-meta" style="font-size:10px;color:var(--sadv-text-tertiary,#b9a55a);margin-top:8px">메타 진단은 2개씩 천천히 요청합니다.</div>' +
     '<div id="sadv-all-progress-percent" style="font-size:11px;color:#ffd400;margin-top:4px;font-weight:600">0%</div>'
   );
@@ -11149,7 +11157,7 @@ function renderFailureSummary(stats) {
   const summaryEl = document.createElement("div");
   summaryEl.id = "sadv-failure-summary";
   summaryEl.style.cssText =
-    "position:fixed;bottom:12px;right:12px;background:#120d0a;border:1px solid rgba(255,90,54,0.45);border-radius:0;padding:12px 16px;font-size:11px;color:var(--sadv-text-secondary,#ffe9a8);max-width:340px;z-index:10000000;box-shadow:0 10px 28px rgba(0,0,0,.42);font-family:\"IBM Plex Sans KR\",\"IBM Plex Sans\",Pretendard,system-ui";
+    "position:fixed;bottom:12px;right:12px;background:#120d0a;border:1px solid rgba(255,90,54,0.45);border-radius:" + T.radiusNone + ";padding:12px " + T.spaceCard + ";font-size:11px;color:var(--sadv-text-secondary,#ffe9a8);max-width:340px;z-index:10000000;box-shadow:" + T.shadowPanel + ";font-family:" + T.fontSans;
   const failedCount = stats.failed || 0;
   const partialCount = stats.partial || 0;
   const errorItems = (stats.errors || []).slice(0, 5);
