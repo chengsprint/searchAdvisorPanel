@@ -60,9 +60,9 @@ siteUiStyle.textContent = `
   --sadv-bg:${C.bg0};
   --sadv-layer-01:${C.bg1};
   --sadv-layer-02:${C.bg2};
-  --sadv-layer-hover:#4c4c4c;
+  --sadv-layer-hover:#332b0b;
   --sadv-border:${C.border};
-  --sadv-border-subtle:#393939;
+  --sadv-border-subtle:#2c2815;
   --sadv-text:${C.text};
   --sadv-text-secondary:${C.sub};
   --sadv-text-tertiary:${C.muted};
@@ -115,8 +115,8 @@ siteUiStyle.textContent = `
 }
 #sadv-account-badge{
   border-radius:4px !important;
-  background:rgba(120,169,255,0.12) !important;
-  border:1px solid rgba(120,169,255,0.24) !important;
+  background:rgba(241,194,27,0.12) !important;
+  border:1px solid rgba(241,194,27,0.24) !important;
   color:var(--sadv-accent) !important;
 }
 #sadv-mode-bar{
@@ -150,7 +150,7 @@ siteUiStyle.textContent = `
   color:var(--sadv-text) !important;
 }
 .sadv-mode.on{
-  background:rgba(120,169,255,0.12) !important;
+  background:rgba(241,194,27,0.14) !important;
   color:var(--sadv-accent) !important;
   box-shadow:inset 0 -2px 0 var(--sadv-accent) !important;
 }
@@ -246,7 +246,7 @@ siteUiStyle.textContent = `
   background:var(--sadv-layer-02) !important;
 }
 .sadv-combo-item.active{
-  background:rgba(120,169,255,0.12) !important;
+  background:rgba(241,194,27,0.12) !important;
   color:var(--sadv-text) !important;
   border-left-color:var(--sadv-accent) !important;
 }
