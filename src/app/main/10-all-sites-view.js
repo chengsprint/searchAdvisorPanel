@@ -26,9 +26,9 @@ async function renderAllSites() {
   loading.innerHTML = sanitizeHTML(
     '<div style="font-size:13px;font-weight:700;color:var(--sadv-text,#f4f4f4);margin-bottom:8px">전체 현황을 준비 중입니다</div>' +
     `<div id="sadv-all-progress-detail" style="font-size:11px;margin-bottom:10px">기본 리포트를 불러오는 중입니다. (예상: ${estimatedTimeText})</div>` +
-    '<div style="height:10px;border-radius:999px;background:var(--sadv-layer-02,#393939);border:1px solid var(--sadv-border-subtle,#393939);overflow:hidden"><div id="sadv-all-progress-bar" style="width:6%;height:100%;background:linear-gradient(90deg,#78a9ff,#42be65)"></div></div>' +
+    '<div style="height:10px;border-radius:999px;background:var(--sadv-layer-02,#1f1f1f);border:1px solid var(--sadv-border-subtle,#2c2815);overflow:hidden"><div id="sadv-all-progress-bar" style="width:6%;height:100%;background:linear-gradient(90deg,#f1c21b,#ffb000)"></div></div>' +
     '<div id="sadv-all-progress-meta" style="font-size:10px;color:var(--sadv-text-tertiary,#8d8d8d);margin-top:8px">메타 진단은 2개씩 천천히 요청합니다.</div>' +
-    '<div id="sadv-all-progress-percent" style="font-size:11px;color:#78a9ff;margin-top:4px;font-weight:600">0%</div>'
+    '<div id="sadv-all-progress-percent" style="font-size:11px;color:#f1c21b;margin-top:4px;font-weight:600">0%</div>'
   );
   bdEl.innerHTML = "";
   bdEl.appendChild(loading);
@@ -225,7 +225,7 @@ async function renderAllSites() {
     // PRIORITY: Use accountLabel first (from siteOwnership), fallback to sourceAccount
     const displayAccount = r.accountLabel || r.sourceAccount;
     const accountBadge = displayAccount && (typeof displayAccount === "string" ? displayAccount.trim() : "")
-      ? `<span style="font-size:10px;color:${C.blue};background:rgba(120,169,255,0.12);padding:3px 8px;border-radius:999px;margin-left:8px;white-space:nowrap;border:1px solid rgba(120,169,255,0.2)" title="${escHtml(displayAccount)}">${escHtml(displayAccount.includes("@") ? displayAccount.split("@")[0] : displayAccount)}</span>`
+      ? `<span style="font-size:10px;color:${C.blue};background:rgba(241,194,27,0.12);padding:3px 8px;border-radius:999px;margin-left:8px;white-space:nowrap;border:1px solid rgba(241,194,27,0.2)" title="${escHtml(displayAccount)}">${escHtml(displayAccount.includes("@") ? displayAccount.split("@")[0] : displayAccount)}</span>`
       : "";
 
     // Responsive card layout

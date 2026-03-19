@@ -91,7 +91,7 @@
       typeof cacheMeta.ttlMs === "number" && cacheMeta.ttlMs > 0
         ? Math.round(cacheMeta.ttlMs / 3600000)
         : null;
-    const chipStyle = "display:inline-flex;align-items:center;min-height:24px;padding:3px 10px;border-radius:999px;border:1px solid rgba(120,169,255,0.18);background:rgba(120,169,255,0.1);color:var(--sadv-text-secondary,#c6c6c6);font-size:10px;font-weight:600;line-height:1.2";
+    const chipStyle = "display:inline-flex;align-items:center;min-height:24px;padding:3px 10px;border-radius:999px;border:1px solid rgba(241,194,27,0.22);background:rgba(241,194,27,0.12);color:var(--sadv-text-secondary,#e6d98b);font-size:10px;font-weight:600;line-height:1.2";
     const parts = [
       `<span style="${chipStyle}">캐시저장 ${escHtml(formatCacheMetaTime(cacheMeta.updatedAt))}</span>`,
     ];
