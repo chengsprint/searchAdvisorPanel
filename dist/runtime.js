@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-19T12:18:57Z";
-var __SADV_GIT_HEAD__="62a984c";
+var __SADV_BUILD_STAMP__="2026-03-19T12:30:28Z";
+var __SADV_GIT_HEAD__="4acdb64";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -10600,17 +10600,25 @@ function savedAtIso(d) {
       getSiteLabel,
       applyReportDecorations: applySnapshotReportDecorations,
     };
+    const CONFIG = ${JSON.stringify(CONFIG)};
     const ICONS = ${JSON.stringify(ICONS)};
     const C = ${JSON.stringify(C)};
     const COLORS = ${JSON.stringify(COLORS)};
     const DOW = ${JSON.stringify(DOW)};
     const PNL = ${JSON.stringify(PNL)};
+    const T = ${JSON.stringify(T)};
+    const ERROR_MESSAGES = ${JSON.stringify(ERROR_MESSAGES)};
     const CHART_W = PNL - 32;
     const TABS = ${JSON.stringify(TABS)};
     let TIP = null;
     const fmt = (v) => Number(v).toLocaleString();
     const fmtD = (s) => s ? s.slice(0, 4) + "-" + s.slice(4, 6) + "-" + s.slice(6, 8) : "";
     const fmtB = (s) => s ? s.slice(4, 6) + "/" + s.slice(6, 8) : "";
+    ${escHtml.toString()}
+    function sanitizeHTML(dirty) {
+      return String(dirty == null ? "" : dirty);
+    }
+    function __sadvNotify() {}
     ${tip.toString()}
     ${showTip.toString()}
     ${moveTip.toString()}
@@ -10626,7 +10634,32 @@ function savedAtIso(d) {
     ${hbar.toString()}
     ${st.toString()}
     ${pearson.toString()}
+    ${createInlineError.toString()}
+    ${createStateCard.toString()}
     ${buildSiteSummaryRow.toString()}
+    ${prepareRendererData.toString()}
+    ${createOverviewRenderer.toString()}
+    ${createDailyRenderer.toString()}
+    ${createQueriesRenderer.toString()}
+    ${createPagesRenderer.toString()}
+    ${createPatternRenderer.toString()}
+    ${createCrawlRenderer.toString()}
+    ${createBacklinkRenderer.toString()}
+    ${createDiagnosisRenderer.toString()}
+    ${createInsightRenderer.toString()}
+    const RENDERER_REGISTRY = {
+      overview: createOverviewRenderer,
+      daily: createDailyRenderer,
+      queries: createQueriesRenderer,
+      urls: createPagesRenderer,
+      pages: createPagesRenderer,
+      pattern: createPatternRenderer,
+      crawl: createCrawlRenderer,
+      backlink: createBacklinkRenderer,
+      indexed: createDiagnosisRenderer,
+      diagnosis: createDiagnosisRenderer,
+      insight: createInsightRenderer,
+    };
     ${buildRenderers.toString()}
     ${assignColors.toString()}
     ${ensureCurrentSite.toString()}
