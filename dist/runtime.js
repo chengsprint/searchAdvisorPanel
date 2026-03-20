@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T11:13:36Z";
-var __SADV_GIT_HEAD__="9a30d59";
+var __SADV_BUILD_STAMP__="2026-03-20T12:39:41Z";
+var __SADV_GIT_HEAD__="ec26168";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -7738,6 +7738,36 @@ function setAllSitesPeriodDaysState(days) {
   return allSitesPeriodDays;
 }
 
+function getSelectionStateValue() {
+  return {
+    curMode,
+    curSite,
+    curTab,
+  };
+}
+
+function setSelectionStateValue(patch) {
+  // Phase 1 seam:
+  // selection(curMode/curSite/curTab)을 한 번에 다루는 공용 entry를 만든다.
+  //
+  // 왜 필요한가:
+  // - UI가 curMode/curSite/curTab를 여기저기 직접 바꾸기 시작하면
+  //   saved/live parity와 후속 provider 분리가 다시 어려워진다.
+  // - 지금은 작은 seam이지만, 장기적으로는 public action/state contract의
+  //   내부 구현으로 수렴해야 한다.
+  if (!patch || typeof patch !== "object") return getSelectionStateValue();
+  if (patch.curMode === CONFIG.MODE.ALL || patch.curMode === CONFIG.MODE.SITE) {
+    curMode = patch.curMode;
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, "curSite")) {
+    curSite = typeof patch.curSite === "string" ? patch.curSite : null;
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, "curTab")) {
+    curTab = typeof patch.curTab === "string" ? patch.curTab : "overview";
+  }
+  return getSelectionStateValue();
+}
+
 /**
  * Notify all registered listeners of UI state changes
  * Calls each listener with the current snapshot
@@ -8206,6 +8236,43 @@ function getRuntimeSelectionState() {
       state && typeof state.curTab === "string"
         ? state.curTab
         : (typeof curTab === "string" ? curTab : "overview"),
+  };
+}
+
+function setRuntimeSelectionState(patch) {
+  // Phase 1 public seam:
+  // UI는 selection을 직접 전역에 쓰기보다 이 facade를 통해 갱신하도록 유도한다.
+  //
+  // 의도:
+  // - live/snapshot이 selection을 저장/복원하는 방식이 달라도
+  //   호출자는 이 entry 하나만 보게 하기
+  // - 지금 단계에서는 "읽기/쓰기 경계"만 고정하고,
+  //   렌더/notify 흐름은 기존 UI 로직을 유지해 회귀 위험을 낮춘다.
+  if (isSnapshotRuntime()) {
+    if (
+      typeof window !== "undefined" &&
+      window.__SEARCHADVISOR_SNAPSHOT_API__ &&
+      typeof window.__SEARCHADVISOR_SNAPSHOT_API__.setSelectionState === "function"
+    ) {
+      return window.__SEARCHADVISOR_SNAPSHOT_API__.setSelectionState(patch);
+    }
+  }
+  if (typeof setSelectionStateValue === "function") {
+    return setSelectionStateValue(patch);
+  }
+  if (patch && typeof patch === "object") {
+    if (patch.curMode === CONFIG.MODE.ALL || patch.curMode === CONFIG.MODE.SITE) curMode = patch.curMode;
+    if (Object.prototype.hasOwnProperty.call(patch, "curSite")) {
+      curSite = typeof patch.curSite === "string" ? patch.curSite : null;
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, "curTab")) {
+      curTab = typeof patch.curTab === "string" ? patch.curTab : "overview";
+    }
+  }
+  return {
+    curMode,
+    curSite,
+    curTab,
   };
 }
 
@@ -9451,12 +9518,23 @@ function getAvailableRenderers() {
     // 이 함수는 site mode 진입/복원 경로에서 자주 호출되므로 회귀 방지 가치가 크다.
     const runtimeSites =
       typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
+    const selectionState =
+      typeof getRuntimeSelectionState === "function"
+        ? getRuntimeSelectionState()
+        : { curSite };
+    const currentSite = selectionState.curSite;
     if (!runtimeSites.length) {
-      curSite = null;
+      if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curSite: null });
+      else curSite = null;
       return null;
     }
-    if (!curSite || !runtimeSites.includes(curSite)) curSite = runtimeSites[0];
-    return curSite;
+    if (!currentSite || !runtimeSites.includes(currentSite)) {
+      const nextSite = runtimeSites[0];
+      if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curSite: nextSite });
+      else curSite = nextSite;
+      return nextSite;
+    }
+    return currentSite;
   }
   /**
  * Update the all sites label text in the header
@@ -9645,6 +9723,11 @@ function getAvailableRenderers() {
 
     drop.replaceChildren(searchDiv, countDiv);
     orderedSites.forEach(function (s) {
+      const selectionState =
+        typeof getRuntimeSelectionState === "function"
+          ? getRuntimeSelectionState()
+          : { curSite };
+      const activeSite = selectionState.curSite;
       const col = SITE_COLORS_MAP[s] || C.muted,
         fullLabel = getSiteLabel(s),
         shortName = getSiteShortName(s),
@@ -9653,11 +9736,11 @@ function getAvailableRenderers() {
         clickStr = row ? fmt(row.totalC) + "\uD074\uB9AD" : "—",
         clickCol = row ? C.green : C.muted;
       const item = document.createElement("div");
-      item.className = "sadv-combo-item sadv-copt" + (s === curSite ? " active" : "");
+      item.className = "sadv-combo-item sadv-copt" + (s === activeSite ? " active" : "");
       item.dataset.site = s;
       item.setAttribute("tabindex", "0");
       item.setAttribute("role", "option");
-      item.setAttribute("aria-selected", s === curSite ? "true" : "false");
+      item.setAttribute("aria-selected", s === activeSite ? "true" : "false");
       item.style.cursor = "pointer";
       item.innerHTML = `<div class="sadv-combo-item-dot" style="background:${col}"></div><div class="sadv-combo-item-info"><div class="sadv-combo-item-name">${escHtml(shortName || fullLabel || s)}</div><div class="sadv-combo-item-url">${escHtml(siteUrlLabel || fullLabel || s)}</div></div><div class="sadv-combo-item-click" style="color:${clickCol}">${escHtml(clickStr)}</div>`;
       item.addEventListener("click", function () {
@@ -9721,8 +9804,16 @@ function getAvailableRenderers() {
     const runtimeSites =
       typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
     if (!site || !runtimeSites.includes(site)) return;
-    const sameSite = curSite === site;
-    curSite = site;
+    const selectionState =
+      typeof getRuntimeSelectionState === "function"
+        ? getRuntimeSelectionState()
+        : { curSite, curMode, curTab };
+    const sameSite = selectionState.curSite === site;
+    if (typeof setRuntimeSelectionState === "function") {
+      setRuntimeSelectionState({ curSite: site });
+    } else {
+      curSite = site;
+    }
     const col = SITE_COLORS_MAP[site] || C.muted,
       shortName = getSiteLabel(site);
     const comboDot = document.getElementById("sadv-combo-dot");
@@ -9736,7 +9827,11 @@ function getAvailableRenderers() {
     });
     setCachedUiState();
     if (typeof notifySnapshotShellState === "function") notifySnapshotShellState();
-    if (curMode === CONFIG.MODE.SITE && !sameSite) loadSiteView(site);
+    const nextSelectionState =
+      typeof getRuntimeSelectionState === "function"
+        ? getRuntimeSelectionState()
+        : { curMode, curSite, curTab };
+    if (nextSelectionState.curMode === CONFIG.MODE.SITE && !sameSite) loadSiteView(site);
     __sadvNotify();
   }
   const comboWrapMain = document.getElementById("sadv-combo-wrap");
@@ -9833,11 +9928,16 @@ function getAvailableRenderers() {
   if (tabsEl) {
     tabsEl.setAttribute("role", "tablist");
     tabsEl.replaceChildren(...TABS.map((t) => {
+      const selectionState =
+        typeof getRuntimeSelectionState === "function"
+          ? getRuntimeSelectionState()
+          : { curTab };
+      const activeTab = selectionState.curTab;
       const btn = document.createElement("button");
-      btn.className = `sadv-t${t.id === curTab ? " on" : ""}`;
+      btn.className = `sadv-t${t.id === activeTab ? " on" : ""}`;
       btn.dataset.t = t.id;
       btn.setAttribute("role", "tab");
-      btn.setAttribute("aria-selected", t.id === curTab ? "true" : "false");
+      btn.setAttribute("aria-selected", t.id === activeTab ? "true" : "false");
       btn.setAttribute("aria-controls", "sadv-tabpanel");
       btn.style.cssText = "display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;flex:0 0 auto";
       btn.innerHTML = `${t.icon}${escHtml(t.label)}`;
@@ -9845,8 +9945,16 @@ function getAvailableRenderers() {
     }));
     tabsEl.addEventListener("click", function (e) {
       const t = e.target.closest("[data-t]");
-      if (!t || t.dataset.t === curTab) return;
-      curTab = t.dataset.t;
+      const selectionState =
+        typeof getRuntimeSelectionState === "function"
+          ? getRuntimeSelectionState()
+          : { curTab };
+      if (!t || t.dataset.t === selectionState.curTab) return;
+      if (typeof setRuntimeSelectionState === "function") {
+        setRuntimeSelectionState({ curTab: t.dataset.t });
+      } else {
+        curTab = t.dataset.t;
+      }
       tabsEl.querySelectorAll(".sadv-t").forEach((b) => {
         b.classList.remove("on");
         b.setAttribute("aria-selected", "false");
@@ -9941,16 +10049,22 @@ function getAvailableRenderers() {
  * @see {loadSiteView}
  */
   function switchMode(mode) {
-    if (mode === curMode) return;
+    const selectionState =
+      typeof getRuntimeSelectionState === "function"
+        ? getRuntimeSelectionState()
+        : { curMode, curSite, curTab };
+    if (mode === selectionState.curMode) return;
     if (!modeBar || !siteBar || !tabsEl) {
-      curMode = mode;
+      if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curMode: mode });
+      else curMode = mode;
       console.warn("[UI Controls] Missing mode UI containers; switchMode skipped");
       setCachedUiState();
       if (typeof notifySnapshotShellState === "function") notifySnapshotShellState();
       __sadvNotify();
       return;
     }
-    curMode = mode;
+    if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curMode: mode });
+    else curMode = mode;
     modeBar
       .querySelectorAll(".sadv-mode")
       .forEach((b) => {
@@ -9971,9 +10085,13 @@ function getAvailableRenderers() {
       siteBar.classList.add("show");
       tabsEl.classList.add("show");
       ensureCurrentSite();
-      if (curSite) {
-        setComboSite(curSite);
-        loadSiteView(curSite);
+      const nextSelectionState =
+        typeof getRuntimeSelectionState === "function"
+          ? getRuntimeSelectionState()
+          : { curSite };
+      if (nextSelectionState.curSite) {
+        setComboSite(nextSelectionState.curSite);
+        loadSiteView(nextSelectionState.curSite);
       }
     }
     setCachedUiState();
@@ -10087,8 +10205,13 @@ function getAvailableRenderers() {
         setComboSite(site);
       },
       setTab: function (tab) {
-        if (!tabsEl || !TABS.some(function (item) { return item.id === tab; }) || curTab === tab) return;
-        curTab = tab;
+        const selectionState =
+          typeof getRuntimeSelectionState === "function"
+            ? getRuntimeSelectionState()
+            : { curTab };
+        if (!tabsEl || !TABS.some(function (item) { return item.id === tab; }) || selectionState.curTab === tab) return;
+        if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curTab: tab });
+        else curTab = tab;
         tabsEl.querySelectorAll(".sadv-t").forEach(function (b) {
           b.classList.remove("on");
           b.setAttribute("aria-selected", "false");
@@ -10429,7 +10552,11 @@ function buildAllSitesDisplayWrap(baseRows) {
     }
     const card = e.target.closest(".sadv-allcard");
     if (card && card.dataset.site) {
-      curSite = card.dataset.site;
+      if (typeof setRuntimeSelectionState === "function") {
+        setRuntimeSelectionState({ curSite: card.dataset.site });
+      } else {
+        curSite = card.dataset.site;
+      }
       switchMode("site");
     }
   });
@@ -10469,9 +10596,15 @@ function buildAllSitesDisplayWrap(baseRows) {
 }
 
 function renderAllSitesFromCanonicalRows() {
-  if (!bdEl || curMode !== CONFIG.MODE.ALL) return;
+  const selectionState =
+    typeof getRuntimeSelectionState === "function"
+      ? getRuntimeSelectionState()
+      : { curMode, curSite, curTab };
+  if (!bdEl || selectionState.curMode !== CONFIG.MODE.ALL) return;
   const canonicalRows =
-    Array.isArray(window.__sadvRows) && window.__sadvRows.length ? window.__sadvRows.slice() : [];
+    typeof getRuntimeRows === "function"
+      ? getRuntimeRows()
+      : (Array.isArray(window.__sadvRows) && window.__sadvRows.length ? window.__sadvRows.slice() : []);
   if (!canonicalRows.length) return;
   const wrap = buildAllSitesDisplayWrap(canonicalRows);
   bdEl.replaceChildren(wrap);
@@ -12064,6 +12197,33 @@ function savedAtIso(d) {
       },
       setTab: function (tab) {
         setTab(tab);
+      },
+      setSelectionState: function (patch) {
+        // Phase 1 seam:
+        // saved runtime도 selection(curMode/curSite/curTab)을 한 entry로 갱신할 수 있게 한다.
+        // 아직 완전한 action layer는 아니므로, 기존 switchMode/setComboSite/setTab 경로를
+        // 최대한 재사용해 렌더 회귀를 줄인다.
+        if (!patch || typeof patch !== "object") return cloneSnapshotShellState();
+        if (patch.curMode === "all" || patch.curMode === "site") {
+          if (patch.curMode !== curMode) switchMode(patch.curMode);
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, "curSite")) {
+          if (typeof patch.curSite === "string") {
+            if ((curMode === "site" || patch.curMode === "site") && patch.curSite !== curSite) {
+              setComboSite(patch.curSite);
+            } else {
+              curSite = patch.curSite;
+            }
+          } else {
+            curSite = null;
+          }
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, "curTab") && typeof patch.curTab === "string") {
+          setTab(patch.curTab);
+        }
+        setCachedUiState();
+        notifySnapshotShellState();
+        return cloneSnapshotShellState();
       },
       setAllSitesPeriodDays: function (days) {
         if (typeof setAllSitesPeriodDaysState === "function") {

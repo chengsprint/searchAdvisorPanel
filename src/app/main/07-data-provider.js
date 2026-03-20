@@ -179,6 +179,43 @@ function getRuntimeSelectionState() {
   };
 }
 
+function setRuntimeSelectionState(patch) {
+  // Phase 1 public seam:
+  // UI는 selection을 직접 전역에 쓰기보다 이 facade를 통해 갱신하도록 유도한다.
+  //
+  // 의도:
+  // - live/snapshot이 selection을 저장/복원하는 방식이 달라도
+  //   호출자는 이 entry 하나만 보게 하기
+  // - 지금 단계에서는 "읽기/쓰기 경계"만 고정하고,
+  //   렌더/notify 흐름은 기존 UI 로직을 유지해 회귀 위험을 낮춘다.
+  if (isSnapshotRuntime()) {
+    if (
+      typeof window !== "undefined" &&
+      window.__SEARCHADVISOR_SNAPSHOT_API__ &&
+      typeof window.__SEARCHADVISOR_SNAPSHOT_API__.setSelectionState === "function"
+    ) {
+      return window.__SEARCHADVISOR_SNAPSHOT_API__.setSelectionState(patch);
+    }
+  }
+  if (typeof setSelectionStateValue === "function") {
+    return setSelectionStateValue(patch);
+  }
+  if (patch && typeof patch === "object") {
+    if (patch.curMode === CONFIG.MODE.ALL || patch.curMode === CONFIG.MODE.SITE) curMode = patch.curMode;
+    if (Object.prototype.hasOwnProperty.call(patch, "curSite")) {
+      curSite = typeof patch.curSite === "string" ? patch.curSite : null;
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, "curTab")) {
+      curTab = typeof patch.curTab === "string" ? patch.curTab : "overview";
+    }
+  }
+  return {
+    curMode,
+    curSite,
+    curTab,
+  };
+}
+
 function getRuntimeAllSitesPeriodDays() {
   // 전체현황 전용 period state seam.
   // selection(curMode/curSite/curTab)과 섞지 않는 이유:

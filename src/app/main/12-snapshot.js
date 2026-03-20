@@ -1261,6 +1261,33 @@
       setTab: function (tab) {
         setTab(tab);
       },
+      setSelectionState: function (patch) {
+        // Phase 1 seam:
+        // saved runtime도 selection(curMode/curSite/curTab)을 한 entry로 갱신할 수 있게 한다.
+        // 아직 완전한 action layer는 아니므로, 기존 switchMode/setComboSite/setTab 경로를
+        // 최대한 재사용해 렌더 회귀를 줄인다.
+        if (!patch || typeof patch !== "object") return cloneSnapshotShellState();
+        if (patch.curMode === "all" || patch.curMode === "site") {
+          if (patch.curMode !== curMode) switchMode(patch.curMode);
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, "curSite")) {
+          if (typeof patch.curSite === "string") {
+            if ((curMode === "site" || patch.curMode === "site") && patch.curSite !== curSite) {
+              setComboSite(patch.curSite);
+            } else {
+              curSite = patch.curSite;
+            }
+          } else {
+            curSite = null;
+          }
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, "curTab") && typeof patch.curTab === "string") {
+          setTab(patch.curTab);
+        }
+        setCachedUiState();
+        notifySnapshotShellState();
+        return cloneSnapshotShellState();
+      },
       setAllSitesPeriodDays: function (days) {
         if (typeof setAllSitesPeriodDaysState === "function") {
           setAllSitesPeriodDaysState(days);
