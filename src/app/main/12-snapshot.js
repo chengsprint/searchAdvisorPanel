@@ -856,6 +856,14 @@
     };
     ${buildRenderers.toString()}
     ${assignColors.toString()}
+    // All-sites local helper contract:
+    // 10-all-sites-view.js는 canonical rows read/write와 card-selection을
+    // local helper로 감싸고 있으므로, saved HTML도 이 helper들을 먼저
+    // serialize해야 renderAllSites/buildAllSitesDisplayWrap 경로가 깨지지 않는다.
+    ${getAllSitesSelectionState.toString()}
+    ${getAllSitesCanonicalRows.toString()}
+    ${setAllSitesCanonicalRows.toString()}
+    ${setAllSitesSelectedSite.toString()}
     // Shared UI controls helper contract:
     // 09-ui-controls.js가 semantic selection helpers를 통해 mode/site/tab
     // interaction을 공통화하고 있으므로, saved HTML 직렬화도 이 helper들을

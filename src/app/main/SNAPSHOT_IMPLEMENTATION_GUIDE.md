@@ -134,6 +134,10 @@
 - `09-ui-controls.js`에 새 helper를 추가했는데
   `12-snapshot.js` 직렬화 allowlist에 같이 안 넣으면
   live는 멀쩡하지만 saved HTML에서만 `is not defined` 회귀가 날 수 있다.
+- 같은 이유로 `10-all-sites-view.js`의 local helper
+  (`getAllSitesSelectionState`, `getAllSitesCanonicalRows`,
+  `setAllSitesCanonicalRows`, `setAllSitesSelectedSite`)도
+  saved HTML 직렬화 allowlist에 같이 실리는지 확인해야 한다.
 - `ensureCurrentSite`, `buildCombo`, `setComboSite`, `renderTab`, `switchMode`처럼
   saved가 직접 호출하는 공통 UI 함수는 **그 함수가 참조하는 helper까지 같이 serialize**
   되는지 반드시 확인한다.
