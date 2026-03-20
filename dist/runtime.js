@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T13:27:57Z";
-var __SADV_GIT_HEAD__="38d8ca3";
+var __SADV_BUILD_STAMP__="2026-03-20T13:30:15Z";
+var __SADV_GIT_HEAD__="b9e7aaf";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -9542,6 +9542,81 @@ function getUiControlsSelectionState() {
     : { curMode, curSite, curTab };
 }
 
+/**
+ * Apply a partial selection update using the provider/action seam first.
+ *
+ * Why this helper exists:
+ * - `09-ui-controls.js` is still a hotspot where the same fallback chain
+ *   (`setRuntimeX` -> `setRuntimeSelectionState` -> direct global write)
+ *   was duplicated in multiple handlers.
+ * - Repeating that chain increases the chance that live/saved behavior drifts
+ *   when one branch is updated and another is forgotten.
+ * - Keeping the fallback order in one helper is a small but high-value Phase 1
+ *   step because this file is the shared UI interaction hub for live and saved.
+ *
+ * Guardrail:
+ * - This helper must stay "selection only". It must not render, notify, fetch,
+ *   or switch modes/tabs by itself. Callers still own those side-effects so
+ *   current interaction order remains stable for live/saved parity.
+ */
+function applyUiControlsSelectionPatch(patch) {
+  if (!patch || typeof patch !== "object") return getUiControlsSelectionState();
+  if (typeof setRuntimeSelectionState === "function") {
+    return setRuntimeSelectionState(patch);
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, "curMode")) {
+    curMode = patch.curMode;
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, "curSite")) {
+    curSite = patch.curSite;
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, "curTab")) {
+    curTab = patch.curTab;
+  }
+  return getUiControlsSelectionState();
+}
+
+/**
+ * Semantic action wrapper for mode changes inside shared UI controls.
+ *
+ * Why not write `curMode` directly?
+ * - Live and saved already have dedicated action seams (`setRuntimeMode`)
+ *   that know how to project the same semantic action into different runtimes.
+ * - This helper keeps the UI code semantic ("set mode") while still preserving
+ *   a legacy fallback when the seam is unavailable during early boot/tests.
+ */
+function applyUiControlsMode(mode) {
+  if (typeof setRuntimeMode === "function") return setRuntimeMode(mode);
+  return applyUiControlsSelectionPatch({ curMode: mode });
+}
+
+/**
+ * Semantic action wrapper for site selection inside shared UI controls.
+ *
+ * This stays intentionally narrow:
+ * - it only updates selection state
+ * - it does not call `loadSiteView` or `switchMode`
+ *
+ * That separation matters because saved HTML still relies on the current
+ * caller-owned rendering order, and changing that order here would be a
+ * riskier Phase 2/3 style refactor.
+ */
+function applyUiControlsSite(site) {
+  if (typeof setRuntimeSite === "function") return setRuntimeSite(site);
+  return applyUiControlsSelectionPatch({ curSite: site });
+}
+
+/**
+ * Semantic action wrapper for tab changes inside shared UI controls.
+ *
+ * Keeping tab selection behind one helper makes live/saved parity easier to
+ * audit and reduces duplicated fallback branches in click/API handlers.
+ */
+function applyUiControlsTab(tab) {
+  if (typeof setRuntimeTab === "function") return setRuntimeTab(tab);
+  return applyUiControlsSelectionPatch({ curTab: tab });
+}
+
   /**
  * Assign colors to all sites from the color palette
  * Each site gets a consistent color based on its index
@@ -9611,16 +9686,12 @@ function getUiControlsSelectionState() {
     const selectionState = getUiControlsSelectionState();
     const currentSite = selectionState.curSite;
     if (!runtimeSites.length) {
-      if (typeof setRuntimeSite === "function") setRuntimeSite(null);
-      else if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curSite: null });
-      else curSite = null;
+      applyUiControlsSite(null);
       return null;
     }
     if (!currentSite || !runtimeSites.includes(currentSite)) {
       const nextSite = runtimeSites[0];
-      if (typeof setRuntimeSite === "function") setRuntimeSite(nextSite);
-      else if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curSite: nextSite });
-      else curSite = nextSite;
+      applyUiControlsSite(nextSite);
       return nextSite;
     }
     return currentSite;
@@ -9892,13 +9963,7 @@ function getUiControlsSelectionState() {
     if (!site || !runtimeSites.includes(site)) return;
     const selectionState = getUiControlsSelectionState();
     const sameSite = selectionState.curSite === site;
-    if (typeof setRuntimeSite === "function") {
-      setRuntimeSite(site);
-    } else if (typeof setRuntimeSelectionState === "function") {
-      setRuntimeSelectionState({ curSite: site });
-    } else {
-      curSite = site;
-    }
+    applyUiControlsSite(site);
     const col = SITE_COLORS_MAP[site] || C.muted,
       shortName = getSiteLabel(site);
     const comboDot = document.getElementById("sadv-combo-dot");
@@ -10026,13 +10091,7 @@ function getUiControlsSelectionState() {
       const t = e.target.closest("[data-t]");
       const selectionState = getUiControlsSelectionState();
       if (!t || t.dataset.t === selectionState.curTab) return;
-      if (typeof setRuntimeTab === "function") {
-        setRuntimeTab(t.dataset.t);
-      } else if (typeof setRuntimeSelectionState === "function") {
-        setRuntimeSelectionState({ curTab: t.dataset.t });
-      } else {
-        curTab = t.dataset.t;
-      }
+      applyUiControlsTab(t.dataset.t);
       tabsEl.querySelectorAll(".sadv-t").forEach((b) => {
         b.classList.remove("on");
         b.setAttribute("aria-selected", "false");
@@ -10136,18 +10195,14 @@ function getUiControlsSelectionState() {
     const selectionState = getUiControlsSelectionState();
     if (mode === selectionState.curMode) return;
     if (!modeBar || !siteBar || !tabsEl) {
-      if (typeof setRuntimeMode === "function") setRuntimeMode(mode);
-      else if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curMode: mode });
-      else curMode = mode;
+      applyUiControlsMode(mode);
       console.warn("[UI Controls] Missing mode UI containers; switchMode skipped");
       setCachedUiState();
       if (typeof notifySnapshotShellState === "function") notifySnapshotShellState();
       __sadvNotify();
       return;
     }
-    if (typeof setRuntimeMode === "function") setRuntimeMode(mode);
-    else if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curMode: mode });
-    else curMode = mode;
+    applyUiControlsMode(mode);
     modeBar
       .querySelectorAll(".sadv-mode")
       .forEach((b) => {
@@ -10287,9 +10342,7 @@ function getUiControlsSelectionState() {
       setTab: function (tab) {
         const selectionState = getUiControlsSelectionState();
         if (!tabsEl || !TABS.some(function (item) { return item.id === tab; }) || selectionState.curTab === tab) return;
-        if (typeof setRuntimeTab === "function") setRuntimeTab(tab);
-        else if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curTab: tab });
-        else curTab = tab;
+        applyUiControlsTab(tab);
         tabsEl.querySelectorAll(".sadv-t").forEach(function (b) {
           b.classList.remove("on");
           b.setAttribute("aria-selected", "false");
@@ -10358,6 +10411,45 @@ function getAllSitesCanonicalRows() {
   return typeof getRuntimeRows === "function"
     ? getRuntimeRows()
     : (Array.isArray(window.__sadvRows) && window.__sadvRows.length ? window.__sadvRows.slice() : []);
+}
+
+/**
+ * Persist canonical all-sites rows through the provider seam first.
+ *
+ * Why this helper exists:
+ * - `10-all-sites-view.js` is currently the main writer of canonical rows.
+ * - Leaving repeated `setRuntimeRows(...)` / `window.__sadvRows = ...` branches
+ *   in render code makes later Phase 2 shared-app work noisier than necessary.
+ * - Centralizing the write path here is a safe Phase 1 step because it does not
+ *   change what gets stored, only how the write fallback is expressed.
+ *
+ * Guardrail:
+ * - This helper only stores rows. It must not sort, mutate, notify, or render.
+ */
+function setAllSitesCanonicalRows(rows) {
+  if (typeof setRuntimeRows === "function") return setRuntimeRows(rows);
+  if (typeof setCanonicalRowsState === "function") return setCanonicalRowsState(rows);
+  window.__sadvRows = Array.isArray(rows) ? rows.slice() : [];
+  return Array.isArray(window.__sadvRows) ? window.__sadvRows.slice() : [];
+}
+
+/**
+ * Persist all-sites card site selection through the runtime action seam first.
+ *
+ * This helper is intentionally tiny:
+ * - it only updates "which site is selected"
+ * - it does not change mode or trigger rendering
+ *
+ * Keeping that separation avoids hidden side-effects that could diverge between
+ * live and saved runtimes.
+ */
+function setAllSitesSelectedSite(site) {
+  if (typeof setRuntimeSite === "function") return setRuntimeSite(site);
+  if (typeof setRuntimeSelectionState === "function") {
+    return setRuntimeSelectionState({ curSite: site });
+  }
+  curSite = site;
+  return getAllSitesSelectionState();
 }
 
 function buildAllSitesPeriodToolbar(periodDays) {
@@ -10651,13 +10743,7 @@ function buildAllSitesDisplayWrap(baseRows) {
     }
     const card = e.target.closest(".sadv-allcard");
     if (card && card.dataset.site) {
-      if (typeof setRuntimeSite === "function") {
-        setRuntimeSite(card.dataset.site);
-      } else if (typeof setRuntimeSelectionState === "function") {
-        setRuntimeSelectionState({ curSite: card.dataset.site });
-      } else {
-        curSite = card.dataset.site;
-      }
+      setAllSitesSelectedSite(card.dataset.site);
       switchMode("site");
     }
   });
@@ -10884,11 +10970,7 @@ async function renderAllSites() {
         : buildSiteSummaryRow(site, null),
   );
   rows.sort((a, b) => b.totalC - a.totalC);
-  if (typeof setRuntimeRows === "function") {
-    setRuntimeRows(rows);
-  } else {
-    window.__sadvRows = rows;
-  }
+  setAllSitesCanonicalRows(rows);
   buildCombo(rows);
   {
     const currentSelectionState = getAllSitesSelectionState();
