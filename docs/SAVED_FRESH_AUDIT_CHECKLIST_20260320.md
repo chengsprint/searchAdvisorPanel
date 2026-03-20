@@ -63,6 +63,7 @@ fresh saved HTML을 새로 생성한 뒤 아래를 순서대로 본다.
 - public action contract가 유지됨
   - `__sadvApi.switchMode`
   - `__sadvApi.setSite`
+  - `__sadvApi.switchSite`
   - `__sadvApi.setTab`
 - snapshot action contract가 유지됨
   - `getState`

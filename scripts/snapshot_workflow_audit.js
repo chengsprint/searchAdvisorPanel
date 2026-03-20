@@ -177,6 +177,7 @@ async function main() {
         ? {
             switchMode: typeof publicApi.switchMode === "function",
             setSite: typeof publicApi.setSite === "function",
+            switchSite: typeof publicApi.switchSite === "function",
             setTab: typeof publicApi.setTab === "function",
           }
         : null,
@@ -660,8 +661,9 @@ async function main() {
     !!result.contract.publicActions &&
       result.contract.publicActions.switchMode &&
       result.contract.publicActions.setSite &&
+      result.contract.publicActions.switchSite &&
       result.contract.publicActions.setTab,
-    'saved HTML public API should expose switchMode/setSite/setTab actions',
+    'saved HTML public API should expose switchMode/setSite/switchSite/setTab actions',
   );
   assertAudit(
     !!result.contract.snapshotActions &&
