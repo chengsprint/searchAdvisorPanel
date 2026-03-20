@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T05:36:56Z";
-var __SADV_GIT_HEAD__="7471b30";
+var __SADV_BUILD_STAMP__="2026-03-20T05:57:08Z";
+var __SADV_GIT_HEAD__="74f72ef";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -7395,6 +7395,9 @@ function getLiveCacheMeta() {
 }
 
 function buildLiveShellState() {
+  // live shell state는 현재 패널 UI를 외부와 동기화할 때 쓰는 최소 상태다.
+  // 내부 구현 세부사항을 전부 노출하는 것이 아니라,
+  // UI parity에 필요한 shape를 안정적으로 제공하는 것이 목적이다.
   const snapshotAccountLabel =
     (typeof window !== "undefined" &&
       window.__sadvAccountState &&
@@ -7489,6 +7492,8 @@ function __sadvMarkReady() {
  * console.log(shellState.accountLabel); // "user@example.com"
  */
 function buildSnapshotShellState(payload) {
+  // snapshot shell state는 offline payload를
+  // live와 유사한 UI 상태 shape로 정규화하는 boundary 함수다.
   // Handle V2 format
   let allSites, dataBySite, summaryRows, siteMeta, accountLabel, savedAt, curMode, curSite, curTab;
 
@@ -8840,6 +8845,14 @@ function getAvailableRenderers() {
  * @private
  */
 
+/**
+ * UI supply chain note
+ *
+ * 이 파일은 live/snapshot이 최대한 함께 써야 하는 공통 UI 제어 경로다.
+ * 이 파일의 책임은 mode / tab / combo / header meta 같은 UI 반응 규칙이지,
+ * fetch/refresh/payload 직렬화 같은 data provider 책임이 아니다.
+ */
+
   /**
  * Assign colors to all sites from the color palette
  * Each site gets a consistent color based on its index
@@ -8985,6 +8998,9 @@ function getAvailableRenderers() {
  * @see {setComboSite}
  */
   function buildCombo(rows) {
+    // Combo item 마크업/검색/선택 규칙은 live/snapshot 공통 행동으로 유지한다.
+    // 저장본에서 portal/top-layer 예외가 남더라도 기본 interaction 자체는
+    // 이 공통 경로를 우선 기준으로 삼는다.
     const drop = document.getElementById("sadv-combo-drop");
     if (!drop) {
       console.error('[buildCombo] sadv-combo-drop not found!');
@@ -9497,6 +9513,9 @@ function getAvailableRenderers() {
  * @see {buildSiteSummaryRow}
  */
 async function renderAllSites() {
+  // 전체현황 UI 정본(parity source).
+  // 저장본 전체현황이 이 구조와 멀어지기 시작하면 drift가 생기므로,
+  // 카드 구조/미니 KPI/그래프/반응형 규칙 변경 시 snapshot 쪽도 함께 점검한다.
   const requestId = ++allViewReqId;
   setAllSitesLabel();
   const loading = document.createElement("div");
@@ -10017,6 +10036,27 @@ function savedAtIso(d) {
 }
 
   /**
+ * ============================================================================
+ * Snapshot Export / Offline Bootstrap
+ * ============================================================================
+ *
+ * 이 파일은 같은 UI를 offline payload 기반으로 다시 여는 entry point다.
+ * 즉, 저장본 전용 "다른 UI"를 만드는 곳이 아니라:
+ *
+ * - payload 직렬화
+ * - offline state hydrate
+ * - read-only bootstrap
+ * - compat API
+ * - top-layer combo 보정
+ *
+ * 같은 snapshot 특수사항만 담당해야 한다.
+ *
+ * 관련 문서:
+ * - src/app/main/SNAPSHOT_EXPORT_CONTRACT.md
+ * - src/app/main/UI_DATA_PIPELINE_BOUNDARY.md
+ * - src/app/main/SNAPSHOT_IMPLEMENTATION_GUIDE.md
+ */
+  /**
  * Download the current view as a standalone HTML snapshot file
  * Collects all data, generates HTML with embedded payload, and triggers download
  * @returns {Promise<void>}
@@ -10200,6 +10240,10 @@ function savedAtIso(d) {
   }
 
   function buildSnapshotShellState(payload) {
+    // Snapshot shell state는 offline payload를
+    // live와 유사한 UI 상태 shape로 평탄화하는 계약이다.
+    // 여기서 정의되는 필드는 saved HTML 재오픈과 shell/API parity의 기준이므로
+    // 임의 삭제/이름 변경을 매우 신중하게 다뤄야 한다.
     // Handle V2 format
     let allSites, dataBySite, summaryRows, siteMeta, accountLabel, savedAt, curMode, curSite, curTab;
 
@@ -10295,6 +10339,9 @@ function savedAtIso(d) {
  * @returns {void}
  */
   function renderSnapshotAllSites() {
+    // 저장본 전체현황용 thin wrapper.
+    // 장기적으로는 live 전체현황 UI 정본(10-all-sites-view.js)과 parity를
+    // 더 높여 snapshot 전용 표현 로직을 줄이는 방향으로 유지한다.
     if (!bdEl) return;
 
     const payloadRows =
@@ -10850,6 +10897,11 @@ function savedAtIso(d) {
     // Known past regressions:
     //   - missing isFiniteValue binding -> ReferenceError in sparkline()
     //   - missing S style map          -> ReferenceError in overview renderer
+    //
+    // 추가 원칙:
+    // - 이 bootstrap block은 UI를 새로 만드는 곳이 아니다.
+    // - payload/state 주입, read-only API, offline alias 복구처럼
+    //   snapshot 특수사항만 다뤄야 한다.
     // ---------------------------------------------------------------------
     const CONFIG = ${JSON.stringify(CONFIG)};
     const ICONS = ${JSON.stringify(ICONS)};
@@ -11590,6 +11642,8 @@ function savedAtIso(d) {
  * @see {buildRenderers}
  */
   async function loadSiteView(site) {
+    // 사이트별 상세는 live/snapshot이 최대한 같은 renderer 경로를 타야 하는 핵심 영역이다.
+    // 목표는 snapshot 전용 site UI가 아니라, 같은 site UI를 다른 provider에서 그리는 것이다.
     if (!site) {
       bdEl.innerHTML = createInlineError(
         ERROR_MESSAGES.SITE_NOT_FOUND,

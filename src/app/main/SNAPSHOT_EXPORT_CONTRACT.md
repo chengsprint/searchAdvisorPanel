@@ -34,6 +34,45 @@
 
 즉 저장본 HTML은 **오프라인 self-contained runtime** 이어야 한다.
 
+## 2.5 디자인 공급망 / 데이터 공급망 경계
+
+이 프로젝트에서 앞으로의 정답 구조는 아래처럼 분리하는 것이다.
+
+### 디자인 공급망(UI supply chain)
+
+아래는 **라이브 패널과 저장본 패널이 같은 소스를 써야 하는 영역**이다.
+
+- 패널 shell markup / header / mode bar / site bar / tabs
+- KPI 카드 / 차트 surface / empty-state / error-state
+- 전체현황 렌더
+- 사이트별 상세 렌더
+- 하위탭 렌더러
+- 콤보 item 마크업과 공통 interaction
+- 공통 토큰 / spacing / color / responsive rule
+
+즉, 디자인/표현 계층은 가능한 한 `src/app/main/*` 공통 모듈에서
+하나의 정본(canonical source)만 유지해야 한다.
+
+### 데이터 공급망(data supply chain)
+
+아래는 **라이브와 저장본이 다르게 가져가도 되는 영역**이다.
+
+- live fetch / refresh / cache TTL / bootstrap refresh
+- offline payload / read-only bootstrap / export payload adapter
+- 저장본 전용 no-op API (`refresh/download/close`)
+- inline JSON 직렬화 / escape / HTML export wrapper
+
+즉, 저장본은 “다른 UI”가 아니라
+**같은 UI + 다른 data provider + read-only mode** 가 되어야 한다.
+
+### 운영 원칙
+
+1. 디자인 관련 변경은 원칙적으로 공통 UI 소스부터 수정한다.
+2. snapshot 전용 UI 분기는 마지막 수단으로만 허용한다.
+3. snapshot 전용 코드는 데이터 공급/오프라인 bootstrap/읽기 전용 처리에 한정한다.
+4. `12-snapshot.js` 안에 새로운 카드/탭 UI를 직접 복제해서 만들지 않는다.
+5. live 렌더러를 수정했다면 저장본 HTML도 다시 생성해 parity를 확인한다.
+
 ## 3. 가장 중요한 규칙
 
 ### 규칙 A — 저장본 HTML은 self-contained 여야 한다
@@ -168,3 +207,19 @@ node scripts/snapshot_workflow_audit.js <saved-html-path>
 2. serializer dependency contract 명시화
 3. 저장본 HTML bootstrap allowlist/검증 자동화 강화
 4. 가능하면 레거시 `src/app/legacy-main.js` snapshot 구현을 thin facade 또는 제거 대상으로 축소
+
+## 8. 향후 작업자가 반드시 따를 지침
+
+다음 AI/개발자는 snapshot 관련 수정 전에 아래를 먼저 확인해야 한다.
+
+1. 이 문서(`SNAPSHOT_EXPORT_CONTRACT.md`)
+2. `SNAPSHOT_IMPLEMENTATION_GUIDE.md`
+3. `UI_DATA_PIPELINE_BOUNDARY.md`
+
+그리고 아래 원칙을 반드시 지킨다.
+
+- 공통 UI를 snapshot 전용 UI로 다시 복제하지 말 것
+- provider 차이를 UI 차이로 해결하지 말 것
+- 새 helper/style token을 renderer가 쓰면 snapshot self-contained 계약 포함 여부를 먼저 확인할 것
+- combo / header / mobile layout 변경 시 live 와 saved HTML 둘 다 확인할 것
+- `npm run build`, `npm run check`, `node scripts/snapshot_workflow_audit.js <saved-html>` 를 생략하지 말 것

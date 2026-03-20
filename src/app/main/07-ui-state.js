@@ -49,6 +49,9 @@ function getLiveCacheMeta() {
 }
 
 function buildLiveShellState() {
+  // live shell state는 현재 패널 UI를 외부와 동기화할 때 쓰는 최소 상태다.
+  // 내부 구현 세부사항을 전부 노출하는 것이 아니라,
+  // UI parity에 필요한 shape를 안정적으로 제공하는 것이 목적이다.
   const snapshotAccountLabel =
     (typeof window !== "undefined" &&
       window.__sadvAccountState &&
@@ -143,6 +146,8 @@ function __sadvMarkReady() {
  * console.log(shellState.accountLabel); // "user@example.com"
  */
 function buildSnapshotShellState(payload) {
+  // snapshot shell state는 offline payload를
+  // live와 유사한 UI 상태 shape로 정규화하는 boundary 함수다.
   // Handle V2 format
   let allSites, dataBySite, summaryRows, siteMeta, accountLabel, savedAt, curMode, curSite, curTab;
 

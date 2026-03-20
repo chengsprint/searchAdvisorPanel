@@ -8,6 +8,8 @@
  * @see {buildRenderers}
  */
   async function loadSiteView(site) {
+    // 사이트별 상세는 live/snapshot이 최대한 같은 renderer 경로를 타야 하는 핵심 영역이다.
+    // 목표는 snapshot 전용 site UI가 아니라, 같은 site UI를 다른 provider에서 그리는 것이다.
     if (!site) {
       bdEl.innerHTML = createInlineError(
         ERROR_MESSAGES.SITE_NOT_FOUND,
