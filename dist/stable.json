@@ -1,0 +1,7 @@
+{
+  "channel": "stable",
+  "version": "v2.0.4",
+  "runtime_url": "https://cdn.jsdelivr.net/gh/chengsprint/searchAdvisorPanel@v2.0.4/dist/runtime.js",
+  "fallback_url": "https://cdn.jsdelivr.net/gh/chengsprint/searchAdvisorPanel@v2.0.3/dist/runtime.js",
+  "notes": "실사용 외부 스크립트는 runtime.js를 직접 보지 말고 loader.js -> stable.json 경로를 통해 운영 승인된 버전만 로드한다."
+}
