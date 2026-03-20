@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.4] - 2026-03-20
+
+### Fixed
+- 저장본 HTML에서 `전체현황` 카드의 클릭/색인 미니 그래프가 누락되던 parity 문제 수정
+- 저장본 오프라인 런타임에서 `isFiniteValue`, `S` 등 helper/style map 누락으로 발생하던 렌더 오류 수정
+- 저장본 `사이트별`/하위탭 전환, 콤보 전환, 카드 클릭 연동이 불안정하던 snapshot bootstrap 경로 보강
+- 저장 직전 화면 상태에 따라 `snapshot panel not found`가 간헐적으로 발생하던 본문 anchor drift(`sadv-bd` ↔ `sadv-tabpanel`) 문제 수정
+- 라이브 패널이 snapshot runtime으로 오판별되어 사이트별 하위탭이 `데이터 없음`으로 보이던 provider detection 회귀 수정
+- 모바일 저장본에서 상단 메타/패널 중심축 불일치, KPI 숫자 잘림, 작은 카드 overflow가 발생하던 반응형 레이아웃 문제 수정
+- 저장본 콤보 드롭다운이 본문 뒤로 깔리거나 theme root와 어긋나던 top-layer 동작 문제 수정
+- 저장/오프라인 경로에서 반복 오류가 과도하게 노출되던 runtime error noise 정리
+
+### Changed
+- snapshot 저장 구조를 강화하여 shell host를 HTML 직렬화 전에 DOM 기준으로 삽입하도록 변경
+- snapshot export/runtime contract를 문서화하고, 저장본이 read-only capability/runtime kind를 명시적으로 갖도록 정리
+- provider facade(`07-data-provider.js`)를 도입해 live/snapshot 데이터 공급 경계를 분리하고 UI가 공통 seam을 통해 상태를 읽도록 확장
+- 전체현황/사이트별/콤보/하위탭/모바일 레이아웃을 포함한 저장본 품질 기준을 감사 스크립트로 자동 검증하도록 강화
+- snapshot 관련 코드/문서에서 legacy 참고 경로를 명확히 구분하고 유지보수 기준을 코드 옆 문서와 docs에 정리
+
+### Validation
+- `npm run build` 통과
+- `npm run check` 통과
+- Playwright 기반 `scripts/snapshot_workflow_audit.js`로 저장본 워크플로우 재검증 통과
+- 실사용 검증에서 전체현황/사이트별/하위탭 상태 각각에서 저장 반복 성공 확인
+- 모바일 저장본 기준 중심축, overflow, KPI clipping 검증 통과
+
+### Documentation
+- `docs/RELEASE_NOTES_v2.0.4_20260320.md` 추가
+- `docs/FINAL_RELEASE_HANDOFF_20260320.md` 추가
+- `src/app/main/UI_DATA_PIPELINE_BOUNDARY.md` 추가
+- `src/app/main/SNAPSHOT_IMPLEMENTATION_GUIDE.md` 추가
+- `docs/SNAPSHOT_UI_DATA_ARCHITECTURE.20260320.md` 추가
+- `docs/SNAPSHOT_QA_DECISION_TREE.20260320.md` 추가
+
 ## [2.0.3] - 2026-03-19
 
 ### Fixed
