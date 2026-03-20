@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 운영 반영 전략을 `runtime.js 직접 링크` 대신 `loader.js -> stable.json -> runtime.js` 구조로 정리
 - 개발 채널(`main`)과 운영 채널(`release`)을 분리하는 최소 복잡도 GitHub 워크플로우 문서화
 
+### Fixed
+- `fetchExposeData`/`INVALID_ENCID` 등 사용자 오류가 콘솔에만 남고 패널에는 잘 보이지 않던 문제를 패널 상단 오류 배너로 보완
+
 ## [2.0.4] - 2026-03-20
 
 ### Fixed
