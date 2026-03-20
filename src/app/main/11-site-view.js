@@ -49,7 +49,11 @@
     );
     let d;
     try {
-      d = await fetchSiteData(site);
+      if (typeof getRuntimeMode === "function" && getRuntimeMode() === "snapshot") {
+        d = typeof getRuntimeSiteData === "function" ? getRuntimeSiteData(site) : null;
+      } else {
+        d = await fetchSiteData(site);
+      }
     } catch (e) {
       bdEl.innerHTML = createInlineError(
         ERROR_MESSAGES.DATA_LOAD_FAILED,
