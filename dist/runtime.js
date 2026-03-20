@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T16:21:38Z";
-var __SADV_GIT_HEAD__="763baed";
+var __SADV_BUILD_STAMP__="2026-03-20T23:43:38Z";
+var __SADV_GIT_HEAD__="638dfd2";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -12825,6 +12825,38 @@ function buildSnapshotSerializedHelperSection() {
     ];
   }
 
+  function buildSnapshotApiCompatModeActionLines() {
+    return [
+      '    switchMode: function (mode) { if (typeof switchMode === "function") switchMode(mode); else { const button = document.querySelector("#sadv-mode-bar [data-m=\\"" + mode + "\\"]"); if (button) button.click(); } scheduleSync(); },',
+    ];
+  }
+
+  // Phase 3:
+  // compat bridge의 site action fallback은 setSite/switchSite가 같은 body를 공유한다.
+  // 이 단계에서는 alias 관계를 바꾸지 않고 문자열 조립 책임만 분리해,
+  // dormant bridge의 중복을 줄이면서 external caller 호환성을 유지한다.
+  function buildSnapshotApiCompatSiteActionLines(actionName) {
+    return [
+      '    ' +
+        actionName +
+        ': function (site) { if (typeof setComboSite === "function") setComboSite(site); else { const items = Array.from(document.querySelectorAll(".sadv-combo-item")); const button = items.find(function (item) { return (item.getAttribute("data-site") || "") === site; }); if (button) button.click(); } if (typeof switchMode === "function") switchMode("site"); scheduleSync(); },',
+    ];
+  }
+
+  function buildSnapshotApiCompatTabActionLines() {
+    return [
+      '    setTab: function (tab) { if (typeof setTab === "function") setTab(tab); else { const button = document.querySelector("#sadv-tabs [data-t=\\"" + tab + "\\"]"); if (button) button.click(); } scheduleSync(); },',
+    ];
+  }
+
+  function buildSnapshotApiCompatNoopActionLines() {
+    return [
+      '    refresh: function () { return false; },',
+      '    download: function () { return false; },',
+      '    close: function () { return false; },',
+    ];
+  }
+
   function buildSnapshotApiCompatActionLines() {
     return [
       "  const api = {",
@@ -12832,26 +12864,21 @@ function buildSnapshotSerializedHelperSection() {
       "    isReady: function () { return true; },",
       "    waitUntilReady: function () { return Promise.resolve(true); },",
       "    subscribe: function (listener) { listeners.add(listener); return function () { listeners.delete(listener); }; },",
-      '    switchMode: function (mode) { if (typeof switchMode === "function") switchMode(mode); else { const button = document.querySelector("#sadv-mode-bar [data-m=\\"" + mode + "\\"]"); if (button) button.click(); } scheduleSync(); },',
+      ...buildSnapshotApiCompatModeActionLines(),
       // `switchSite`는 canonical action이고, `setSite`는 backward-compat alias다.
       // 둘의 동작이 현재 같아 보여도 compat bridge에서는 alias를 유지해
       // 과거 external caller를 깨지 않도록 한다.
-      '    setSite: function (site) { if (typeof setComboSite === "function") setComboSite(site); else { const items = Array.from(document.querySelectorAll(".sadv-combo-item")); const button = items.find(function (item) { return (item.getAttribute("data-site") || "") === site; }); if (button) button.click(); } if (typeof switchMode === "function") switchMode("site"); scheduleSync(); },',
-      '    switchSite: function (site) { if (typeof setComboSite === "function") setComboSite(site); else { const items = Array.from(document.querySelectorAll(".sadv-combo-item")); const button = items.find(function (item) { return (item.getAttribute("data-site") || "") === site; }); if (button) button.click(); } if (typeof switchMode === "function") switchMode("site"); scheduleSync(); },',
-      '    setTab: function (tab) { if (typeof setTab === "function") setTab(tab); else { const button = document.querySelector("#sadv-tabs [data-t=\\"" + tab + "\\"]"); if (button) button.click(); } scheduleSync(); },',
-      '    refresh: function () { return false; },',
-      '    download: function () { return false; },',
-      '    close: function () { return false; },',
+      ...buildSnapshotApiCompatSiteActionLines("setSite"),
+      ...buildSnapshotApiCompatSiteActionLines("switchSite"),
+      ...buildSnapshotApiCompatTabActionLines(),
+      ...buildSnapshotApiCompatNoopActionLines(),
       "  };",
       "  publishSnapshotRuntimeApis(api);",
     ];
   }
 
-  function buildSnapshotApiCompatObserverLines() {
+  function buildSnapshotApiCompatReactObserverLines() {
     return [
-      '  const target = document.getElementById("sadv-p") || document.body;',
-      '  if (target) {',
-      '    // React 18 호환 가능한 DOM 관찰자 사용',
       '    if (typeof window.__REACT18_COMPAT__ === "object" && typeof window.__REACT18_COMPAT__.createReact18CompatibleObserver === "function") {',
       '      const observer = window.__REACT18_COMPAT__.createReact18CompatibleObserver(',
       '        target,',
@@ -12860,14 +12887,38 @@ function buildSnapshotSerializedHelperSection() {
       "      );",
       '      // Observer는 자동으로 관리되며, 명시적인 정리가 필요한 경우:',
       '      window.__SEARCHADVISOR_SNAPSHOT_OBSERVER__ = observer;',
+    ];
+  }
+
+  function buildSnapshotApiCompatMutationObserverLines() {
+    return [
       '    } else if (typeof MutationObserver === "function") {',
       '      // 폴백: 기존 MutationObserver 사용',
       "      const observer = new MutationObserver(function () { scheduleSync(); });",
       "      observer.observe(target, { subtree: true, childList: true, attributes: true, characterData: true });",
       '      window.__SEARCHADVISOR_SNAPSHOT_OBSERVER__ = observer;',
+    ];
+  }
+
+  function buildSnapshotApiCompatObserverFinalizeLines() {
+    return [
       "    }",
       "  }",
       "  syncFromLegacy();",
+    ];
+  }
+
+  function buildSnapshotApiCompatObserverLines() {
+    return [
+      '  const target = document.getElementById("sadv-p") || document.body;',
+      '  if (target) {',
+      '    // observer wiring은 compat bridge 안에서도 비교적 fan-out이 작아서',
+      '    // action 의미를 건드리지 않고 추가 분해하기 가장 안전한 slice다.',
+      '    // React 18 compat observer와 MutationObserver fallback을 line builder 단위로 분리해',
+      '    // 나중에 bridge 유지/제거 판단을 더 쉽게 만든다.',
+      ...buildSnapshotApiCompatReactObserverLines(),
+      ...buildSnapshotApiCompatMutationObserverLines(),
+      ...buildSnapshotApiCompatObserverFinalizeLines(),
     ];
   }
   function buildSnapshotApiCompatScript() {

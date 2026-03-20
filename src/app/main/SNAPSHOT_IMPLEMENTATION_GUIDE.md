@@ -179,11 +179,22 @@
   `buildSnapshotApiCompatObserverLines()`
   같은 line builder 단위로 먼저 나눈다.
   Phase 3 첫 단계의 목표는 "동작 변경"이 아니라 "읽기 가능한 경계 만들기"다.
+- observer wiring은 compat bridge 안에서도 비교적 fan-out이 작아서,
+  `buildSnapshotApiCompatReactObserverLines()`,
+  `buildSnapshotApiCompatMutationObserverLines()`,
+  `buildSnapshotApiCompatObserverFinalizeLines()`
+  처럼 더 세밀하게 나누는 다음 slice로 적합하다.
+  반대로 action fallback은 `setSite`/`switchSite` alias 의미와
+  `scheduleSync()` 타이밍을 그대로 유지해야 하므로,
+  지금 단계에서는 구조 변경보다 주석/문서 고정이 우선이다.
 - 특히 `buildSnapshotApiCompatScript()`는 현재 활성 saved bootstrap 정본이 아니라,
   richer snapshot API가 아직 없던 시절의 legacy/dormant compat bridge에 가깝다.
   현재 활성 경로는 `buildSnapshotHtml()` 안 inline snapshotApi + `publishSnapshotRuntimeApis()` 쪽이다.
   따라서 이 함수를 리팩토링할 때는 "정본을 교체한다"가 아니라
   "남아 있는 compat bridge의 책임을 더 읽기 쉽게 만든다"는 관점으로 접근한다.
+- compat bridge action fallback은 `buildSnapshotApiCompatActionLines()` 안에 계속 큰 문자열로 두지 말고
+  mode / site / tab / noop builder로 점진 분해한다.
+  단, `setSite`는 `switchSite`의 backward-compat alias이므로 의미를 억지로 분리하지 않는다.
 - compat bridge 안의 `snapshotState`는 full runtime owner가 아니라
   `__SEARCHADVISOR_SNAPSHOT_SHELL_STATE__`를 바탕으로 한 shell mirror + selection mirror에 가깝다.
   `allSites/rows/siteMeta/mergedMeta/runtimeVersion/cacheMeta`는 shell state에서 초기화되고,
