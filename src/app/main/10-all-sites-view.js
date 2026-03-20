@@ -20,7 +20,9 @@ function getAllSitesSelectionState() {
 function getAllSitesCanonicalRows() {
   return typeof getRuntimeRows === "function"
     ? getRuntimeRows()
-    : (Array.isArray(window.__sadvRows) && window.__sadvRows.length ? window.__sadvRows.slice() : []);
+    : (typeof getCanonicalRowsState === "function"
+        ? getCanonicalRowsState()
+        : (Array.isArray(window.__sadvRows) && window.__sadvRows.length ? window.__sadvRows.slice() : []));
 }
 
 /**
