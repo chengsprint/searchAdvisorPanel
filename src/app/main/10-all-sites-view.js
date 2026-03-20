@@ -293,7 +293,9 @@ function buildAllSitesDisplayWrap(baseRows) {
     }
     const card = e.target.closest(".sadv-allcard");
     if (card && card.dataset.site) {
-      if (typeof setRuntimeSelectionState === "function") {
+      if (typeof setRuntimeSite === "function") {
+        setRuntimeSite(card.dataset.site);
+      } else if (typeof setRuntimeSelectionState === "function") {
         setRuntimeSelectionState({ curSite: card.dataset.site });
       } else {
         curSite = card.dataset.site;
@@ -539,7 +541,11 @@ async function renderAllSites() {
         : buildSiteSummaryRow(site, null),
   );
   rows.sort((a, b) => b.totalC - a.totalC);
-  window.__sadvRows = rows;
+  if (typeof setRuntimeRows === "function") {
+    setRuntimeRows(rows);
+  } else {
+    window.__sadvRows = rows;
+  }
   buildCombo(rows);
   {
     const currentSelectionState =

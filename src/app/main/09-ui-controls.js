@@ -92,13 +92,15 @@
         : { curSite };
     const currentSite = selectionState.curSite;
     if (!runtimeSites.length) {
-      if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curSite: null });
+      if (typeof setRuntimeSite === "function") setRuntimeSite(null);
+      else if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curSite: null });
       else curSite = null;
       return null;
     }
     if (!currentSite || !runtimeSites.includes(currentSite)) {
       const nextSite = runtimeSites[0];
-      if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curSite: nextSite });
+      if (typeof setRuntimeSite === "function") setRuntimeSite(nextSite);
+      else if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curSite: nextSite });
       else curSite = nextSite;
       return nextSite;
     }
@@ -377,7 +379,9 @@
         ? getRuntimeSelectionState()
         : { curSite, curMode, curTab };
     const sameSite = selectionState.curSite === site;
-    if (typeof setRuntimeSelectionState === "function") {
+    if (typeof setRuntimeSite === "function") {
+      setRuntimeSite(site);
+    } else if (typeof setRuntimeSelectionState === "function") {
       setRuntimeSelectionState({ curSite: site });
     } else {
       curSite = site;
@@ -518,7 +522,9 @@
           ? getRuntimeSelectionState()
           : { curTab };
       if (!t || t.dataset.t === selectionState.curTab) return;
-      if (typeof setRuntimeSelectionState === "function") {
+      if (typeof setRuntimeTab === "function") {
+        setRuntimeTab(t.dataset.t);
+      } else if (typeof setRuntimeSelectionState === "function") {
         setRuntimeSelectionState({ curTab: t.dataset.t });
       } else {
         curTab = t.dataset.t;
@@ -632,7 +638,8 @@
         : { curMode, curSite, curTab };
     if (mode === selectionState.curMode) return;
     if (!modeBar || !siteBar || !tabsEl) {
-      if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curMode: mode });
+      if (typeof setRuntimeMode === "function") setRuntimeMode(mode);
+      else if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curMode: mode });
       else curMode = mode;
       console.warn("[UI Controls] Missing mode UI containers; switchMode skipped");
       setCachedUiState();
@@ -640,7 +647,8 @@
       __sadvNotify();
       return;
     }
-    if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curMode: mode });
+    if (typeof setRuntimeMode === "function") setRuntimeMode(mode);
+    else if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curMode: mode });
     else curMode = mode;
     modeBar
       .querySelectorAll(".sadv-mode")
@@ -787,7 +795,8 @@
             ? getRuntimeSelectionState()
             : { curTab };
         if (!tabsEl || !TABS.some(function (item) { return item.id === tab; }) || selectionState.curTab === tab) return;
-        if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curTab: tab });
+        if (typeof setRuntimeTab === "function") setRuntimeTab(tab);
+        else if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curTab: tab });
         else curTab = tab;
         tabsEl.querySelectorAll(".sadv-t").forEach(function (b) {
           b.classList.remove("on");

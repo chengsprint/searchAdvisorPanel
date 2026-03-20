@@ -114,6 +114,21 @@ function getRuntimeShellState() {
 function getRuntimeRows() {
   const state = getRuntimeShellState();
   if (state && Array.isArray(state.rows)) return state.rows.slice();
+  if (typeof getCanonicalRowsState === "function") return getCanonicalRowsState();
+  return Array.isArray(window.__sadvRows) ? window.__sadvRows.slice() : [];
+}
+
+function setRuntimeRows(rows) {
+  // Phase 1 write seam:
+  // 전체현황 canonical rows 저장 위치를 UI 코드가 직접 알지 않게 한다.
+  //
+  // 주의:
+  // - 이 함수는 "rows를 저장"만 담당한다.
+  // - render/notify는 호출 측이 기존 흐름을 유지하게 두어 회귀를 줄인다.
+  if (typeof setCanonicalRowsState === "function") {
+    return setCanonicalRowsState(rows);
+  }
+  window.__sadvRows = Array.isArray(rows) ? rows.slice() : [];
   return Array.isArray(window.__sadvRows) ? window.__sadvRows.slice() : [];
 }
 
@@ -214,6 +229,21 @@ function setRuntimeSelectionState(patch) {
     curSite,
     curTab,
   };
+}
+
+function setRuntimeMode(mode) {
+  // action seam 1차:
+  // mode/site/tab을 한 번에 바꾸는 범용 patch seam은 유지하되,
+  // UI 코드가 의도를 더 명확히 표현하도록 얇은 action wrapper를 제공한다.
+  return setRuntimeSelectionState({ curMode: mode });
+}
+
+function setRuntimeSite(site) {
+  return setRuntimeSelectionState({ curSite: site });
+}
+
+function setRuntimeTab(tab) {
+  return setRuntimeSelectionState({ curTab: tab });
 }
 
 function getRuntimeAllSitesPeriodDays() {
