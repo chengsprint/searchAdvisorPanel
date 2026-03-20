@@ -17,7 +17,21 @@
  * - it does not replace targeted manual review when layout/theming changes
  */
 const path = require("path");
-const { chromium } = require("playwright");
+
+let chromium = null;
+try {
+  ({ chromium } = require("playwright"));
+} catch (error) {
+  console.error(
+    [
+      "[snapshot_workflow_audit] playwright 모듈을 찾을 수 없습니다.",
+      "이 스크립트는 실제 브라우저를 띄워 saved HTML을 감사하므로 playwright 설치가 필요합니다.",
+      "예: npm install",
+      `원본 오류: ${error && error.message ? error.message : String(error)}`,
+    ].join("\n"),
+  );
+  process.exit(1);
+}
 
 async function main() {
   const target = process.argv[2];

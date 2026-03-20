@@ -158,12 +158,16 @@ UI 자체는 공통 엔트리를 타게 만드는 것이 목표다.
 - `09-ui-controls.js`
   - combo/tab/mode 상호작용이 `setRuntimeMode/setRuntimeSite/setRuntimeTab` action wrapper를 우선 사용하도록 3차 정리
   - 반복적인 selection fallback object를 `getUiControlsSelectionState()` helper로 정리
+  - UI helper가 generic patch seam(`setRuntimeSelectionState`)을 직접 아는 범위를 줄이고,
+    semantic action wrapper 우선 + 최후 local fallback 구조로 좁힘
 - `10-all-sites-view.js`
   - canonical rows read를 facade 우선으로 정리
   - all-sites progress/render guard의 `curMode` direct read를 selection seam으로 이동
 - `10-all-sites-view.js`
   - 카드 클릭이 `setRuntimeSite()` action seam을 우선 사용하도록 정리
   - selection/rows read를 `getAllSitesSelectionState()` / `getAllSitesCanonicalRows()` helper로 정리
+  - 카드 클릭 selection helper가 generic patch seam 중간 단계 없이
+    semantic action seam + 최후 local fallback만 알도록 좁힘
 - `11-site-view.js`
   - request guard의 `curSite` direct read를 selection seam으로 이동
 - `06-merge-manager.js`
@@ -183,6 +187,7 @@ UI 자체는 공통 엔트리를 타게 만드는 것이 목표다.
 - `10-all-sites-view.js`의 canonical rows read/write를 provider-only에 더 가깝게 좁히는 준비
 - `12-snapshot.js`를 boot/provider 중심으로 좁히는 2단계 준비
 - shared app entry 도입 전, public action seam 추가 정리
+- saved fresh audit 실행 환경(playwright 설치 여부) 점검 및 CI/로컬 실행 명확화
 
 ### rows seam 관점의 현재 판단
 - **지금 당장 안전한 곳**
