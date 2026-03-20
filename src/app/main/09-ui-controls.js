@@ -29,7 +29,13 @@
  * console.log(SITE_COLORS_MAP['https://example.com']); // "#10b981"
  */
   function assignColors() {
-    allSites.forEach((s, i) => {
+    // stage 2-2 seam:
+    // 컬러 매핑은 UI 표현 책임이지만, "어떤 사이트 집합을 기준으로 칠할지"는
+    // provider facade를 통해 읽는 편이 안전하다.
+    // 그래야 snapshot/live가 서로 다른 입력원을 써도 색상 할당 기준이 한 곳으로 모인다.
+    const runtimeSites =
+      typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
+    runtimeSites.forEach((s, i) => {
       if (!SITE_COLORS_MAP[s]) SITE_COLORS_MAP[s] = COLORS[i % COLORS.length];
     });
   }
@@ -42,11 +48,17 @@
  * console.log(site); // "https://example.com" or null
  */
   function ensureCurrentSite() {
-    if (!allSites.length) {
+    // stage 2-2 seam:
+    // 현재 사이트 보정도 allSites 전역 배열을 직접 신뢰하지 않고
+    // facade가 말해주는 현재 runtime site list를 기준으로 맞춘다.
+    // 이 함수는 site mode 진입/복원 경로에서 자주 호출되므로 회귀 방지 가치가 크다.
+    const runtimeSites =
+      typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
+    if (!runtimeSites.length) {
       curSite = null;
       return null;
     }
-    if (!curSite || !allSites.includes(curSite)) curSite = allSites[0];
+    if (!curSite || !runtimeSites.includes(curSite)) curSite = runtimeSites[0];
     return curSite;
   }
   /**
@@ -197,17 +209,17 @@
       console.error('[buildCombo] sadv-combo-drop not found!');
       return;
     }
+    const runtimeSites =
+      typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
     const rowsMap = {};
     if (rows && rows.length)
       rows.forEach((r) => {
-        if (allSites.includes(r.site)) rowsMap[r.site] = r;
+        if (runtimeSites.includes(r.site)) rowsMap[r.site] = r;
       });
     const rowSites =
       rows && rows.length
-        ? rows.map((r) => r.site).filter((site) => allSites.includes(site))
+        ? rows.map((r) => r.site).filter((site) => runtimeSites.includes(site))
         : [];
-    const runtimeSites =
-      typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
     const restSites = runtimeSites.filter((s) => !rowsMap[s]);
     const orderedSites = [...rowSites, ...restSites];
 
@@ -307,7 +319,11 @@
  * @see {buildCombo}
  */
   function setComboSite(site) {
-    if (!site || !allSites.includes(site)) return;
+    // combo 선택은 live/snapshot 공통 상호작용이다.
+    // 따라서 site 유효성 판정도 facade를 경유해 provider 경계를 존중한다.
+    const runtimeSites =
+      typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
+    if (!site || !runtimeSites.includes(site)) return;
     const sameSite = curSite === site;
     curSite = site;
     const col = SITE_COLORS_MAP[site] || C.muted,
