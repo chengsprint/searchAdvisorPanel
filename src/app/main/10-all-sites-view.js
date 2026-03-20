@@ -37,12 +37,13 @@ function getAllSitesCanonicalRows() {
  *
  * Guardrail:
  * - This helper only stores rows. It must not sort, mutate, notify, or render.
+ * - Phase 1 후반부터는 all-sites view가 raw storage write(`window.__sadvRows`)를
+ *   직접 알지 않게 좁힌다. 실제 저장소 세부 구현은 provider/state 레이어가 소유한다.
  */
 function setAllSitesCanonicalRows(rows) {
   if (typeof setRuntimeRows === "function") return setRuntimeRows(rows);
   if (typeof setCanonicalRowsState === "function") return setCanonicalRowsState(rows);
-  window.__sadvRows = Array.isArray(rows) ? rows.slice() : [];
-  return Array.isArray(window.__sadvRows) ? window.__sadvRows.slice() : [];
+  return Array.isArray(rows) ? rows.slice() : [];
 }
 
 /**

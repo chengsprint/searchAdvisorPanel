@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T13:49:39Z";
-var __SADV_GIT_HEAD__="10336c9";
+var __SADV_BUILD_STAMP__="2026-03-20T13:50:37Z";
+var __SADV_GIT_HEAD__="5938f0b";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -10441,12 +10441,13 @@ function getAllSitesCanonicalRows() {
  *
  * Guardrail:
  * - This helper only stores rows. It must not sort, mutate, notify, or render.
+ * - Phase 1 후반부터는 all-sites view가 raw storage write(`window.__sadvRows`)를
+ *   직접 알지 않게 좁힌다. 실제 저장소 세부 구현은 provider/state 레이어가 소유한다.
  */
 function setAllSitesCanonicalRows(rows) {
   if (typeof setRuntimeRows === "function") return setRuntimeRows(rows);
   if (typeof setCanonicalRowsState === "function") return setCanonicalRowsState(rows);
-  window.__sadvRows = Array.isArray(rows) ? rows.slice() : [];
-  return Array.isArray(window.__sadvRows) ? window.__sadvRows.slice() : [];
+  return Array.isArray(rows) ? rows.slice() : [];
 }
 
 /**
