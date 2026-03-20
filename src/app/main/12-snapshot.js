@@ -372,6 +372,44 @@
 // 직렬화 순서도 pack 순서로 고정한다.
 const SNAPSHOT_SHARED_PUBLIC_ENTRY_HELPERS = [setRuntimePublicApi, clearRuntimePublicApi];
 
+function createSnapshotPublicFacade(snapshotApi) {
+  return {
+    getState: snapshotApi.getState,
+    getCapabilities: snapshotApi.getCapabilities,
+    isReady: snapshotApi.isReady,
+    waitUntilReady: snapshotApi.waitUntilReady,
+    subscribe: snapshotApi.subscribe,
+    switchMode: snapshotApi.switchMode,
+    setSite: snapshotApi.setSite,
+    switchSite: snapshotApi.switchSite,
+    setTab: snapshotApi.setTab,
+    refresh: snapshotApi.refresh,
+    download: snapshotApi.download,
+    close: snapshotApi.close,
+  };
+}
+
+function publishSnapshotRuntimeApis(snapshotApi) {
+  if (typeof window !== "undefined") {
+    window.__SEARCHADVISOR_SNAPSHOT_API__ = snapshotApi;
+  }
+  const publicApi = createSnapshotPublicFacade(snapshotApi);
+  if (typeof setRuntimePublicApi === "function") {
+    setRuntimePublicApi(publicApi);
+  } else if (typeof window !== "undefined") {
+    window.__sadvApi = publicApi;
+  }
+  return {
+    snapshotApi: snapshotApi,
+    publicApi: publicApi,
+  };
+}
+
+const SNAPSHOT_RUNTIME_BOOT_HELPERS = [
+  createSnapshotPublicFacade,
+  publishSnapshotRuntimeApis,
+];
+
 const SNAPSHOT_ALL_SITES_HELPER_PACK = [
   getAllSitesSelectionState,
   getAllSitesCanonicalRows,
@@ -892,6 +930,10 @@ function serializeSnapshotHelperPack(helperPack) {
     // Phase 2에서는 live/saved가 같은 public facade(window.__sadvApi)를
     // 같은 helper를 통해 게시/해제하도록 수렴시킨다.
     ${serializeSnapshotHelperPack(SNAPSHOT_SHARED_PUBLIC_ENTRY_HELPERS)}
+    // Snapshot runtime boot helpers:
+    // snapshot richer API 생성과 public facade publish를 분리해
+    // bootstrap 책임을 "state/provider wiring" 쪽으로 더 좁힌다.
+    ${serializeSnapshotHelperPack(SNAPSHOT_RUNTIME_BOOT_HELPERS)}
     // All-sites local helper contract:
     // 10-all-sites-view.js는 canonical rows read/write와 card-selection을
     // local helper로 감싸고 있으므로, saved HTML도 이 helper들을 먼저
@@ -1367,31 +1409,7 @@ function serializeSnapshotHelperPack(helperPack) {
         return false;
       },
     };
-    window.__SEARCHADVISOR_SNAPSHOT_API__ = snapshotApi;
-    const publicApi = {
-      // Phase 2 thin public facade:
-      // __SEARCHADVISOR_SNAPSHOT_API__는 richer snapshot control surface를 유지하고,
-      // __sadvApi는 live와 이름/역할을 맞춘 공통 subset만 노출한다.
-      // 이렇게 분리해 두면 external automation/QA는 public facade만 보고,
-      // snapshot 전용 제어는 richer API에만 남겨 책임을 분리할 수 있다.
-      getState: snapshotApi.getState,
-      getCapabilities: snapshotApi.getCapabilities,
-      isReady: snapshotApi.isReady,
-      waitUntilReady: snapshotApi.waitUntilReady,
-      subscribe: snapshotApi.subscribe,
-      switchMode: snapshotApi.switchMode,
-      setSite: snapshotApi.setSite,
-      switchSite: snapshotApi.switchSite,
-      setTab: snapshotApi.setTab,
-      refresh: snapshotApi.refresh,
-      download: snapshotApi.download,
-      close: snapshotApi.close,
-    };
-    if (typeof setRuntimePublicApi === "function") {
-      setRuntimePublicApi(publicApi);
-    } else {
-      window.__sadvApi = publicApi;
-    }
+    publishSnapshotRuntimeApis(snapshotApi);
     if (snapshotUiReady) {
       const cachedUi = getCachedUiState();
       if (cachedUi && typeof cachedUi.allSitesPeriodDays !== "undefined") {
@@ -1575,21 +1593,7 @@ function serializeSnapshotHelperPack(helperPack) {
       '    download: function () { return false; },',
       '    close: function () { return false; },',
       "  };",
-      "  window.__SEARCHADVISOR_SNAPSHOT_API__ = api;",
-      "  const publicApi = {",
-      "    getState: api.getState,",
-      "    isReady: api.isReady,",
-      "    waitUntilReady: api.waitUntilReady,",
-      "    subscribe: api.subscribe,",
-      "    switchMode: api.switchMode,",
-      "    setSite: api.setSite,",
-      "    switchSite: api.switchSite,",
-      "    setTab: api.setTab,",
-      "    refresh: api.refresh,",
-      "    download: api.download,",
-      "    close: api.close,",
-      "  };",
-      '  if (typeof setRuntimePublicApi === "function") setRuntimePublicApi(publicApi); else window.__sadvApi = publicApi;',
+      "  publishSnapshotRuntimeApis(api);",
       '  const target = document.getElementById("sadv-p") || document.body;',
       '  if (target) {',
       '    // React 18 호환 가능한 DOM 관찰자 사용',
