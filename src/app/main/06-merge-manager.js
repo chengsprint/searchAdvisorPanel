@@ -440,6 +440,10 @@
             curSite: (typeof curSite !== "undefined") ? curSite : null,
             curTab: (typeof curTab !== "undefined") ? curTab : "overview",
           };
+    const currentAllSitesPeriodDays =
+      typeof getRuntimeAllSitesPeriodDays === "function"
+        ? getRuntimeAllSitesPeriodDays()
+        : normalizeAllSitesPeriodDays(90);
 
     return {
       __meta: {
@@ -461,6 +465,7 @@
         curMode: currentSelectionState.curMode,
         curSite: currentSelectionState.curSite,
         curTab: currentSelectionState.curTab,
+        allSitesPeriodDays: currentAllSitesPeriodDays,
         curAccount: (typeof window.__sadvAccountState?.currentAccount !== "undefined")
           ? window.__sadvAccountState.currentAccount
           : validAccountEmail
