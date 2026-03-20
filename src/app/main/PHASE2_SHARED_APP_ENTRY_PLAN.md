@@ -135,6 +135,7 @@ all-sites helper를 분리해 놓았지만,
 1. public API 계약 문서와 실제 노출 위치 일치 검증
 2. saved에서 `__sadvApi`가 shell ready 이후 항상 유효하도록 고정
 3. 외부 automation/QA가 runtime kind를 모른 채 같은 API를 호출할 수 있게 유지
+4. `switchSite(site)`처럼 intent가 명확한 canonical action 이름을 public facade에 정착
 
 주의:
 - snapshot richer API(`__SEARCHADVISOR_SNAPSHOT_API__`)는 없애지 않는다.

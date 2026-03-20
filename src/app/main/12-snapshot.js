@@ -1281,6 +1281,14 @@
         setComboSite(site);
         if (curMode !== "site") switchMode("site");
       },
+      switchSite: function (site) {
+        // Phase 2 convergence:
+        // public facade canonical action은 "site 선택 + site mode 진입"으로 정의한다.
+        // 기존 setSite를 그대로 유지해 saved HTML compatibility는 보존하고,
+        // switchSite를 추가해 live/saved가 같은 intent 이름을 공유하게 만든다.
+        setComboSite(site);
+        if (curMode !== "site") switchMode("site");
+      },
       setTab: function (tab) {
         setTab(tab);
       },
@@ -1521,6 +1529,7 @@
       "    subscribe: function (listener) { listeners.add(listener); return function () { listeners.delete(listener); }; },",
       '    switchMode: function (mode) { if (typeof switchMode === "function") switchMode(mode); else { const button = document.querySelector("#sadv-mode-bar [data-m=\\"" + mode + "\\"]"); if (button) button.click(); } scheduleSync(); },',
       '    setSite: function (site) { if (typeof setComboSite === "function") setComboSite(site); else { const items = Array.from(document.querySelectorAll(".sadv-combo-item")); const button = items.find(function (item) { return (item.getAttribute("data-site") || "") === site; }); if (button) button.click(); } if (typeof switchMode === "function") switchMode("site"); scheduleSync(); },',
+      '    switchSite: function (site) { if (typeof setComboSite === "function") setComboSite(site); else { const items = Array.from(document.querySelectorAll(".sadv-combo-item")); const button = items.find(function (item) { return (item.getAttribute("data-site") || "") === site; }); if (button) button.click(); } if (typeof switchMode === "function") switchMode("site"); scheduleSync(); },',
       '    setTab: function (tab) { if (typeof setTab === "function") setTab(tab); else { const button = document.querySelector("#sadv-tabs [data-t=\\"" + tab + "\\"]"); if (button) button.click(); } scheduleSync(); },',
       '    refresh: function () { return false; },',
       '    download: function () { return false; },',

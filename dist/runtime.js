@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T14:47:08Z";
-var __SADV_GIT_HEAD__="b5c6bb2";
+var __SADV_BUILD_STAMP__="2026-03-20T14:52:09Z";
+var __SADV_GIT_HEAD__="4fbe603";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -10376,6 +10376,15 @@ function applyUiControlsTab(tab) {
       setSite: function (site) {
         setComboSite(site);
       },
+      switchSite: function (site) {
+        // Phase 2 convergence:
+        // action contract 문서의 canonical 의미는 "site 선택 + site mode 진입"이다.
+        // 기존 setSite는 호환성 유지용으로 남기고, 공통 facade에는 의미가 더 명확한
+        // switchSite를 추가해 live/saved가 같은 intent를 표현하게 한다.
+        setComboSite(site);
+        const selectionState = getUiControlsSelectionState();
+        if (selectionState.curMode !== CONFIG.MODE.SITE) switchMode(CONFIG.MODE.SITE);
+      },
       setTab: function (tab) {
         const selectionState = getUiControlsSelectionState();
         if (!tabsEl || !TABS.some(function (item) { return item.id === tab; }) || selectionState.curTab === tab) return;
@@ -12452,6 +12461,14 @@ function savedAtIso(d) {
         setComboSite(site);
         if (curMode !== "site") switchMode("site");
       },
+      switchSite: function (site) {
+        // Phase 2 convergence:
+        // public facade canonical action은 "site 선택 + site mode 진입"으로 정의한다.
+        // 기존 setSite를 그대로 유지해 saved HTML compatibility는 보존하고,
+        // switchSite를 추가해 live/saved가 같은 intent 이름을 공유하게 만든다.
+        setComboSite(site);
+        if (curMode !== "site") switchMode("site");
+      },
       setTab: function (tab) {
         setTab(tab);
       },
@@ -12692,6 +12709,7 @@ function savedAtIso(d) {
       "    subscribe: function (listener) { listeners.add(listener); return function () { listeners.delete(listener); }; },",
       '    switchMode: function (mode) { if (typeof switchMode === "function") switchMode(mode); else { const button = document.querySelector("#sadv-mode-bar [data-m=\\"" + mode + "\\"]"); if (button) button.click(); } scheduleSync(); },',
       '    setSite: function (site) { if (typeof setComboSite === "function") setComboSite(site); else { const items = Array.from(document.querySelectorAll(".sadv-combo-item")); const button = items.find(function (item) { return (item.getAttribute("data-site") || "") === site; }); if (button) button.click(); } if (typeof switchMode === "function") switchMode("site"); scheduleSync(); },',
+      '    switchSite: function (site) { if (typeof setComboSite === "function") setComboSite(site); else { const items = Array.from(document.querySelectorAll(".sadv-combo-item")); const button = items.find(function (item) { return (item.getAttribute("data-site") || "") === site; }); if (button) button.click(); } if (typeof switchMode === "function") switchMode("site"); scheduleSync(); },',
       '    setTab: function (tab) { if (typeof setTab === "function") setTab(tab); else { const button = document.querySelector("#sadv-tabs [data-t=\\"" + tab + "\\"]"); if (button) button.click(); } scheduleSync(); },',
       '    refresh: function () { return false; },',
       '    download: function () { return false; },',

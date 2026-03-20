@@ -107,6 +107,12 @@ actions = {
 }
 ```
 
+설명:
+- `switchSite(site)`는 canonical 의미를 가진 action이다.
+  - 의미: **site 선택 + site mode 진입**
+- `setSite(site)`는 기존 외부 호환성을 위해 public facade에 남아 있을 수 있지만,
+  장기적으로는 `switchSite(site)` 쪽이 더 명확한 intent 이름으로 간주된다.
+
 ### public facade 게시 규칙
 
 `window.__sadvApi`는 live/saved 모두가 공유하는 **canonical public facade 이름**으로 간주한다.
