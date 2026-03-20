@@ -2,6 +2,347 @@
 // ALL-SITES-VIEW - All sites view rendering and export
 // ============================================================
 
+function buildAllSitesPeriodToolbar(periodDays) {
+  const currentDays = normalizeAllSitesPeriodDays(periodDays);
+  const bar = document.createElement("div");
+  bar.style.cssText =
+    "display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px";
+
+  const copy = document.createElement("div");
+  copy.style.cssText = "display:flex;flex-direction:column;gap:4px;min-width:0";
+  copy.innerHTML = sanitizeHTML(
+    '<div style="font-size:13px;font-weight:800;color:var(--sadv-text,#fffdf5)">전체현황</div>' +
+      '<div style="font-size:11px;line-height:1.5;color:var(--sadv-text-tertiary,#b9a55a)">클릭/노출/CTR만 기간 필터를 적용하고, 색인 추이는 90일 고정으로 유지합니다.</div>'
+  );
+
+  const toggle = document.createElement("div");
+  toggle.className = "sadv-all-period-toggle";
+  toggle.style.cssText =
+    "display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:flex-end";
+  ALL_SITES_PERIOD_OPTIONS.forEach(function (days) {
+    const isActive = days === currentDays;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "sadv-all-period-btn" + (isActive ? " on" : "");
+    button.dataset.allSitesPeriod = String(days);
+    button.setAttribute("aria-pressed", isActive ? "true" : "false");
+    button.style.cssText =
+      "border:1px solid " +
+      (isActive ? "rgba(255,212,0,0.34)" : "var(--sadv-border-subtle,#2b2200)") +
+      ";background:" +
+      (isActive ? "rgba(255,212,0,0.14)" : "rgba(255,255,255,0.02)") +
+      ";color:" +
+      (isActive ? "#ffd400" : "var(--sadv-text-secondary,#ffe9a8)") +
+      ";padding:6px 10px;border-radius:" +
+      T.radiusPill +
+      ";font-size:11px;font-weight:" +
+      (isActive ? "800" : "700") +
+      ";cursor:pointer;min-width:54px";
+    button.textContent = getAllSitesPeriodLabel(days);
+    toggle.appendChild(button);
+  });
+
+  bar.appendChild(copy);
+  bar.appendChild(toggle);
+  return bar;
+}
+
+function buildAllSitesDisplayWrap(baseRows) {
+  // 전체현황 period filter의 핵심 규칙:
+  // - baseRows는 90일 canonical rows로 절대 유지
+  // - 여기서만 displayRows를 파생 계산
+  // - live/saved/merge 모두 이 helper를 타게 만들어 parity를 유지
+  const canonicalRows = Array.isArray(baseRows) ? baseRows.slice() : [];
+  const periodDays =
+    typeof getRuntimeAllSitesPeriodDays === "function"
+      ? getRuntimeAllSitesPeriodDays()
+      : normalizeAllSitesPeriodDays(90);
+  const periodLabel = getAllSitesPeriodLabel(periodDays);
+  const displayRows = deriveAllSitesPeriodRows(canonicalRows, periodDays).sort(function (a, b) {
+    return (b.totalC || 0) - (a.totalC || 0);
+  });
+  const summary = computeAllSitesPeriodSummary(displayRows);
+  window.__sadvAllSitesDisplayRows = displayRows.slice();
+
+  if (typeof assignColors === "function") {
+    assignColors(
+      displayRows.map(function (row) {
+        return row.site;
+      })
+    );
+  }
+
+  const wrap = document.createElement("div");
+  const mergedMeta =
+    typeof getRuntimeMergedMeta === "function" ? getRuntimeMergedMeta() : getMergedMetaState();
+  if (isMergedReport() && mergedMeta && mergedMeta.accounts) {
+    wrap.appendChild(createMergedAccountsInfo(mergedMeta));
+  }
+  wrap.appendChild(buildAllSitesPeriodToolbar(periodDays));
+
+  const isMobile = window.innerWidth <= 768;
+  const kpiData = [
+    { label: "전체 클릭", value: fmt(summary.totalClicks), sub: periodLabel + " 합계", color: C.green },
+    { label: "전체 노출", value: fmt(summary.totalExposes), sub: periodLabel + " 합계", color: C.blue },
+    { label: "평균CTR", value: summary.avgCtr.toFixed(2) + "%", sub: periodLabel + " 평균", color: C.amber },
+    { label: "활성사이트", value: summary.activeSites + "개", sub: periodLabel + " 클릭 발생", color: C.teal },
+  ];
+
+  if (isMobile) {
+    const mobileKpiWrapper = document.createElement("div");
+    mobileKpiWrapper.style.cssText = "display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px";
+    kpiData.forEach(function (kpi) {
+      const kpiCard = document.createElement("div");
+      kpiCard.style.cssText =
+        "background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);border-radius:0;padding:16px 18px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,0.18);overflow:hidden;display:flex;flex-direction:column;align-items:center";
+      kpiCard.innerHTML = sanitizeHTML(
+        '<div style="width:100%;font-size:11px;color:var(--sadv-text-tertiary,#8d8d8d);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em;text-align:center">' +
+          escHtml(kpi.label) +
+          '</div><div style="width:100%;font-size:17px;font-weight:650;color:' +
+          kpi.color +
+          ';line-height:1.06;margin-bottom:6px;letter-spacing:-0.01em;word-break:keep-all;text-align:center">' +
+          escHtml(kpi.value) +
+          '</div><div style="width:100%;font-size:11px;color:var(--sadv-text-secondary,#c6c6c6);text-align:center">' +
+          escHtml(kpi.sub) +
+          "</div>"
+      );
+      mobileKpiWrapper.appendChild(kpiCard);
+    });
+    wrap.appendChild(mobileKpiWrapper);
+  } else {
+    wrap.appendChild(kpiGrid(kpiData));
+  }
+
+  wrap.appendChild(
+    secTitle(
+      "클릭 랭킹 TOP " +
+        Math.min(displayRows.length, 30) +
+        ' <span style="font-size:9px;font-weight:400;color:var(--sadv-text-tertiary,#b9a55a);letter-spacing:0">' +
+        escHtml("최근 " + periodLabel) +
+        "</span>"
+    )
+  );
+  const topRows = displayRows.slice(0, 30);
+  wrap.appendChild(
+    chartCard(
+      "최근 " + periodLabel + " 클릭 TOP " + topRows.length,
+      "",
+      C.green,
+      barchart(
+        topRows.map(function (row) {
+          return row.totalC;
+        }),
+        topRows.map(function (row) {
+          return row.site.replace(/^https?:\/\//, "");
+        }),
+        window.innerWidth <= 768 ? 65 : 80,
+        C.green,
+        "회"
+      ),
+      topRows.map(function (_, index) {
+        return "#" + (index + 1);
+      })
+    )
+  );
+
+  wrap.appendChild(secTitle("사이트별 상세"));
+  displayRows.forEach(function (r, i) {
+    const col = SITE_COLORS_MAP[r.site] || COLORS[i % COLORS.length] || C.green;
+    const toneBg = col + "12";
+    const toneBorder = col + "2e";
+    const card = document.createElement("div");
+    card.className = "sadv-allcard";
+    card.style.borderTop = "2px solid " + col + "44";
+    const shortName =
+      typeof getSiteLabel === "function" ? getSiteLabel(r.site) : r.site.replace(/^https?:\/\//, "");
+    const displayAccount = r.accountLabel || r.sourceAccount;
+    const accountBadge =
+      displayAccount && (typeof displayAccount === "string" ? displayAccount.trim() : "")
+        ? `<span style="font-size:10px;color:${T.accentSoftText};background:${T.accentSoftBg};padding:3px 8px;border-radius:999px;margin-left:8px;white-space:nowrap;border:1px solid ${T.accentSoftBorder}" title="${escHtml(displayAccount)}">${escHtml(displayAccount.includes("@") ? displayAccount.split("@")[0] : displayAccount)}</span>`
+        : "";
+    const compact = window.innerWidth <= 768;
+    const gridTemplate = compact
+      ? "grid-template-columns:repeat(2,minmax(0,1fr));gap:6px"
+      : "grid-template-columns:repeat(3,minmax(0,1fr));gap:8px";
+    const paddingStyle = compact ? "padding:7px 6px" : "padding:8px";
+    const fontSizeValue = compact ? "font-size:13px" : "font-size:15px";
+    const fontSizeLabel = compact ? "font-size:9px" : "font-size:10px";
+    const statSpanStyle = compact ? "grid-column:1 / -1;" : "";
+
+    card.innerHTML = sanitizeHTML(
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="display:flex;align-items:center;gap:8px;min-width:0"><div style="width:10px;height:10px;border-radius:50%;background:' +
+        col +
+        ';flex-shrink:0;box-shadow:0 0 0 4px ' +
+        col +
+        '15"></div><span style="font-size:14px;font-weight:700;line-height:1.3;color:var(--sadv-text,#fffdf5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px">' +
+        escHtml(shortName) +
+        "</span>" +
+        accountBadge +
+        '</div></div><div style="display:grid;' +
+        gridTemplate +
+        ';margin-bottom:12px"><div style="text-align:center;min-width:0;background:' +
+        toneBg +
+        ';border:1px solid ' +
+        toneBorder +
+        ";" +
+        paddingStyle +
+        ';border-radius:8px"><div style="' +
+        fontSizeValue +
+        ';font-weight:800;line-height:1.1;color:' +
+        col +
+        '">' +
+        escHtml(fmt(r.totalC)) +
+        '</div><div style="' +
+        fontSizeLabel +
+        ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">클릭</div></div><div style="text-align:center;min-width:0;background:' +
+        toneBg +
+        ';border:1px solid ' +
+        toneBorder +
+        ";" +
+        paddingStyle +
+        ';border-radius:8px"><div style="' +
+        fontSizeValue +
+        ';font-weight:800;line-height:1.1;color:' +
+        col +
+        '">' +
+        escHtml((r.totalE / 10000).toFixed(1)) +
+        '만</div><div style="' +
+        fontSizeLabel +
+        ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">노출</div></div><div style="' +
+        statSpanStyle +
+        'text-align:center;min-width:0;background:' +
+        toneBg +
+        ';border:1px solid ' +
+        toneBorder +
+        ";" +
+        paddingStyle +
+        ';border-radius:8px"><div style="' +
+        fontSizeValue +
+        ';font-weight:800;line-height:1.1;color:' +
+        col +
+        '">' +
+        escHtml(r.avgCtr) +
+        '%</div><div style="' +
+        fontSizeLabel +
+        ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">CTR</div></div></div>'
+    );
+    card.setAttribute("tabindex", "0");
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-label", shortName + " 사이트 상세 보기");
+
+    const clickBlock = document.createElement("div");
+    clickBlock.style.cssText = "margin-top:10px;padding-top:12px;border-top:1px solid var(--sadv-border-subtle,#2b2200)";
+    clickBlock.innerHTML = sanitizeHTML(
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px"><span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--sadv-text-secondary,#ffe9a8)">클릭 추이 <span style="padding:2px 6px;border-radius:999px;border:1px solid rgba(255,212,0,0.18);background:rgba(255,212,0,0.08);color:#ffd400;font-size:10px;font-weight:700">' +
+        escHtml(periodLabel) +
+        '</span></span><span style="font-size:13px;font-weight:800;color:' +
+        col +
+        '">' +
+        escHtml(fmt(r.totalC)) +
+        "회</span></div>"
+    );
+    const miniDates = (r.dates || []).map(function (date) {
+      return fmtB(date);
+    });
+    const mini = sparkline(r.clicks || [], miniDates, 52, col, "회", { minValue: 0 });
+    mini.style.cssText += "opacity:.95";
+    clickBlock.appendChild(mini);
+    card.appendChild(clickBlock);
+
+    const indexBlock = document.createElement("div");
+    indexBlock.style.cssText = "margin-top:12px;padding-top:12px;border-top:1px solid var(--sadv-border-subtle,#2b2200)";
+    if (r.diagnosisIndexedValues && r.diagnosisIndexedValues.length > 1) {
+      indexBlock.innerHTML = sanitizeHTML(
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px"><span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--sadv-text-secondary,#ffe9a8)">색인 추이 <span style="padding:2px 6px;border-radius:999px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.04);color:var(--sadv-text-tertiary,#b9a55a);font-size:10px;font-weight:700">고정</span></span><span style="font-size:13px;font-weight:800;color:' +
+          col +
+          '">' +
+          escHtml(fmt(r.diagnosisIndexedCurrent)) +
+          "건</span></div>"
+      );
+      const indexMini = sparkline(r.diagnosisIndexedValues, r.diagnosisIndexedDates, 44, col, "건", { minValue: 0 });
+      indexMini.style.cssText += "opacity:.9";
+      indexBlock.appendChild(indexMini);
+    } else {
+      const metaCode = r.diagnosisMetaCode == null ? "-" : String(r.diagnosisMetaCode);
+      const httpText = r.diagnosisMetaStatus == null ? "-" : String(r.diagnosisMetaStatus);
+      indexBlock.innerHTML = sanitizeHTML(
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px"><span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--sadv-text-secondary,#ffe9a8)">색인 추이 <span style="padding:2px 6px;border-radius:999px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.04);color:var(--sadv-text-tertiary,#b9a55a);font-size:10px;font-weight:700">고정</span></span><span style="font-size:12px;color:var(--sadv-text-tertiary,#b9a55a)">응답 확인</span></div><div style="font-size:11px;line-height:1.5;color:var(--sadv-text-tertiary,#b9a55a)">HTTP ' +
+          escHtml(httpText) +
+          " / code " +
+          escHtml(metaCode) +
+          "</div>"
+      );
+    }
+    card.appendChild(indexBlock);
+    card.dataset.site = r.site;
+    card.dataset.col = col;
+    wrap.appendChild(card);
+  });
+
+  wrap.addEventListener("click", function (e) {
+    const periodBtn = e.target.closest("[data-all-sites-period]");
+    if (periodBtn) {
+      const nextDays = normalizeAllSitesPeriodDays(periodBtn.dataset.allSitesPeriod);
+      if (nextDays !== periodDays) {
+        if (typeof setRuntimeAllSitesPeriodDays === "function") {
+          setRuntimeAllSitesPeriodDays(nextDays);
+        }
+        renderAllSitesFromCanonicalRows();
+      }
+      return;
+    }
+    const card = e.target.closest(".sadv-allcard");
+    if (card && card.dataset.site) {
+      curSite = card.dataset.site;
+      switchMode("site");
+    }
+  });
+  wrap.addEventListener("mouseenter", function (e) {
+    const card = e.target.closest(".sadv-allcard");
+    if (card && card.dataset.col) {
+      card.style.borderColor = card.dataset.col + "88";
+    }
+  }, true);
+  wrap.addEventListener("mouseleave", function (e) {
+    const card = e.target.closest(".sadv-allcard");
+    if (card && card.dataset.col) {
+      card.style.borderColor = "var(--sadv-border-subtle,#2b2200)";
+      card.style.borderTopColor = card.dataset.col + "44";
+    }
+  }, true);
+  wrap.addEventListener("keydown", function (e) {
+    const card = e.target.closest(".sadv-allcard");
+    if (!card) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      card.click();
+    }
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const cards = Array.from(wrap.querySelectorAll(".sadv-allcard"));
+      const currentIndex = cards.indexOf(card);
+      const nextIndex =
+        e.key === "ArrowDown"
+          ? Math.min(currentIndex + 1, cards.length - 1)
+          : Math.max(currentIndex - 1, 0);
+      cards[nextIndex].focus();
+    }
+  });
+
+  return wrap;
+}
+
+function renderAllSitesFromCanonicalRows() {
+  if (!bdEl || curMode !== CONFIG.MODE.ALL) return;
+  const canonicalRows =
+    Array.isArray(window.__sadvRows) && window.__sadvRows.length ? window.__sadvRows.slice() : [];
+  if (!canonicalRows.length) return;
+  const wrap = buildAllSitesDisplayWrap(canonicalRows);
+  bdEl.replaceChildren(wrap);
+  if (typeof bindSnapshotAllCardLinks === "function") bindSnapshotAllCardLinks();
+  bdEl.scrollTop = 0;
+}
+
 /**
  * Render the all sites overview view
  * Fetches expose data and diagnosis meta for all sites, then displays summary cards
@@ -167,259 +508,9 @@ async function renderAllSites() {
   );
   rows.sort((a, b) => b.totalC - a.totalC);
   window.__sadvRows = rows;
-  if (typeof assignColors === "function") {
-    // 카드가 실제로 보이는 정렬 순서(rows)를 기준으로 색을 다시 매겨
-    // 같은 색/비슷한 색이 인접 카드에 연속 등장하는 체감을 줄인다.
-    assignColors(rows.map(function (row) {
-      return row.site;
-    }));
-  }
   buildCombo(rows);
-  const wrap = document.createElement("div");
-  const mergedMeta =
-    typeof getRuntimeMergedMeta === "function" ? getRuntimeMergedMeta() : getMergedMetaState();
-  if (isMergedReport() && mergedMeta && mergedMeta.accounts) {
-    wrap.appendChild(createMergedAccountsInfo(mergedMeta));
-  }
-  const grandC = rows.reduce((a, r) => a + r.totalC, 0);
-  const grandE = rows.reduce((a, r) => a + r.totalE, 0);
-  const avgCtrAll = grandE ? (grandC / grandE) * 100 : 0;
-  const isMobile = window.innerWidth <= 768;
-
-  // Responsive KPI grid: 2 columns on mobile, 4 on desktop
-  const kpiData = [
-    { label: "전체 클릭", value: (grandC / 10000).toFixed(1) + "만", sub: "90일 합계", color: C.green },
-    { label: "전체 노출", value: (grandE / 10000000).toFixed(1) + "천만", sub: "90일 합계", color: C.blue },
-    { label: "평균CTR", value: avgCtrAll.toFixed(2) + "%", sub: "90일 평균", color: C.amber },
-    { label: "활성사이트", value: rows.filter((r) => r.totalC > 0).length + "개", color: C.teal },
-  ];
-
-  // On mobile, show in 2x2 grid
-  if (isMobile) {
-    const mobileKpiWrapper = document.createElement("div");
-    mobileKpiWrapper.style.cssText = "display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px";
-
-    kpiData.forEach(kpi => {
-      const kpiCard = document.createElement("div");
-      kpiCard.style.cssText = `background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);border-radius:0;padding:16px 18px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,0.18);overflow:hidden;display:flex;flex-direction:column;align-items:center`;
-      kpiCard.innerHTML = sanitizeHTML(`
-        <div style="width:100%;font-size:11px;color:var(--sadv-text-tertiary,#8d8d8d);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em;text-align:center">${escHtml(kpi.label)}</div>
-        <div style="width:100%;font-size:17px;font-weight:650;color:${kpi.color};line-height:1.06;margin-bottom:6px;letter-spacing:-0.01em;word-break:keep-all;text-align:center">${escHtml(kpi.value)}</div>
-        <div style="width:100%;font-size:11px;color:var(--sadv-text-secondary,#c6c6c6);text-align:center">${escHtml(kpi.sub)}</div>
-      `);
-      mobileKpiWrapper.appendChild(kpiCard);
-    });
-
-    wrap.appendChild(mobileKpiWrapper);
-  } else {
-    wrap.appendChild(kpiGrid(kpiData));
-  }
-  wrap.appendChild(
-    secTitle(
-      "클릭 랭킹 TOP " +
-        Math.min(rows.length, 30) +
-        ' <span style="font-size:9px;font-weight:400;color:var(--sadv-text-tertiary,#b9a55a);letter-spacing:0">90일 합계</span>',
-    ),
-  );
-  const top30 = rows.slice(0, 30);
-  wrap.appendChild(
-    chartCard(
-      "TOP " + top30.length + " 클릭",
-      "",
-      C.green,
-      barchart(
-        top30.map((r) => r.totalC),
-        top30.map((r) => r.site.replace(/^https?:\/\//, "")),
-        window.innerWidth <= 768 ? 65 : 80,
-        C.green,
-        "회",
-      ),
-      top30.map((_, i) => "#" + (i + 1)),
-    ),
-  );
-  wrap.appendChild(secTitle("사이트별 상세"));
-  rows.forEach(function (r, i) {
-    const col = SITE_COLORS_MAP[r.site] || COLORS[i % COLORS.length] || C.green;
-    const toneBg = col + "12";
-    const toneBorder = col + "2e";
-    const card = document.createElement("div");
-    card.className = "sadv-allcard";
-    card.style.borderTop = "2px solid " + col + "44";
-    const shortName = typeof getSiteLabel === "function" ? getSiteLabel(r.site) : r.site.replace(/^https?:\/\//, "");
-
-    // PRIORITY: Use accountLabel first (from siteOwnership), fallback to sourceAccount
-    const displayAccount = r.accountLabel || r.sourceAccount;
-    const accountBadge = displayAccount && (typeof displayAccount === "string" ? displayAccount.trim() : "")
-      ? `<span style="font-size:10px;color:${T.accentSoftText};background:${T.accentSoftBg};padding:3px 8px;border-radius:999px;margin-left:8px;white-space:nowrap;border:1px solid ${T.accentSoftBorder}" title="${escHtml(displayAccount)}">${escHtml(displayAccount.includes("@") ? displayAccount.split("@")[0] : displayAccount)}</span>`
-      : "";
-
-    // Responsive card layout
-    // Mobile note: 6~7 digit metrics were clipping inside the nested site-detail
-    // KPI boxes. Keep the live card readable by switching to 2 columns and
-    // letting the CTR tile span the full row on compact viewports.
-    const isMobile = window.innerWidth <= 768;
-    const gridTemplate = isMobile ? "grid-template-columns:repeat(2,minmax(0,1fr));gap:6px" : "grid-template-columns:repeat(3,minmax(0,1fr));gap:8px";
-    const paddingStyle = isMobile ? "padding:7px 6px" : "padding:8px";
-    const fontSizeValue = isMobile ? "font-size:13px" : "font-size:15px";
-    const fontSizeLabel = isMobile ? "font-size:9px" : "font-size:10px";
-    const statSpanStyle = isMobile ? "grid-column:1 / -1;" : "";
-
-    card.innerHTML = sanitizeHTML(
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="display:flex;align-items:center;gap:8px;min-width:0"><div style="width:10px;height:10px;border-radius:50%;background:' +
-      col +
-      ';flex-shrink:0;box-shadow:0 0 0 4px ' +
-      col +
-      '15"></div><span style="font-size:14px;font-weight:700;line-height:1.3;color:var(--sadv-text,#fffdf5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px">' +
-      escHtml(shortName) +
-      '</span>' +
-      accountBadge +
-      '</div></div><div style="display:grid;' +
-      gridTemplate +
-      ';margin-bottom:12px"><div style="text-align:center;min-width:0;background:' +
-      toneBg +
-      ';border:1px solid ' +
-      toneBorder +
-      ';' +
-      paddingStyle +
-      ';border-radius:8px"><div style="' +
-      fontSizeValue +
-      ';font-weight:800;line-height:1.1;color:' +
-      col +
-      '">' +
-      escHtml(fmt(r.totalC)) +
-      '</div><div style="' +
-      fontSizeLabel +
-      ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">클릭</div></div><div style="text-align:center;min-width:0;background:' +
-      toneBg +
-      ';border:1px solid ' +
-      toneBorder +
-      ';' +
-      paddingStyle +
-      ';border-radius:8px"><div style="' +
-      fontSizeValue +
-      ';font-weight:800;line-height:1.1;color:' +
-      col +
-      '">' +
-      escHtml((r.totalE / 10000).toFixed(1)) +
-      '만</div><div style="' +
-      fontSizeLabel +
-      ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">노출</div></div><div style="' +
-      statSpanStyle +
-      'text-align:center;min-width:0;background:' +
-      toneBg +
-      ';border:1px solid ' +
-      toneBorder +
-      ';' +
-      paddingStyle +
-      ';border-radius:8px"><div style="' +
-      fontSizeValue +
-      ';font-weight:800;line-height:1.1;color:' +
-      col +
-      '">' +
-      escHtml(r.avgCtr) +
-      '%</div><div style="' +
-      fontSizeLabel +
-      ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">CTR</div></div></div>'
-    );
-    // Add keyboard accessibility
-    card.setAttribute("tabindex", "0");
-    card.setAttribute("role", "button");
-    card.setAttribute("aria-label", `${shortName} 사이트 상세 보기`);
-    if (r.clicks && r.clicks.length > 1) {
-      // 클릭 추이는 색인 추이보다 위계가 약해서 "그냥 선만 붙은 상태"로 두면
-      // 사용자가 그래프 의미를 알아채기 어렵다. 따라서 색인 추이와 같은 block
-      // 형태(라벨 + 값 + breathing room)로 승격해 카드 정보 구조를 맞춘다.
-      const clickBlock = document.createElement("div");
-      clickBlock.style.cssText = "margin-top:10px;padding-top:12px;border-top:1px solid var(--sadv-border-subtle,#2b2200)";
-      clickBlock.innerHTML = sanitizeHTML(
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px"><span style="font-size:11px;font-weight:700;color:var(--sadv-text-secondary,#ffe9a8)">클릭 추이</span><span style="font-size:13px;font-weight:800;color:' +
-        col +
-        '">' +
-        escHtml(fmt(r.totalC)) +
-        '회</span></div>'
-      );
-      const miniDates = (r.logs || []).map(function (log) {
-        return fmtB(log.date);
-      });
-      const mini = sparkline(r.clicks, miniDates, 52, col, "회", { minValue: 0 });
-      mini.style.cssText += "opacity:.95";
-      clickBlock.appendChild(mini);
-      card.appendChild(clickBlock);
-    }
-    const indexBlock = document.createElement("div");
-    indexBlock.style.cssText = "margin-top:12px;padding-top:12px;border-top:1px solid var(--sadv-border-subtle,#2b2200)";
-    if (r.diagnosisIndexedValues && r.diagnosisIndexedValues.length > 1) {
-      indexBlock.innerHTML = sanitizeHTML(
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px"><span style="font-size:11px;font-weight:700;color:var(--sadv-text-secondary,#ffe9a8)">색인 추이</span><span style="font-size:13px;font-weight:800;color:' +
-        col +
-        '">' +
-        escHtml(fmt(r.diagnosisIndexedCurrent)) +
-        '건</span></div>'
-      );
-      const indexMini = sparkline(r.diagnosisIndexedValues, r.diagnosisIndexedDates, 44, col, "건", { minValue: 0 });
-      indexMini.style.cssText += "opacity:.9";
-      indexBlock.appendChild(indexMini);
-    } else {
-      const metaCode = r.diagnosisMetaCode == null ? "-" : String(r.diagnosisMetaCode);
-      const httpText = r.diagnosisMetaStatus == null ? "-" : String(r.diagnosisMetaStatus);
-      indexBlock.innerHTML = sanitizeHTML(
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px"><span style="font-size:11px;font-weight:700;color:var(--sadv-text-secondary,#ffe9a8)">색인 추이</span><span style="font-size:12px;color:var(--sadv-text-tertiary,#b9a55a)">응답 확인</span></div><div style="font-size:11px;line-height:1.5;color:var(--sadv-text-tertiary,#b9a55a)">HTTP ' +
-        escHtml(httpText) +
-        " / code " +
-        escHtml(metaCode) +
-        "</div>"
-      );
-    }
-    card.appendChild(indexBlock);
-    card.dataset.site = r.site;
-    card.dataset.col = col;
-    wrap.appendChild(card);
-  });
-
-  wrap.addEventListener("mouseenter", function (e) {
-    const card = e.target.closest(".sadv-allcard");
-    if (card && card.dataset.col) {
-      card.style.borderColor = card.dataset.col + "88";
-    }
-  }, true);
-  wrap.addEventListener("mouseleave", function (e) {
-    const card = e.target.closest(".sadv-allcard");
-    if (card && card.dataset.col) {
-      card.style.borderColor = "var(--sadv-border-subtle,#2b2200)";
-      card.style.borderTopColor = card.dataset.col + "44";
-    }
-  }, true);
-  wrap.addEventListener("click", function (e) {
-    const card = e.target.closest(".sadv-allcard");
-    if (card && card.dataset.site) {
-      curSite = card.dataset.site;
-      switchMode("site");
-    }
-  });
-  // Keyboard navigation for site cards
-  wrap.addEventListener('keydown', function(e) {
-    const card = e.target.closest(".sadv-allcard");
-    if (!card) return;
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      card.click();
-    }
-    // Arrow key navigation between cards
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      const cards = Array.from(wrap.querySelectorAll('.sadv-allcard'));
-      const currentIndex = cards.indexOf(card);
-      const nextIndex = e.key === 'ArrowDown'
-        ? Math.min(currentIndex + 1, cards.length - 1)
-        : Math.max(currentIndex - 1, 0);
-      cards[nextIndex].focus();
-    }
-  });
-
   if (requestId !== allViewReqId || curMode !== "all") return;
-  bdEl.replaceChildren(wrap);
-  if (typeof bindSnapshotAllCardLinks === "function") bindSnapshotAllCardLinks();
-  bdEl.scrollTop = 0;
+  renderAllSitesFromCanonicalRows();
 }
 
 /**
@@ -444,6 +535,10 @@ async function collectExportData(onProgress, options) {
     typeof getRuntimeSelectionState === "function"
       ? getRuntimeSelectionState()
       : { curMode, curSite, curTab };
+  const allSitesPeriodDays =
+    typeof getRuntimeAllSitesPeriodDays === "function"
+      ? getRuntimeAllSitesPeriodDays()
+      : normalizeAllSitesPeriodDays(90);
   const liveAccountInfo =
     typeof ACCOUNT_UTILS !== "undefined" && ACCOUNT_UTILS && typeof ACCOUNT_UTILS.getAccountInfo === "function"
       ? ACCOUNT_UTILS.getAccountInfo()
@@ -543,7 +638,8 @@ async function collectExportData(onProgress, options) {
     ui: {
       curMode: selectionState.curMode,
       curSite: selectionState.curSite,
-      curTab: selectionState.curTab
+      curTab: selectionState.curTab,
+      allSitesPeriodDays: allSitesPeriodDays,
     },
     mergedMeta:
       typeof getRuntimeMergedMeta === "function"

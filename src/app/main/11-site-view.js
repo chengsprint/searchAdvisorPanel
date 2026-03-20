@@ -92,10 +92,16 @@
  * console.log(row.avgCtr); // Average CTR
  */
   function buildSiteSummaryRow(site, data) {
+    // 이 row는 전체현황/live/snapshot/merge가 공유하는 90일 canonical row다.
+    // period filter 기능은 이 row의 의미를 바꾸지 않고,
+    // 클릭/노출/날짜 raw series만 additive로 더 제공해 derived row 계산에 쓴다.
     const item = (data && data.expose && data.expose.items && data.expose.items[0]) || {};
     const logs = (item.logs || []).sort((a, b) => (a.date || "").localeCompare(b.date || ""));
     const clicks = logs.map((r) => Number(r.clickCount) || 0);
     const exposes = logs.map((r) => Number(r.exposeCount) || 0);
+    const dates = logs.map(function (r) {
+      return String((r && r.date) || "").replace(/[^\d]/g, "").slice(0, 8);
+    });
     const totalC = clicks.reduce((a, b) => a + b, 0);
     const totalE = exposes.reduce((a, b) => a + b, 0);
     const avgCtr = totalE ? (totalC / totalE) * 100 : 0;
@@ -170,6 +176,9 @@
       prevClickRatio: period.prevClickRatio != null && Number.isFinite(parseFloat(period.prevClickRatio)) ? parseFloat(period.prevClickRatio) : undefined,
       logs,
       clicks,
+      exposes,
+      dates,
+      baseWindowDays: 90,
       diagnosisIndexedCurrent: diagnosisLatestCounts["1"] || 0,
       diagnosisIndexedValues,
       diagnosisIndexedDates,

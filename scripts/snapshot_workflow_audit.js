@@ -166,6 +166,11 @@ async function main() {
             isReadOnly: !!capabilities.isReadOnly,
           }
         : null,
+      periodButtons: Array.from(document.querySelectorAll("[data-all-sites-period]")).map((el) => ({
+        value: el.getAttribute("data-all-sites-period"),
+        text: (el.textContent || "").trim(),
+        pressed: el.getAttribute("aria-pressed"),
+      })),
       hiddenActions: ["sadv-refresh-btn", "sadv-save-btn", "sadv-x"].map((id) => {
         const el = document.getElementById(id);
         return {
@@ -516,6 +521,14 @@ async function main() {
       !result.contract.capabilities.canSave &&
       !result.contract.capabilities.canClose,
     'saved HTML capabilities should disable live-only actions',
+  );
+  assertAudit(
+    result.contract.periodButtons.length === 4,
+    'saved HTML should expose 4 all-sites period buttons (7/30/60/90)',
+  );
+  assertAudit(
+    result.contract.periodButtons.filter((button) => button.pressed === 'true').length === 1,
+    'saved HTML should keep exactly one active all-sites period button',
   );
   assertAudit(
     Array.isArray(result.contract.hiddenActions) &&

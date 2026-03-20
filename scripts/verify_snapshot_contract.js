@@ -94,6 +94,13 @@ assertIncludes(
 );
 
 assertIncludes(
+  'all-sites period state contract: src/app/main/07-ui-state.js',
+  files.uiState,
+  'allSitesPeriodDays: normalizeAllSitesPeriodDays(allSitesPeriodDays)',
+  'live shell state must preserve all-sites period selection for snapshot/export parity',
+);
+
+assertIncludes(
   'snapshot API compat contract: src/app/main/12-snapshot.js',
   files.modularSnapshot,
   'mergedMeta: Object.prototype.hasOwnProperty.call(shellStateSource, "mergedMeta") ? shellStateSource.mergedMeta : null,',
@@ -118,6 +125,11 @@ assertIncludes(
   ['const EXPORT_PAYLOAD_RAW = ${exportPayloadJson};', 'active snapshot path must keep raw export payload before offline normalization'],
   ['const normalizeSnapshotPayloadForOfflineShell = ${normalizeSnapshotPayloadForOfflineShell.toString()};', 'active snapshot path must serialize offline normalization seam into saved HTML'],
   ['const EXPORT_PAYLOAD = normalizeSnapshotPayloadForOfflineShell(EXPORT_PAYLOAD_RAW);', 'active snapshot path must normalize saved HTML payload through the shared offline seam'],
+  ['${getRuntimeAllSitesPeriodDays.toString()}', 'saved HTML must serialize period state getter for all-sites parity'],
+  ['${setRuntimeAllSitesPeriodDays.toString()}', 'saved HTML must serialize period state setter for all-sites parity'],
+  ['${deriveAllSitesPeriodRows.toString()}', 'saved HTML must serialize derived row calculator for period toggle'],
+  ['${buildAllSitesDisplayWrap.toString()}', 'saved HTML must reuse the same all-sites render path for live/snapshot period parity'],
+  ['setAllSitesPeriodDays: function (days) {', 'saved HTML snapshot API must expose period mutation seam'],
   ['.sadv-snapshot-combo-drop{', 'active snapshot path must include fixed top-layer combo CSS contract'],
   ['snapshotComboDrop.classList.add("sadv-snapshot-combo-drop");', 'active snapshot path must mark the detached combo dropdown with the snapshot top-layer class'],
   ['snapshotComboDrop.style.setProperty("position", "fixed", "important");', 'active snapshot path must force fixed combo positioning in saved HTML'],

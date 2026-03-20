@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T09:46:04Z";
-var __SADV_GIT_HEAD__="026b31c";
+var __SADV_BUILD_STAMP__="2026-03-20T10:40:17Z";
+var __SADV_GIT_HEAD__="7942122";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -7510,6 +7510,128 @@ function injectDemoData() {
     return sites;
   }
 
+// ============================================================================
+// ALL-SITES PERIOD HELPERS
+// ============================================================================
+
+/**
+ * 전체현황 기간 필터용 순수 계산 모듈
+ * ---------------------------------
+ *
+ * 왜 별도 모듈로 분리하는가:
+ * - 이번 기능은 "전체현황에만 적용되는 표시용 기간 필터"다.
+ * - 따라서 canonical 90일 row를 직접 바꾸지 않고,
+ *   base row -> derived row 변환을 한 곳에 모아두는 것이 가장 안전하다.
+ * - 이 모듈은 DOM, fetch, snapshot/live 분기 없이 오직 계산만 담당한다.
+ *
+ * 절대 하지 말아야 할 것:
+ * - buildSiteSummaryRow()의 의미를 90일 정본 -> 기간별 row로 바꾸는 것
+ * - period 변경 시 renderAllSites()를 통째로 다시 호출해 fetch를 재실행하는 것
+ * - 색인 추이(diagnosisIndexed*)를 기간 필터에 섞는 것
+ *
+ * 이 모듈의 계약:
+ * - 입력: canonical 90일 rows
+ * - 출력: 전체현황 표시 전용 derived rows
+ * - 색인 추이 관련 필드는 pass-through
+ */
+
+const ALL_SITES_PERIOD_OPTIONS = [7, 30, 60, 90];
+
+function normalizeAllSitesPeriodDays(value) {
+  const parsed = Number(value);
+  return ALL_SITES_PERIOD_OPTIONS.includes(parsed) ? parsed : 90;
+}
+
+function getAllSitesPeriodLabel(days) {
+  return normalizeAllSitesPeriodDays(days) + "일";
+}
+
+function sliceLogsForPeriod(logs, days) {
+  const normalizedDays = normalizeAllSitesPeriodDays(days);
+  const list = Array.isArray(logs) ? logs.slice() : [];
+  if (!list.length) return [];
+  return list.slice(Math.max(0, list.length - normalizedDays));
+}
+
+function deriveCtrSeries(clicks, exposes) {
+  return clicks.map(function (clickCount, index) {
+    const exposeCount = Number(exposes[index]) || 0;
+    return exposeCount > 0 ? +(((Number(clickCount) || 0) / exposeCount) * 100).toFixed(2) : 0;
+  });
+}
+
+function deriveAllSitesPeriodRow(baseRow, periodDays) {
+  const normalizedDays = normalizeAllSitesPeriodDays(periodDays);
+  const baseLogs = Array.isArray(baseRow && baseRow.logs) ? baseRow.logs.slice() : [];
+  const periodLogs = sliceLogsForPeriod(baseLogs, normalizedDays);
+  const periodClicks = periodLogs.map(function (log) {
+    return Number(log && log.clickCount) || 0;
+  });
+  const periodExposes = periodLogs.map(function (log) {
+    return Number(log && log.exposeCount) || 0;
+  });
+  const periodDates = periodLogs.map(function (log) {
+    return String((log && log.date) || "").replace(/[^\d]/g, "").slice(0, 8);
+  });
+  const totalC = periodClicks.reduce(function (sum, value) {
+    return sum + value;
+  }, 0);
+  const totalE = periodExposes.reduce(function (sum, value) {
+    return sum + value;
+  }, 0);
+  const avgCtr = totalE > 0 ? (totalC / totalE) * 100 : 0;
+  const clickTrend = periodClicks.length > 1 ? st(periodClicks).slope || 0 : 0;
+
+  return Object.assign({}, baseRow, {
+    periodDays: normalizedDays,
+    totalC: totalC,
+    totalE: totalE,
+    avgCtr: +avgCtr.toFixed(2),
+    trend: clickTrend,
+    latestClick: periodClicks.slice(-7).reduce(function (sum, value) {
+      return sum + value;
+    }, 0),
+    logs: periodLogs,
+    clicks: periodClicks,
+    exposes: periodExposes,
+    dates: periodDates,
+    ctrs: deriveCtrSeries(periodClicks, periodExposes),
+    baseWindowDays:
+      typeof baseRow?.baseWindowDays === "number" && Number.isFinite(baseRow.baseWindowDays)
+        ? baseRow.baseWindowDays
+        : 90,
+  });
+}
+
+function deriveAllSitesPeriodRows(baseRows, periodDays) {
+  const normalizedDays = normalizeAllSitesPeriodDays(periodDays);
+  const rows = Array.isArray(baseRows) ? baseRows : [];
+  return rows.map(function (row) {
+    return deriveAllSitesPeriodRow(row, normalizedDays);
+  });
+}
+
+function computeAllSitesPeriodSummary(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  const totalClicks = list.reduce(function (sum, row) {
+    return sum + (Number(row && row.totalC) || 0);
+  }, 0);
+  const totalExposes = list.reduce(function (sum, row) {
+    return sum + (Number(row && row.totalE) || 0);
+  }, 0);
+  const activeSites = list.filter(function (row) {
+    return (Number(row && row.totalC) || 0) > 0;
+  }).length;
+  const avgCtr = totalExposes > 0 ? (totalClicks / totalExposes) * 100 : 0;
+
+  return {
+    totalClicks: totalClicks,
+    totalExposes: totalExposes,
+    activeSites: activeSites,
+    avgCtr: +avgCtr.toFixed(2),
+  };
+}
+
 // UI State Management
 // 이 파일은 SearchAdvisor 런타임의 UI 상태 관리 코드를 포함합니다.
 
@@ -7520,6 +7642,12 @@ function injectDemoData() {
 let curMode = CONFIG.MODE.ALL,
   curSite = null,
   curTab = "overview";
+// 전체현황 전용 period state.
+// 중요:
+// - global filter가 아니다.
+// - site mode와 무관한 all-sites local view state다.
+// - live/saved HTML/merge가 같은 기준을 공유해야 하므로 shell state에 포함한다.
+let allSitesPeriodDays = 90;
 let siteViewReqId = 0;
 let allViewReqId = 0;
 const __sadvListeners = new Set();
@@ -7577,6 +7705,7 @@ function buildLiveShellState() {
     curMode,
     curSite,
     curTab,
+    allSitesPeriodDays: normalizeAllSitesPeriodDays(allSitesPeriodDays),
     allSites: [...allSites],
     rows: window.__sadvRows || [],
     accountLabel: snapshotAccountLabel,
@@ -7598,6 +7727,15 @@ function buildLiveShellState() {
  */
 function __sadvSnapshot() {
   return buildLiveShellState();
+}
+
+function getAllSitesPeriodDaysState() {
+  return normalizeAllSitesPeriodDays(allSitesPeriodDays);
+}
+
+function setAllSitesPeriodDaysState(days) {
+  allSitesPeriodDays = normalizeAllSitesPeriodDays(days);
+  return allSitesPeriodDays;
 }
 
 /**
@@ -7661,7 +7799,7 @@ function buildSnapshotShellState(payload) {
   // snapshot shell state는 offline payload를
   // live와 유사한 UI 상태 shape로 정규화하는 boundary 함수다.
   // Handle V2 format
-  let allSites, dataBySite, summaryRows, siteMeta, accountLabel, savedAt, curMode, curSite, curTab;
+  let allSites, dataBySite, summaryRows, siteMeta, accountLabel, savedAt, curMode, curSite, curTab, allSitesPeriodDays;
 
   if (payload.__meta && payload.accounts) {
     // V2 format
@@ -7677,6 +7815,7 @@ function buildSnapshotShellState(payload) {
     curMode = payload.ui?.curMode || CONFIG.MODE.ALL;
     curSite = payload.ui?.curSite || null;
     curTab = payload.ui?.curTab || "overview";
+    allSitesPeriodDays = payload.ui?.allSitesPeriodDays;
   } else {
     // V2 포맷이 아닌 경우 빈 값 반환
     accountLabel = "";
@@ -7688,6 +7827,7 @@ function buildSnapshotShellState(payload) {
     curMode = CONFIG.MODE.ALL;
     curSite = null;
     curTab = "overview";
+    allSitesPeriodDays = 90;
   }
 
   const snapshotTabIds = [
@@ -7738,6 +7878,7 @@ function buildSnapshotShellState(payload) {
     curTab: snapshotTabIds.indexOf(curTab) !== -1
       ? curTab
       : "overview",
+    allSitesPeriodDays: normalizeAllSitesPeriodDays(allSitesPeriodDays),
     runtimeVersion: window.__SEARCHADVISOR_RUNTIME_VERSION__ || "snapshot",
     cacheMeta: updatedAt
       ? {
@@ -7988,6 +8129,10 @@ function getRuntimeShellState() {
     curMode: typeof curMode === "string" ? curMode : CONFIG.MODE.ALL,
     curSite: typeof curSite === "string" ? curSite : null,
     curTab: typeof curTab === "string" ? curTab : "overview",
+    allSitesPeriodDays:
+      typeof getAllSitesPeriodDaysState === "function"
+        ? getAllSitesPeriodDaysState()
+        : normalizeAllSitesPeriodDays(90),
     allSites: Array.isArray(allSites) ? allSites.slice() : [],
     rows: Array.isArray(window.__sadvRows) ? window.__sadvRows.slice() : [],
     accountLabel: "",
@@ -8062,6 +8207,40 @@ function getRuntimeSelectionState() {
         ? state.curTab
         : (typeof curTab === "string" ? curTab : "overview"),
   };
+}
+
+function getRuntimeAllSitesPeriodDays() {
+  // 전체현황 전용 period state seam.
+  // selection(curMode/curSite/curTab)과 섞지 않는 이유:
+  // - 이 값은 site mode와 무관하다.
+  // - saved HTML에서도 read-only view filter로 유지되어야 한다.
+  const state = getRuntimeShellState();
+  if (state && typeof state.allSitesPeriodDays !== "undefined") {
+    return normalizeAllSitesPeriodDays(state.allSitesPeriodDays);
+  }
+  if (typeof getAllSitesPeriodDaysState === "function") {
+    return getAllSitesPeriodDaysState();
+  }
+  return normalizeAllSitesPeriodDays(90);
+}
+
+function setRuntimeAllSitesPeriodDays(days) {
+  const normalizedDays = normalizeAllSitesPeriodDays(days);
+  if (isSnapshotRuntime()) {
+    if (
+      typeof window !== "undefined" &&
+      window.__SEARCHADVISOR_SNAPSHOT_API__ &&
+      typeof window.__SEARCHADVISOR_SNAPSHOT_API__.setAllSitesPeriodDays === "function"
+    ) {
+      return window.__SEARCHADVISOR_SNAPSHOT_API__.setAllSitesPeriodDays(normalizedDays);
+    }
+    return normalizedDays;
+  }
+  if (typeof setAllSitesPeriodDaysState === "function") {
+    setAllSitesPeriodDaysState(normalizedDays);
+  }
+  if (typeof __sadvNotify === "function") __sadvNotify();
+  return normalizedDays;
 }
 
 function getRuntimeSiteData(site) {
@@ -9959,6 +10138,347 @@ function getAvailableRenderers() {
 // ALL-SITES-VIEW - All sites view rendering and export
 // ============================================================
 
+function buildAllSitesPeriodToolbar(periodDays) {
+  const currentDays = normalizeAllSitesPeriodDays(periodDays);
+  const bar = document.createElement("div");
+  bar.style.cssText =
+    "display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px";
+
+  const copy = document.createElement("div");
+  copy.style.cssText = "display:flex;flex-direction:column;gap:4px;min-width:0";
+  copy.innerHTML = sanitizeHTML(
+    '<div style="font-size:13px;font-weight:800;color:var(--sadv-text,#fffdf5)">전체현황</div>' +
+      '<div style="font-size:11px;line-height:1.5;color:var(--sadv-text-tertiary,#b9a55a)">클릭/노출/CTR만 기간 필터를 적용하고, 색인 추이는 90일 고정으로 유지합니다.</div>'
+  );
+
+  const toggle = document.createElement("div");
+  toggle.className = "sadv-all-period-toggle";
+  toggle.style.cssText =
+    "display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:flex-end";
+  ALL_SITES_PERIOD_OPTIONS.forEach(function (days) {
+    const isActive = days === currentDays;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "sadv-all-period-btn" + (isActive ? " on" : "");
+    button.dataset.allSitesPeriod = String(days);
+    button.setAttribute("aria-pressed", isActive ? "true" : "false");
+    button.style.cssText =
+      "border:1px solid " +
+      (isActive ? "rgba(255,212,0,0.34)" : "var(--sadv-border-subtle,#2b2200)") +
+      ";background:" +
+      (isActive ? "rgba(255,212,0,0.14)" : "rgba(255,255,255,0.02)") +
+      ";color:" +
+      (isActive ? "#ffd400" : "var(--sadv-text-secondary,#ffe9a8)") +
+      ";padding:6px 10px;border-radius:" +
+      T.radiusPill +
+      ";font-size:11px;font-weight:" +
+      (isActive ? "800" : "700") +
+      ";cursor:pointer;min-width:54px";
+    button.textContent = getAllSitesPeriodLabel(days);
+    toggle.appendChild(button);
+  });
+
+  bar.appendChild(copy);
+  bar.appendChild(toggle);
+  return bar;
+}
+
+function buildAllSitesDisplayWrap(baseRows) {
+  // 전체현황 period filter의 핵심 규칙:
+  // - baseRows는 90일 canonical rows로 절대 유지
+  // - 여기서만 displayRows를 파생 계산
+  // - live/saved/merge 모두 이 helper를 타게 만들어 parity를 유지
+  const canonicalRows = Array.isArray(baseRows) ? baseRows.slice() : [];
+  const periodDays =
+    typeof getRuntimeAllSitesPeriodDays === "function"
+      ? getRuntimeAllSitesPeriodDays()
+      : normalizeAllSitesPeriodDays(90);
+  const periodLabel = getAllSitesPeriodLabel(periodDays);
+  const displayRows = deriveAllSitesPeriodRows(canonicalRows, periodDays).sort(function (a, b) {
+    return (b.totalC || 0) - (a.totalC || 0);
+  });
+  const summary = computeAllSitesPeriodSummary(displayRows);
+  window.__sadvAllSitesDisplayRows = displayRows.slice();
+
+  if (typeof assignColors === "function") {
+    assignColors(
+      displayRows.map(function (row) {
+        return row.site;
+      })
+    );
+  }
+
+  const wrap = document.createElement("div");
+  const mergedMeta =
+    typeof getRuntimeMergedMeta === "function" ? getRuntimeMergedMeta() : getMergedMetaState();
+  if (isMergedReport() && mergedMeta && mergedMeta.accounts) {
+    wrap.appendChild(createMergedAccountsInfo(mergedMeta));
+  }
+  wrap.appendChild(buildAllSitesPeriodToolbar(periodDays));
+
+  const isMobile = window.innerWidth <= 768;
+  const kpiData = [
+    { label: "전체 클릭", value: fmt(summary.totalClicks), sub: periodLabel + " 합계", color: C.green },
+    { label: "전체 노출", value: fmt(summary.totalExposes), sub: periodLabel + " 합계", color: C.blue },
+    { label: "평균CTR", value: summary.avgCtr.toFixed(2) + "%", sub: periodLabel + " 평균", color: C.amber },
+    { label: "활성사이트", value: summary.activeSites + "개", sub: periodLabel + " 클릭 발생", color: C.teal },
+  ];
+
+  if (isMobile) {
+    const mobileKpiWrapper = document.createElement("div");
+    mobileKpiWrapper.style.cssText = "display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px";
+    kpiData.forEach(function (kpi) {
+      const kpiCard = document.createElement("div");
+      kpiCard.style.cssText =
+        "background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);border-radius:0;padding:16px 18px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,0.18);overflow:hidden;display:flex;flex-direction:column;align-items:center";
+      kpiCard.innerHTML = sanitizeHTML(
+        '<div style="width:100%;font-size:11px;color:var(--sadv-text-tertiary,#8d8d8d);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em;text-align:center">' +
+          escHtml(kpi.label) +
+          '</div><div style="width:100%;font-size:17px;font-weight:650;color:' +
+          kpi.color +
+          ';line-height:1.06;margin-bottom:6px;letter-spacing:-0.01em;word-break:keep-all;text-align:center">' +
+          escHtml(kpi.value) +
+          '</div><div style="width:100%;font-size:11px;color:var(--sadv-text-secondary,#c6c6c6);text-align:center">' +
+          escHtml(kpi.sub) +
+          "</div>"
+      );
+      mobileKpiWrapper.appendChild(kpiCard);
+    });
+    wrap.appendChild(mobileKpiWrapper);
+  } else {
+    wrap.appendChild(kpiGrid(kpiData));
+  }
+
+  wrap.appendChild(
+    secTitle(
+      "클릭 랭킹 TOP " +
+        Math.min(displayRows.length, 30) +
+        ' <span style="font-size:9px;font-weight:400;color:var(--sadv-text-tertiary,#b9a55a);letter-spacing:0">' +
+        escHtml("최근 " + periodLabel) +
+        "</span>"
+    )
+  );
+  const topRows = displayRows.slice(0, 30);
+  wrap.appendChild(
+    chartCard(
+      "최근 " + periodLabel + " 클릭 TOP " + topRows.length,
+      "",
+      C.green,
+      barchart(
+        topRows.map(function (row) {
+          return row.totalC;
+        }),
+        topRows.map(function (row) {
+          return row.site.replace(/^https?:\/\//, "");
+        }),
+        window.innerWidth <= 768 ? 65 : 80,
+        C.green,
+        "회"
+      ),
+      topRows.map(function (_, index) {
+        return "#" + (index + 1);
+      })
+    )
+  );
+
+  wrap.appendChild(secTitle("사이트별 상세"));
+  displayRows.forEach(function (r, i) {
+    const col = SITE_COLORS_MAP[r.site] || COLORS[i % COLORS.length] || C.green;
+    const toneBg = col + "12";
+    const toneBorder = col + "2e";
+    const card = document.createElement("div");
+    card.className = "sadv-allcard";
+    card.style.borderTop = "2px solid " + col + "44";
+    const shortName =
+      typeof getSiteLabel === "function" ? getSiteLabel(r.site) : r.site.replace(/^https?:\/\//, "");
+    const displayAccount = r.accountLabel || r.sourceAccount;
+    const accountBadge =
+      displayAccount && (typeof displayAccount === "string" ? displayAccount.trim() : "")
+        ? `<span style="font-size:10px;color:${T.accentSoftText};background:${T.accentSoftBg};padding:3px 8px;border-radius:999px;margin-left:8px;white-space:nowrap;border:1px solid ${T.accentSoftBorder}" title="${escHtml(displayAccount)}">${escHtml(displayAccount.includes("@") ? displayAccount.split("@")[0] : displayAccount)}</span>`
+        : "";
+    const compact = window.innerWidth <= 768;
+    const gridTemplate = compact
+      ? "grid-template-columns:repeat(2,minmax(0,1fr));gap:6px"
+      : "grid-template-columns:repeat(3,minmax(0,1fr));gap:8px";
+    const paddingStyle = compact ? "padding:7px 6px" : "padding:8px";
+    const fontSizeValue = compact ? "font-size:13px" : "font-size:15px";
+    const fontSizeLabel = compact ? "font-size:9px" : "font-size:10px";
+    const statSpanStyle = compact ? "grid-column:1 / -1;" : "";
+
+    card.innerHTML = sanitizeHTML(
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="display:flex;align-items:center;gap:8px;min-width:0"><div style="width:10px;height:10px;border-radius:50%;background:' +
+        col +
+        ';flex-shrink:0;box-shadow:0 0 0 4px ' +
+        col +
+        '15"></div><span style="font-size:14px;font-weight:700;line-height:1.3;color:var(--sadv-text,#fffdf5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px">' +
+        escHtml(shortName) +
+        "</span>" +
+        accountBadge +
+        '</div></div><div style="display:grid;' +
+        gridTemplate +
+        ';margin-bottom:12px"><div style="text-align:center;min-width:0;background:' +
+        toneBg +
+        ';border:1px solid ' +
+        toneBorder +
+        ";" +
+        paddingStyle +
+        ';border-radius:8px"><div style="' +
+        fontSizeValue +
+        ';font-weight:800;line-height:1.1;color:' +
+        col +
+        '">' +
+        escHtml(fmt(r.totalC)) +
+        '</div><div style="' +
+        fontSizeLabel +
+        ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">클릭</div></div><div style="text-align:center;min-width:0;background:' +
+        toneBg +
+        ';border:1px solid ' +
+        toneBorder +
+        ";" +
+        paddingStyle +
+        ';border-radius:8px"><div style="' +
+        fontSizeValue +
+        ';font-weight:800;line-height:1.1;color:' +
+        col +
+        '">' +
+        escHtml((r.totalE / 10000).toFixed(1)) +
+        '만</div><div style="' +
+        fontSizeLabel +
+        ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">노출</div></div><div style="' +
+        statSpanStyle +
+        'text-align:center;min-width:0;background:' +
+        toneBg +
+        ';border:1px solid ' +
+        toneBorder +
+        ";" +
+        paddingStyle +
+        ';border-radius:8px"><div style="' +
+        fontSizeValue +
+        ';font-weight:800;line-height:1.1;color:' +
+        col +
+        '">' +
+        escHtml(r.avgCtr) +
+        '%</div><div style="' +
+        fontSizeLabel +
+        ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">CTR</div></div></div>'
+    );
+    card.setAttribute("tabindex", "0");
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-label", shortName + " 사이트 상세 보기");
+
+    const clickBlock = document.createElement("div");
+    clickBlock.style.cssText = "margin-top:10px;padding-top:12px;border-top:1px solid var(--sadv-border-subtle,#2b2200)";
+    clickBlock.innerHTML = sanitizeHTML(
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px"><span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--sadv-text-secondary,#ffe9a8)">클릭 추이 <span style="padding:2px 6px;border-radius:999px;border:1px solid rgba(255,212,0,0.18);background:rgba(255,212,0,0.08);color:#ffd400;font-size:10px;font-weight:700">' +
+        escHtml(periodLabel) +
+        '</span></span><span style="font-size:13px;font-weight:800;color:' +
+        col +
+        '">' +
+        escHtml(fmt(r.totalC)) +
+        "회</span></div>"
+    );
+    const miniDates = (r.dates || []).map(function (date) {
+      return fmtB(date);
+    });
+    const mini = sparkline(r.clicks || [], miniDates, 52, col, "회", { minValue: 0 });
+    mini.style.cssText += "opacity:.95";
+    clickBlock.appendChild(mini);
+    card.appendChild(clickBlock);
+
+    const indexBlock = document.createElement("div");
+    indexBlock.style.cssText = "margin-top:12px;padding-top:12px;border-top:1px solid var(--sadv-border-subtle,#2b2200)";
+    if (r.diagnosisIndexedValues && r.diagnosisIndexedValues.length > 1) {
+      indexBlock.innerHTML = sanitizeHTML(
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px"><span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--sadv-text-secondary,#ffe9a8)">색인 추이 <span style="padding:2px 6px;border-radius:999px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.04);color:var(--sadv-text-tertiary,#b9a55a);font-size:10px;font-weight:700">고정</span></span><span style="font-size:13px;font-weight:800;color:' +
+          col +
+          '">' +
+          escHtml(fmt(r.diagnosisIndexedCurrent)) +
+          "건</span></div>"
+      );
+      const indexMini = sparkline(r.diagnosisIndexedValues, r.diagnosisIndexedDates, 44, col, "건", { minValue: 0 });
+      indexMini.style.cssText += "opacity:.9";
+      indexBlock.appendChild(indexMini);
+    } else {
+      const metaCode = r.diagnosisMetaCode == null ? "-" : String(r.diagnosisMetaCode);
+      const httpText = r.diagnosisMetaStatus == null ? "-" : String(r.diagnosisMetaStatus);
+      indexBlock.innerHTML = sanitizeHTML(
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px"><span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--sadv-text-secondary,#ffe9a8)">색인 추이 <span style="padding:2px 6px;border-radius:999px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.04);color:var(--sadv-text-tertiary,#b9a55a);font-size:10px;font-weight:700">고정</span></span><span style="font-size:12px;color:var(--sadv-text-tertiary,#b9a55a)">응답 확인</span></div><div style="font-size:11px;line-height:1.5;color:var(--sadv-text-tertiary,#b9a55a)">HTTP ' +
+          escHtml(httpText) +
+          " / code " +
+          escHtml(metaCode) +
+          "</div>"
+      );
+    }
+    card.appendChild(indexBlock);
+    card.dataset.site = r.site;
+    card.dataset.col = col;
+    wrap.appendChild(card);
+  });
+
+  wrap.addEventListener("click", function (e) {
+    const periodBtn = e.target.closest("[data-all-sites-period]");
+    if (periodBtn) {
+      const nextDays = normalizeAllSitesPeriodDays(periodBtn.dataset.allSitesPeriod);
+      if (nextDays !== periodDays) {
+        if (typeof setRuntimeAllSitesPeriodDays === "function") {
+          setRuntimeAllSitesPeriodDays(nextDays);
+        }
+        renderAllSitesFromCanonicalRows();
+      }
+      return;
+    }
+    const card = e.target.closest(".sadv-allcard");
+    if (card && card.dataset.site) {
+      curSite = card.dataset.site;
+      switchMode("site");
+    }
+  });
+  wrap.addEventListener("mouseenter", function (e) {
+    const card = e.target.closest(".sadv-allcard");
+    if (card && card.dataset.col) {
+      card.style.borderColor = card.dataset.col + "88";
+    }
+  }, true);
+  wrap.addEventListener("mouseleave", function (e) {
+    const card = e.target.closest(".sadv-allcard");
+    if (card && card.dataset.col) {
+      card.style.borderColor = "var(--sadv-border-subtle,#2b2200)";
+      card.style.borderTopColor = card.dataset.col + "44";
+    }
+  }, true);
+  wrap.addEventListener("keydown", function (e) {
+    const card = e.target.closest(".sadv-allcard");
+    if (!card) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      card.click();
+    }
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const cards = Array.from(wrap.querySelectorAll(".sadv-allcard"));
+      const currentIndex = cards.indexOf(card);
+      const nextIndex =
+        e.key === "ArrowDown"
+          ? Math.min(currentIndex + 1, cards.length - 1)
+          : Math.max(currentIndex - 1, 0);
+      cards[nextIndex].focus();
+    }
+  });
+
+  return wrap;
+}
+
+function renderAllSitesFromCanonicalRows() {
+  if (!bdEl || curMode !== CONFIG.MODE.ALL) return;
+  const canonicalRows =
+    Array.isArray(window.__sadvRows) && window.__sadvRows.length ? window.__sadvRows.slice() : [];
+  if (!canonicalRows.length) return;
+  const wrap = buildAllSitesDisplayWrap(canonicalRows);
+  bdEl.replaceChildren(wrap);
+  if (typeof bindSnapshotAllCardLinks === "function") bindSnapshotAllCardLinks();
+  bdEl.scrollTop = 0;
+}
+
 /**
  * Render the all sites overview view
  * Fetches expose data and diagnosis meta for all sites, then displays summary cards
@@ -10124,259 +10644,9 @@ async function renderAllSites() {
   );
   rows.sort((a, b) => b.totalC - a.totalC);
   window.__sadvRows = rows;
-  if (typeof assignColors === "function") {
-    // 카드가 실제로 보이는 정렬 순서(rows)를 기준으로 색을 다시 매겨
-    // 같은 색/비슷한 색이 인접 카드에 연속 등장하는 체감을 줄인다.
-    assignColors(rows.map(function (row) {
-      return row.site;
-    }));
-  }
   buildCombo(rows);
-  const wrap = document.createElement("div");
-  const mergedMeta =
-    typeof getRuntimeMergedMeta === "function" ? getRuntimeMergedMeta() : getMergedMetaState();
-  if (isMergedReport() && mergedMeta && mergedMeta.accounts) {
-    wrap.appendChild(createMergedAccountsInfo(mergedMeta));
-  }
-  const grandC = rows.reduce((a, r) => a + r.totalC, 0);
-  const grandE = rows.reduce((a, r) => a + r.totalE, 0);
-  const avgCtrAll = grandE ? (grandC / grandE) * 100 : 0;
-  const isMobile = window.innerWidth <= 768;
-
-  // Responsive KPI grid: 2 columns on mobile, 4 on desktop
-  const kpiData = [
-    { label: "전체 클릭", value: (grandC / 10000).toFixed(1) + "만", sub: "90일 합계", color: C.green },
-    { label: "전체 노출", value: (grandE / 10000000).toFixed(1) + "천만", sub: "90일 합계", color: C.blue },
-    { label: "평균CTR", value: avgCtrAll.toFixed(2) + "%", sub: "90일 평균", color: C.amber },
-    { label: "활성사이트", value: rows.filter((r) => r.totalC > 0).length + "개", color: C.teal },
-  ];
-
-  // On mobile, show in 2x2 grid
-  if (isMobile) {
-    const mobileKpiWrapper = document.createElement("div");
-    mobileKpiWrapper.style.cssText = "display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px";
-
-    kpiData.forEach(kpi => {
-      const kpiCard = document.createElement("div");
-      kpiCard.style.cssText = `background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);border-radius:0;padding:16px 18px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,0.18);overflow:hidden;display:flex;flex-direction:column;align-items:center`;
-      kpiCard.innerHTML = sanitizeHTML(`
-        <div style="width:100%;font-size:11px;color:var(--sadv-text-tertiary,#8d8d8d);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em;text-align:center">${escHtml(kpi.label)}</div>
-        <div style="width:100%;font-size:17px;font-weight:650;color:${kpi.color};line-height:1.06;margin-bottom:6px;letter-spacing:-0.01em;word-break:keep-all;text-align:center">${escHtml(kpi.value)}</div>
-        <div style="width:100%;font-size:11px;color:var(--sadv-text-secondary,#c6c6c6);text-align:center">${escHtml(kpi.sub)}</div>
-      `);
-      mobileKpiWrapper.appendChild(kpiCard);
-    });
-
-    wrap.appendChild(mobileKpiWrapper);
-  } else {
-    wrap.appendChild(kpiGrid(kpiData));
-  }
-  wrap.appendChild(
-    secTitle(
-      "클릭 랭킹 TOP " +
-        Math.min(rows.length, 30) +
-        ' <span style="font-size:9px;font-weight:400;color:var(--sadv-text-tertiary,#b9a55a);letter-spacing:0">90일 합계</span>',
-    ),
-  );
-  const top30 = rows.slice(0, 30);
-  wrap.appendChild(
-    chartCard(
-      "TOP " + top30.length + " 클릭",
-      "",
-      C.green,
-      barchart(
-        top30.map((r) => r.totalC),
-        top30.map((r) => r.site.replace(/^https?:\/\//, "")),
-        window.innerWidth <= 768 ? 65 : 80,
-        C.green,
-        "회",
-      ),
-      top30.map((_, i) => "#" + (i + 1)),
-    ),
-  );
-  wrap.appendChild(secTitle("사이트별 상세"));
-  rows.forEach(function (r, i) {
-    const col = SITE_COLORS_MAP[r.site] || COLORS[i % COLORS.length] || C.green;
-    const toneBg = col + "12";
-    const toneBorder = col + "2e";
-    const card = document.createElement("div");
-    card.className = "sadv-allcard";
-    card.style.borderTop = "2px solid " + col + "44";
-    const shortName = typeof getSiteLabel === "function" ? getSiteLabel(r.site) : r.site.replace(/^https?:\/\//, "");
-
-    // PRIORITY: Use accountLabel first (from siteOwnership), fallback to sourceAccount
-    const displayAccount = r.accountLabel || r.sourceAccount;
-    const accountBadge = displayAccount && (typeof displayAccount === "string" ? displayAccount.trim() : "")
-      ? `<span style="font-size:10px;color:${T.accentSoftText};background:${T.accentSoftBg};padding:3px 8px;border-radius:999px;margin-left:8px;white-space:nowrap;border:1px solid ${T.accentSoftBorder}" title="${escHtml(displayAccount)}">${escHtml(displayAccount.includes("@") ? displayAccount.split("@")[0] : displayAccount)}</span>`
-      : "";
-
-    // Responsive card layout
-    // Mobile note: 6~7 digit metrics were clipping inside the nested site-detail
-    // KPI boxes. Keep the live card readable by switching to 2 columns and
-    // letting the CTR tile span the full row on compact viewports.
-    const isMobile = window.innerWidth <= 768;
-    const gridTemplate = isMobile ? "grid-template-columns:repeat(2,minmax(0,1fr));gap:6px" : "grid-template-columns:repeat(3,minmax(0,1fr));gap:8px";
-    const paddingStyle = isMobile ? "padding:7px 6px" : "padding:8px";
-    const fontSizeValue = isMobile ? "font-size:13px" : "font-size:15px";
-    const fontSizeLabel = isMobile ? "font-size:9px" : "font-size:10px";
-    const statSpanStyle = isMobile ? "grid-column:1 / -1;" : "";
-
-    card.innerHTML = sanitizeHTML(
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="display:flex;align-items:center;gap:8px;min-width:0"><div style="width:10px;height:10px;border-radius:50%;background:' +
-      col +
-      ';flex-shrink:0;box-shadow:0 0 0 4px ' +
-      col +
-      '15"></div><span style="font-size:14px;font-weight:700;line-height:1.3;color:var(--sadv-text,#fffdf5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px">' +
-      escHtml(shortName) +
-      '</span>' +
-      accountBadge +
-      '</div></div><div style="display:grid;' +
-      gridTemplate +
-      ';margin-bottom:12px"><div style="text-align:center;min-width:0;background:' +
-      toneBg +
-      ';border:1px solid ' +
-      toneBorder +
-      ';' +
-      paddingStyle +
-      ';border-radius:8px"><div style="' +
-      fontSizeValue +
-      ';font-weight:800;line-height:1.1;color:' +
-      col +
-      '">' +
-      escHtml(fmt(r.totalC)) +
-      '</div><div style="' +
-      fontSizeLabel +
-      ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">클릭</div></div><div style="text-align:center;min-width:0;background:' +
-      toneBg +
-      ';border:1px solid ' +
-      toneBorder +
-      ';' +
-      paddingStyle +
-      ';border-radius:8px"><div style="' +
-      fontSizeValue +
-      ';font-weight:800;line-height:1.1;color:' +
-      col +
-      '">' +
-      escHtml((r.totalE / 10000).toFixed(1)) +
-      '만</div><div style="' +
-      fontSizeLabel +
-      ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">노출</div></div><div style="' +
-      statSpanStyle +
-      'text-align:center;min-width:0;background:' +
-      toneBg +
-      ';border:1px solid ' +
-      toneBorder +
-      ';' +
-      paddingStyle +
-      ';border-radius:8px"><div style="' +
-      fontSizeValue +
-      ';font-weight:800;line-height:1.1;color:' +
-      col +
-      '">' +
-      escHtml(r.avgCtr) +
-      '%</div><div style="' +
-      fontSizeLabel +
-      ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">CTR</div></div></div>'
-    );
-    // Add keyboard accessibility
-    card.setAttribute("tabindex", "0");
-    card.setAttribute("role", "button");
-    card.setAttribute("aria-label", `${shortName} 사이트 상세 보기`);
-    if (r.clicks && r.clicks.length > 1) {
-      // 클릭 추이는 색인 추이보다 위계가 약해서 "그냥 선만 붙은 상태"로 두면
-      // 사용자가 그래프 의미를 알아채기 어렵다. 따라서 색인 추이와 같은 block
-      // 형태(라벨 + 값 + breathing room)로 승격해 카드 정보 구조를 맞춘다.
-      const clickBlock = document.createElement("div");
-      clickBlock.style.cssText = "margin-top:10px;padding-top:12px;border-top:1px solid var(--sadv-border-subtle,#2b2200)";
-      clickBlock.innerHTML = sanitizeHTML(
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px"><span style="font-size:11px;font-weight:700;color:var(--sadv-text-secondary,#ffe9a8)">클릭 추이</span><span style="font-size:13px;font-weight:800;color:' +
-        col +
-        '">' +
-        escHtml(fmt(r.totalC)) +
-        '회</span></div>'
-      );
-      const miniDates = (r.logs || []).map(function (log) {
-        return fmtB(log.date);
-      });
-      const mini = sparkline(r.clicks, miniDates, 52, col, "회", { minValue: 0 });
-      mini.style.cssText += "opacity:.95";
-      clickBlock.appendChild(mini);
-      card.appendChild(clickBlock);
-    }
-    const indexBlock = document.createElement("div");
-    indexBlock.style.cssText = "margin-top:12px;padding-top:12px;border-top:1px solid var(--sadv-border-subtle,#2b2200)";
-    if (r.diagnosisIndexedValues && r.diagnosisIndexedValues.length > 1) {
-      indexBlock.innerHTML = sanitizeHTML(
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px"><span style="font-size:11px;font-weight:700;color:var(--sadv-text-secondary,#ffe9a8)">색인 추이</span><span style="font-size:13px;font-weight:800;color:' +
-        col +
-        '">' +
-        escHtml(fmt(r.diagnosisIndexedCurrent)) +
-        '건</span></div>'
-      );
-      const indexMini = sparkline(r.diagnosisIndexedValues, r.diagnosisIndexedDates, 44, col, "건", { minValue: 0 });
-      indexMini.style.cssText += "opacity:.9";
-      indexBlock.appendChild(indexMini);
-    } else {
-      const metaCode = r.diagnosisMetaCode == null ? "-" : String(r.diagnosisMetaCode);
-      const httpText = r.diagnosisMetaStatus == null ? "-" : String(r.diagnosisMetaStatus);
-      indexBlock.innerHTML = sanitizeHTML(
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px"><span style="font-size:11px;font-weight:700;color:var(--sadv-text-secondary,#ffe9a8)">색인 추이</span><span style="font-size:12px;color:var(--sadv-text-tertiary,#b9a55a)">응답 확인</span></div><div style="font-size:11px;line-height:1.5;color:var(--sadv-text-tertiary,#b9a55a)">HTTP ' +
-        escHtml(httpText) +
-        " / code " +
-        escHtml(metaCode) +
-        "</div>"
-      );
-    }
-    card.appendChild(indexBlock);
-    card.dataset.site = r.site;
-    card.dataset.col = col;
-    wrap.appendChild(card);
-  });
-
-  wrap.addEventListener("mouseenter", function (e) {
-    const card = e.target.closest(".sadv-allcard");
-    if (card && card.dataset.col) {
-      card.style.borderColor = card.dataset.col + "88";
-    }
-  }, true);
-  wrap.addEventListener("mouseleave", function (e) {
-    const card = e.target.closest(".sadv-allcard");
-    if (card && card.dataset.col) {
-      card.style.borderColor = "var(--sadv-border-subtle,#2b2200)";
-      card.style.borderTopColor = card.dataset.col + "44";
-    }
-  }, true);
-  wrap.addEventListener("click", function (e) {
-    const card = e.target.closest(".sadv-allcard");
-    if (card && card.dataset.site) {
-      curSite = card.dataset.site;
-      switchMode("site");
-    }
-  });
-  // Keyboard navigation for site cards
-  wrap.addEventListener('keydown', function(e) {
-    const card = e.target.closest(".sadv-allcard");
-    if (!card) return;
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      card.click();
-    }
-    // Arrow key navigation between cards
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      const cards = Array.from(wrap.querySelectorAll('.sadv-allcard'));
-      const currentIndex = cards.indexOf(card);
-      const nextIndex = e.key === 'ArrowDown'
-        ? Math.min(currentIndex + 1, cards.length - 1)
-        : Math.max(currentIndex - 1, 0);
-      cards[nextIndex].focus();
-    }
-  });
-
   if (requestId !== allViewReqId || curMode !== "all") return;
-  bdEl.replaceChildren(wrap);
-  if (typeof bindSnapshotAllCardLinks === "function") bindSnapshotAllCardLinks();
-  bdEl.scrollTop = 0;
+  renderAllSitesFromCanonicalRows();
 }
 
 /**
@@ -10401,6 +10671,10 @@ async function collectExportData(onProgress, options) {
     typeof getRuntimeSelectionState === "function"
       ? getRuntimeSelectionState()
       : { curMode, curSite, curTab };
+  const allSitesPeriodDays =
+    typeof getRuntimeAllSitesPeriodDays === "function"
+      ? getRuntimeAllSitesPeriodDays()
+      : normalizeAllSitesPeriodDays(90);
   const liveAccountInfo =
     typeof ACCOUNT_UTILS !== "undefined" && ACCOUNT_UTILS && typeof ACCOUNT_UTILS.getAccountInfo === "function"
       ? ACCOUNT_UTILS.getAccountInfo()
@@ -10500,7 +10774,8 @@ async function collectExportData(onProgress, options) {
     ui: {
       curMode: selectionState.curMode,
       curSite: selectionState.curSite,
-      curTab: selectionState.curTab
+      curTab: selectionState.curTab,
+      allSitesPeriodDays: allSitesPeriodDays,
     },
     mergedMeta:
       typeof getRuntimeMergedMeta === "function"
@@ -10670,6 +10945,10 @@ function savedAtIso(d) {
           sourcePayload.ui && typeof sourcePayload.ui.curSite === "string"
             ? sourcePayload.ui.curSite
             : null,
+        allSitesPeriodDays:
+          sourcePayload.ui && typeof sourcePayload.ui.allSitesPeriodDays !== "undefined"
+            ? sourcePayload.ui.allSitesPeriodDays
+            : 90,
         curTab: SNAPSHOT_OFFLINE_DEFAULT_TAB,
       };
     }
@@ -10706,6 +10985,10 @@ function savedAtIso(d) {
       curMode:
         legacyPayload.curMode === "site" ? "site" : SNAPSHOT_OFFLINE_DEFAULT_MODE,
       curSite: typeof legacyPayload.curSite === "string" ? legacyPayload.curSite : null,
+      allSitesPeriodDays:
+        typeof legacyPayload.allSitesPeriodDays !== "undefined"
+          ? legacyPayload.allSitesPeriodDays
+          : 90,
       curTab:
         SNAPSHOT_TAB_IDS.indexOf(legacyPayload.curTab) !== -1
           ? legacyPayload.curTab
@@ -10732,6 +11015,7 @@ function savedAtIso(d) {
       dataBySite: sourceState.dataBySite,
       siteMeta: sourceState.siteMeta,
       mergedMeta: sourceState.mergedMeta,
+      allSitesPeriodDays: normalizeAllSitesPeriodDays(sourceState.allSitesPeriodDays),
       curMode: SNAPSHOT_OFFLINE_DEFAULT_MODE,
       curSite: sourceState.curSite,
       curTab: SNAPSHOT_OFFLINE_DEFAULT_TAB,
@@ -10744,7 +11028,7 @@ function savedAtIso(d) {
     // 여기서 정의되는 필드는 saved HTML 재오픈과 shell/API parity의 기준이므로
     // 임의 삭제/이름 변경을 매우 신중하게 다뤄야 한다.
     // Handle V2 format
-    let allSites, dataBySite, summaryRows, siteMeta, accountLabel, savedAt, curMode, curSite, curTab;
+    let allSites, dataBySite, summaryRows, siteMeta, accountLabel, savedAt, curMode, curSite, curTab, allSitesPeriodDays;
 
     if (payload.__meta && payload.accounts) {
       // V2 format
@@ -10760,6 +11044,7 @@ function savedAtIso(d) {
       curMode = "all";
       curSite = payload.ui?.curSite || null;
       curTab = "overview";
+      allSitesPeriodDays = payload.ui?.allSitesPeriodDays;
     } else {
       // V2 포맷이 아닌 경우 빈 값 반환
       accountLabel = "";
@@ -10771,6 +11056,7 @@ function savedAtIso(d) {
       curMode = "all";
       curSite = null;
       curTab = "overview";
+      allSitesPeriodDays = payload.allSitesPeriodDays;
     }
 
     const snapshotTabIds = [
@@ -10816,6 +11102,7 @@ function savedAtIso(d) {
       curTab: snapshotTabIds.indexOf(curTab) !== -1
         ? curTab
         : "overview",
+      allSitesPeriodDays: normalizeAllSitesPeriodDays(allSitesPeriodDays),
       runtimeVersion:
         window.__SEARCHADVISOR_RUNTIME_VERSION__ ||
         payload.generatorVersion ||
@@ -10867,7 +11154,6 @@ function savedAtIso(d) {
     });
 
     window.__sadvRows = rows;
-    if (typeof assignColors === "function") assignColors();
     if (typeof buildCombo === "function") buildCombo(rows);
 
     if (!rows.length) {
@@ -10876,164 +11162,10 @@ function savedAtIso(d) {
       return;
     }
 
-    const totalClicks = rows.reduce(function (sum, row) {
-      return sum + (Number(row.totalC) || 0);
-    }, 0);
-    const totalExposes = rows.reduce(function (sum, row) {
-      return sum + (Number(row.totalE) || 0);
-    }, 0);
-    const avgCtr = totalExposes ? (totalClicks / totalExposes) * 100 : 0;
-    const activeSites = rows.filter(function (row) {
-      return (Number(row.totalC) || 0) > 0;
-    }).length;
-
-    const wrap = document.createElement("div");
-    wrap.appendChild(
-      kpiGrid([
-        { label: "전체 클릭", value: fmt(totalClicks), sub: "저장 시점 기준", color: C.green },
-        { label: "전체 노출", value: fmt(totalExposes), sub: "저장 시점 기준", color: C.blue },
-        { label: "평균CTR", value: avgCtr.toFixed(2) + "%", sub: "전체 사이트 평균", color: C.amber },
-        { label: "활성사이트", value: fmt(activeSites) + "개", sub: "클릭 발생 사이트", color: C.orange || C.red || C.green },
-      ]),
-    );
-
-    const topRows = rows.slice(0, 30);
-    wrap.appendChild(secTitle("클릭 랭킹 TOP " + topRows.length));
-    wrap.appendChild(
-      chartCard(
-        "TOP " + topRows.length + " 클릭",
-        "",
-        C.green,
-        barchart(
-          topRows.map(function (row) {
-            return Number(row.totalC) || 0;
-          }),
-          topRows.map(function (row) {
-            return getSiteLabel(row.site);
-          }),
-          72,
-          C.green,
-          "회",
-        ),
-        topRows.map(function (_, index) {
-          return "#" + (index + 1);
-        }),
-      ),
-    );
-
-    wrap.appendChild(secTitle("사이트별 상세"));
-    rows.forEach(function (row, index) {
-      const siteColor =
-        (typeof SITE_COLORS_MAP !== "undefined" && SITE_COLORS_MAP && SITE_COLORS_MAP[row.site]) ||
-        COLORS[index % COLORS.length] ||
-        C.green;
-      // Keep saved HTML visually in lockstep with the live all-sites detail card.
-      // Compact viewports use the same 2-column rule so 6~7 digit metrics do not
-      // clip in the nested KPI tiles when reopened on mobile.
-      const isCompactViewport = typeof window !== "undefined" && window.innerWidth <= 768;
-      const detailGridTemplate = isCompactViewport
-        ? "grid-template-columns:repeat(2,minmax(0,1fr));gap:6px"
-        : "grid-template-columns:repeat(3,minmax(0,1fr));gap:8px";
-      const detailCardPadding = isCompactViewport ? "padding:7px 6px" : "padding:8px";
-      const detailValueSize = isCompactViewport ? "font-size:13px" : "font-size:14px";
-      const detailLabelSize = isCompactViewport ? "font-size:9px" : "font-size:10px";
-      const detailSpanStyle = isCompactViewport ? "grid-column:1 / -1;" : "";
-      const card = document.createElement("button");
-      card.type = "button";
-      card.className = "sadv-allcard";
-      card.dataset.site = row.site || "";
-      card.setAttribute("aria-label", getSiteLabel(row.site) + " 사이트 상세 보기");
-      card.style.cssText =
-        "display:block;width:100%;text-align:left;padding:14px 16px;margin:0 0 12px;border:1px solid rgba(255,255,255,0.08);border-top:2px solid " +
-        siteColor +
-        ";background:#171717;color:#f4f4f4;cursor:pointer";
-      card.innerHTML =
-        '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px">' +
-        '<div style="min-width:0">' +
-        '<div style="font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' +
-        escHtml(getSiteLabel(row.site)) +
-        "</div>" +
-        '<div style="font-size:11px;color:#b8b8b8;margin-top:4px">' +
-        escHtml(row.site || "") +
-        "</div>" +
-        "</div>" +
-        '<div style="font-size:11px;font-weight:700;color:' +
-        siteColor +
-        '">상세 보기</div>' +
-        "</div>" +
-        '<div style="display:grid;' + detailGridTemplate + '">' +
-        '<div style="' + detailCardPadding + ';border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);text-align:center;min-width:0"><div style="' + detailLabelSize + ';color:#a8a8a8;margin-bottom:4px">클릭</div><div style="' + detailValueSize + ';font-weight:800;line-height:1.12;letter-spacing:-0.03em;color:' + siteColor + ';white-space:nowrap">' + escHtml(fmt(row.totalC || 0)) + "</div></div>" +
-        '<div style="' + detailCardPadding + ';border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);text-align:center;min-width:0"><div style="' + detailLabelSize + ';color:#a8a8a8;margin-bottom:4px">노출</div><div style="' + detailValueSize + ';font-weight:800;line-height:1.12;letter-spacing:-0.03em;color:' + (C.blue || siteColor) + ';white-space:nowrap">' + escHtml(((Number(row.totalE) || 0) / 10000).toFixed(1)) + '만</div></div>' +
-        '<div style="' + detailSpanStyle + detailCardPadding + ';border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);text-align:center;min-width:0"><div style="' + detailLabelSize + ';color:#a8a8a8;margin-bottom:4px">CTR</div><div style="' + detailValueSize + ';font-weight:800;line-height:1.12;letter-spacing:-0.03em;color:' + (C.amber || siteColor) + ';white-space:nowrap">' + escHtml((Number(row.avgCtr) || 0).toFixed(2) + "%") + "</div></div>" +
-        "</div>";
-      // Keep reopened saved HTML visually aligned with the live all-sites card
-      // contract. The payload already contains click/index trend series, so
-      // snapshot should render the same two mini graph surfaces instead of
-      // collapsing to KPI boxes only.
-      if (row.clicks && row.clicks.length > 1) {
-        // 저장본도 live 정본과 같은 card hierarchy를 유지해야 한다.
-        // 클릭 sparkline을 block 없이 바로 붙이면 색인 추이에 비해 의미가 묻히므로,
-        // saved HTML 쪽도 동일하게 라벨/값/높이를 갖는 block으로 맞춘다.
-        const clickBlock = document.createElement("div");
-        clickBlock.style.cssText =
-          "margin-top:10px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08)";
-        clickBlock.innerHTML = sanitizeHTML(
-          '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px"><span style="font-size:11px;font-weight:700;color:var(--sadv-text-secondary,#ffe9a8)">클릭 추이</span><span style="font-size:13px;font-weight:800;color:' +
-            siteColor +
-            '">' +
-            escHtml(fmt(row.totalC || 0)) +
-            "회</span></div>"
-        );
-        const miniDates = (row.logs || []).map(function (log) {
-          return fmtB(log.date);
-        });
-        const mini = sparkline(row.clicks, miniDates, 52, siteColor, "회", {
-          minValue: 0,
-        });
-        mini.style.cssText += "opacity:.95";
-        clickBlock.appendChild(mini);
-        card.appendChild(clickBlock);
-      }
-      const indexBlock = document.createElement("div");
-      indexBlock.style.cssText =
-        "margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08)";
-      if (row.diagnosisIndexedValues && row.diagnosisIndexedValues.length > 1) {
-        indexBlock.innerHTML = sanitizeHTML(
-          '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px"><span style="font-size:11px;font-weight:700;color:var(--sadv-text-secondary,#ffe9a8)">색인 추이</span><span style="font-size:13px;font-weight:800;color:' +
-            siteColor +
-            '">' +
-            escHtml(fmt(row.diagnosisIndexedCurrent || 0)) +
-            "건</span></div>"
-        );
-        const indexMini = sparkline(
-          row.diagnosisIndexedValues,
-          row.diagnosisIndexedDates || [],
-          44,
-          siteColor,
-          "건",
-          { minValue: 0 }
-        );
-        indexMini.style.cssText += "opacity:.9";
-        indexBlock.appendChild(indexMini);
-      } else {
-        const metaCode = row.diagnosisMetaCode == null ? "-" : String(row.diagnosisMetaCode);
-        const httpText = row.diagnosisMetaStatus == null ? "-" : String(row.diagnosisMetaStatus);
-        indexBlock.innerHTML = sanitizeHTML(
-          '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px"><span style="font-size:11px;font-weight:700;color:var(--sadv-text-secondary,#ffe9a8)">색인 추이</span><span style="font-size:12px;color:var(--sadv-text-tertiary,#b9a55a)">응답 확인</span></div><div style="font-size:11px;line-height:1.5;color:var(--sadv-text-tertiary,#b9a55a)">HTTP ' +
-            escHtml(httpText) +
-            " / code " +
-            escHtml(metaCode) +
-            "</div>"
-        );
-      }
-      card.appendChild(indexBlock);
-      card.addEventListener("click", function () {
-        if (typeof setComboSite === "function") setComboSite(row.site);
-        if (typeof switchMode === "function" && curMode !== "site") switchMode("site");
-      });
-      wrap.appendChild(card);
-    });
-
+    const wrap =
+      typeof buildAllSitesDisplayWrap === "function"
+        ? buildAllSitesDisplayWrap(rows)
+        : document.createElement("div");
     bdEl.innerHTML = "";
     bdEl.appendChild(wrap);
   }
@@ -11072,12 +11204,13 @@ function savedAtIso(d) {
     const savedLabel = stampLabel(savedAt);
 
     // Handle V2 format for UI state
-    let curMode, curSite, curTab, allSites;
+    let curMode, curSite, curTab, allSites, allSitesPeriodDays;
     if (payload.__meta && payload.accounts) {
       // V2 format
       curMode = "all";
       curSite = payload.ui?.curSite || null;
       curTab = "overview";
+      allSitesPeriodDays = normalizeAllSitesPeriodDays(payload.ui?.allSitesPeriodDays);
       const accountKeys = Object.keys(payload.accounts);
       allSites = accountKeys.length > 0 ? (payload.accounts[accountKeys[0]]?.sites || []) : [];
     } else {
@@ -11085,6 +11218,7 @@ function savedAtIso(d) {
       curMode = "all";
       curSite = null;
       curTab = "overview";
+      allSitesPeriodDays = normalizeAllSitesPeriodDays(payload.allSitesPeriodDays);
       allSites = [];
     }
 
@@ -11486,9 +11620,18 @@ function savedAtIso(d) {
     ${getRuntimeShellState.toString()}
     ${getRuntimeRows.toString()}
     ${getRuntimeAllSites.toString()}
+    ${getRuntimeAllSitesPeriodDays.toString()}
+    ${setRuntimeAllSitesPeriodDays.toString()}
     ${getRuntimeSiteMeta.toString()}
     ${getRuntimeMergedMeta.toString()}
     ${getRuntimeCacheMeta.toString()}
+    ${normalizeAllSitesPeriodDays.toString()}
+    ${getAllSitesPeriodLabel.toString()}
+    ${sliceLogsForPeriod.toString()}
+    ${deriveCtrSeries.toString()}
+    ${deriveAllSitesPeriodRow.toString()}
+    ${deriveAllSitesPeriodRows.toString()}
+    ${computeAllSitesPeriodSummary.toString()}
     ${getRuntimeSiteData.toString()}
     ${buildSiteSummaryRow.toString()}
     ${prepareRendererData.toString()}
@@ -11519,6 +11662,9 @@ function savedAtIso(d) {
     ${ensureCurrentSite.toString()}
     ${buildCombo.toString()}
     ${setComboSite.toString()}
+    ${buildAllSitesPeriodToolbar.toString()}
+    ${buildAllSitesDisplayWrap.toString()}
+    ${renderAllSitesFromCanonicalRows.toString()}
     ${renderTab.toString()}
     ${switchMode.toString()}
     ${setAllSitesLabel.toString()}
@@ -11557,6 +11703,7 @@ function savedAtIso(d) {
     let curMode = null;  // Initialize to null so switchMode() triggers on first call
     let curSite = EXPORT_PAYLOAD.curSite || (allSites[0] || null);
     let curTab = EXPORT_PAYLOAD.curTab || "overview";
+    let allSitesPeriodDays = normalizeAllSitesPeriodDays(EXPORT_PAYLOAD.allSitesPeriodDays);
     const SNAPSHOT_SHELL_LISTENERS = new Set();
     function cloneSnapshotShellState() {
       const cacheSavedAtValues = allSites
@@ -11589,6 +11736,9 @@ function savedAtIso(d) {
         })
           ? curTab
           : "overview",
+        allSitesPeriodDays: normalizeAllSitesPeriodDays(
+          typeof allSitesPeriodDays !== "undefined" ? allSitesPeriodDays : 90
+        ),
         runtimeVersion:
           window.__SEARCHADVISOR_RUNTIME_VERSION__ ||
           EXPORT_PAYLOAD.generatorVersion ||
@@ -11648,6 +11798,7 @@ function savedAtIso(d) {
         mode,
         tab,
         site,
+        allSitesPeriodDays: normalizeAllSitesPeriodDays(cached.allSitesPeriodDays),
       };
     }
     function setCachedUiState() {
@@ -11656,6 +11807,9 @@ function savedAtIso(d) {
         mode: curMode,
         tab: curTab,
         site: curSite,
+        allSitesPeriodDays: normalizeAllSitesPeriodDays(
+          typeof allSitesPeriodDays !== "undefined" ? allSitesPeriodDays : 90
+        ),
       });
     }
     const SITE_COLORS_MAP = {};
@@ -11910,6 +12064,19 @@ function savedAtIso(d) {
       setTab: function (tab) {
         setTab(tab);
       },
+      setAllSitesPeriodDays: function (days) {
+        if (typeof setAllSitesPeriodDaysState === "function") {
+          setAllSitesPeriodDaysState(days);
+        } else {
+          allSitesPeriodDays = normalizeAllSitesPeriodDays(days);
+        }
+        setCachedUiState();
+        notifySnapshotShellState();
+        if (curMode === "all" && typeof renderSnapshotAllSites === "function") {
+          renderSnapshotAllSites();
+        }
+        return normalizeAllSitesPeriodDays(days);
+      },
       refresh: function () {
         return false;
       },
@@ -11921,6 +12088,16 @@ function savedAtIso(d) {
       },
     };
     if (snapshotUiReady) {
+      const cachedUi = getCachedUiState();
+      if (cachedUi && typeof cachedUi.allSitesPeriodDays !== "undefined") {
+        allSitesPeriodDays = normalizeAllSitesPeriodDays(cachedUi.allSitesPeriodDays);
+      } else {
+        allSitesPeriodDays = normalizeAllSitesPeriodDays(
+          EXPORT_PAYLOAD.ui && typeof EXPORT_PAYLOAD.ui.allSitesPeriodDays !== "undefined"
+            ? EXPORT_PAYLOAD.ui.allSitesPeriodDays
+            : EXPORT_PAYLOAD.allSitesPeriodDays
+        );
+      }
       assignColors();
       window.__sadvRows = (EXPORT_PAYLOAD.summaryRows || []).filter(function (row) {
         return row && allSites.includes(row.site);
@@ -12285,10 +12462,16 @@ function savedAtIso(d) {
  * console.log(row.avgCtr); // Average CTR
  */
   function buildSiteSummaryRow(site, data) {
+    // 이 row는 전체현황/live/snapshot/merge가 공유하는 90일 canonical row다.
+    // period filter 기능은 이 row의 의미를 바꾸지 않고,
+    // 클릭/노출/날짜 raw series만 additive로 더 제공해 derived row 계산에 쓴다.
     const item = (data && data.expose && data.expose.items && data.expose.items[0]) || {};
     const logs = (item.logs || []).sort((a, b) => (a.date || "").localeCompare(b.date || ""));
     const clicks = logs.map((r) => Number(r.clickCount) || 0);
     const exposes = logs.map((r) => Number(r.exposeCount) || 0);
+    const dates = logs.map(function (r) {
+      return String((r && r.date) || "").replace(/[^\d]/g, "").slice(0, 8);
+    });
     const totalC = clicks.reduce((a, b) => a + b, 0);
     const totalE = exposes.reduce((a, b) => a + b, 0);
     const avgCtr = totalE ? (totalC / totalE) * 100 : 0;
@@ -12363,6 +12546,9 @@ function savedAtIso(d) {
       prevClickRatio: period.prevClickRatio != null && Number.isFinite(parseFloat(period.prevClickRatio)) ? parseFloat(period.prevClickRatio) : undefined,
       logs,
       clicks,
+      exposes,
+      dates,
+      baseWindowDays: 90,
       diagnosisIndexedCurrent: diagnosisLatestCounts["1"] || 0,
       diagnosisIndexedValues,
       diagnosisIndexedDates,

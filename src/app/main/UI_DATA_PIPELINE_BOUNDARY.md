@@ -121,6 +121,19 @@ UI 공급망과 데이터 공급망을 같이 건드렸기 때문에 생겼다.
 
 ## 4. 변경 유형별 규칙
 
+### 전체현황 기간 필터 변경
+
+관련 문서:
+
+- `ALL_SITES_PERIOD_FILTER_DESIGN.md`
+
+원칙:
+
+- 전체현황 전용 local view state로 본다.
+- canonical 90일 row를 직접 바꾸지 않는다.
+- click/expose/CTR/click trend만 period 파생 계산한다.
+- 색인 추이는 pass-through 유지한다.
+
 ### 헤더 / 탭 / 콤보 / 카드 디자인 변경
 
 먼저 공통 UI 파일을 수정한다.

@@ -5,6 +5,10 @@
 
 설계 배경은 `SNAPSHOT_EXPORT_CONTRACT.md`, `UI_DATA_PIPELINE_BOUNDARY.md` 를 먼저 본다.
 
+전체현황 기간 필터를 건드릴 때는 아래 문서를 함께 본다.
+
+- `ALL_SITES_PERIOD_FILTER_DESIGN.md`
+
 ---
 
 ## 1. 먼저 판단할 것

@@ -99,6 +99,10 @@ function getRuntimeShellState() {
     curMode: typeof curMode === "string" ? curMode : CONFIG.MODE.ALL,
     curSite: typeof curSite === "string" ? curSite : null,
     curTab: typeof curTab === "string" ? curTab : "overview",
+    allSitesPeriodDays:
+      typeof getAllSitesPeriodDaysState === "function"
+        ? getAllSitesPeriodDaysState()
+        : normalizeAllSitesPeriodDays(90),
     allSites: Array.isArray(allSites) ? allSites.slice() : [],
     rows: Array.isArray(window.__sadvRows) ? window.__sadvRows.slice() : [],
     accountLabel: "",
@@ -173,6 +177,40 @@ function getRuntimeSelectionState() {
         ? state.curTab
         : (typeof curTab === "string" ? curTab : "overview"),
   };
+}
+
+function getRuntimeAllSitesPeriodDays() {
+  // 전체현황 전용 period state seam.
+  // selection(curMode/curSite/curTab)과 섞지 않는 이유:
+  // - 이 값은 site mode와 무관하다.
+  // - saved HTML에서도 read-only view filter로 유지되어야 한다.
+  const state = getRuntimeShellState();
+  if (state && typeof state.allSitesPeriodDays !== "undefined") {
+    return normalizeAllSitesPeriodDays(state.allSitesPeriodDays);
+  }
+  if (typeof getAllSitesPeriodDaysState === "function") {
+    return getAllSitesPeriodDaysState();
+  }
+  return normalizeAllSitesPeriodDays(90);
+}
+
+function setRuntimeAllSitesPeriodDays(days) {
+  const normalizedDays = normalizeAllSitesPeriodDays(days);
+  if (isSnapshotRuntime()) {
+    if (
+      typeof window !== "undefined" &&
+      window.__SEARCHADVISOR_SNAPSHOT_API__ &&
+      typeof window.__SEARCHADVISOR_SNAPSHOT_API__.setAllSitesPeriodDays === "function"
+    ) {
+      return window.__SEARCHADVISOR_SNAPSHOT_API__.setAllSitesPeriodDays(normalizedDays);
+    }
+    return normalizedDays;
+  }
+  if (typeof setAllSitesPeriodDaysState === "function") {
+    setAllSitesPeriodDaysState(normalizedDays);
+  }
+  if (typeof __sadvNotify === "function") __sadvNotify();
+  return normalizedDays;
 }
 
 function getRuntimeSiteData(site) {
