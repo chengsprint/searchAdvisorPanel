@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T15:39:24Z";
-var __SADV_GIT_HEAD__="135994a";
+var __SADV_BUILD_STAMP__="2026-03-20T15:50:49Z";
+var __SADV_GIT_HEAD__="73006e5";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -12849,16 +12849,26 @@ function buildSnapshotSerializedHelperSection() {
       .replace(/\u2029/g, "\\u2029");
   }
 
-  function injectSnapshotReactShell(html, payload) {
+  // Phase 2 Workstream C:
+  // 아래 helper들은 export 시점 HTML 후처리 책임이다.
+  // offline runtime 내부 boot helper(restoreSnapshotUiBootState/finalizeSnapshotUiBoot)와는
+  // 다른 층이며, HTML 문자열에 shell host/state/bootstrap script를 주입하는 일만 맡는다.
+  function ensureSnapshotReactShellHostMarkup(html) {
     const panelBodyPattern = /<div\b([^>]*\bid=(["'])(sadv-bd|sadv-tabpanel)\2[^>]*)>/i;
     const reactShellHostPattern = /<div\b([^>]*\bid=(["'])sadv-react-shell-host\2[^>]*)><\/div>/i;
     if (!panelBodyPattern.test(html) && !reactShellHostPattern.test(html)) {
       throw new Error("snapshot panel not found");
     }
-    const reactShellCss = escapeInlineStyleText(
-      document.getElementById("sadv-react-style")?.textContent || "",
-    );
-    const shellState = buildSnapshotShellState(payload);
+    if (!reactShellHostPattern.test(html)) {
+      html = html.replace(
+        panelBodyPattern,
+        `<div id="sadv-react-shell-host"></div><div$1>`,
+      );
+    }
+    return html;
+  }
+
+  function injectSnapshotRuntimeShellState(html, shellState, reactShellCss) {
     html = html.replace(
       "</head>",
       `<style id="sadv-react-style">${reactShellCss}</style><style id="sadv-snapshot-shell-hide">#sadv-react-shell-host{display:block !important;width:100% !important;flex-shrink:0}</style></head>`,
@@ -12867,16 +12877,24 @@ function buildSnapshotSerializedHelperSection() {
       "<body>",
       `<body><script>window.__SEARCHADVISOR_RUNTIME_KIND__="snapshot";window.__SEARCHADVISOR_SNAPSHOT_SHELL_STATE__=${stringifyForInlineJson(shellState)};<\/script>`,
     );
-    if (!reactShellHostPattern.test(html)) {
-      html = html.replace(
-        panelBodyPattern,
-        `<div id="sadv-react-shell-host"></div><div$1>`,
-      );
-    }
-    html = html.replace(
+    return html;
+  }
+
+  function appendSnapshotShellBootstrap(html) {
+    return html.replace(
       "</body>",
       `<script>${escapeInlineScriptText(buildSnapshotShellBootstrapScript())}<\/script></body>`,
     );
+  }
+
+  function injectSnapshotReactShell(html, payload) {
+    const reactShellCss = escapeInlineStyleText(
+      document.getElementById("sadv-react-style")?.textContent || "",
+    );
+    const shellState = buildSnapshotShellState(payload);
+    html = ensureSnapshotReactShellHostMarkup(html);
+    html = injectSnapshotRuntimeShellState(html, shellState, reactShellCss);
+    html = appendSnapshotShellBootstrap(html);
     return html;
   }
   /**
