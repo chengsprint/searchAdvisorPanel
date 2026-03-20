@@ -73,7 +73,7 @@ function buildLiveShellState() {
     curTab,
     allSitesPeriodDays: normalizeAllSitesPeriodDays(allSitesPeriodDays),
     allSites: [...allSites],
-    rows: window.__sadvRows || [],
+    rows: typeof getCanonicalRowsState === "function" ? getCanonicalRowsState() : (window.__sadvRows || []),
     accountLabel: snapshotAccountLabel,
     runtimeVersion: window.__SEARCHADVISOR_RUNTIME_VERSION__ || "runtime",
     cacheMeta: getLiveCacheMeta(),
@@ -102,6 +102,25 @@ function getAllSitesPeriodDaysState() {
 function setAllSitesPeriodDaysState(days) {
   allSitesPeriodDays = normalizeAllSitesPeriodDays(days);
   return allSitesPeriodDays;
+}
+
+function getCanonicalRowsState() {
+  // canonical rows는 아직 완전한 state contract로 승격되기 전이므로
+  // 내부 저장소는 계속 window.__sadvRows를 사용한다.
+  //
+  // 다만 Phase 1부터는 UI가 이 전역 저장소를 직접 읽기보다
+  // 공용 getter를 통과하도록 점진적으로 수렴시킨다.
+  return Array.isArray(window.__sadvRows) ? window.__sadvRows.slice() : [];
+}
+
+function setCanonicalRowsState(rows) {
+  // 중요:
+  // - 이 함수는 canonical rows "저장 위치"를 추상화하는 seam이다.
+  // - 지금 단계에서는 여전히 window.__sadvRows가 실제 저장소지만,
+  //   이후 phase에서 data.rows contract로 이동할 때 호출 지점을 한 번에 교체하기 쉽다.
+  // - 반드시 배열 사본을 써서 render helper가 원본 배열을 우발적으로 mutate하지 않게 한다.
+  window.__sadvRows = Array.isArray(rows) ? rows.slice() : [];
+  return getCanonicalRowsState();
 }
 
 function getSelectionStateValue() {
