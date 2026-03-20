@@ -442,12 +442,28 @@
       // snapshot should render the same two mini graph surfaces instead of
       // collapsing to KPI boxes only.
       if (row.clicks && row.clicks.length > 1) {
+        // 저장본도 live 정본과 같은 card hierarchy를 유지해야 한다.
+        // 클릭 sparkline을 block 없이 바로 붙이면 색인 추이에 비해 의미가 묻히므로,
+        // saved HTML 쪽도 동일하게 라벨/값/높이를 갖는 block으로 맞춘다.
+        const clickBlock = document.createElement("div");
+        clickBlock.style.cssText =
+          "margin-top:10px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08)";
+        clickBlock.innerHTML = sanitizeHTML(
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px"><span style="font-size:11px;font-weight:700;color:var(--sadv-text-secondary,#ffe9a8)">클릭 추이</span><span style="font-size:13px;font-weight:800;color:' +
+            siteColor +
+            '">' +
+            escHtml(fmt(row.totalC || 0)) +
+            "회</span></div>"
+        );
         const miniDates = (row.logs || []).map(function (log) {
           return fmtB(log.date);
         });
-        const mini = sparkline(row.clicks, miniDates, 36, siteColor, "");
-        mini.style.cssText += "opacity:.9";
-        card.appendChild(mini);
+        const mini = sparkline(row.clicks, miniDates, 52, siteColor, "회", {
+          minValue: 0,
+        });
+        mini.style.cssText += "opacity:.95";
+        clickBlock.appendChild(mini);
+        card.appendChild(clickBlock);
       }
       const indexBlock = document.createElement("div");
       indexBlock.style.cssText =
