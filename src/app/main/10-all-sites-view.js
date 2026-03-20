@@ -23,6 +23,45 @@ function getAllSitesCanonicalRows() {
     : (Array.isArray(window.__sadvRows) && window.__sadvRows.length ? window.__sadvRows.slice() : []);
 }
 
+/**
+ * Persist canonical all-sites rows through the provider seam first.
+ *
+ * Why this helper exists:
+ * - `10-all-sites-view.js` is currently the main writer of canonical rows.
+ * - Leaving repeated `setRuntimeRows(...)` / `window.__sadvRows = ...` branches
+ *   in render code makes later Phase 2 shared-app work noisier than necessary.
+ * - Centralizing the write path here is a safe Phase 1 step because it does not
+ *   change what gets stored, only how the write fallback is expressed.
+ *
+ * Guardrail:
+ * - This helper only stores rows. It must not sort, mutate, notify, or render.
+ */
+function setAllSitesCanonicalRows(rows) {
+  if (typeof setRuntimeRows === "function") return setRuntimeRows(rows);
+  if (typeof setCanonicalRowsState === "function") return setCanonicalRowsState(rows);
+  window.__sadvRows = Array.isArray(rows) ? rows.slice() : [];
+  return Array.isArray(window.__sadvRows) ? window.__sadvRows.slice() : [];
+}
+
+/**
+ * Persist all-sites card site selection through the runtime action seam first.
+ *
+ * This helper is intentionally tiny:
+ * - it only updates "which site is selected"
+ * - it does not change mode or trigger rendering
+ *
+ * Keeping that separation avoids hidden side-effects that could diverge between
+ * live and saved runtimes.
+ */
+function setAllSitesSelectedSite(site) {
+  if (typeof setRuntimeSite === "function") return setRuntimeSite(site);
+  if (typeof setRuntimeSelectionState === "function") {
+    return setRuntimeSelectionState({ curSite: site });
+  }
+  curSite = site;
+  return getAllSitesSelectionState();
+}
+
 function buildAllSitesPeriodToolbar(periodDays) {
   const currentDays = normalizeAllSitesPeriodDays(periodDays);
   const bar = document.createElement("div");
@@ -314,13 +353,7 @@ function buildAllSitesDisplayWrap(baseRows) {
     }
     const card = e.target.closest(".sadv-allcard");
     if (card && card.dataset.site) {
-      if (typeof setRuntimeSite === "function") {
-        setRuntimeSite(card.dataset.site);
-      } else if (typeof setRuntimeSelectionState === "function") {
-        setRuntimeSelectionState({ curSite: card.dataset.site });
-      } else {
-        curSite = card.dataset.site;
-      }
+      setAllSitesSelectedSite(card.dataset.site);
       switchMode("site");
     }
   });
@@ -547,11 +580,7 @@ async function renderAllSites() {
         : buildSiteSummaryRow(site, null),
   );
   rows.sort((a, b) => b.totalC - a.totalC);
-  if (typeof setRuntimeRows === "function") {
-    setRuntimeRows(rows);
-  } else {
-    window.__sadvRows = rows;
-  }
+  setAllSitesCanonicalRows(rows);
   buildCombo(rows);
   {
     const currentSelectionState = getAllSitesSelectionState();

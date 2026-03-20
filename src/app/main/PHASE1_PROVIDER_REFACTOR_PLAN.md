@@ -170,10 +170,16 @@ UI 자체는 공통 엔트리를 타게 만드는 것이 목표다.
   - export payload가 selection/period state를 facade 우선으로 읽도록 정리
 - `07-data-provider.js`
   - fallback shell state도 canonical rows getter를 우선 사용하도록 정리
+- `09-ui-controls.js`
+  - 반복적인 `setRuntimeX -> setRuntimeSelectionState -> direct global` fallback을
+    로컬 semantic helper(`applyUiControlsMode/Site/Tab`)로 정리
+- `10-all-sites-view.js`
+  - canonical rows write fallback을 `setAllSitesCanonicalRows()` helper로 정리
+  - 카드 클릭 site selection fallback을 `setAllSitesSelectedSite()` helper로 정리
 
 ### 아직 남음
-- `09-ui-controls.js` 내부 direct global fallback 추가 축소
-- `10-all-sites-view.js`의 canonical rows write(`window.__sadvRows = rows`) 축소 준비
+- `09-ui-controls.js` 내부 남은 direct global fallback 추가 축소
+- `10-all-sites-view.js`의 canonical rows read/write를 provider-only에 더 가깝게 좁히는 준비
 - `12-snapshot.js`를 boot/provider 중심으로 좁히는 2단계 준비
 - shared app entry 도입 전, public action seam 추가 정리
 
