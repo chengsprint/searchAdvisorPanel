@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T06:55:44Z";
-var __SADV_GIT_HEAD__="6d852c7";
+var __SADV_BUILD_STAMP__="2026-03-20T07:00:48Z";
+var __SADV_GIT_HEAD__="ccb938e";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -10878,7 +10878,16 @@ function savedAtIso(d) {
     const siteLabelEl = clone.querySelector("#sadv-site-label");
     const comboWrap = clone.querySelector("#sadv-combo-wrap");
     if (comboWrap) comboWrap.classList.remove("open");
-    const snapshotBodyEl = clone.querySelector("#sadv-bd");
+    // 저장 직전 라이브 패널은 renderTab() 경로에서 본문 id를
+    // `sadv-tabpanel`로 바꿔둘 수 있다.
+    // 저장본 bootstrap/injection 계약은 여전히 `#sadv-bd`를 anchor로 보기 때문에,
+    // export 시점에는 둘 중 어느 상태든 받아서 `sadv-bd`로 정규화한다.
+    // 이걸 안 하면 현재 모드/탭 상태에 따라 간헐적으로
+    // "snapshot panel not found"가 발생할 수 있다.
+    const snapshotBodyEl = clone.querySelector("#sadv-bd, #sadv-tabpanel");
+    if (snapshotBodyEl && snapshotBodyEl.id !== "sadv-bd") {
+      snapshotBodyEl.id = "sadv-bd";
+    }
     if (snapshotBodyEl && snapshotBodyEl.parentNode) {
       const reactShellHost = document.createElement("div");
       reactShellHost.id = "sadv-react-shell-host";
@@ -11902,7 +11911,7 @@ function savedAtIso(d) {
   }
 
   function injectSnapshotReactShell(html, payload) {
-    const panelBodyPattern = /<div\b([^>]*\bid=(["'])sadv-bd\2[^>]*)>/i;
+    const panelBodyPattern = /<div\b([^>]*\bid=(["'])(sadv-bd|sadv-tabpanel)\2[^>]*)>/i;
     const reactShellHostPattern = /<div\b([^>]*\bid=(["'])sadv-react-shell-host\2[^>]*)><\/div>/i;
     if (!panelBodyPattern.test(html) && !reactShellHostPattern.test(html)) {
       throw new Error("snapshot panel not found");
