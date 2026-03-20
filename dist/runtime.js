@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T13:50:37Z";
-var __SADV_GIT_HEAD__="5938f0b";
+var __SADV_BUILD_STAMP__="2026-03-20T14:08:08Z";
+var __SADV_GIT_HEAD__="22e143a";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -12001,6 +12001,16 @@ function savedAtIso(d) {
     };
     ${buildRenderers.toString()}
     ${assignColors.toString()}
+    // Shared UI controls helper contract:
+    // 09-ui-controls.js가 semantic selection helpers를 통해 mode/site/tab
+    // interaction을 공통화하고 있으므로, saved HTML 직렬화도 이 helper들을
+    // 의존 함수들보다 먼저 같이 실어야 한다.
+    // live는 번들 전체가 한 스코프에 있지만, saved는 allowlist에 넣은 함수만
+    // 포함되므로 여기서 빠지면 saved-only is-not-defined 회귀가 생긴다.
+    ${getUiControlsSelectionState.toString()}
+    ${applyUiControlsMode.toString()}
+    ${applyUiControlsSite.toString()}
+    ${applyUiControlsTab.toString()}
     ${ensureCurrentSite.toString()}
     ${buildCombo.toString()}
     ${setComboSite.toString()}
