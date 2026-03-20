@@ -103,6 +103,9 @@ if (typeof window !== "undefined") {
       }
       setCachedUiState();
       startCacheExpiryMonitor();
+      if (typeof syncPendingPanelUserError === "function") {
+        syncPendingPanelUserError();
+      }
       __sadvMarkReady();
     };
 

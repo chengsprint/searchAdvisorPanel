@@ -752,6 +752,155 @@ function shouldSuppressDuplicateUserError(userMessage, technicalError = null, co
   return typeof previousAt === "number" && now - previousAt < dedupeWindowMs;
 }
 
+/**
+ * Build a normalized payload for panel-visible user errors.
+ *
+ * 왜 필요한가?
+ * - 기존 showError()는 콘솔/에러 트래킹 위주라 사용자는 "왜 안 되는지"를 패널 안에서 바로 보기 어려웠다.
+ * - 특히 INVALID_ENCID 같이 현재 페이지 상태와 관련된 오류는 콘솔보다 패널 상단에서 바로 안내하는 편이 훨씬 이해하기 쉽다.
+ * - payload shape를 고정해두면 init 이후 재표시(replay)도 안전하게 할 수 있다.
+ */
+function buildPanelUserErrorState(userMessage, technicalError = null, context = null, options = null) {
+  const technicalMessage =
+    technicalError && technicalError.message
+      ? technicalError.message
+      : technicalError != null
+        ? String(technicalError)
+        : null;
+
+  let hint =
+    "잠시 후 다시 시도해 주세요. 문제가 계속되면 현재 페이지를 새로고침한 뒤 패널을 다시 실행해 주세요.";
+
+  if (userMessage === ERROR_MESSAGES.INVALID_ENCID) {
+    hint =
+      "현재 페이지에서 사용자 정보를 읽지 못했습니다. 네이버 서치어드바이저 리포트/분석 페이지에서 새로고침 후 다시 실행해 주세요.";
+  } else if (context === "downloadSnapshot") {
+    hint =
+      "저장 직전 화면 상태를 다시 수집하는 과정에서 문제가 생겼습니다. 잠시 후 다시 저장하거나, 패널을 새로고침한 뒤 다시 시도해 주세요.";
+  }
+
+  return {
+    message: userMessage,
+    technicalMessage: technicalMessage,
+    context: context || "",
+    hint: hint,
+    createdAt: Date.now(),
+    dedupeKey: buildUserErrorKey(userMessage, technicalError, context, options),
+  };
+}
+
+/**
+ * Render the latest user-facing error inside the SearchAdvisor panel.
+ *
+ * 설계 의도:
+ * - 에러를 콘솔에만 남기지 말고 패널 내부에 "사용자용 경고 배너"로 surface 한다.
+ * - header 바로 아래에 고정 배치해, 현재 어떤 탭에 있든 에러를 놓치지 않게 한다.
+ * - 저장본(snapshot)과 live 패널 모두 같은 helper를 재사용할 수 있게 DOM 탐색을 느슨하게 유지한다.
+ */
+function renderPanelUserError(errorState) {
+  if (!errorState || typeof document === "undefined") return;
+
+  const panel = document.getElementById("sadv-p");
+  if (!panel) return;
+
+  const bannerId = "sadv-user-error-banner";
+  let banner = document.getElementById(bannerId);
+  if (!banner) {
+    banner = document.createElement("div");
+    banner.id = bannerId;
+    banner.style.cssText =
+      "margin:12px 24px 0;padding:14px 16px;background:linear-gradient(180deg, rgba(255,90,54,0.16), rgba(255,90,54,0.08));border:1px solid rgba(255,90,54,0.34);box-shadow:0 8px 24px rgba(0,0,0,0.28);color:var(--sadv-text,#fffdf5);position:relative;z-index:130;";
+
+    const title = document.createElement("div");
+    title.className = "sadv-user-error-title";
+    title.style.cssText = "font-size:13px;font-weight:800;color:#ffb4a2;margin-bottom:6px;letter-spacing:.02em";
+    title.textContent = "패널 작업 중 문제가 발생했어요";
+
+    const messageEl = document.createElement("div");
+    messageEl.className = "sadv-user-error-message";
+    messageEl.style.cssText = "font-size:14px;font-weight:700;line-height:1.45;color:var(--sadv-text,#fffdf5);margin-bottom:8px";
+
+    const hintEl = document.createElement("div");
+    hintEl.className = "sadv-user-error-hint";
+    hintEl.style.cssText = "font-size:12px;line-height:1.5;color:rgba(255,253,245,0.8);margin-bottom:8px";
+
+    const metaRow = document.createElement("div");
+    metaRow.className = "sadv-user-error-meta";
+    metaRow.style.cssText = "display:flex;flex-wrap:wrap;gap:8px;align-items:center";
+
+    const contextChip = document.createElement("span");
+    contextChip.className = "sadv-user-error-context";
+    contextChip.style.cssText = "padding:4px 8px;background:rgba(255,212,0,0.12);border:1px solid rgba(255,212,0,0.22);color:#ffd400;font-size:11px;font-weight:700";
+
+    const technicalEl = document.createElement("span");
+    technicalEl.className = "sadv-user-error-technical";
+    technicalEl.style.cssText = "font-size:11px;color:rgba(255,253,245,0.62)";
+
+    const closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.setAttribute("aria-label", "오류 안내 닫기");
+    closeBtn.style.cssText =
+      "position:absolute;top:10px;right:10px;border:none;background:transparent;color:rgba(255,253,245,0.68);font-size:18px;line-height:1;cursor:pointer;padding:2px 4px";
+    closeBtn.textContent = "×";
+    closeBtn.onclick = function () {
+      banner.remove();
+    };
+
+    metaRow.appendChild(contextChip);
+    metaRow.appendChild(technicalEl);
+    banner.appendChild(title);
+    banner.appendChild(messageEl);
+    banner.appendChild(hintEl);
+    banner.appendChild(metaRow);
+    banner.appendChild(closeBtn);
+
+    const header = document.getElementById("sadv-header");
+    if (header && header.parentNode === panel) {
+      if (header.nextSibling) {
+        panel.insertBefore(banner, header.nextSibling);
+      } else {
+        panel.appendChild(banner);
+      }
+    } else {
+      panel.insertBefore(banner, panel.firstChild || null);
+    }
+  }
+
+  const messageNode = banner.querySelector(".sadv-user-error-message");
+  const hintNode = banner.querySelector(".sadv-user-error-hint");
+  const contextNode = banner.querySelector(".sadv-user-error-context");
+  const technicalNode = banner.querySelector(".sadv-user-error-technical");
+
+  if (messageNode) messageNode.textContent = errorState.message || "알 수 없는 오류가 발생했습니다.";
+  if (hintNode) hintNode.textContent = errorState.hint || "";
+  if (contextNode) {
+    contextNode.textContent = errorState.context ? "위치: " + errorState.context : "위치: unknown";
+  }
+  if (technicalNode) {
+    technicalNode.textContent = errorState.technicalMessage ? "세부: " + errorState.technicalMessage : "";
+  }
+
+  if (typeof window !== "undefined") {
+    window.__SEARCHADVISOR_LAST_USER_ERROR__ = errorState;
+  }
+}
+
+/**
+ * Replay the most recent user-facing error after the panel shell becomes available.
+ *
+ * 필요한 이유:
+ * - 일부 에러는 패널 DOM이 완전히 붙기 직전에 발생할 수 있다.
+ * - 이 경우 즉시 renderPanelUserError()를 불러도 panel root가 없어 noop가 되므로,
+ *   init 이후 한 번 더 재적용할 수 있는 진입점을 남긴다.
+ */
+function syncPendingPanelUserError() {
+  if (typeof window === "undefined") return;
+  const pending = window.__SEARCHADVISOR_LAST_USER_ERROR__;
+  if (pending) {
+    renderPanelUserError(pending);
+  }
+}
+
 // Helper function to display user-friendly errors
 function showError(userMessage, technicalError = null, context = null, options = null) {
   if (shouldSuppressDuplicateUserError(userMessage, technicalError, context, options)) {
@@ -772,6 +921,10 @@ function showError(userMessage, technicalError = null, context = null, options =
       context: context
     });
   }
+
+  // 콘솔/트래킹만으로 끝내지 않고, 현재 보이는 패널에도
+  // 사용자용 배너를 띄워 "왜 안 되는지"를 즉시 이해할 수 있게 한다.
+  renderPanelUserError(buildPanelUserErrorState(userMessage, technicalError, context, options));
 
   return userMessage;
 }
