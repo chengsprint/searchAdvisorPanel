@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T09:35:21Z";
-var __SADV_GIT_HEAD__="1030f98";
+var __SADV_BUILD_STAMP__="2026-03-20T09:38:35Z";
+var __SADV_GIT_HEAD__="f632033";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -2273,13 +2273,15 @@ function kpiGrid(items) {
     typeof document !== "undefined" && document.getElementById("sadv-p")
       ? document.getElementById("sadv-p").getBoundingClientRect().width
       : 0;
+  const effectiveWidth =
+    panelWidth > 0
+      ? panelWidth
+      : (typeof window !== "undefined" ? window.innerWidth : 0);
   // window 폭만 보면 desktop narrow 상태를 놓칠 수 있다.
   // KPI grid는 "실제 패널이 얼마나 좁은가"를 기준으로 열 수를 줄여야
   // 카드 숫자가 박스를 뚫고 나오는 회귀를 막을 수 있다.
-  const isCompactViewport =
-    (typeof window !== "undefined" && window.innerWidth <= 768) ||
-    (panelWidth > 0 && panelWidth <= 560);
-  const isUltraNarrow = panelWidth > 0 && panelWidth <= 430;
+  const isCompactViewport = effectiveWidth > 0 && effectiveWidth <= 560;
+  const isUltraNarrow = effectiveWidth > 0 && effectiveWidth <= 430;
   const columns = isCompactViewport ? Math.min(items.length, 2) : Math.min(items.length, 4);
   g.style.cssText = `display:grid;grid-template-columns:repeat(${columns},minmax(0,1fr));gap:${isCompactViewport ? "8px" : "12px"};margin-bottom:${T.spaceCard}`;
   const valueFontSize = isUltraNarrow ? "14px" : isCompactViewport ? "15px" : "18px";

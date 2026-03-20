@@ -554,13 +554,15 @@ function kpiGrid(items) {
     typeof document !== "undefined" && document.getElementById("sadv-p")
       ? document.getElementById("sadv-p").getBoundingClientRect().width
       : 0;
+  const effectiveWidth =
+    panelWidth > 0
+      ? panelWidth
+      : (typeof window !== "undefined" ? window.innerWidth : 0);
   // window 폭만 보면 desktop narrow 상태를 놓칠 수 있다.
   // KPI grid는 "실제 패널이 얼마나 좁은가"를 기준으로 열 수를 줄여야
   // 카드 숫자가 박스를 뚫고 나오는 회귀를 막을 수 있다.
-  const isCompactViewport =
-    (typeof window !== "undefined" && window.innerWidth <= 768) ||
-    (panelWidth > 0 && panelWidth <= 560);
-  const isUltraNarrow = panelWidth > 0 && panelWidth <= 430;
+  const isCompactViewport = effectiveWidth > 0 && effectiveWidth <= 560;
+  const isUltraNarrow = effectiveWidth > 0 && effectiveWidth <= 430;
   const columns = isCompactViewport ? Math.min(items.length, 2) : Math.min(items.length, 4);
   g.style.cssText = `display:grid;grid-template-columns:repeat(${columns},minmax(0,1fr));gap:${isCompactViewport ? "8px" : "12px"};margin-bottom:${T.spaceCard}`;
   const valueFontSize = isUltraNarrow ? "14px" : isCompactViewport ? "15px" : "18px";
