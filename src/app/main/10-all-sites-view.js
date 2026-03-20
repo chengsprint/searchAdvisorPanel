@@ -167,6 +167,13 @@ async function renderAllSites() {
   );
   rows.sort((a, b) => b.totalC - a.totalC);
   window.__sadvRows = rows;
+  if (typeof assignColors === "function") {
+    // 카드가 실제로 보이는 정렬 순서(rows)를 기준으로 색을 다시 매겨
+    // 같은 색/비슷한 색이 인접 카드에 연속 등장하는 체감을 줄인다.
+    assignColors(rows.map(function (row) {
+      return row.site;
+    }));
+  }
   buildCombo(rows);
   const wrap = document.createElement("div");
   const mergedMeta =

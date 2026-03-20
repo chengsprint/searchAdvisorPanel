@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T09:26:24Z";
-var __SADV_GIT_HEAD__="ad47019";
+var __SADV_BUILD_STAMP__="2026-03-20T09:29:14Z";
+var __SADV_GIT_HEAD__="06bb894";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -922,7 +922,10 @@ const T = {
   spaceCardLg: "18px",
   spaceCardXl: "20px",
 };
-const COLORS = [C.green, C.blue, C.amber, C.orange, C.pink, C.purple];
+// 사이트 카드용 순환 팔레트.
+// 단순 warm 톤 유지보다 "인접 카드끼리 체감상 충분히 달라 보이는가"가 더 중요하다.
+// 그래서 비슷한 노랑/오렌지 계열을 앞에 몰지 않고, 대비가 큰 순서로 재배열한다.
+const COLORS = [C.green, C.pink, C.blue, C.purple, C.orange, C.red];
 
 // ============================================================
 // V2 PAYLOAD SCHEMA CONSTANTS
@@ -9212,15 +9215,47 @@ function getAvailableRenderers() {
  * assignColors();
  * console.log(SITE_COLORS_MAP['https://example.com']); // "#10b981"
  */
-  function assignColors() {
+  function assignColors(preferredOrder) {
     // stage 2-2 seam:
     // 컬러 매핑은 UI 표현 책임이지만, "어떤 사이트 집합을 기준으로 칠할지"는
     // provider facade를 통해 읽는 편이 안전하다.
     // 그래야 snapshot/live가 서로 다른 입력원을 써도 색상 할당 기준이 한 곳으로 모인다.
+    //
+    // 추가 규칙:
+    // - 전체현황 카드처럼 화면상 순서가 중요한 뷰는 preferredOrder(rows order)를 넘겨
+    //   인접 카드가 같은/유사 색으로 뭉치지 않게 한다.
+    // - 즉 "사이트 원본 등록 순서"보다 "현재 사용자에게 보이는 순서"를 우선한다.
     const runtimeSites =
       typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
-    runtimeSites.forEach((s, i) => {
-      if (!SITE_COLORS_MAP[s]) SITE_COLORS_MAP[s] = COLORS[i % COLORS.length];
+    const orderedSites =
+      Array.isArray(preferredOrder) && preferredOrder.length
+        ? preferredOrder.filter(function (site) {
+            return runtimeSites.includes(site);
+          })
+        : runtimeSites.slice();
+    const restSites = runtimeSites.filter(function (site) {
+      return !orderedSites.includes(site);
+    });
+    const colorOrder = orderedSites.concat(restSites);
+
+    // 지그재그 롤링 팔레트:
+    // [0,1,2,3,4,5] -> [0,3,1,4,2,5]
+    // 처럼 비슷한 톤이 몰리지 않게 한 번 섞는다.
+    const splitIndex = Math.ceil(COLORS.length / 2);
+    const rolledPalette = [];
+    for (let i = 0; i < splitIndex; i += 1) {
+      if (COLORS[i]) rolledPalette.push(COLORS[i]);
+      if (COLORS[i + splitIndex]) rolledPalette.push(COLORS[i + splitIndex]);
+    }
+
+    let previousColor = null;
+    colorOrder.forEach((s, i) => {
+      let nextColor = rolledPalette[i % rolledPalette.length];
+      if (nextColor === previousColor && rolledPalette.length > 1) {
+        nextColor = rolledPalette[(i + 1) % rolledPalette.length];
+      }
+      SITE_COLORS_MAP[s] = nextColor;
+      previousColor = nextColor;
     });
   }
   /**
@@ -10090,6 +10125,13 @@ async function renderAllSites() {
   );
   rows.sort((a, b) => b.totalC - a.totalC);
   window.__sadvRows = rows;
+  if (typeof assignColors === "function") {
+    // 카드가 실제로 보이는 정렬 순서(rows)를 기준으로 색을 다시 매겨
+    // 같은 색/비슷한 색이 인접 카드에 연속 등장하는 체감을 줄인다.
+    assignColors(rows.map(function (row) {
+      return row.site;
+    }));
+  }
   buildCombo(rows);
   const wrap = document.createElement("div");
   const mergedMeta =
