@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T11:03:49Z";
-var __SADV_GIT_HEAD__="8db44bf";
+var __SADV_BUILD_STAMP__="2026-03-20T11:08:40Z";
+var __SADV_GIT_HEAD__="62db823";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -11625,7 +11625,6 @@ function savedAtIso(d) {
     ${getRuntimeSiteMeta.toString()}
     ${getRuntimeMergedMeta.toString()}
     ${getRuntimeCacheMeta.toString()}
-    const ALL_SITES_PERIOD_OPTIONS = ${JSON.stringify(ALL_SITES_PERIOD_OPTIONS)};
     ${normalizeAllSitesPeriodDays.toString()}
     ${getAllSitesPeriodLabel.toString()}
     ${sliceLogsForPeriod.toString()}
@@ -11699,6 +11698,7 @@ function savedAtIso(d) {
         };
       });
     }
+    const ALL_SITES_PERIOD_OPTIONS = ${JSON.stringify(ALL_SITES_PERIOD_OPTIONS)};
     let allSites = EXPORT_PAYLOAD.allSites || [];
     const INITIAL_MODE = "all";
     let curMode = null;  // Initialize to null so switchMode() triggers on first call

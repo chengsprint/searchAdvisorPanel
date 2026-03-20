@@ -821,7 +821,6 @@
     ${getRuntimeSiteMeta.toString()}
     ${getRuntimeMergedMeta.toString()}
     ${getRuntimeCacheMeta.toString()}
-    const ALL_SITES_PERIOD_OPTIONS = ${JSON.stringify(ALL_SITES_PERIOD_OPTIONS)};
     ${normalizeAllSitesPeriodDays.toString()}
     ${getAllSitesPeriodLabel.toString()}
     ${sliceLogsForPeriod.toString()}
@@ -895,6 +894,7 @@
         };
       });
     }
+    const ALL_SITES_PERIOD_OPTIONS = ${JSON.stringify(ALL_SITES_PERIOD_OPTIONS)};
     let allSites = EXPORT_PAYLOAD.allSites || [];
     const INITIAL_MODE = "all";
     let curMode = null;  // Initialize to null so switchMode() triggers on first call
