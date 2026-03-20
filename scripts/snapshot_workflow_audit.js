@@ -335,6 +335,122 @@ async function main() {
     })),
   }));
 
+  // Stage 7.5. Representative sub-tab data presence check.
+  // Tab wiring can still look healthy while the rendered body silently falls
+  // back to "데이터 없음". Check two representative tabs so the audit catches
+  // both chart-heavy and summary-heavy regressions without overfitting to one
+  // renderer.
+  result.subTabData = await page.evaluate(() => {
+    function readPanelHealth() {
+      const panel = document.getElementById("sadv-tabpanel") || document.getElementById("sadv-bd");
+      const text = (panel?.textContent || "").trim();
+      return {
+        noDataOnly: /데이터 없음/.test(text) && text.length < 80,
+        svgCount: panel ? panel.querySelectorAll("svg").length : 0,
+        pathCount: panel ? panel.querySelectorAll("path").length : 0,
+        childCount: panel ? panel.children.length : 0,
+        textLength: text.length,
+      };
+    }
+
+    const result = {
+      currentTab: null,
+      currentState: readPanelHealth(),
+      overviewState: null,
+    };
+    const current = document.querySelector(".sadv-t.on");
+    result.currentTab = current?.getAttribute("data-t") || null;
+
+    const overviewBtn = document.querySelector('.sadv-t[data-t="overview"]');
+    if (overviewBtn && !overviewBtn.classList.contains("on")) {
+      overviewBtn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    }
+    result.overviewState = readPanelHealth();
+    return result;
+  });
+
+  // Stage 7.6. Mobile snapshot health check.
+  // Recent regressions were not browser errors but layout drift: off-center
+  // shell, KPI clipping, and compact cards overflowing on narrow screens.
+  const mobilePage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  const mobileErrors = [];
+  mobilePage.on("pageerror", (error) => mobileErrors.push(String(error)));
+  await mobilePage.goto(filePath, { waitUntil: "load" });
+  await mobilePage.waitForTimeout(1200);
+  result.mobile = await mobilePage.evaluate(() => {
+    function rectCenter(selector) {
+      const el = document.querySelector(selector);
+      if (!el) return null;
+      const rect = el.getBoundingClientRect();
+      return {
+        left: Math.round(rect.left),
+        width: Math.round(rect.width),
+        center: Math.round(rect.left + rect.width / 2),
+      };
+    }
+
+    const shell = rectCenter(".snapshot-shell");
+    const meta = rectCenter(".snapshot-meta");
+    const panel = rectCenter("#sadv-p");
+    const header = rectCenter("#sadv-header");
+    const kpiCards = Array.from(document.querySelectorAll(".sadv-allcard > div[style*='grid-template-columns'], .snapshot-shell [style*='grid-template-columns:repeat(2,1fr)'] > div"))
+      .slice(0, 8)
+      .map((card) => {
+        const value = card.querySelector("div:nth-child(2)") || card.querySelector("div");
+        return {
+          width: card.clientWidth,
+          valueScrollWidth: value ? value.scrollWidth : 0,
+          valueClientWidth: value ? value.clientWidth : 0,
+          overflow: !!(value && value.scrollWidth > value.clientWidth),
+        };
+      });
+
+    const pageHasOverflow = document.documentElement.scrollWidth > document.documentElement.clientWidth;
+
+    const siteModeBtn = document.querySelector('.sadv-mode[data-m="site"]');
+    if (siteModeBtn) {
+      siteModeBtn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    }
+    const firstCard = document.querySelector(".sadv-allcard[data-site]");
+    if (firstCard) {
+      firstCard.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    }
+    const patternTab = document.querySelector('.sadv-t[data-t="pattern"]');
+    if (patternTab) {
+      patternTab.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    }
+
+    const compactOverflow = Array.from(document.querySelectorAll("#sadv-tabpanel *"))
+      .filter((el) => el && el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 2)
+      .slice(0, 10)
+      .map((el) => ({
+        tag: el.tagName,
+        className: el.className || null,
+        text: (el.textContent || "").trim().slice(0, 60),
+        scrollWidth: el.scrollWidth,
+        clientWidth: el.clientWidth,
+      }));
+
+    return {
+      shell,
+      meta,
+      panel,
+      header,
+      centersAligned:
+        !!shell &&
+        !!meta &&
+        !!panel &&
+        !!header &&
+        shell.center === meta.center &&
+        shell.center === panel.center &&
+        shell.center === header.center,
+      pageHasOverflow,
+      kpiCards,
+      compactOverflow,
+    };
+  });
+  await mobilePage.close();
+
   // Stage 8. Keep a screenshot artifact for fast triage after a failure.
   await page.screenshot({
     path: path.resolve(process.cwd(), "tmp_snapshot_workflow_audit.png"),
@@ -464,6 +580,45 @@ async function main() {
     Array.isArray(result.subTabs.visibleTabs) &&
       result.subTabs.visibleTabs.some((tab) => tab.on),
     'saved HTML should keep one active sub-tab after tab navigation',
+  );
+  assertAudit(
+    !!result.subTabData &&
+      !!result.subTabData.currentState &&
+      !result.subTabData.currentState.noDataOnly &&
+      (result.subTabData.currentState.svgCount > 0 ||
+        result.subTabData.currentState.pathCount > 0 ||
+        result.subTabData.currentState.childCount > 1),
+    'representative current sub-tab should render real data instead of only a no-data fallback',
+  );
+  assertAudit(
+    !!result.subTabData &&
+      !!result.subTabData.overviewState &&
+      !result.subTabData.overviewState.noDataOnly &&
+      (result.subTabData.overviewState.svgCount > 0 ||
+        result.subTabData.overviewState.pathCount > 0 ||
+        result.subTabData.overviewState.childCount > 1 ||
+        result.subTabData.overviewState.textLength > 120),
+    'overview sub-tab should render real content after switching back from another tab',
+  );
+  assertAudit(
+    !!result.mobile && result.mobile.centersAligned,
+    'mobile snapshot shell/meta/header centers should stay aligned',
+  );
+  assertAudit(
+    !!result.mobile && !result.mobile.pageHasOverflow,
+    'mobile snapshot should not cause horizontal page overflow',
+  );
+  assertAudit(
+    !!result.mobile &&
+      Array.isArray(result.mobile.kpiCards) &&
+      result.mobile.kpiCards.every((card) => !card.overflow),
+    'mobile KPI cards should not clip their numeric values',
+  );
+  assertAudit(
+    !!result.mobile &&
+      Array.isArray(result.mobile.compactOverflow) &&
+      result.mobile.compactOverflow.length === 0,
+    'mobile site-detail compact cards should not overflow horizontally',
   );
   assertAudit(result.pageErrors.length === 0, 'saved HTML should not raise pageerror during audit');
 
