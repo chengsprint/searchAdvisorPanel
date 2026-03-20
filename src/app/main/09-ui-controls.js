@@ -12,6 +12,14 @@
  * @private
  */
 
+/**
+ * UI supply chain note
+ *
+ * 이 파일은 live/snapshot이 최대한 함께 써야 하는 공통 UI 제어 경로다.
+ * 이 파일의 책임은 mode / tab / combo / header meta 같은 UI 반응 규칙이지,
+ * fetch/refresh/payload 직렬화 같은 data provider 책임이 아니다.
+ */
+
   /**
  * Assign colors to all sites from the color palette
  * Each site gets a consistent color based on its index
@@ -157,6 +165,9 @@
  * @see {setComboSite}
  */
   function buildCombo(rows) {
+    // Combo item 마크업/검색/선택 규칙은 live/snapshot 공통 행동으로 유지한다.
+    // 저장본에서 portal/top-layer 예외가 남더라도 기본 interaction 자체는
+    // 이 공통 경로를 우선 기준으로 삼는다.
     const drop = document.getElementById("sadv-combo-drop");
     if (!drop) {
       console.error('[buildCombo] sadv-combo-drop not found!');

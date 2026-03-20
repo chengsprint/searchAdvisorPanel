@@ -11,6 +11,9 @@
  * @see {buildSiteSummaryRow}
  */
 async function renderAllSites() {
+  // 전체현황 UI 정본(parity source).
+  // 저장본 전체현황이 이 구조와 멀어지기 시작하면 drift가 생기므로,
+  // 카드 구조/미니 KPI/그래프/반응형 규칙 변경 시 snapshot 쪽도 함께 점검한다.
   const requestId = ++allViewReqId;
   setAllSitesLabel();
   const loading = document.createElement("div");

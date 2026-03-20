@@ -1,4 +1,25 @@
   /**
+ * ============================================================================
+ * Snapshot Export / Offline Bootstrap
+ * ============================================================================
+ *
+ * 이 파일은 같은 UI를 offline payload 기반으로 다시 여는 entry point다.
+ * 즉, 저장본 전용 "다른 UI"를 만드는 곳이 아니라:
+ *
+ * - payload 직렬화
+ * - offline state hydrate
+ * - read-only bootstrap
+ * - compat API
+ * - top-layer combo 보정
+ *
+ * 같은 snapshot 특수사항만 담당해야 한다.
+ *
+ * 관련 문서:
+ * - src/app/main/SNAPSHOT_EXPORT_CONTRACT.md
+ * - src/app/main/UI_DATA_PIPELINE_BOUNDARY.md
+ * - src/app/main/SNAPSHOT_IMPLEMENTATION_GUIDE.md
+ */
+  /**
  * Download the current view as a standalone HTML snapshot file
  * Collects all data, generates HTML with embedded payload, and triggers download
  * @returns {Promise<void>}
@@ -182,6 +203,10 @@
   }
 
   function buildSnapshotShellState(payload) {
+    // Snapshot shell state는 offline payload를
+    // live와 유사한 UI 상태 shape로 평탄화하는 계약이다.
+    // 여기서 정의되는 필드는 saved HTML 재오픈과 shell/API parity의 기준이므로
+    // 임의 삭제/이름 변경을 매우 신중하게 다뤄야 한다.
     // Handle V2 format
     let allSites, dataBySite, summaryRows, siteMeta, accountLabel, savedAt, curMode, curSite, curTab;
 
@@ -277,6 +302,9 @@
  * @returns {void}
  */
   function renderSnapshotAllSites() {
+    // 저장본 전체현황용 thin wrapper.
+    // 장기적으로는 live 전체현황 UI 정본(10-all-sites-view.js)과 parity를
+    // 더 높여 snapshot 전용 표현 로직을 줄이는 방향으로 유지한다.
     if (!bdEl) return;
 
     const payloadRows =
@@ -832,6 +860,11 @@
     // Known past regressions:
     //   - missing isFiniteValue binding -> ReferenceError in sparkline()
     //   - missing S style map          -> ReferenceError in overview renderer
+    //
+    // 추가 원칙:
+    // - 이 bootstrap block은 UI를 새로 만드는 곳이 아니다.
+    // - payload/state 주입, read-only API, offline alias 복구처럼
+    //   snapshot 특수사항만 다뤄야 한다.
     // ---------------------------------------------------------------------
     const CONFIG = ${JSON.stringify(CONFIG)};
     const ICONS = ${JSON.stringify(ICONS)};
