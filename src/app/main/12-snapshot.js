@@ -141,6 +141,10 @@
           sourcePayload.ui && typeof sourcePayload.ui.curSite === "string"
             ? sourcePayload.ui.curSite
             : null,
+        allSitesPeriodDays:
+          sourcePayload.ui && typeof sourcePayload.ui.allSitesPeriodDays !== "undefined"
+            ? sourcePayload.ui.allSitesPeriodDays
+            : 90,
         curTab: SNAPSHOT_OFFLINE_DEFAULT_TAB,
       };
     }
@@ -177,6 +181,10 @@
       curMode:
         legacyPayload.curMode === "site" ? "site" : SNAPSHOT_OFFLINE_DEFAULT_MODE,
       curSite: typeof legacyPayload.curSite === "string" ? legacyPayload.curSite : null,
+      allSitesPeriodDays:
+        typeof legacyPayload.allSitesPeriodDays !== "undefined"
+          ? legacyPayload.allSitesPeriodDays
+          : 90,
       curTab:
         SNAPSHOT_TAB_IDS.indexOf(legacyPayload.curTab) !== -1
           ? legacyPayload.curTab
@@ -203,6 +211,7 @@
       dataBySite: sourceState.dataBySite,
       siteMeta: sourceState.siteMeta,
       mergedMeta: sourceState.mergedMeta,
+      allSitesPeriodDays: normalizeAllSitesPeriodDays(sourceState.allSitesPeriodDays),
       curMode: SNAPSHOT_OFFLINE_DEFAULT_MODE,
       curSite: sourceState.curSite,
       curTab: SNAPSHOT_OFFLINE_DEFAULT_TAB,
@@ -215,7 +224,7 @@
     // 여기서 정의되는 필드는 saved HTML 재오픈과 shell/API parity의 기준이므로
     // 임의 삭제/이름 변경을 매우 신중하게 다뤄야 한다.
     // Handle V2 format
-    let allSites, dataBySite, summaryRows, siteMeta, accountLabel, savedAt, curMode, curSite, curTab;
+    let allSites, dataBySite, summaryRows, siteMeta, accountLabel, savedAt, curMode, curSite, curTab, allSitesPeriodDays;
 
     if (payload.__meta && payload.accounts) {
       // V2 format
@@ -231,6 +240,7 @@
       curMode = "all";
       curSite = payload.ui?.curSite || null;
       curTab = "overview";
+      allSitesPeriodDays = payload.ui?.allSitesPeriodDays;
     } else {
       // V2 포맷이 아닌 경우 빈 값 반환
       accountLabel = "";
@@ -242,6 +252,7 @@
       curMode = "all";
       curSite = null;
       curTab = "overview";
+      allSitesPeriodDays = payload.allSitesPeriodDays;
     }
 
     const snapshotTabIds = [
@@ -287,6 +298,7 @@
       curTab: snapshotTabIds.indexOf(curTab) !== -1
         ? curTab
         : "overview",
+      allSitesPeriodDays: normalizeAllSitesPeriodDays(allSitesPeriodDays),
       runtimeVersion:
         window.__SEARCHADVISOR_RUNTIME_VERSION__ ||
         payload.generatorVersion ||
@@ -338,7 +350,6 @@
     });
 
     window.__sadvRows = rows;
-    if (typeof assignColors === "function") assignColors();
     if (typeof buildCombo === "function") buildCombo(rows);
 
     if (!rows.length) {
@@ -347,164 +358,10 @@
       return;
     }
 
-    const totalClicks = rows.reduce(function (sum, row) {
-      return sum + (Number(row.totalC) || 0);
-    }, 0);
-    const totalExposes = rows.reduce(function (sum, row) {
-      return sum + (Number(row.totalE) || 0);
-    }, 0);
-    const avgCtr = totalExposes ? (totalClicks / totalExposes) * 100 : 0;
-    const activeSites = rows.filter(function (row) {
-      return (Number(row.totalC) || 0) > 0;
-    }).length;
-
-    const wrap = document.createElement("div");
-    wrap.appendChild(
-      kpiGrid([
-        { label: "전체 클릭", value: fmt(totalClicks), sub: "저장 시점 기준", color: C.green },
-        { label: "전체 노출", value: fmt(totalExposes), sub: "저장 시점 기준", color: C.blue },
-        { label: "평균CTR", value: avgCtr.toFixed(2) + "%", sub: "전체 사이트 평균", color: C.amber },
-        { label: "활성사이트", value: fmt(activeSites) + "개", sub: "클릭 발생 사이트", color: C.orange || C.red || C.green },
-      ]),
-    );
-
-    const topRows = rows.slice(0, 30);
-    wrap.appendChild(secTitle("클릭 랭킹 TOP " + topRows.length));
-    wrap.appendChild(
-      chartCard(
-        "TOP " + topRows.length + " 클릭",
-        "",
-        C.green,
-        barchart(
-          topRows.map(function (row) {
-            return Number(row.totalC) || 0;
-          }),
-          topRows.map(function (row) {
-            return getSiteLabel(row.site);
-          }),
-          72,
-          C.green,
-          "회",
-        ),
-        topRows.map(function (_, index) {
-          return "#" + (index + 1);
-        }),
-      ),
-    );
-
-    wrap.appendChild(secTitle("사이트별 상세"));
-    rows.forEach(function (row, index) {
-      const siteColor =
-        (typeof SITE_COLORS_MAP !== "undefined" && SITE_COLORS_MAP && SITE_COLORS_MAP[row.site]) ||
-        COLORS[index % COLORS.length] ||
-        C.green;
-      // Keep saved HTML visually in lockstep with the live all-sites detail card.
-      // Compact viewports use the same 2-column rule so 6~7 digit metrics do not
-      // clip in the nested KPI tiles when reopened on mobile.
-      const isCompactViewport = typeof window !== "undefined" && window.innerWidth <= 768;
-      const detailGridTemplate = isCompactViewport
-        ? "grid-template-columns:repeat(2,minmax(0,1fr));gap:6px"
-        : "grid-template-columns:repeat(3,minmax(0,1fr));gap:8px";
-      const detailCardPadding = isCompactViewport ? "padding:7px 6px" : "padding:8px";
-      const detailValueSize = isCompactViewport ? "font-size:13px" : "font-size:14px";
-      const detailLabelSize = isCompactViewport ? "font-size:9px" : "font-size:10px";
-      const detailSpanStyle = isCompactViewport ? "grid-column:1 / -1;" : "";
-      const card = document.createElement("button");
-      card.type = "button";
-      card.className = "sadv-allcard";
-      card.dataset.site = row.site || "";
-      card.setAttribute("aria-label", getSiteLabel(row.site) + " 사이트 상세 보기");
-      card.style.cssText =
-        "display:block;width:100%;text-align:left;padding:14px 16px;margin:0 0 12px;border:1px solid rgba(255,255,255,0.08);border-top:2px solid " +
-        siteColor +
-        ";background:#171717;color:#f4f4f4;cursor:pointer";
-      card.innerHTML =
-        '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px">' +
-        '<div style="min-width:0">' +
-        '<div style="font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' +
-        escHtml(getSiteLabel(row.site)) +
-        "</div>" +
-        '<div style="font-size:11px;color:#b8b8b8;margin-top:4px">' +
-        escHtml(row.site || "") +
-        "</div>" +
-        "</div>" +
-        '<div style="font-size:11px;font-weight:700;color:' +
-        siteColor +
-        '">상세 보기</div>' +
-        "</div>" +
-        '<div style="display:grid;' + detailGridTemplate + '">' +
-        '<div style="' + detailCardPadding + ';border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);text-align:center;min-width:0"><div style="' + detailLabelSize + ';color:#a8a8a8;margin-bottom:4px">클릭</div><div style="' + detailValueSize + ';font-weight:800;line-height:1.12;letter-spacing:-0.03em;color:' + siteColor + ';white-space:nowrap">' + escHtml(fmt(row.totalC || 0)) + "</div></div>" +
-        '<div style="' + detailCardPadding + ';border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);text-align:center;min-width:0"><div style="' + detailLabelSize + ';color:#a8a8a8;margin-bottom:4px">노출</div><div style="' + detailValueSize + ';font-weight:800;line-height:1.12;letter-spacing:-0.03em;color:' + (C.blue || siteColor) + ';white-space:nowrap">' + escHtml(((Number(row.totalE) || 0) / 10000).toFixed(1)) + '만</div></div>' +
-        '<div style="' + detailSpanStyle + detailCardPadding + ';border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);text-align:center;min-width:0"><div style="' + detailLabelSize + ';color:#a8a8a8;margin-bottom:4px">CTR</div><div style="' + detailValueSize + ';font-weight:800;line-height:1.12;letter-spacing:-0.03em;color:' + (C.amber || siteColor) + ';white-space:nowrap">' + escHtml((Number(row.avgCtr) || 0).toFixed(2) + "%") + "</div></div>" +
-        "</div>";
-      // Keep reopened saved HTML visually aligned with the live all-sites card
-      // contract. The payload already contains click/index trend series, so
-      // snapshot should render the same two mini graph surfaces instead of
-      // collapsing to KPI boxes only.
-      if (row.clicks && row.clicks.length > 1) {
-        // 저장본도 live 정본과 같은 card hierarchy를 유지해야 한다.
-        // 클릭 sparkline을 block 없이 바로 붙이면 색인 추이에 비해 의미가 묻히므로,
-        // saved HTML 쪽도 동일하게 라벨/값/높이를 갖는 block으로 맞춘다.
-        const clickBlock = document.createElement("div");
-        clickBlock.style.cssText =
-          "margin-top:10px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08)";
-        clickBlock.innerHTML = sanitizeHTML(
-          '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px"><span style="font-size:11px;font-weight:700;color:var(--sadv-text-secondary,#ffe9a8)">클릭 추이</span><span style="font-size:13px;font-weight:800;color:' +
-            siteColor +
-            '">' +
-            escHtml(fmt(row.totalC || 0)) +
-            "회</span></div>"
-        );
-        const miniDates = (row.logs || []).map(function (log) {
-          return fmtB(log.date);
-        });
-        const mini = sparkline(row.clicks, miniDates, 52, siteColor, "회", {
-          minValue: 0,
-        });
-        mini.style.cssText += "opacity:.95";
-        clickBlock.appendChild(mini);
-        card.appendChild(clickBlock);
-      }
-      const indexBlock = document.createElement("div");
-      indexBlock.style.cssText =
-        "margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08)";
-      if (row.diagnosisIndexedValues && row.diagnosisIndexedValues.length > 1) {
-        indexBlock.innerHTML = sanitizeHTML(
-          '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px"><span style="font-size:11px;font-weight:700;color:var(--sadv-text-secondary,#ffe9a8)">색인 추이</span><span style="font-size:13px;font-weight:800;color:' +
-            siteColor +
-            '">' +
-            escHtml(fmt(row.diagnosisIndexedCurrent || 0)) +
-            "건</span></div>"
-        );
-        const indexMini = sparkline(
-          row.diagnosisIndexedValues,
-          row.diagnosisIndexedDates || [],
-          44,
-          siteColor,
-          "건",
-          { minValue: 0 }
-        );
-        indexMini.style.cssText += "opacity:.9";
-        indexBlock.appendChild(indexMini);
-      } else {
-        const metaCode = row.diagnosisMetaCode == null ? "-" : String(row.diagnosisMetaCode);
-        const httpText = row.diagnosisMetaStatus == null ? "-" : String(row.diagnosisMetaStatus);
-        indexBlock.innerHTML = sanitizeHTML(
-          '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px"><span style="font-size:11px;font-weight:700;color:var(--sadv-text-secondary,#ffe9a8)">색인 추이</span><span style="font-size:12px;color:var(--sadv-text-tertiary,#b9a55a)">응답 확인</span></div><div style="font-size:11px;line-height:1.5;color:var(--sadv-text-tertiary,#b9a55a)">HTTP ' +
-            escHtml(httpText) +
-            " / code " +
-            escHtml(metaCode) +
-            "</div>"
-        );
-      }
-      card.appendChild(indexBlock);
-      card.addEventListener("click", function () {
-        if (typeof setComboSite === "function") setComboSite(row.site);
-        if (typeof switchMode === "function" && curMode !== "site") switchMode("site");
-      });
-      wrap.appendChild(card);
-    });
-
+    const wrap =
+      typeof buildAllSitesDisplayWrap === "function"
+        ? buildAllSitesDisplayWrap(rows)
+        : document.createElement("div");
     bdEl.innerHTML = "";
     bdEl.appendChild(wrap);
   }
@@ -543,12 +400,13 @@
     const savedLabel = stampLabel(savedAt);
 
     // Handle V2 format for UI state
-    let curMode, curSite, curTab, allSites;
+    let curMode, curSite, curTab, allSites, allSitesPeriodDays;
     if (payload.__meta && payload.accounts) {
       // V2 format
       curMode = "all";
       curSite = payload.ui?.curSite || null;
       curTab = "overview";
+      allSitesPeriodDays = normalizeAllSitesPeriodDays(payload.ui?.allSitesPeriodDays);
       const accountKeys = Object.keys(payload.accounts);
       allSites = accountKeys.length > 0 ? (payload.accounts[accountKeys[0]]?.sites || []) : [];
     } else {
@@ -556,6 +414,7 @@
       curMode = "all";
       curSite = null;
       curTab = "overview";
+      allSitesPeriodDays = normalizeAllSitesPeriodDays(payload.allSitesPeriodDays);
       allSites = [];
     }
 
@@ -957,9 +816,18 @@
     ${getRuntimeShellState.toString()}
     ${getRuntimeRows.toString()}
     ${getRuntimeAllSites.toString()}
+    ${getRuntimeAllSitesPeriodDays.toString()}
+    ${setRuntimeAllSitesPeriodDays.toString()}
     ${getRuntimeSiteMeta.toString()}
     ${getRuntimeMergedMeta.toString()}
     ${getRuntimeCacheMeta.toString()}
+    ${normalizeAllSitesPeriodDays.toString()}
+    ${getAllSitesPeriodLabel.toString()}
+    ${sliceLogsForPeriod.toString()}
+    ${deriveCtrSeries.toString()}
+    ${deriveAllSitesPeriodRow.toString()}
+    ${deriveAllSitesPeriodRows.toString()}
+    ${computeAllSitesPeriodSummary.toString()}
     ${getRuntimeSiteData.toString()}
     ${buildSiteSummaryRow.toString()}
     ${prepareRendererData.toString()}
@@ -990,6 +858,9 @@
     ${ensureCurrentSite.toString()}
     ${buildCombo.toString()}
     ${setComboSite.toString()}
+    ${buildAllSitesPeriodToolbar.toString()}
+    ${buildAllSitesDisplayWrap.toString()}
+    ${renderAllSitesFromCanonicalRows.toString()}
     ${renderTab.toString()}
     ${switchMode.toString()}
     ${setAllSitesLabel.toString()}
@@ -1028,6 +899,7 @@
     let curMode = null;  // Initialize to null so switchMode() triggers on first call
     let curSite = EXPORT_PAYLOAD.curSite || (allSites[0] || null);
     let curTab = EXPORT_PAYLOAD.curTab || "overview";
+    let allSitesPeriodDays = normalizeAllSitesPeriodDays(EXPORT_PAYLOAD.allSitesPeriodDays);
     const SNAPSHOT_SHELL_LISTENERS = new Set();
     function cloneSnapshotShellState() {
       const cacheSavedAtValues = allSites
@@ -1060,6 +932,9 @@
         })
           ? curTab
           : "overview",
+        allSitesPeriodDays: normalizeAllSitesPeriodDays(
+          typeof allSitesPeriodDays !== "undefined" ? allSitesPeriodDays : 90
+        ),
         runtimeVersion:
           window.__SEARCHADVISOR_RUNTIME_VERSION__ ||
           EXPORT_PAYLOAD.generatorVersion ||
@@ -1119,6 +994,7 @@
         mode,
         tab,
         site,
+        allSitesPeriodDays: normalizeAllSitesPeriodDays(cached.allSitesPeriodDays),
       };
     }
     function setCachedUiState() {
@@ -1127,6 +1003,9 @@
         mode: curMode,
         tab: curTab,
         site: curSite,
+        allSitesPeriodDays: normalizeAllSitesPeriodDays(
+          typeof allSitesPeriodDays !== "undefined" ? allSitesPeriodDays : 90
+        ),
       });
     }
     const SITE_COLORS_MAP = {};
@@ -1381,6 +1260,19 @@
       setTab: function (tab) {
         setTab(tab);
       },
+      setAllSitesPeriodDays: function (days) {
+        if (typeof setAllSitesPeriodDaysState === "function") {
+          setAllSitesPeriodDaysState(days);
+        } else {
+          allSitesPeriodDays = normalizeAllSitesPeriodDays(days);
+        }
+        setCachedUiState();
+        notifySnapshotShellState();
+        if (curMode === "all" && typeof renderSnapshotAllSites === "function") {
+          renderSnapshotAllSites();
+        }
+        return normalizeAllSitesPeriodDays(days);
+      },
       refresh: function () {
         return false;
       },
@@ -1392,6 +1284,16 @@
       },
     };
     if (snapshotUiReady) {
+      const cachedUi = getCachedUiState();
+      if (cachedUi && typeof cachedUi.allSitesPeriodDays !== "undefined") {
+        allSitesPeriodDays = normalizeAllSitesPeriodDays(cachedUi.allSitesPeriodDays);
+      } else {
+        allSitesPeriodDays = normalizeAllSitesPeriodDays(
+          EXPORT_PAYLOAD.ui && typeof EXPORT_PAYLOAD.ui.allSitesPeriodDays !== "undefined"
+            ? EXPORT_PAYLOAD.ui.allSitesPeriodDays
+            : EXPORT_PAYLOAD.allSitesPeriodDays
+        );
+      }
       assignColors();
       window.__sadvRows = (EXPORT_PAYLOAD.summaryRows || []).filter(function (row) {
         return row && allSites.includes(row.site);

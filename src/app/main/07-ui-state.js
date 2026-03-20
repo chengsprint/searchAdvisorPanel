@@ -8,6 +8,12 @@
 let curMode = CONFIG.MODE.ALL,
   curSite = null,
   curTab = "overview";
+// 전체현황 전용 period state.
+// 중요:
+// - global filter가 아니다.
+// - site mode와 무관한 all-sites local view state다.
+// - live/saved HTML/merge가 같은 기준을 공유해야 하므로 shell state에 포함한다.
+let allSitesPeriodDays = 90;
 let siteViewReqId = 0;
 let allViewReqId = 0;
 const __sadvListeners = new Set();
@@ -65,6 +71,7 @@ function buildLiveShellState() {
     curMode,
     curSite,
     curTab,
+    allSitesPeriodDays: normalizeAllSitesPeriodDays(allSitesPeriodDays),
     allSites: [...allSites],
     rows: window.__sadvRows || [],
     accountLabel: snapshotAccountLabel,
@@ -86,6 +93,15 @@ function buildLiveShellState() {
  */
 function __sadvSnapshot() {
   return buildLiveShellState();
+}
+
+function getAllSitesPeriodDaysState() {
+  return normalizeAllSitesPeriodDays(allSitesPeriodDays);
+}
+
+function setAllSitesPeriodDaysState(days) {
+  allSitesPeriodDays = normalizeAllSitesPeriodDays(days);
+  return allSitesPeriodDays;
 }
 
 /**
@@ -149,7 +165,7 @@ function buildSnapshotShellState(payload) {
   // snapshot shell state는 offline payload를
   // live와 유사한 UI 상태 shape로 정규화하는 boundary 함수다.
   // Handle V2 format
-  let allSites, dataBySite, summaryRows, siteMeta, accountLabel, savedAt, curMode, curSite, curTab;
+  let allSites, dataBySite, summaryRows, siteMeta, accountLabel, savedAt, curMode, curSite, curTab, allSitesPeriodDays;
 
   if (payload.__meta && payload.accounts) {
     // V2 format
@@ -165,6 +181,7 @@ function buildSnapshotShellState(payload) {
     curMode = payload.ui?.curMode || CONFIG.MODE.ALL;
     curSite = payload.ui?.curSite || null;
     curTab = payload.ui?.curTab || "overview";
+    allSitesPeriodDays = payload.ui?.allSitesPeriodDays;
   } else {
     // V2 포맷이 아닌 경우 빈 값 반환
     accountLabel = "";
@@ -176,6 +193,7 @@ function buildSnapshotShellState(payload) {
     curMode = CONFIG.MODE.ALL;
     curSite = null;
     curTab = "overview";
+    allSitesPeriodDays = 90;
   }
 
   const snapshotTabIds = [
@@ -226,6 +244,7 @@ function buildSnapshotShellState(payload) {
     curTab: snapshotTabIds.indexOf(curTab) !== -1
       ? curTab
       : "overview",
+    allSitesPeriodDays: normalizeAllSitesPeriodDays(allSitesPeriodDays),
     runtimeVersion: window.__SEARCHADVISOR_RUNTIME_VERSION__ || "snapshot",
     cacheMeta: updatedAt
       ? {
