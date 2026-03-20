@@ -362,10 +362,42 @@
       typeof buildAllSitesDisplayWrap === "function"
         ? buildAllSitesDisplayWrap(rows)
         : document.createElement("div");
-    bdEl.innerHTML = "";
-    bdEl.appendChild(wrap);
-  }
-  /**
+  bdEl.innerHTML = "";
+  bdEl.appendChild(wrap);
+}
+
+// Phase 2 helper packaging:
+// saved HTML 직렬화가 helper 하나씩 흩어져 있으면 새 helper 추가 때 allowlist 누락 회귀가
+// 반복되기 쉽다. 그래서 dependency 성격이 같은 helper를 pack 단위로 묶고,
+// 직렬화 순서도 pack 순서로 고정한다.
+const SNAPSHOT_SHARED_PUBLIC_ENTRY_HELPERS = [setRuntimePublicApi, clearRuntimePublicApi];
+
+const SNAPSHOT_ALL_SITES_HELPER_PACK = [
+  getAllSitesSelectionState,
+  getAllSitesCanonicalRows,
+  setAllSitesCanonicalRows,
+  setAllSitesSelectedSite,
+];
+
+const SNAPSHOT_UI_CONTROLS_HELPER_PACK = [
+  getUiControlsSelectionState,
+  applyUiControlsMode,
+  applyUiControlsSite,
+  applyUiControlsTab,
+];
+
+function serializeSnapshotHelperPack(helperPack) {
+  return helperPack
+    .filter(function (fn) {
+      return typeof fn === "function";
+    })
+    .map(function (fn) {
+      return fn.toString();
+    })
+    .join("\n");
+}
+
+/**
  * Build standalone HTML snapshot string with embedded payload
  * Creates a complete HTML document with the SearchAdvisor UI and data
  * @param {Date} savedAt - Timestamp when snapshot was saved
@@ -859,26 +891,19 @@
     // Shared public entry seam:
     // Phase 2에서는 live/saved가 같은 public facade(window.__sadvApi)를
     // 같은 helper를 통해 게시/해제하도록 수렴시킨다.
-    ${setRuntimePublicApi.toString()}
-    ${clearRuntimePublicApi.toString()}
+    ${serializeSnapshotHelperPack(SNAPSHOT_SHARED_PUBLIC_ENTRY_HELPERS)}
     // All-sites local helper contract:
     // 10-all-sites-view.js는 canonical rows read/write와 card-selection을
     // local helper로 감싸고 있으므로, saved HTML도 이 helper들을 먼저
     // serialize해야 renderAllSites/buildAllSitesDisplayWrap 경로가 깨지지 않는다.
-    ${getAllSitesSelectionState.toString()}
-    ${getAllSitesCanonicalRows.toString()}
-    ${setAllSitesCanonicalRows.toString()}
-    ${setAllSitesSelectedSite.toString()}
+    ${serializeSnapshotHelperPack(SNAPSHOT_ALL_SITES_HELPER_PACK)}
     // Shared UI controls helper contract:
     // 09-ui-controls.js가 semantic selection helpers를 통해 mode/site/tab
     // interaction을 공통화하고 있으므로, saved HTML 직렬화도 이 helper들을
     // 의존 함수들보다 먼저 같이 실어야 한다.
     // live는 번들 전체가 한 스코프에 있지만, saved는 allowlist에 넣은 함수만
     // 포함되므로 여기서 빠지면 saved-only is-not-defined 회귀가 생긴다.
-    ${getUiControlsSelectionState.toString()}
-    ${applyUiControlsMode.toString()}
-    ${applyUiControlsSite.toString()}
-    ${applyUiControlsTab.toString()}
+    ${serializeSnapshotHelperPack(SNAPSHOT_UI_CONTROLS_HELPER_PACK)}
     ${ensureCurrentSite.toString()}
     ${buildCombo.toString()}
     ${setComboSite.toString()}
