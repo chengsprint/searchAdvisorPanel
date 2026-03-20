@@ -197,7 +197,10 @@ const T = {
   spaceCardLg: "18px",
   spaceCardXl: "20px",
 };
-const COLORS = [C.green, C.blue, C.amber, C.orange, C.pink, C.purple];
+// 사이트 카드용 순환 팔레트.
+// 단순 warm 톤 유지보다 "인접 카드끼리 체감상 충분히 달라 보이는가"가 더 중요하다.
+// 그래서 비슷한 노랑/오렌지 계열을 앞에 몰지 않고, 대비가 큰 순서로 재배열한다.
+const COLORS = [C.green, C.pink, C.blue, C.purple, C.orange, C.red];
 
 // ============================================================
 // V2 PAYLOAD SCHEMA CONSTANTS

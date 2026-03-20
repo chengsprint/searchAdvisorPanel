@@ -28,15 +28,47 @@
  * assignColors();
  * console.log(SITE_COLORS_MAP['https://example.com']); // "#10b981"
  */
-  function assignColors() {
+  function assignColors(preferredOrder) {
     // stage 2-2 seam:
     // 컬러 매핑은 UI 표현 책임이지만, "어떤 사이트 집합을 기준으로 칠할지"는
     // provider facade를 통해 읽는 편이 안전하다.
     // 그래야 snapshot/live가 서로 다른 입력원을 써도 색상 할당 기준이 한 곳으로 모인다.
+    //
+    // 추가 규칙:
+    // - 전체현황 카드처럼 화면상 순서가 중요한 뷰는 preferredOrder(rows order)를 넘겨
+    //   인접 카드가 같은/유사 색으로 뭉치지 않게 한다.
+    // - 즉 "사이트 원본 등록 순서"보다 "현재 사용자에게 보이는 순서"를 우선한다.
     const runtimeSites =
       typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
-    runtimeSites.forEach((s, i) => {
-      if (!SITE_COLORS_MAP[s]) SITE_COLORS_MAP[s] = COLORS[i % COLORS.length];
+    const orderedSites =
+      Array.isArray(preferredOrder) && preferredOrder.length
+        ? preferredOrder.filter(function (site) {
+            return runtimeSites.includes(site);
+          })
+        : runtimeSites.slice();
+    const restSites = runtimeSites.filter(function (site) {
+      return !orderedSites.includes(site);
+    });
+    const colorOrder = orderedSites.concat(restSites);
+
+    // 지그재그 롤링 팔레트:
+    // [0,1,2,3,4,5] -> [0,3,1,4,2,5]
+    // 처럼 비슷한 톤이 몰리지 않게 한 번 섞는다.
+    const splitIndex = Math.ceil(COLORS.length / 2);
+    const rolledPalette = [];
+    for (let i = 0; i < splitIndex; i += 1) {
+      if (COLORS[i]) rolledPalette.push(COLORS[i]);
+      if (COLORS[i + splitIndex]) rolledPalette.push(COLORS[i + splitIndex]);
+    }
+
+    let previousColor = null;
+    colorOrder.forEach((s, i) => {
+      let nextColor = rolledPalette[i % rolledPalette.length];
+      if (nextColor === previousColor && rolledPalette.length > 1) {
+        nextColor = rolledPalette[(i + 1) % rolledPalette.length];
+      }
+      SITE_COLORS_MAP[s] = nextColor;
+      previousColor = nextColor;
     });
   }
   /**
