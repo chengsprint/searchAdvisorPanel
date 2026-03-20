@@ -550,22 +550,30 @@ function chartCard(title, valueStr, valueCol, svgEl, labelsArr) {
 // KPI grid function
 function kpiGrid(items) {
   const g = document.createElement("div");
-  const isCompactViewport = typeof window !== "undefined" && window.innerWidth <= 768;
-  const columns = isCompactViewport
-    ? Math.min(items.length, 2)
-    : Math.min(items.length, 4);
+  const panelWidth =
+    typeof document !== "undefined" && document.getElementById("sadv-p")
+      ? document.getElementById("sadv-p").getBoundingClientRect().width
+      : 0;
+  // window 폭만 보면 desktop narrow 상태를 놓칠 수 있다.
+  // KPI grid는 "실제 패널이 얼마나 좁은가"를 기준으로 열 수를 줄여야
+  // 카드 숫자가 박스를 뚫고 나오는 회귀를 막을 수 있다.
+  const isCompactViewport =
+    (typeof window !== "undefined" && window.innerWidth <= 768) ||
+    (panelWidth > 0 && panelWidth <= 560);
+  const isUltraNarrow = panelWidth > 0 && panelWidth <= 430;
+  const columns = isCompactViewport ? Math.min(items.length, 2) : Math.min(items.length, 4);
   g.style.cssText = `display:grid;grid-template-columns:repeat(${columns},minmax(0,1fr));gap:${isCompactViewport ? "8px" : "12px"};margin-bottom:${T.spaceCard}`;
-  const valueFontSize = isCompactViewport ? "15px" : "18px";
-  const labelFontSize = isCompactViewport ? "10px" : "11px";
-  const subFontSize = isCompactViewport ? "10px" : "11px";
-  const cardPadding = isCompactViewport ? "14px 12px" : `${T.spaceCard} 18px`;
-  const minHeight = isCompactViewport ? "96px" : "104px";
+  const valueFontSize = isUltraNarrow ? "14px" : isCompactViewport ? "15px" : "18px";
+  const labelFontSize = isUltraNarrow ? "9px" : isCompactViewport ? "10px" : "11px";
+  const subFontSize = isUltraNarrow ? "9px" : isCompactViewport ? "10px" : "11px";
+  const cardPadding = isUltraNarrow ? "12px 10px" : isCompactViewport ? "14px 12px" : `${T.spaceCard} 18px`;
+  const minHeight = isUltraNarrow ? "92px" : isCompactViewport ? "96px" : "104px";
   items.forEach(function (it) {
     const d = document.createElement("div");
     d.style.cssText =
       "background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);border-radius:" + T.radiusNone + ";padding:" + cardPadding + ";text-align:center;min-width:0;min-height:" + minHeight + ";display:flex;flex-direction:column;justify-content:flex-start;align-items:center;transition:all 0.2s;box-shadow:" + T.shadowCard + ";overflow:hidden";
     const iconHtml = it.icon ? `<div style="margin-bottom:10px;color:${it.color || 'var(--sadv-text-secondary,#c6c6c6)'};opacity:0.92">${it.icon}</div>` : "";
-    d.innerHTML = sanitizeHTML(`${iconHtml}<div style="width:100%;font-size:${labelFontSize};color:var(--sadv-text-tertiary,#8d8d8d);line-height:1.4;margin-bottom:${isCompactViewport ? "6px" : "8px"};word-break:keep-all;font-weight:600;text-transform:uppercase;letter-spacing:${isCompactViewport ? "0.02em" : "0.04em"};text-align:center">${escHtml(it.label)}</div><div style="width:100%;font-size:${valueFontSize};font-weight:650;color:${it.color || C.text};line-height:1.06;letter-spacing:${isCompactViewport ? "-0.03em" : "-0.01em"};word-break:keep-all;text-align:center">${escHtml(it.value)}</div><div style="width:100%;font-size:${subFontSize};color:var(--sadv-text-secondary,#c6c6c6);line-height:1.4;margin-top:${isCompactViewport ? "6px" : "8px"};visibility:${it.sub ? "visible" : "hidden"};text-align:center">${escHtml(it.sub || "&nbsp;")}</div>`);
+    d.innerHTML = sanitizeHTML(`${iconHtml}<div style="width:100%;font-size:${labelFontSize};color:var(--sadv-text-tertiary,#8d8d8d);line-height:1.4;margin-bottom:${isCompactViewport ? "6px" : "8px"};word-break:keep-all;font-weight:600;text-transform:uppercase;letter-spacing:${isCompactViewport ? "0.02em" : "0.04em"};text-align:center">${escHtml(it.label)}</div><div style="width:100%;font-size:${valueFontSize};font-weight:650;color:${it.color || C.text};line-height:1.08;letter-spacing:${isCompactViewport ? "-0.03em" : "-0.01em"};word-break:keep-all;text-align:center">${escHtml(it.value)}</div><div style="width:100%;font-size:${subFontSize};color:var(--sadv-text-secondary,#c6c6c6);line-height:1.4;margin-top:${isCompactViewport ? "6px" : "8px"};visibility:${it.sub ? "visible" : "hidden"};text-align:center">${escHtml(it.sub || "&nbsp;")}</div>`);
     g.appendChild(d);
   });
   return g;
