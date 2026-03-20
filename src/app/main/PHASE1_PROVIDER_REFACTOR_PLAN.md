@@ -170,6 +170,7 @@ UI 자체는 공통 엔트리를 타게 만드는 것이 목표다.
   - export payload가 selection/period state를 facade 우선으로 읽도록 정리
 - `07-data-provider.js`
   - fallback shell state도 canonical rows getter를 우선 사용하도록 정리
+  - fallback shell/selection read가 `getSelectionStateValue()`를 우선 사용하도록 정리
 - `09-ui-controls.js`
   - 반복적인 `setRuntimeX -> setRuntimeSelectionState -> direct global` fallback을
     로컬 semantic helper(`applyUiControlsMode/Site/Tab`)로 정리

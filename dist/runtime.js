@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T13:30:15Z";
-var __SADV_GIT_HEAD__="b9e7aaf";
+var __SADV_BUILD_STAMP__="2026-03-20T13:31:41Z";
+var __SADV_GIT_HEAD__="7bd114e";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -8191,10 +8191,26 @@ function getRuntimeShellState() {
   }
   if (typeof buildLiveShellState === "function") return buildLiveShellState();
   if (typeof __sadvSnapshot === "function") return __sadvSnapshot();
+  const selectionState =
+    typeof getSelectionStateValue === "function" ? getSelectionStateValue() : null;
   return {
-    curMode: typeof curMode === "string" ? curMode : CONFIG.MODE.ALL,
-    curSite: typeof curSite === "string" ? curSite : null,
-    curTab: typeof curTab === "string" ? curTab : "overview",
+    // selection fallback도 가능하면 canonical selection getter를 먼저 읽는다.
+    // 이유:
+    // - Phase 1 후반부의 목적은 "provider fallback조차 raw globals를 덜 알게" 만드는 것이다.
+    // - Live/Saved/Merge 모두 이 fallback shell state를 마지막 안전망으로 통과할 수 있으므로,
+    //   여기서 selection getter 우선 순서를 고정하는 것이 회귀 대비 효과가 크다.
+    curMode:
+      selectionState && typeof selectionState.curMode === "string"
+        ? selectionState.curMode
+        : (typeof curMode === "string" ? curMode : CONFIG.MODE.ALL),
+    curSite:
+      selectionState && typeof selectionState.curSite === "string"
+        ? selectionState.curSite
+        : (typeof curSite === "string" ? curSite : null),
+    curTab:
+      selectionState && typeof selectionState.curTab === "string"
+        ? selectionState.curTab
+        : (typeof curTab === "string" ? curTab : "overview"),
     allSitesPeriodDays:
       typeof getAllSitesPeriodDaysState === "function"
         ? getAllSitesPeriodDaysState()
@@ -8281,19 +8297,33 @@ function getRuntimeSelectionState() {
   // - 나중에 snapshot/live가 selection 복원 방식을 바꿔도
   //   호출자는 이 seam만 유지하면 되게 하기
   const state = getRuntimeShellState();
+  const fallbackSelectionState =
+    typeof getSelectionStateValue === "function" ? getSelectionStateValue() : null;
   return {
     curMode:
       state && typeof state.curMode === "string"
         ? state.curMode
-        : (typeof curMode === "string" ? curMode : CONFIG.MODE.ALL),
+        : (
+            fallbackSelectionState && typeof fallbackSelectionState.curMode === "string"
+              ? fallbackSelectionState.curMode
+              : (typeof curMode === "string" ? curMode : CONFIG.MODE.ALL)
+          ),
     curSite:
       state && typeof state.curSite === "string"
         ? state.curSite
-        : (typeof curSite === "string" ? curSite : null),
+        : (
+            fallbackSelectionState && typeof fallbackSelectionState.curSite === "string"
+              ? fallbackSelectionState.curSite
+              : (typeof curSite === "string" ? curSite : null)
+          ),
     curTab:
       state && typeof state.curTab === "string"
         ? state.curTab
-        : (typeof curTab === "string" ? curTab : "overview"),
+        : (
+            fallbackSelectionState && typeof fallbackSelectionState.curTab === "string"
+              ? fallbackSelectionState.curTab
+              : (typeof curTab === "string" ? curTab : "overview")
+          ),
   };
 }
 
@@ -8327,11 +8357,13 @@ function setRuntimeSelectionState(patch) {
       curTab = typeof patch.curTab === "string" ? patch.curTab : "overview";
     }
   }
-  return {
-    curMode,
-    curSite,
-    curTab,
-  };
+  return typeof getSelectionStateValue === "function"
+    ? getSelectionStateValue()
+    : {
+        curMode,
+        curSite,
+        curTab,
+      };
 }
 
 function setRuntimeMode(mode) {
