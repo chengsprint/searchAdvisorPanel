@@ -1529,10 +1529,13 @@ function buildSnapshotSerializedHelperSection() {
       "  };",
     ];
   }
-  function buildSnapshotApiCompatScript() {
+  // Phase 3 Workstream A:
+  // buildSnapshotApiCompatScript는 saved richer API가 아직 없을 때만 쓰이는 compat bridge다.
+  // 첫 라운드에서는 동작을 바꾸지 않고, 문자열 line builder를 책임 단위로 나눠
+  // 다음 라운드에 state clone / DOM sync / action fallback / observer wiring을
+  // 개별적으로 읽고 다룰 수 있게 만드는 데 집중한다.
+  function buildSnapshotApiCompatStateLines() {
     return [
-      "(function () {",
-      "  if (window.__SEARCHADVISOR_SNAPSHOT_API__) return;",
       "  const shellStateSource = window.__SEARCHADVISOR_SNAPSHOT_SHELL_STATE__ || {};",
       "  const snapshotState = {",
       '    accountLabel: shellStateSource.accountLabel || "",',
@@ -1583,6 +1586,11 @@ function buildSnapshotSerializedHelperSection() {
       "      try { listener(nextState); } catch (_) {}",
       "    });",
       "  }",
+    ];
+  }
+
+  function buildSnapshotApiCompatDomSyncLines() {
+    return [
       "  function getSiteShortName(site) {",
       '    if (!site) return "site";',
       '    if (site.indexOf("https://") === 0) return site.slice(8);',
@@ -1624,6 +1632,11 @@ function buildSnapshotSerializedHelperSection() {
       "    notify();",
       "  }",
       "  function scheduleSync() { Promise.resolve().then(syncFromLegacy); }",
+    ];
+  }
+
+  function buildSnapshotApiCompatInteractionLines() {
+    return [
       "  const api = {",
       "    getState: cloneState,",
       "    isReady: function () { return true; },",
@@ -1657,6 +1670,15 @@ function buildSnapshotSerializedHelperSection() {
       "    }",
       "  }",
       "  syncFromLegacy();",
+    ];
+  }
+  function buildSnapshotApiCompatScript() {
+    return [
+      "(function () {",
+      "  if (window.__SEARCHADVISOR_SNAPSHOT_API__) return;",
+      ...buildSnapshotApiCompatStateLines(),
+      ...buildSnapshotApiCompatDomSyncLines(),
+      ...buildSnapshotApiCompatInteractionLines(),
       "})();",
     ].join("\n");
   }
