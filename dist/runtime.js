@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T12:57:11Z";
-var __SADV_GIT_HEAD__="8d3dc88";
+var __SADV_BUILD_STAMP__="2026-03-20T13:12:06Z";
+var __SADV_GIT_HEAD__="9b2a743";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -9518,6 +9518,23 @@ function getAvailableRenderers() {
  * fetch/refresh/payload 직렬화 같은 data provider 책임이 아니다.
  */
 
+/**
+ * Read the current selection state through the public seam first.
+ *
+ * Why this helper exists:
+ * - Phase 1 후반부에서는 UI control 코드가 `curMode/curSite/curTab` fallback 객체를
+ *   군데군데 직접 만들지 않도록 줄여야 한다.
+ * - live/saved가 같은 selection contract를 공유하게 만들려면,
+ *   읽기 경로를 한 helper로 모으는 것이 가장 안전한 중간 단계다.
+ * - 이 helper는 아직 "행동(action)"을 바꾸지 않고 read 경로만 정리하므로
+ *   saved HTML 회귀 위험이 매우 낮다.
+ */
+function getUiControlsSelectionState() {
+  return typeof getRuntimeSelectionState === "function"
+    ? getRuntimeSelectionState()
+    : { curMode, curSite, curTab };
+}
+
   /**
  * Assign colors to all sites from the color palette
  * Each site gets a consistent color based on its index
@@ -9584,10 +9601,7 @@ function getAvailableRenderers() {
     // 이 함수는 site mode 진입/복원 경로에서 자주 호출되므로 회귀 방지 가치가 크다.
     const runtimeSites =
       typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
-    const selectionState =
-      typeof getRuntimeSelectionState === "function"
-        ? getRuntimeSelectionState()
-        : { curSite };
+    const selectionState = getUiControlsSelectionState();
     const currentSite = selectionState.curSite;
     if (!runtimeSites.length) {
       if (typeof setRuntimeSite === "function") setRuntimeSite(null);
@@ -9791,10 +9805,7 @@ function getAvailableRenderers() {
 
     drop.replaceChildren(searchDiv, countDiv);
     orderedSites.forEach(function (s) {
-      const selectionState =
-        typeof getRuntimeSelectionState === "function"
-          ? getRuntimeSelectionState()
-          : { curSite };
+      const selectionState = getUiControlsSelectionState();
       const activeSite = selectionState.curSite;
       const col = SITE_COLORS_MAP[s] || C.muted,
         fullLabel = getSiteLabel(s),
@@ -9872,10 +9883,7 @@ function getAvailableRenderers() {
     const runtimeSites =
       typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
     if (!site || !runtimeSites.includes(site)) return;
-    const selectionState =
-      typeof getRuntimeSelectionState === "function"
-        ? getRuntimeSelectionState()
-        : { curSite, curMode, curTab };
+    const selectionState = getUiControlsSelectionState();
     const sameSite = selectionState.curSite === site;
     if (typeof setRuntimeSite === "function") {
       setRuntimeSite(site);
@@ -9897,10 +9905,7 @@ function getAvailableRenderers() {
     });
     setCachedUiState();
     if (typeof notifySnapshotShellState === "function") notifySnapshotShellState();
-    const nextSelectionState =
-      typeof getRuntimeSelectionState === "function"
-        ? getRuntimeSelectionState()
-        : { curMode, curSite, curTab };
+    const nextSelectionState = getUiControlsSelectionState();
     if (nextSelectionState.curMode === CONFIG.MODE.SITE && !sameSite) loadSiteView(site);
     __sadvNotify();
   }
@@ -9998,10 +10003,7 @@ function getAvailableRenderers() {
   if (tabsEl) {
     tabsEl.setAttribute("role", "tablist");
     tabsEl.replaceChildren(...TABS.map((t) => {
-      const selectionState =
-        typeof getRuntimeSelectionState === "function"
-          ? getRuntimeSelectionState()
-          : { curTab };
+      const selectionState = getUiControlsSelectionState();
       const activeTab = selectionState.curTab;
       const btn = document.createElement("button");
       btn.className = `sadv-t${t.id === activeTab ? " on" : ""}`;
@@ -10015,10 +10017,7 @@ function getAvailableRenderers() {
     }));
     tabsEl.addEventListener("click", function (e) {
       const t = e.target.closest("[data-t]");
-      const selectionState =
-        typeof getRuntimeSelectionState === "function"
-          ? getRuntimeSelectionState()
-          : { curTab };
+      const selectionState = getUiControlsSelectionState();
       if (!t || t.dataset.t === selectionState.curTab) return;
       if (typeof setRuntimeTab === "function") {
         setRuntimeTab(t.dataset.t);
@@ -10075,10 +10074,7 @@ function getAvailableRenderers() {
     // tab renderer도 curTab 전역을 직접 참조하지 않고 selection seam을 통해 읽기 시작한다.
     // 여기서 먼저 read 경로만 옮기고, 실제 tab action flow(setTab/switchMode 호출 순서)는
     // 그대로 두어 saved HTML 회귀 위험을 낮춘다.
-    const selectionState =
-      typeof getRuntimeSelectionState === "function"
-        ? getRuntimeSelectionState()
-        : { curTab };
+    const selectionState = getUiControlsSelectionState();
     const activeTab = selectionState.curTab;
     if (!bdEl || !R || typeof R[activeTab] !== "function") return;
     bdEl.setAttribute("role", "tabpanel");
@@ -10130,10 +10126,7 @@ function getAvailableRenderers() {
  * @see {loadSiteView}
  */
   function switchMode(mode) {
-    const selectionState =
-      typeof getRuntimeSelectionState === "function"
-        ? getRuntimeSelectionState()
-        : { curMode, curSite, curTab };
+    const selectionState = getUiControlsSelectionState();
     if (mode === selectionState.curMode) return;
     if (!modeBar || !siteBar || !tabsEl) {
       if (typeof setRuntimeMode === "function") setRuntimeMode(mode);
@@ -10168,10 +10161,7 @@ function getAvailableRenderers() {
       siteBar.classList.add("show");
       tabsEl.classList.add("show");
       ensureCurrentSite();
-      const nextSelectionState =
-        typeof getRuntimeSelectionState === "function"
-          ? getRuntimeSelectionState()
-          : { curSite };
+      const nextSelectionState = getUiControlsSelectionState();
       if (nextSelectionState.curSite) {
         setComboSite(nextSelectionState.curSite);
         loadSiteView(nextSelectionState.curSite);
@@ -10288,10 +10278,7 @@ function getAvailableRenderers() {
         setComboSite(site);
       },
       setTab: function (tab) {
-        const selectionState =
-          typeof getRuntimeSelectionState === "function"
-            ? getRuntimeSelectionState()
-            : { curTab };
+        const selectionState = getUiControlsSelectionState();
         if (!tabsEl || !TABS.some(function (item) { return item.id === tab; }) || selectionState.curTab === tab) return;
         if (typeof setRuntimeTab === "function") setRuntimeTab(tab);
         else if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curTab: tab });
@@ -10344,6 +10331,27 @@ function getAvailableRenderers() {
 // ============================================================
 // ALL-SITES-VIEW - All sites view rendering and export
 // ============================================================
+
+/**
+ * Read selection state for the all-sites view through the public seam first.
+ *
+ * Why this helper exists:
+ * - all-sites view currently has several request/render guards that only need
+ *   the current mode/site/tab, not the raw globals themselves.
+ * - pulling those reads behind one helper reduces repeated fallback objects and
+ *   makes later shared-app migration easier without changing behavior now.
+ */
+function getAllSitesSelectionState() {
+  return typeof getRuntimeSelectionState === "function"
+    ? getRuntimeSelectionState()
+    : { curMode, curSite, curTab };
+}
+
+function getAllSitesCanonicalRows() {
+  return typeof getRuntimeRows === "function"
+    ? getRuntimeRows()
+    : (Array.isArray(window.__sadvRows) && window.__sadvRows.length ? window.__sadvRows.slice() : []);
+}
 
 function buildAllSitesPeriodToolbar(periodDays) {
   const currentDays = normalizeAllSitesPeriodDays(periodDays);
@@ -10682,15 +10690,9 @@ function buildAllSitesDisplayWrap(baseRows) {
 }
 
 function renderAllSitesFromCanonicalRows() {
-  const selectionState =
-    typeof getRuntimeSelectionState === "function"
-      ? getRuntimeSelectionState()
-      : { curMode, curSite, curTab };
+  const selectionState = getAllSitesSelectionState();
   if (!bdEl || selectionState.curMode !== CONFIG.MODE.ALL) return;
-  const canonicalRows =
-    typeof getRuntimeRows === "function"
-      ? getRuntimeRows()
-      : (Array.isArray(window.__sadvRows) && window.__sadvRows.length ? window.__sadvRows.slice() : []);
+  const canonicalRows = getAllSitesCanonicalRows();
   if (!canonicalRows.length) return;
   const wrap = buildAllSitesDisplayWrap(canonicalRows);
   bdEl.replaceChildren(wrap);
@@ -10768,10 +10770,7 @@ async function renderAllSites() {
     // 이유:
     // - live/saved가 같은 "현재 모드" 해석 규칙을 공유해야 하고
     // - 이후 shared app entry 단계에서 global 직접 read를 줄여야 하기 때문이다.
-    const currentSelectionState =
-      typeof getRuntimeSelectionState === "function"
-        ? getRuntimeSelectionState()
-        : { curMode, curSite, curTab };
+    const currentSelectionState = getAllSitesSelectionState();
     if (requestId !== allViewReqId || currentSelectionState.curMode !== CONFIG.MODE.ALL) return;
     if (ratio >= CONFIG.PROGRESS.META_PHASE_RATIO_START && missingDiagnosisMetaCount === 0) return;
     if (loadingDetail) loadingDetail.textContent = label;
@@ -10810,10 +10809,7 @@ async function renderAllSites() {
     );
     const batchResults = await Promise.allSettled(batchSites.map((site) => fetchExposeData(site)));
     {
-      const currentSelectionState =
-        typeof getRuntimeSelectionState === "function"
-          ? getRuntimeSelectionState()
-          : { curMode, curSite, curTab };
+      const currentSelectionState = getAllSitesSelectionState();
       if (requestId !== allViewReqId || currentSelectionState.curMode !== CONFIG.MODE.ALL) return;
     }
     let failedCount = 0;
@@ -10855,10 +10851,7 @@ async function renderAllSites() {
       batchSites.map((site) => fetchDiagnosisMeta(site, siteDataBySite[site] || null)),
     );
     {
-      const currentSelectionState =
-        typeof getRuntimeSelectionState === "function"
-          ? getRuntimeSelectionState()
-          : { curMode, curSite, curTab };
+      const currentSelectionState = getAllSitesSelectionState();
       if (requestId !== allViewReqId || currentSelectionState.curMode !== CONFIG.MODE.ALL) return;
     }
     batchResults.forEach(function (result, offset) {
@@ -10891,10 +10884,7 @@ async function renderAllSites() {
   }
   buildCombo(rows);
   {
-    const currentSelectionState =
-      typeof getRuntimeSelectionState === "function"
-        ? getRuntimeSelectionState()
-        : { curMode, curSite, curTab };
+    const currentSelectionState = getAllSitesSelectionState();
     if (requestId !== allViewReqId || currentSelectionState.curMode !== CONFIG.MODE.ALL) return;
   }
   renderAllSitesFromCanonicalRows();
@@ -10918,10 +10908,7 @@ async function collectExportData(onProgress, options) {
   const summaryRows = [];
   const batchSize = FULL_REFRESH_BATCH_SIZE;
   const refreshMode = options && options.refreshMode === "refresh" ? "refresh" : "cache-first";
-  const selectionState =
-    typeof getRuntimeSelectionState === "function"
-      ? getRuntimeSelectionState()
-      : { curMode, curSite, curTab };
+  const selectionState = getAllSitesSelectionState();
   const allSitesPeriodDays =
     typeof getRuntimeAllSitesPeriodDays === "function"
       ? getRuntimeAllSitesPeriodDays()

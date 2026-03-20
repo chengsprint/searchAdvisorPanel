@@ -20,6 +20,23 @@
  * fetch/refresh/payload 직렬화 같은 data provider 책임이 아니다.
  */
 
+/**
+ * Read the current selection state through the public seam first.
+ *
+ * Why this helper exists:
+ * - Phase 1 후반부에서는 UI control 코드가 `curMode/curSite/curTab` fallback 객체를
+ *   군데군데 직접 만들지 않도록 줄여야 한다.
+ * - live/saved가 같은 selection contract를 공유하게 만들려면,
+ *   읽기 경로를 한 helper로 모으는 것이 가장 안전한 중간 단계다.
+ * - 이 helper는 아직 "행동(action)"을 바꾸지 않고 read 경로만 정리하므로
+ *   saved HTML 회귀 위험이 매우 낮다.
+ */
+function getUiControlsSelectionState() {
+  return typeof getRuntimeSelectionState === "function"
+    ? getRuntimeSelectionState()
+    : { curMode, curSite, curTab };
+}
+
   /**
  * Assign colors to all sites from the color palette
  * Each site gets a consistent color based on its index
@@ -86,10 +103,7 @@
     // 이 함수는 site mode 진입/복원 경로에서 자주 호출되므로 회귀 방지 가치가 크다.
     const runtimeSites =
       typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
-    const selectionState =
-      typeof getRuntimeSelectionState === "function"
-        ? getRuntimeSelectionState()
-        : { curSite };
+    const selectionState = getUiControlsSelectionState();
     const currentSite = selectionState.curSite;
     if (!runtimeSites.length) {
       if (typeof setRuntimeSite === "function") setRuntimeSite(null);
@@ -293,10 +307,7 @@
 
     drop.replaceChildren(searchDiv, countDiv);
     orderedSites.forEach(function (s) {
-      const selectionState =
-        typeof getRuntimeSelectionState === "function"
-          ? getRuntimeSelectionState()
-          : { curSite };
+      const selectionState = getUiControlsSelectionState();
       const activeSite = selectionState.curSite;
       const col = SITE_COLORS_MAP[s] || C.muted,
         fullLabel = getSiteLabel(s),
@@ -374,10 +385,7 @@
     const runtimeSites =
       typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
     if (!site || !runtimeSites.includes(site)) return;
-    const selectionState =
-      typeof getRuntimeSelectionState === "function"
-        ? getRuntimeSelectionState()
-        : { curSite, curMode, curTab };
+    const selectionState = getUiControlsSelectionState();
     const sameSite = selectionState.curSite === site;
     if (typeof setRuntimeSite === "function") {
       setRuntimeSite(site);
@@ -399,10 +407,7 @@
     });
     setCachedUiState();
     if (typeof notifySnapshotShellState === "function") notifySnapshotShellState();
-    const nextSelectionState =
-      typeof getRuntimeSelectionState === "function"
-        ? getRuntimeSelectionState()
-        : { curMode, curSite, curTab };
+    const nextSelectionState = getUiControlsSelectionState();
     if (nextSelectionState.curMode === CONFIG.MODE.SITE && !sameSite) loadSiteView(site);
     __sadvNotify();
   }
@@ -500,10 +505,7 @@
   if (tabsEl) {
     tabsEl.setAttribute("role", "tablist");
     tabsEl.replaceChildren(...TABS.map((t) => {
-      const selectionState =
-        typeof getRuntimeSelectionState === "function"
-          ? getRuntimeSelectionState()
-          : { curTab };
+      const selectionState = getUiControlsSelectionState();
       const activeTab = selectionState.curTab;
       const btn = document.createElement("button");
       btn.className = `sadv-t${t.id === activeTab ? " on" : ""}`;
@@ -517,10 +519,7 @@
     }));
     tabsEl.addEventListener("click", function (e) {
       const t = e.target.closest("[data-t]");
-      const selectionState =
-        typeof getRuntimeSelectionState === "function"
-          ? getRuntimeSelectionState()
-          : { curTab };
+      const selectionState = getUiControlsSelectionState();
       if (!t || t.dataset.t === selectionState.curTab) return;
       if (typeof setRuntimeTab === "function") {
         setRuntimeTab(t.dataset.t);
@@ -577,10 +576,7 @@
     // tab renderer도 curTab 전역을 직접 참조하지 않고 selection seam을 통해 읽기 시작한다.
     // 여기서 먼저 read 경로만 옮기고, 실제 tab action flow(setTab/switchMode 호출 순서)는
     // 그대로 두어 saved HTML 회귀 위험을 낮춘다.
-    const selectionState =
-      typeof getRuntimeSelectionState === "function"
-        ? getRuntimeSelectionState()
-        : { curTab };
+    const selectionState = getUiControlsSelectionState();
     const activeTab = selectionState.curTab;
     if (!bdEl || !R || typeof R[activeTab] !== "function") return;
     bdEl.setAttribute("role", "tabpanel");
@@ -632,10 +628,7 @@
  * @see {loadSiteView}
  */
   function switchMode(mode) {
-    const selectionState =
-      typeof getRuntimeSelectionState === "function"
-        ? getRuntimeSelectionState()
-        : { curMode, curSite, curTab };
+    const selectionState = getUiControlsSelectionState();
     if (mode === selectionState.curMode) return;
     if (!modeBar || !siteBar || !tabsEl) {
       if (typeof setRuntimeMode === "function") setRuntimeMode(mode);
@@ -670,10 +663,7 @@
       siteBar.classList.add("show");
       tabsEl.classList.add("show");
       ensureCurrentSite();
-      const nextSelectionState =
-        typeof getRuntimeSelectionState === "function"
-          ? getRuntimeSelectionState()
-          : { curSite };
+      const nextSelectionState = getUiControlsSelectionState();
       if (nextSelectionState.curSite) {
         setComboSite(nextSelectionState.curSite);
         loadSiteView(nextSelectionState.curSite);
@@ -790,10 +780,7 @@
         setComboSite(site);
       },
       setTab: function (tab) {
-        const selectionState =
-          typeof getRuntimeSelectionState === "function"
-            ? getRuntimeSelectionState()
-            : { curTab };
+        const selectionState = getUiControlsSelectionState();
         if (!tabsEl || !TABS.some(function (item) { return item.id === tab; }) || selectionState.curTab === tab) return;
         if (typeof setRuntimeTab === "function") setRuntimeTab(tab);
         else if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curTab: tab });

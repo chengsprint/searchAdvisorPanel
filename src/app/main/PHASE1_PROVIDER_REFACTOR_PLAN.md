@@ -157,11 +157,13 @@ UI 자체는 공통 엔트리를 타게 만드는 것이 목표다.
   - `renderTab()`이 `curTab` 직접 read 대신 selection seam read를 우선 사용하도록 2차 정리
 - `09-ui-controls.js`
   - combo/tab/mode 상호작용이 `setRuntimeMode/setRuntimeSite/setRuntimeTab` action wrapper를 우선 사용하도록 3차 정리
+  - 반복적인 selection fallback object를 `getUiControlsSelectionState()` helper로 정리
 - `10-all-sites-view.js`
   - canonical rows read를 facade 우선으로 정리
   - all-sites progress/render guard의 `curMode` direct read를 selection seam으로 이동
 - `10-all-sites-view.js`
   - 카드 클릭이 `setRuntimeSite()` action seam을 우선 사용하도록 정리
+  - selection/rows read를 `getAllSitesSelectionState()` / `getAllSitesCanonicalRows()` helper로 정리
 - `11-site-view.js`
   - request guard의 `curSite` direct read를 selection seam으로 이동
 - `06-merge-manager.js`
