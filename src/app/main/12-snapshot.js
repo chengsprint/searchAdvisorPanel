@@ -549,6 +549,12 @@
     const siteLabelEl = clone.querySelector("#sadv-site-label");
     const comboWrap = clone.querySelector("#sadv-combo-wrap");
     if (comboWrap) comboWrap.classList.remove("open");
+    const snapshotBodyEl = clone.querySelector("#sadv-bd");
+    if (snapshotBodyEl && snapshotBodyEl.parentNode) {
+      const reactShellHost = document.createElement("div");
+      reactShellHost.id = "sadv-react-shell-host";
+      snapshotBodyEl.parentNode.insertBefore(reactShellHost, snapshotBodyEl);
+    }
     if (siteLabelEl) {
       siteLabelEl.innerHTML = `<span>${escHtml(siteLabel)}</span><span style="display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;border:1px solid ${T.accentSoftBorderStrong};color:${T.accentSoftText};background:${T.warmDarkBg}">${escHtml(activeTabLabel)}</span>`;
     }
@@ -1568,7 +1574,8 @@
 
   function injectSnapshotReactShell(html, payload) {
     const panelBodyPattern = /<div\b([^>]*\bid=(["'])sadv-bd\2[^>]*)>/i;
-    if (!panelBodyPattern.test(html)) {
+    const reactShellHostPattern = /<div\b([^>]*\bid=(["'])sadv-react-shell-host\2[^>]*)><\/div>/i;
+    if (!panelBodyPattern.test(html) && !reactShellHostPattern.test(html)) {
       throw new Error("snapshot panel not found");
     }
     const reactShellCss = escapeInlineStyleText(
@@ -1583,10 +1590,12 @@
       "<body>",
       `<body><script>window.__SEARCHADVISOR_RUNTIME_KIND__="snapshot";window.__SEARCHADVISOR_SNAPSHOT_SHELL_STATE__=${stringifyForInlineJson(shellState)};<\/script>`,
     );
-    html = html.replace(
-      panelBodyPattern,
-      `<div id="sadv-react-shell-host"></div><div$1>`,
-    );
+    if (!reactShellHostPattern.test(html)) {
+      html = html.replace(
+        panelBodyPattern,
+        `<div id="sadv-react-shell-host"></div><div$1>`,
+      );
+    }
     html = html.replace(
       "</body>",
       `<script>${escapeInlineScriptText(buildSnapshotShellBootstrapScript())}<\/script></body>`,
