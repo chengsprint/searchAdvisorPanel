@@ -165,7 +165,7 @@ UI 자체는 공통 엔트리를 타게 만드는 것이 목표다.
 - `11-site-view.js`
   - request guard의 `curSite` direct read를 selection seam으로 이동
 - `06-merge-manager.js`
-  - export payload가 selection state를 facade 우선으로 읽도록 정리
+  - export payload가 selection/period state를 facade 우선으로 읽도록 정리
 
 ### 아직 남음
 - `09-ui-controls.js` 내부 direct global fallback 추가 축소
