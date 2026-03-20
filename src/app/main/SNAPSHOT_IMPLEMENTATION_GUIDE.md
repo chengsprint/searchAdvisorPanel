@@ -5,6 +5,14 @@
 
 설계 배경은 `SNAPSHOT_EXPORT_CONTRACT.md`, `UI_DATA_PIPELINE_BOUNDARY.md` 를 먼저 본다.
 
+장기 리팩토링 관련해서는 아래 문서를 함께 본다.
+
+- `PHASE1_PROVIDER_REFACTOR_PLAN.md`
+- `RUNTIME_STATE_CONTRACT.md`
+- `PROVIDER_ACTION_CONTRACT.md`
+- `SNAPSHOT_REFACTOR_GUARDRAILS.md`
+- `../../docs/SHARED_APP_PROVIDER_REFACTOR_20260320.md`
+
 전체현황 기간 필터를 건드릴 때는 아래 문서를 함께 본다.
 
 - `ALL_SITES_PERIOD_FILTER_DESIGN.md`

@@ -10,6 +10,12 @@
 - live/offline 차이는 **data provider** 와 bootstrap 단계로만 제한하기
 - 다음 AI/개발자가 snapshot 전용 UI를 불필요하게 다시 만들지 못하게 막기
 
+관련 상위 문서:
+- `PHASE1_PROVIDER_REFACTOR_PLAN.md`
+- `RUNTIME_STATE_CONTRACT.md`
+- `PROVIDER_ACTION_CONTRACT.md`
+- `SNAPSHOT_REFACTOR_GUARDRAILS.md`
+
 ---
 
 ## 1. 핵심 원칙
