@@ -319,12 +319,25 @@ async function renderAllSites() {
     card.setAttribute("role", "button");
     card.setAttribute("aria-label", `${shortName} 사이트 상세 보기`);
     if (r.clicks && r.clicks.length > 1) {
+      // 클릭 추이는 색인 추이보다 위계가 약해서 "그냥 선만 붙은 상태"로 두면
+      // 사용자가 그래프 의미를 알아채기 어렵다. 따라서 색인 추이와 같은 block
+      // 형태(라벨 + 값 + breathing room)로 승격해 카드 정보 구조를 맞춘다.
+      const clickBlock = document.createElement("div");
+      clickBlock.style.cssText = "margin-top:10px;padding-top:12px;border-top:1px solid var(--sadv-border-subtle,#2b2200)";
+      clickBlock.innerHTML = sanitizeHTML(
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px"><span style="font-size:11px;font-weight:700;color:var(--sadv-text-secondary,#ffe9a8)">클릭 추이</span><span style="font-size:13px;font-weight:800;color:' +
+        col +
+        '">' +
+        escHtml(fmt(r.totalC)) +
+        '회</span></div>'
+      );
       const miniDates = (r.logs || []).map(function (log) {
         return fmtB(log.date);
       });
-      const mini = sparkline(r.clicks, miniDates, 36, col, "");
-      mini.style.cssText += "opacity:.9";
-      card.appendChild(mini);
+      const mini = sparkline(r.clicks, miniDates, 52, col, "회", { minValue: 0 });
+      mini.style.cssText += "opacity:.95";
+      clickBlock.appendChild(mini);
+      card.appendChild(clickBlock);
     }
     const indexBlock = document.createElement("div");
     indexBlock.style.cssText = "margin-top:12px;padding-top:12px;border-top:1px solid var(--sadv-border-subtle,#2b2200)";

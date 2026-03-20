@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T09:21:45Z";
-var __SADV_GIT_HEAD__="56ac4ce";
+var __SADV_BUILD_STAMP__="2026-03-20T09:26:24Z";
+var __SADV_GIT_HEAD__="ad47019";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -10242,12 +10242,25 @@ async function renderAllSites() {
     card.setAttribute("role", "button");
     card.setAttribute("aria-label", `${shortName} 사이트 상세 보기`);
     if (r.clicks && r.clicks.length > 1) {
+      // 클릭 추이는 색인 추이보다 위계가 약해서 "그냥 선만 붙은 상태"로 두면
+      // 사용자가 그래프 의미를 알아채기 어렵다. 따라서 색인 추이와 같은 block
+      // 형태(라벨 + 값 + breathing room)로 승격해 카드 정보 구조를 맞춘다.
+      const clickBlock = document.createElement("div");
+      clickBlock.style.cssText = "margin-top:10px;padding-top:12px;border-top:1px solid var(--sadv-border-subtle,#2b2200)";
+      clickBlock.innerHTML = sanitizeHTML(
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px"><span style="font-size:11px;font-weight:700;color:var(--sadv-text-secondary,#ffe9a8)">클릭 추이</span><span style="font-size:13px;font-weight:800;color:' +
+        col +
+        '">' +
+        escHtml(fmt(r.totalC)) +
+        '회</span></div>'
+      );
       const miniDates = (r.logs || []).map(function (log) {
         return fmtB(log.date);
       });
-      const mini = sparkline(r.clicks, miniDates, 36, col, "");
-      mini.style.cssText += "opacity:.9";
-      card.appendChild(mini);
+      const mini = sparkline(r.clicks, miniDates, 52, col, "회", { minValue: 0 });
+      mini.style.cssText += "opacity:.95";
+      clickBlock.appendChild(mini);
+      card.appendChild(clickBlock);
     }
     const indexBlock = document.createElement("div");
     indexBlock.style.cssText = "margin-top:12px;padding-top:12px;border-top:1px solid var(--sadv-border-subtle,#2b2200)";
@@ -10917,12 +10930,28 @@ function savedAtIso(d) {
       // snapshot should render the same two mini graph surfaces instead of
       // collapsing to KPI boxes only.
       if (row.clicks && row.clicks.length > 1) {
+        // 저장본도 live 정본과 같은 card hierarchy를 유지해야 한다.
+        // 클릭 sparkline을 block 없이 바로 붙이면 색인 추이에 비해 의미가 묻히므로,
+        // saved HTML 쪽도 동일하게 라벨/값/높이를 갖는 block으로 맞춘다.
+        const clickBlock = document.createElement("div");
+        clickBlock.style.cssText =
+          "margin-top:10px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08)";
+        clickBlock.innerHTML = sanitizeHTML(
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px"><span style="font-size:11px;font-weight:700;color:var(--sadv-text-secondary,#ffe9a8)">클릭 추이</span><span style="font-size:13px;font-weight:800;color:' +
+            siteColor +
+            '">' +
+            escHtml(fmt(row.totalC || 0)) +
+            "회</span></div>"
+        );
         const miniDates = (row.logs || []).map(function (log) {
           return fmtB(log.date);
         });
-        const mini = sparkline(row.clicks, miniDates, 36, siteColor, "");
-        mini.style.cssText += "opacity:.9";
-        card.appendChild(mini);
+        const mini = sparkline(row.clicks, miniDates, 52, siteColor, "회", {
+          minValue: 0,
+        });
+        mini.style.cssText += "opacity:.95";
+        clickBlock.appendChild(mini);
+        card.appendChild(clickBlock);
       }
       const indexBlock = document.createElement("div");
       indexBlock.style.cssText =
