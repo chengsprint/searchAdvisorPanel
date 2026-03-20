@@ -41,6 +41,8 @@
 
 - live 전용으로 본다
 - snapshot은 영향 범위만 검토
+- 가능하면 UI 파일이 전역 상태를 직접 읽지 않게 하고,
+  `07-data-provider.js` facade를 먼저 확장해 seam을 만든다.
 
 ### C. snapshot entry / export 변경
 
@@ -55,6 +57,8 @@
 
 - snapshot 전용 변경 가능
 - self-contained contract 검증 필수
+- 단, 표현/UI 복제보다 payload / bootstrap / read-only guard 같은
+  adapter 층 문제인지 먼저 확인한다.
 
 ---
 

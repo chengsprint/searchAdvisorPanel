@@ -29,6 +29,11 @@
  * @see {buildSnapshotHtml}
  */
   async function downloadSnapshot() {
+    const capabilities =
+      typeof getRuntimeCapabilities === "function" ? getRuntimeCapabilities() : null;
+    if (capabilities && capabilities.isReadOnly) {
+      throw new Error("snapshot export is disabled in read-only mode");
+    }
     const btn = document.getElementById("sadv-save-btn");
     const originalText = btn.textContent;
     btn.disabled = true;

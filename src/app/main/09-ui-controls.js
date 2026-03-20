@@ -164,6 +164,21 @@
       `<span style="${chipStyle}" title="${escHtml(titleParts.join(" · "))}">${escHtml(compactParts.join(" · "))}</span>`
     );
   }
+  function resolveRuntimeCapabilities() {
+    // stage 2 boundary:
+    // 버튼/행동 제어는 더 이상 "현재 런타임이 live일 것이다"를 가정하지 않는다.
+    // UI는 provider 내부 구현 대신 capability 계약만 읽고,
+    // 실제 가능 여부는 provider facade가 책임진다.
+    return typeof getRuntimeCapabilities === "function"
+      ? getRuntimeCapabilities()
+      : {
+          mode: "live",
+          canRefresh: true,
+          canSave: true,
+          canClose: true,
+          isReadOnly: false,
+        };
+  }
   /**
  * Build the site selector combo box dropdown
  * Creates clickable items for each site with search functionality
@@ -553,49 +568,65 @@
     __sadvNotify();
   }
 
+  const runtimeCapabilities = resolveRuntimeCapabilities();
   var sadvRefreshBtnEl = document.getElementById("sadv-refresh-btn");
   if (sadvRefreshBtnEl) {
-    sadvRefreshBtnEl.addEventListener("click", async function () {
-      if (this.disabled || this.dataset.busy === "true") return;
-      const btn = this;
-      const originalHTML = btn.innerHTML;
-      btn.dataset.busy = "true";
-      btn.disabled = true;
-      btn.classList.add("spinning");
-      btn.innerHTML = ICONS.refresh + " 로딩 중...";
-      try {
-        await runFullRefreshPipeline({ trigger: "manual", button: btn });
-      } finally {
-        btn.classList.remove("spinning");
-        btn.disabled = false;
-        btn.dataset.busy = "false";
-        btn.innerHTML = originalHTML;
-        __sadvNotify();
-      }
-    });
+    if (!runtimeCapabilities.canRefresh) {
+      sadvRefreshBtnEl.style.display = "none";
+      sadvRefreshBtnEl.setAttribute("aria-hidden", "true");
+    } else {
+      sadvRefreshBtnEl.addEventListener("click", async function () {
+        if (this.disabled || this.dataset.busy === "true") return;
+        const btn = this;
+        const originalHTML = btn.innerHTML;
+        btn.dataset.busy = "true";
+        btn.disabled = true;
+        btn.classList.add("spinning");
+        btn.innerHTML = ICONS.refresh + " 로딩 중...";
+        try {
+          await runFullRefreshPipeline({ trigger: "manual", button: btn });
+        } finally {
+          btn.classList.remove("spinning");
+          btn.disabled = false;
+          btn.dataset.busy = "false";
+          btn.innerHTML = originalHTML;
+          __sadvNotify();
+        }
+      });
+    }
   } else {
     console.warn("[UI Controls] #sadv-refresh-btn not found during initialization");
   }
 
   var sadvSaveBtnEl = document.getElementById("sadv-save-btn");
   if (sadvSaveBtnEl) {
-    sadvSaveBtnEl.addEventListener("click", function () {
-      downloadSnapshot();
-    });
+    if (!runtimeCapabilities.canSave) {
+      sadvSaveBtnEl.style.display = "none";
+      sadvSaveBtnEl.setAttribute("aria-hidden", "true");
+    } else {
+      sadvSaveBtnEl.addEventListener("click", function () {
+        downloadSnapshot();
+      });
+    }
   } else {
     console.warn("[UI Controls] #sadv-save-btn not found during initialization");
   }
 
   var sadvCloseBtnEl = document.getElementById("sadv-x");
   if (sadvCloseBtnEl) {
-    sadvCloseBtnEl.addEventListener("click", function () {
-      const panel = document.getElementById("sadv-p");
-      const inj = document.getElementById("sadv-inj");
-      if (typeof stopCacheExpiryMonitor === "function") stopCacheExpiryMonitor();
-      if (panel) panel.remove();
-      if (inj) inj.remove();
-      if (typeof window !== "undefined") delete window.__sadvApi;
-    });
+    if (!runtimeCapabilities.canClose) {
+      sadvCloseBtnEl.style.display = "none";
+      sadvCloseBtnEl.setAttribute("aria-hidden", "true");
+    } else {
+      sadvCloseBtnEl.addEventListener("click", function () {
+        const panel = document.getElementById("sadv-p");
+        const inj = document.getElementById("sadv-inj");
+        if (typeof stopCacheExpiryMonitor === "function") stopCacheExpiryMonitor();
+        if (panel) panel.remove();
+        if (inj) inj.remove();
+        if (typeof window !== "undefined") delete window.__sadvApi;
+      });
+    }
   } else {
     console.warn("[UI Controls] #sadv-x not found during initialization");
   }
@@ -604,15 +635,7 @@
     window.__sadvApi = {
       getState: __sadvSnapshot,
       getCapabilities: function () {
-        return typeof getRuntimeCapabilities === "function"
-          ? getRuntimeCapabilities()
-          : {
-              mode: "live",
-              canRefresh: true,
-              canSave: true,
-              canClose: true,
-              isReadOnly: false,
-            };
+        return resolveRuntimeCapabilities();
       },
       isReady: function () {
         return __sadvInitialReady;
@@ -666,11 +689,17 @@
         __sadvNotify();
       },
       refresh: function () {
+        const capabilities = resolveRuntimeCapabilities();
+        if (!capabilities.canRefresh) return false;
         const btn = document.getElementById("sadv-refresh-btn");
         if (btn) btn.click();
+        return !!btn;
       },
       download: function () {
+        const capabilities = resolveRuntimeCapabilities();
+        if (!capabilities.canSave) return false;
         downloadSnapshot();
+        return true;
       },
       exportSnapshotData: function (onProgress, options) {
         return collectExportData(onProgress, options);
@@ -679,12 +708,15 @@
         return buildSnapshotHtml(savedAt, payload);
       },
       close: function () {
+        const capabilities = resolveRuntimeCapabilities();
+        if (!capabilities.canClose) return false;
         const panel = document.getElementById("sadv-p");
         const inj = document.getElementById("sadv-inj");
         if (typeof stopCacheExpiryMonitor === "function") stopCacheExpiryMonitor();
         if (panel) panel.remove();
         if (inj) inj.remove();
         delete window.__sadvApi;
+        return true;
       },
     };
   }

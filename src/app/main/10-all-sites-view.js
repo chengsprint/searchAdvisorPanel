@@ -14,14 +14,21 @@ async function renderAllSites() {
   // 전체현황 UI 정본(parity source).
   // 저장본 전체현황이 이 구조와 멀어지기 시작하면 drift가 생기므로,
   // 카드 구조/미니 KPI/그래프/반응형 규칙 변경 시 snapshot 쪽도 함께 점검한다.
+  //
+  // stage 2 seam:
+  // fetch는 live provider가 계속 담당하지만,
+  // 어떤 사이트/메타를 기준으로 그릴지는 facade를 통해 읽는다.
+  // 즉 UI 정본은 유지하고 입력 경계만 provider 쪽으로 밀어낸다.
   const requestId = ++allViewReqId;
+  const runtimeSites =
+    typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
   setAllSitesLabel();
   const loading = document.createElement("div");
   loading.style.cssText =
     "padding:" + T.spaceCardXl + " " + T.spaceCardLg + ";color:var(--sadv-text-secondary,#c6c6c6);text-align:left;line-height:1.6;background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);box-shadow:" + T.shadowCard;
 
   // 예상 소요 시간 계산 (사이트당 약 0.5초로 가정)
-  const estimatedTimeSeconds = Math.ceil(allSites.length * 0.5);
+  const estimatedTimeSeconds = Math.ceil(runtimeSites.length * 0.5);
   const estimatedTimeText = estimatedTimeSeconds > 60
     ? `${Math.floor(estimatedTimeSeconds / 60)}분 ${estimatedTimeSeconds % 60}초`
     : `${estimatedTimeSeconds}초`;
@@ -36,7 +43,7 @@ async function renderAllSites() {
   bdEl.innerHTML = "";
   bdEl.appendChild(loading);
 
-  if (!allSites.length) {
+  if (!runtimeSites.length) {
     bdEl.replaceChildren(
       createStateCard(
         "사이트 목록을 찾을 수 없어요",
@@ -47,7 +54,7 @@ async function renderAllSites() {
     );
     return;
   }
-  const sitesToLoad = allSites;
+  const sitesToLoad = runtimeSites;
   const siteDataBySite = {};
   const loadingDetail = loading.querySelector("#sadv-all-progress-detail");
   const loadingBar = loading.querySelector("#sadv-all-progress-bar");
@@ -162,7 +169,8 @@ async function renderAllSites() {
   window.__sadvRows = rows;
   buildCombo(rows);
   const wrap = document.createElement("div");
-  const mergedMeta = getMergedMetaState();
+  const mergedMeta =
+    typeof getRuntimeMergedMeta === "function" ? getRuntimeMergedMeta() : getMergedMetaState();
   if (isMergedReport() && mergedMeta && mergedMeta.accounts) {
     wrap.appendChild(createMergedAccountsInfo(mergedMeta));
   }
@@ -419,11 +427,13 @@ async function collectExportData(onProgress, options) {
   const exportAccountLabel = liveAccountInfo?.accountLabel || accountLabel || "";
   const exportEncId = liveAccountInfo?.encId || encId || "unknown";
   await ensureExportSiteList(refreshMode);
-  const total = allSites.length;
+  const exportSites =
+    typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
+  const total = exportSites.length;
   let done = 0;
   const stats = { success: 0, partial: 0, failed: 0, errors: [] };
-  for (let i = 0; i < allSites.length; i += batchSize) {
-    const batch = allSites.slice(i, i + batchSize);
+  for (let i = 0; i < exportSites.length; i += batchSize) {
+    const batch = exportSites.slice(i, i + batchSize);
     const results = await Promise.allSettled(
       batch.map(function (site) {
         return resolveExportSiteData(site, { refreshMode });
@@ -473,7 +483,7 @@ async function collectExportData(onProgress, options) {
       done++;
       if (onProgress) onProgress(done, total, site, stats);
     });
-    if (refreshMode === "refresh" && i + batchSize < allSites.length) {
+    if (refreshMode === "refresh" && i + batchSize < exportSites.length) {
       const jitter = Math.floor(Math.random() * FULL_REFRESH_JITTER_MS);
       await new Promise(function (resolve) {
         setTimeout(resolve, FULL_REFRESH_SITE_DELAY_MS + jitter);
@@ -501,7 +511,7 @@ async function collectExportData(onProgress, options) {
     accounts: {
       [accountEmail]: {
         encId: exportEncId,
-        sites: [...allSites],
+        sites: [...exportSites],
         siteMeta: typeof getSiteMetaMap === "function" ? getSiteMetaMap() : {},
         dataBySite: dataBySite
       }
@@ -511,7 +521,10 @@ async function collectExportData(onProgress, options) {
       curSite,
       curTab
     },
-    mergedMeta: typeof getMergedMetaState === "function" ? getMergedMetaState() : null,
+    mergedMeta:
+      typeof getRuntimeMergedMeta === "function"
+        ? getRuntimeMergedMeta()
+        : (typeof getMergedMetaState === "function" ? getMergedMetaState() : null),
     summaryRows,
     stats
   };
