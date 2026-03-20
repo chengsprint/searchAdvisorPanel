@@ -122,11 +122,21 @@
 확인:
 
 - helper/token 누락 여부
+- 공통 UI helper allowlist 누락 여부
 - shell/api parity
 - runtime kind / shell host / public API contract
 - read-only capability contract
 - runtimeVersion parity
 - mergedMeta parity
+
+특히 주의:
+
+- `09-ui-controls.js`에 새 helper를 추가했는데
+  `12-snapshot.js` 직렬화 allowlist에 같이 안 넣으면
+  live는 멀쩡하지만 saved HTML에서만 `is not defined` 회귀가 날 수 있다.
+- `ensureCurrentSite`, `buildCombo`, `setComboSite`, `renderTab`, `switchMode`처럼
+  saved가 직접 호출하는 공통 UI 함수는 **그 함수가 참조하는 helper까지 같이 serialize**
+  되는지 반드시 확인한다.
 
 ---
 
