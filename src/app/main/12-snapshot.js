@@ -582,6 +582,7 @@
   <script>
     // <!-- SADV_PAYLOAD_START -->
     const EXPORT_PAYLOAD_RAW = ${exportPayloadJson};
+    const ALL_SITES_PERIOD_OPTIONS = ${JSON.stringify(ALL_SITES_PERIOD_OPTIONS)};
     const SNAPSHOT_OFFLINE_DEFAULT_MODE = ${JSON.stringify(SNAPSHOT_OFFLINE_DEFAULT_MODE)};
     const SNAPSHOT_OFFLINE_DEFAULT_TAB = ${JSON.stringify(SNAPSHOT_OFFLINE_DEFAULT_TAB)};
     const SNAPSHOT_TAB_IDS = ${JSON.stringify(SNAPSHOT_TAB_IDS)};
@@ -894,7 +895,6 @@
         };
       });
     }
-    const ALL_SITES_PERIOD_OPTIONS = ${JSON.stringify(ALL_SITES_PERIOD_OPTIONS)};
     let allSites = EXPORT_PAYLOAD.allSites || [];
     const INITIAL_MODE = "all";
     let curMode = null;  // Initialize to null so switchMode() triggers on first call
