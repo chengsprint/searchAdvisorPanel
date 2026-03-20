@@ -424,10 +424,22 @@
       ? accountEmail.trim()
       : 'unknown@naver.com';
 
-    // Get current UI state for V2 payload
-    const currentCurMode = (typeof curMode !== "undefined") ? curMode : "all";
-    const currentCurSite = (typeof curSite !== "undefined") ? curSite : null;
-    const currentCurTab = (typeof curTab !== "undefined") ? curTab : "overview";
+    // Phase 1 seam:
+    // merge/export payload도 현재 선택 상태를 curMode/curSite/curTab 전역에서 직접 읽기보다
+    // selection facade를 우선 사용한다.
+    //
+    // 이유:
+    // - merge 역시 live/saved와 같은 selection contract를 따라야 하고
+    // - 이후 shared app entry 단계에서 export payload가 runtime kind에 따라
+    //   다른 선택 상태를 담는 drift를 줄일 수 있기 때문이다.
+    const currentSelectionState =
+      typeof getRuntimeSelectionState === "function"
+        ? getRuntimeSelectionState()
+        : {
+            curMode: (typeof curMode !== "undefined") ? curMode : "all",
+            curSite: (typeof curSite !== "undefined") ? curSite : null,
+            curTab: (typeof curTab !== "undefined") ? curTab : "overview",
+          };
 
     return {
       __meta: {
@@ -446,9 +458,9 @@
         }
       },
       ui: {
-        curMode: currentCurMode,
-        curSite: currentCurSite,
-        curTab: currentCurTab,
+        curMode: currentSelectionState.curMode,
+        curSite: currentSelectionState.curSite,
+        curTab: currentSelectionState.curTab,
         curAccount: (typeof window.__sadvAccountState?.currentAccount !== "undefined")
           ? window.__sadvAccountState.currentAccount
           : validAccountEmail

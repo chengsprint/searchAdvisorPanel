@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T12:51:46Z";
-var __SADV_GIT_HEAD__="b2ace2f";
+var __SADV_BUILD_STAMP__="2026-03-20T12:55:58Z";
+var __SADV_GIT_HEAD__="a331c08";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -7284,10 +7284,22 @@ function injectDemoData() {
       ? accountEmail.trim()
       : 'unknown@naver.com';
 
-    // Get current UI state for V2 payload
-    const currentCurMode = (typeof curMode !== "undefined") ? curMode : "all";
-    const currentCurSite = (typeof curSite !== "undefined") ? curSite : null;
-    const currentCurTab = (typeof curTab !== "undefined") ? curTab : "overview";
+    // Phase 1 seam:
+    // merge/export payload도 현재 선택 상태를 curMode/curSite/curTab 전역에서 직접 읽기보다
+    // selection facade를 우선 사용한다.
+    //
+    // 이유:
+    // - merge 역시 live/saved와 같은 selection contract를 따라야 하고
+    // - 이후 shared app entry 단계에서 export payload가 runtime kind에 따라
+    //   다른 선택 상태를 담는 drift를 줄일 수 있기 때문이다.
+    const currentSelectionState =
+      typeof getRuntimeSelectionState === "function"
+        ? getRuntimeSelectionState()
+        : {
+            curMode: (typeof curMode !== "undefined") ? curMode : "all",
+            curSite: (typeof curSite !== "undefined") ? curSite : null,
+            curTab: (typeof curTab !== "undefined") ? curTab : "overview",
+          };
 
     return {
       __meta: {
@@ -7306,9 +7318,9 @@ function injectDemoData() {
         }
       },
       ui: {
-        curMode: currentCurMode,
-        curSite: currentCurSite,
-        curTab: currentCurTab,
+        curMode: currentSelectionState.curMode,
+        curSite: currentSelectionState.curSite,
+        curTab: currentSelectionState.curTab,
         curAccount: (typeof window.__sadvAccountState?.currentAccount !== "undefined")
           ? window.__sadvAccountState.currentAccount
           : validAccountEmail
@@ -9573,13 +9585,15 @@ function getAvailableRenderers() {
         : { curSite };
     const currentSite = selectionState.curSite;
     if (!runtimeSites.length) {
-      if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curSite: null });
+      if (typeof setRuntimeSite === "function") setRuntimeSite(null);
+      else if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curSite: null });
       else curSite = null;
       return null;
     }
     if (!currentSite || !runtimeSites.includes(currentSite)) {
       const nextSite = runtimeSites[0];
-      if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curSite: nextSite });
+      if (typeof setRuntimeSite === "function") setRuntimeSite(nextSite);
+      else if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curSite: nextSite });
       else curSite = nextSite;
       return nextSite;
     }
@@ -9858,7 +9872,9 @@ function getAvailableRenderers() {
         ? getRuntimeSelectionState()
         : { curSite, curMode, curTab };
     const sameSite = selectionState.curSite === site;
-    if (typeof setRuntimeSelectionState === "function") {
+    if (typeof setRuntimeSite === "function") {
+      setRuntimeSite(site);
+    } else if (typeof setRuntimeSelectionState === "function") {
       setRuntimeSelectionState({ curSite: site });
     } else {
       curSite = site;
@@ -9999,7 +10015,9 @@ function getAvailableRenderers() {
           ? getRuntimeSelectionState()
           : { curTab };
       if (!t || t.dataset.t === selectionState.curTab) return;
-      if (typeof setRuntimeSelectionState === "function") {
+      if (typeof setRuntimeTab === "function") {
+        setRuntimeTab(t.dataset.t);
+      } else if (typeof setRuntimeSelectionState === "function") {
         setRuntimeSelectionState({ curTab: t.dataset.t });
       } else {
         curTab = t.dataset.t;
@@ -10113,7 +10131,8 @@ function getAvailableRenderers() {
         : { curMode, curSite, curTab };
     if (mode === selectionState.curMode) return;
     if (!modeBar || !siteBar || !tabsEl) {
-      if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curMode: mode });
+      if (typeof setRuntimeMode === "function") setRuntimeMode(mode);
+      else if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curMode: mode });
       else curMode = mode;
       console.warn("[UI Controls] Missing mode UI containers; switchMode skipped");
       setCachedUiState();
@@ -10121,7 +10140,8 @@ function getAvailableRenderers() {
       __sadvNotify();
       return;
     }
-    if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curMode: mode });
+    if (typeof setRuntimeMode === "function") setRuntimeMode(mode);
+    else if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curMode: mode });
     else curMode = mode;
     modeBar
       .querySelectorAll(".sadv-mode")
@@ -10268,7 +10288,8 @@ function getAvailableRenderers() {
             ? getRuntimeSelectionState()
             : { curTab };
         if (!tabsEl || !TABS.some(function (item) { return item.id === tab; }) || selectionState.curTab === tab) return;
-        if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curTab: tab });
+        if (typeof setRuntimeTab === "function") setRuntimeTab(tab);
+        else if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curTab: tab });
         else curTab = tab;
         tabsEl.querySelectorAll(".sadv-t").forEach(function (b) {
           b.classList.remove("on");
@@ -10610,7 +10631,9 @@ function buildAllSitesDisplayWrap(baseRows) {
     }
     const card = e.target.closest(".sadv-allcard");
     if (card && card.dataset.site) {
-      if (typeof setRuntimeSelectionState === "function") {
+      if (typeof setRuntimeSite === "function") {
+        setRuntimeSite(card.dataset.site);
+      } else if (typeof setRuntimeSelectionState === "function") {
         setRuntimeSelectionState({ curSite: card.dataset.site });
       } else {
         curSite = card.dataset.site;
@@ -10856,7 +10879,11 @@ async function renderAllSites() {
         : buildSiteSummaryRow(site, null),
   );
   rows.sort((a, b) => b.totalC - a.totalC);
-  window.__sadvRows = rows;
+  if (typeof setRuntimeRows === "function") {
+    setRuntimeRows(rows);
+  } else {
+    window.__sadvRows = rows;
+  }
   buildCombo(rows);
   {
     const currentSelectionState =
