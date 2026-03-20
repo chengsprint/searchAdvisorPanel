@@ -1104,21 +1104,155 @@ function barchart(vals, labels, H, col, unit) {
     if (typeof notifySnapshotShellState === "function") notifySnapshotShellState();
     __sadvNotify();
   }
+  // ---------------------------------------------------------------------------
+  // LEGACY SNAPSHOT MIRROR
+  // ---------------------------------------------------------------------------
+  // Canonical active snapshot implementation lives in:
+  //   src/app/main/12-snapshot.js
+  //
+  // This monolithic main.js path is kept only as a legacy mirror / fallback
+  // contract surface. When snapshot behavior must change, update the canonical
+  // module first and keep this block aligned only as far as required by
+  // verifier/backward-compatibility expectations.
+  // ---------------------------------------------------------------------------
+  const SNAPSHOT_OFFLINE_DEFAULT_MODE = "all";
+  const SNAPSHOT_OFFLINE_DEFAULT_TAB = "overview";
+  const SNAPSHOT_TAB_IDS = [
+    "overview",
+    "daily",
+    "queries",
+    "pages",
+    "crawl",
+    "backlink",
+    "diagnosis",
+    "insight",
+  ];
+  function getSnapshotPrimaryAccount(payload) {
+    if (!payload || !payload.__meta || !payload.accounts || typeof payload.accounts !== "object") {
+      return null;
+    }
+    const accountKeys = Object.keys(payload.accounts);
+    if (!accountKeys.length) return null;
+    const accountLabel = accountKeys[0];
+    return {
+      accountLabel,
+      account: payload.accounts[accountLabel] || null,
+    };
+  }
+  function extractSnapshotSourceState(sourcePayload) {
+    const primaryAccount = getSnapshotPrimaryAccount(sourcePayload);
+    if (primaryAccount) {
+      const account = primaryAccount.account || {};
+      return {
+        accountLabel: primaryAccount.accountLabel || "",
+        accountEncId: account.encId || "unknown",
+        generatorVersion:
+          (sourcePayload.__meta && sourcePayload.__meta.generatorVersion) || "unknown",
+        exportFormat:
+          (sourcePayload.__meta && sourcePayload.__meta.exportFormat) || "snapshot-v2",
+        allSites: Array.isArray(account.sites) ? account.sites : [],
+        dataBySite:
+          account.dataBySite && typeof account.dataBySite === "object"
+            ? account.dataBySite
+            : {},
+        summaryRows: Array.isArray(sourcePayload.summaryRows)
+          ? sourcePayload.summaryRows
+          : [],
+        siteMeta:
+          account.siteMeta && typeof account.siteMeta === "object"
+            ? account.siteMeta
+            : {},
+        mergedMeta: Object.prototype.hasOwnProperty.call(sourcePayload, "mergedMeta")
+          ? sourcePayload.mergedMeta
+          : null,
+        savedAt:
+          sourcePayload.__meta && Object.prototype.hasOwnProperty.call(sourcePayload.__meta, "savedAt")
+            ? sourcePayload.__meta.savedAt
+            : sourcePayload.savedAt || null,
+        curMode: SNAPSHOT_OFFLINE_DEFAULT_MODE,
+        curSite:
+          sourcePayload.ui && typeof sourcePayload.ui.curSite === "string"
+            ? sourcePayload.ui.curSite
+            : null,
+        curTab: SNAPSHOT_OFFLINE_DEFAULT_TAB,
+      };
+    }
+    const legacyPayload =
+      sourcePayload && typeof sourcePayload === "object" ? sourcePayload : {};
+    return {
+      accountLabel: legacyPayload.accountLabel || "",
+      accountEncId: legacyPayload.accountEncId || legacyPayload.encId || "unknown",
+      generatorVersion:
+        legacyPayload.generatorVersion ||
+        (legacyPayload.__meta && legacyPayload.__meta.generatorVersion) ||
+        "unknown",
+      exportFormat:
+        legacyPayload.exportFormat ||
+        (legacyPayload.__meta && legacyPayload.__meta.exportFormat) ||
+        null,
+      allSites: Array.isArray(legacyPayload.allSites) ? legacyPayload.allSites : [],
+      dataBySite:
+        legacyPayload.dataBySite && typeof legacyPayload.dataBySite === "object"
+          ? legacyPayload.dataBySite
+          : {},
+      summaryRows: Array.isArray(legacyPayload.summaryRows)
+        ? legacyPayload.summaryRows
+        : [],
+      siteMeta:
+        legacyPayload.siteMeta && typeof legacyPayload.siteMeta === "object"
+          ? legacyPayload.siteMeta
+          : {},
+      mergedMeta: Object.prototype.hasOwnProperty.call(legacyPayload, "mergedMeta")
+        ? legacyPayload.mergedMeta
+        : null,
+      savedAt:
+        Object.prototype.hasOwnProperty.call(legacyPayload, "savedAt")
+          ? legacyPayload.savedAt
+          : null,
+      curMode:
+        legacyPayload.curMode === "site"
+          ? "site"
+          : SNAPSHOT_OFFLINE_DEFAULT_MODE,
+      curSite:
+        typeof legacyPayload.curSite === "string" ? legacyPayload.curSite : null,
+      curTab:
+        SNAPSHOT_TAB_IDS.indexOf(legacyPayload.curTab) !== -1
+          ? legacyPayload.curTab
+          : SNAPSHOT_OFFLINE_DEFAULT_TAB,
+    };
+  }
+  function normalizeSnapshotPayloadForOfflineShell(sourcePayload) {
+    const sourceState = extractSnapshotSourceState(sourcePayload);
+    const legacyBasePayload =
+      sourcePayload &&
+      typeof sourcePayload === "object" &&
+      !(sourcePayload.__meta && sourcePayload.accounts)
+        ? Object.assign({}, sourcePayload)
+        : {};
+    return Object.assign(legacyBasePayload, {
+      savedAt: sourceState.savedAt,
+      accountLabel: sourceState.accountLabel,
+      accountEncId: sourceState.accountEncId,
+      generatorVersion: sourceState.generatorVersion,
+      exportFormat: sourceState.exportFormat || "snapshot-v2",
+      allSites: sourceState.allSites,
+      summaryRows: sourceState.summaryRows,
+      dataBySite: sourceState.dataBySite,
+      siteMeta: sourceState.siteMeta,
+      mergedMeta: sourceState.mergedMeta,
+      curMode: SNAPSHOT_OFFLINE_DEFAULT_MODE,
+      curSite: sourceState.curSite,
+      curTab: SNAPSHOT_OFFLINE_DEFAULT_TAB,
+    });
+  }
   function buildSnapshotShellState(payload) {
-    const allSites = Array.isArray(payload.allSites) ? payload.allSites.slice() : [];
-    const snapshotTabIds = [
-      "overview",
-      "daily",
-      "queries",
-      "pages",
-      "crawl",
-      "backlink",
-      "diagnosis",
-      "insight",
-    ];
+    const normalizedPayload = normalizeSnapshotPayloadForOfflineShell(payload);
+    const allSites = Array.isArray(normalizedPayload.allSites)
+      ? normalizedPayload.allSites.slice()
+      : [];
     const cacheSavedAtValues = allSites
       .map(function (site) {
-        const dataBySite = payload.dataBySite && payload.dataBySite[site];
+        const dataBySite = normalizedPayload.dataBySite && normalizedPayload.dataBySite[site];
         return dataBySite && typeof dataBySite.__cacheSavedAt === "number"
           ? dataBySite.__cacheSavedAt
           : null;
@@ -1127,24 +1261,36 @@ function barchart(vals, labels, H, col, unit) {
         return typeof value === "number";
       });
     const savedAtValue =
-      payload.savedAt && !Number.isNaN(new Date(payload.savedAt).getTime())
-        ? new Date(payload.savedAt)
+      normalizedPayload.savedAt && !Number.isNaN(new Date(normalizedPayload.savedAt).getTime())
+        ? new Date(normalizedPayload.savedAt)
         : null;
     const updatedAt = cacheSavedAtValues.length
       ? new Date(Math.max.apply(null, cacheSavedAtValues))
       : savedAtValue;
     return {
-      accountLabel: payload.accountLabel || "",
+      accountLabel: normalizedPayload.accountLabel || "",
       allSites,
-      rows: Array.isArray(payload.summaryRows) ? payload.summaryRows.slice() : [],
+      rows: Array.isArray(normalizedPayload.summaryRows)
+        ? normalizedPayload.summaryRows.slice()
+        : Array.isArray(normalizedPayload.rows)
+          ? normalizedPayload.rows.slice()
+          : [],
       siteMeta:
-        payload.siteMeta && typeof payload.siteMeta === "object" ? payload.siteMeta : {},
-      curMode: "all",
+        normalizedPayload.siteMeta && typeof normalizedPayload.siteMeta === "object"
+          ? normalizedPayload.siteMeta
+          : {},
+      mergedMeta: Object.prototype.hasOwnProperty.call(normalizedPayload, "mergedMeta")
+        ? normalizedPayload.mergedMeta
+        : null,
+      curMode: normalizedPayload.curMode === "site" ? "site" : SNAPSHOT_OFFLINE_DEFAULT_MODE,
       curSite:
-        typeof payload.curSite === "string"
-          ? payload.curSite
+        typeof normalizedPayload.curSite === "string"
+          ? normalizedPayload.curSite
           : allSites[0] || null,
-      curTab: "overview",
+      curTab:
+        SNAPSHOT_TAB_IDS.indexOf(normalizedPayload.curTab) !== -1
+          ? normalizedPayload.curTab
+          : SNAPSHOT_OFFLINE_DEFAULT_TAB,
       runtimeVersion: window.__SEARCHADVISOR_RUNTIME_VERSION__ || "snapshot",
       cacheMeta: updatedAt
         ? {
@@ -1213,6 +1359,7 @@ function barchart(vals, labels, H, col, unit) {
       "    allSites: Array.isArray(shellStateSource.allSites) ? shellStateSource.allSites.slice() : [],",
       "    rows: Array.isArray(shellStateSource.rows) ? shellStateSource.rows.slice() : [],",
       '    siteMeta: shellStateSource.siteMeta && typeof shellStateSource.siteMeta === "object" ? shellStateSource.siteMeta : {},',
+      '    mergedMeta: Object.prototype.hasOwnProperty.call(shellStateSource, "mergedMeta") ? shellStateSource.mergedMeta : null,',
       '    curMode: shellStateSource.curMode === "site" ? "site" : "all",',
       '    curSite: typeof shellStateSource.curSite === "string" ? shellStateSource.curSite : null,',
       '    curTab: typeof shellStateSource.curTab === "string" ? shellStateSource.curTab : "overview",',
@@ -1234,6 +1381,7 @@ function barchart(vals, labels, H, col, unit) {
       "      allSites: Array.isArray(snapshotState.allSites) ? snapshotState.allSites.slice() : [],",
       "      rows: Array.isArray(snapshotState.rows) ? snapshotState.rows.slice() : [],",
       '      siteMeta: snapshotState.siteMeta && typeof snapshotState.siteMeta === "object" ? snapshotState.siteMeta : {},',
+      '      mergedMeta: Object.prototype.hasOwnProperty.call(snapshotState, "mergedMeta") ? snapshotState.mergedMeta : null,',
       '      curMode: snapshotState.curMode === "site" ? "site" : "all",',
       '      curSite: typeof snapshotState.curSite === "string" ? snapshotState.curSite : null,',
       '      curTab: typeof snapshotState.curTab === "string" ? snapshotState.curTab : "overview",',
@@ -1377,14 +1525,20 @@ function barchart(vals, labels, H, col, unit) {
     delete clone.dataset.sadvPrevBackground;
     delete clone.dataset.sadvPrevBorderLeftColor;
     const savedLabel = stampLabel(savedAt);
-    const snapshotCurMode = "all";
-    const snapshotCurTab = "overview";
-    const modeLabel = "\uc804\uccb4\ud604\ud669";
+    const offlinePayload = normalizeSnapshotPayloadForOfflineShell(payload);
+    const snapshotCurMode = SNAPSHOT_OFFLINE_DEFAULT_MODE;
+    const snapshotCurTab = SNAPSHOT_OFFLINE_DEFAULT_TAB;
+    const snapshotCurSite = offlinePayload.curSite;
+    const allSites = offlinePayload.allSites;
+    const modeLabel = snapshotCurMode === "site" ? "\uc0ac\uc774\ud2b8\ubcc4" : "\uc804\uccb4\ud604\ud669";
     const activeTab = TABS.find(function (t) {
       return t.id === snapshotCurTab;
     });
     const activeTabLabel = activeTab ? activeTab.label : modeLabel;
-    const siteLabel = payload.allSites.length + "\uac1c \uc0ac\uc774\ud2b8";
+    const siteLabel =
+      snapshotCurMode === "site" && snapshotCurSite
+        ? snapshotCurSite.replace(/^https?:\/\//, "")
+        : allSites.length + "\uac1c \uc0ac\uc774\ud2b8";
     const topRow = clone.querySelector("#sadv-header > div");
     const siteLabelEl = clone.querySelector("#sadv-site-label");
     const comboWrap = clone.querySelector("#sadv-combo-wrap");
@@ -1403,12 +1557,7 @@ function barchart(vals, labels, H, col, unit) {
       meta.textContent = "Saved " + savedLabel;
       topRow.lastElementChild.replaceWith(meta);
     }
-    const exportPayloadJson = stringifyForInlineJson(
-      Object.assign({}, payload, {
-        curMode: snapshotCurMode,
-        curTab: snapshotCurTab,
-      }),
-    );
+    const exportPayloadJson = stringifyForInlineJson(payload);
     const html = `<!doctype html>
 <html lang="ko">
 <head>
@@ -1479,6 +1628,11 @@ function barchart(vals, labels, H, col, unit) {
       max-height:none !important;
       height:auto !important;
     }
+    .sadv-snapshot-combo-drop{
+      position:fixed !important;
+      z-index:2147483646 !important;
+      margin:0 !important;
+    }
   </style>
 </head>
 <body>
@@ -1493,7 +1647,14 @@ function barchart(vals, labels, H, col, unit) {
   ${clone.outerHTML}
   <script>
     // <!-- SADV_PAYLOAD_START -->
-    const EXPORT_PAYLOAD = ${exportPayloadJson};
+    const EXPORT_PAYLOAD_RAW = ${exportPayloadJson};
+    const SNAPSHOT_OFFLINE_DEFAULT_MODE = ${JSON.stringify(SNAPSHOT_OFFLINE_DEFAULT_MODE)};
+    const SNAPSHOT_OFFLINE_DEFAULT_TAB = ${JSON.stringify(SNAPSHOT_OFFLINE_DEFAULT_TAB)};
+    const SNAPSHOT_TAB_IDS = ${JSON.stringify(SNAPSHOT_TAB_IDS)};
+    const getSnapshotPrimaryAccount = ${getSnapshotPrimaryAccount.toString()};
+    const extractSnapshotSourceState = ${extractSnapshotSourceState.toString()};
+    const normalizeSnapshotPayloadForOfflineShell = ${normalizeSnapshotPayloadForOfflineShell.toString()};
+    const EXPORT_PAYLOAD = normalizeSnapshotPayloadForOfflineShell(EXPORT_PAYLOAD_RAW);
     // <!-- SADV_PAYLOAD_END -->
     window.__SEARCHADVISOR_EXPORT_PAYLOAD__ = EXPORT_PAYLOAD;
     const SITE_META_MAP = EXPORT_PAYLOAD.siteMeta || {};
@@ -1651,6 +1812,7 @@ function barchart(vals, labels, H, col, unit) {
     const COLORS = ${JSON.stringify(COLORS)};
     const DOW = ${JSON.stringify(DOW)};
     const PNL = ${JSON.stringify(PNL)};
+    const T = ${JSON.stringify(T)};
     const CHART_W = PNL - 32;
     const TABS = ${JSON.stringify(TABS)};
     let TIP = null;
@@ -1748,7 +1910,10 @@ function barchart(vals, labels, H, col, unit) {
         })
           ? curTab
           : "overview",
-        runtimeVersion: window.__SEARCHADVISOR_RUNTIME_VERSION__ || "snapshot",
+        runtimeVersion:
+          window.__SEARCHADVISOR_RUNTIME_VERSION__ ||
+          EXPORT_PAYLOAD.generatorVersion ||
+          "snapshot",
         cacheMeta: updatedAt
           ? {
               label: "snapshot",
@@ -1850,13 +2015,74 @@ function barchart(vals, labels, H, col, unit) {
       });
     }
     const snapshotComboBtn = document.getElementById("sadv-combo-btn");
+    const snapshotComboWrap = document.getElementById("sadv-combo-wrap");
+    const snapshotComboDrop = document.getElementById("sadv-combo-drop");
+    function scheduleSnapshotComboDropPositionSync(attempt) {
+      const tries = typeof attempt === "number" ? attempt : 0;
+      if (!snapshotComboBtn || !snapshotComboDrop) return;
+      const rect = snapshotComboBtn.getBoundingClientRect();
+      if (rect && rect.width >= 40 && rect.height >= 24) {
+        syncSnapshotComboDropPosition();
+        return;
+      }
+      if (tries >= 10) return;
+      requestAnimationFrame(function () {
+        scheduleSnapshotComboDropPositionSync(tries + 1);
+      });
+    }
+    function syncSnapshotComboDropPosition() {
+      if (!snapshotComboBtn || !snapshotComboDrop) return;
+      const rect = snapshotComboBtn.getBoundingClientRect();
+      if (!rect || rect.width < 40 || rect.height < 24) return;
+      const maxWidth = Math.max(240, window.innerWidth - 24);
+      const width = Math.min(rect.width, maxWidth);
+      const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12));
+      const availableHeight = Math.max(160, Math.floor(window.innerHeight - rect.bottom - 16));
+      snapshotComboDrop.style.setProperty("position", "fixed", "important");
+      snapshotComboDrop.style.setProperty("top", Math.round(rect.bottom + 2) + "px", "important");
+      snapshotComboDrop.style.setProperty("left", Math.round(left) + "px", "important");
+      snapshotComboDrop.style.setProperty("right", "auto", "important");
+      snapshotComboDrop.style.setProperty("width", Math.round(width) + "px", "important");
+      snapshotComboDrop.style.setProperty("max-height", Math.min(420, availableHeight) + "px", "important");
+      snapshotComboDrop.style.setProperty("z-index", "2147483646", "important");
+      snapshotComboDrop.style.setProperty(
+        "display",
+        snapshotComboWrap && snapshotComboWrap.classList.contains("open") ? "block" : "none",
+        "important"
+      );
+    }
+    function closeSnapshotCombo() {
+      if (snapshotComboWrap) {
+        snapshotComboWrap.classList.remove("open");
+        snapshotComboWrap.setAttribute("aria-expanded", "false");
+      }
+      if (snapshotComboDrop) snapshotComboDrop.style.setProperty("display", "none", "important");
+    }
+    if (snapshotComboDrop) {
+      snapshotComboDrop.classList.add("sadv-snapshot-combo-drop");
+      if (snapshotComboDrop.parentElement !== p) p.appendChild(snapshotComboDrop);
+      snapshotComboDrop.style.setProperty("display", "none", "important");
+    }
+    if (snapshotComboWrap && snapshotComboDrop) {
+      const comboWrapObserver = new MutationObserver(function () {
+        syncSnapshotComboDropPosition();
+      });
+      comboWrapObserver.observe(snapshotComboWrap, {
+        attributes: true,
+        attributeFilter: ["class"],
+      });
+    }
     if (snapshotComboBtn) {
       snapshotComboBtn.addEventListener("click", function (e) {
         e.stopPropagation();
-        const wrap = document.getElementById("sadv-combo-wrap");
-        if (!wrap) return;
-        wrap.classList.toggle("open");
-        if (wrap.classList.contains("open")) {
+        if (!snapshotComboWrap) return;
+        snapshotComboWrap.classList.toggle("open");
+        snapshotComboWrap.setAttribute(
+          "aria-expanded",
+          snapshotComboWrap.classList.contains("open") ? "true" : "false"
+        );
+        if (snapshotComboWrap.classList.contains("open")) {
+          scheduleSnapshotComboDropPositionSync(0);
           setTimeout(function () {
             const inp = document.getElementById("sadv-combo-search");
             if (inp) {
@@ -1872,15 +2098,28 @@ function barchart(vals, labels, H, col, unit) {
               };
             }
           }, 50);
+        } else {
+          closeSnapshotCombo();
         }
       });
     } else {
       console.warn("[Snapshot] #sadv-combo-btn not found during initialization");
     }
     document.addEventListener("click", function (e) {
-      const wrap = document.getElementById("sadv-combo-wrap");
-      if (wrap && !wrap.contains(e.target)) wrap.classList.remove("open");
+      if (snapshotComboDrop && snapshotComboDrop.contains(e.target)) return;
+      if (snapshotComboWrap && snapshotComboWrap.contains(e.target)) return;
+      closeSnapshotCombo();
     });
+    window.addEventListener("resize", function () {
+      if (snapshotComboWrap && snapshotComboWrap.classList.contains("open")) {
+        syncSnapshotComboDropPosition();
+      }
+    });
+    window.addEventListener("scroll", function () {
+      if (snapshotComboWrap && snapshotComboWrap.classList.contains("open")) {
+        syncSnapshotComboDropPosition();
+      }
+    }, true);
     if (modeBar) {
       modeBar.addEventListener("click", function (e) {
         const m = e.target.closest("[data-m]");

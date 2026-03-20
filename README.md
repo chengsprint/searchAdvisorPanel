@@ -9,6 +9,54 @@
 
 모듈화된 SearchAdvisor 런타임 - 브라우저 콘솔에서 직접 실행 가능한 단일 파일 번들.
 
+## 2026-03-20 현재 기준 안내
+
+이 저장소의 현재 정본 구현 경로는 `src/app/main/*` 입니다.
+
+- `build.js` 는 `src/app/main/*` 모듈들을 조립해 `dist/runtime.js` 를 생성합니다.
+- `src/app/legacy-main.js` 는 레거시 미러/참고 경로이며, 현재 빌드 입력 정본은 아닙니다.
+- snapshot 관련 정본 문서는 `src/app/main/SNAPSHOT_EXPORT_CONTRACT.md` 입니다.
+
+현재 우선해서 봐야 할 문서:
+
+- `src/app/main/SNAPSHOT_EXPORT_CONTRACT.md`
+- `docs/SNAPSHOT_CONTRACT_GUARDRAILS.20260320.md`
+- `docs/SNAPSHOT_COMBO_TOP_LAYER_NOTES.20260320.md`
+- `docs/SNAPSHOT_TERMINOLOGY.20260320.md`
+- `docs/SNAPSHOT_WORKFLOW_QA_CHECKLIST.20260320.md`
+- `UI_RUNTIME_NOTES_20260319.md`
+- `docs/HANDOFF_5TH_FINAL_CHECK_20260320.md`
+
+공식 검증 명령:
+
+```bash
+npm run build
+npm run check
+npm run lint
+npm run test
+npm run test:e2e
+```
+
+snapshot 저장본 HTML 회귀 확인:
+
+```bash
+npm run audit:snapshot-html -- ./searchadvisor-<account>-<timestamp>.html
+```
+
+2026-03-20 재검증 결과:
+
+- `npm run build` 통과
+- `npm run check` 통과
+- `npm run test:unit` 통과
+- `npm run test:integration` 통과
+- `npm run lint` 실패
+  - `src/app/legacy-main.js` standalone parsing issue
+  - `tests/e2e/*` 의 누적 스타일 경고/오류
+- 기존 snapshot HTML 아티팩트 audit에서는 `mergedMeta` / `runtimeVersion` shell parity 이슈가 남아 있을 수 있음
+
+> 아래 README 내용 중 일부는 과거 위젯/단일 `main.js` 중심 설명이 남아 있는 historical note 입니다.
+> 현재 작업 판단은 위 최신 안내와 handoff 문서를 우선 기준으로 삼으십시오.
+
 ## 📋 최근 변경사항
 
 ### [2026-03-16] - Test Report Complete ✅

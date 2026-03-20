@@ -7,7 +7,7 @@ import './01-style.js';
 import './02-react-bundle.js';
 
 // Import and execute main app
-import { initApp } from './app/main.js';
+import { initApp } from './app/legacy-main.js';
 
 // Initialize the app
 initApp();
