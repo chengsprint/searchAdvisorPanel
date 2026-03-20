@@ -104,7 +104,14 @@ function getRuntimeShellState() {
         ? getAllSitesPeriodDaysState()
         : normalizeAllSitesPeriodDays(90),
     allSites: Array.isArray(allSites) ? allSites.slice() : [],
-    rows: Array.isArray(window.__sadvRows) ? window.__sadvRows.slice() : [],
+    // rows seam:
+    // fallback shell state도 가능한 한 canonical rows getter를 먼저 사용한다.
+    // 이 지점은 live/saved/merge 모두가 거치는 공용 fallback이므로,
+    // 직접 window.__sadvRows를 읽는 습관을 줄이는 가치가 크다.
+    rows:
+      typeof getCanonicalRowsState === "function"
+        ? getCanonicalRowsState()
+        : (Array.isArray(window.__sadvRows) ? window.__sadvRows.slice() : []),
     accountLabel: "",
     runtimeVersion: "runtime",
     cacheMeta: null,

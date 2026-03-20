@@ -168,12 +168,26 @@ UI 자체는 공통 엔트리를 타게 만드는 것이 목표다.
   - request guard의 `curSite` direct read를 selection seam으로 이동
 - `06-merge-manager.js`
   - export payload가 selection/period state를 facade 우선으로 읽도록 정리
+- `07-data-provider.js`
+  - fallback shell state도 canonical rows getter를 우선 사용하도록 정리
 
 ### 아직 남음
 - `09-ui-controls.js` 내부 direct global fallback 추가 축소
 - `10-all-sites-view.js`의 canonical rows write(`window.__sadvRows = rows`) 축소 준비
 - `12-snapshot.js`를 boot/provider 중심으로 좁히는 2단계 준비
 - shared app entry 도입 전, public action seam 추가 정리
+
+### rows seam 관점의 현재 판단
+- **지금 당장 안전한 곳**
+  - `07-ui-state.js`
+  - `07-data-provider.js`
+  - `10-all-sites-view.js`의 rows read/write facade 우선 사용
+- **아직 위험해서 보류하는 곳**
+  - `12-snapshot.js`의 `window.__sadvRows` direct write/read 다수
+  - saved boot 초기화 순서와 묶인 rows 적재 지점
+
+즉 Phase 1에서는 rows seam도 **provider/live 쪽부터 줄이고**, saved bootstrap rows 적재는
+Phase 2 이상에서 다루는 것이 원칙이다.
 
 ### 이번 단계에서 의도적으로 보류한 것
 - `12-snapshot.js` 로컬 `curMode/curSite/curTab` 대수술

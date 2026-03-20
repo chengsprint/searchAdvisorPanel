@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T13:12:20Z";
-var __SADV_GIT_HEAD__="6c52518";
+var __SADV_BUILD_STAMP__="2026-03-20T13:27:57Z";
+var __SADV_GIT_HEAD__="38d8ca3";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -8200,7 +8200,14 @@ function getRuntimeShellState() {
         ? getAllSitesPeriodDaysState()
         : normalizeAllSitesPeriodDays(90),
     allSites: Array.isArray(allSites) ? allSites.slice() : [],
-    rows: Array.isArray(window.__sadvRows) ? window.__sadvRows.slice() : [],
+    // rows seam:
+    // fallback shell state도 가능한 한 canonical rows getter를 먼저 사용한다.
+    // 이 지점은 live/saved/merge 모두가 거치는 공용 fallback이므로,
+    // 직접 window.__sadvRows를 읽는 습관을 줄이는 가치가 크다.
+    rows:
+      typeof getCanonicalRowsState === "function"
+        ? getCanonicalRowsState()
+        : (Array.isArray(window.__sadvRows) ? window.__sadvRows.slice() : []),
     accountLabel: "",
     runtimeVersion: "runtime",
     cacheMeta: null,
