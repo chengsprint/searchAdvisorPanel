@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T15:10:17Z";
-var __SADV_GIT_HEAD__="9068c96";
+var __SADV_BUILD_STAMP__="2026-03-20T15:39:24Z";
+var __SADV_GIT_HEAD__="135994a";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -11585,9 +11585,49 @@ function publishSnapshotRuntimeApis(snapshotApi) {
   };
 }
 
+// Phase 2 Workstream C:
+// saved bootstrap에서 가장 자주 흔들리던 지점은 "payload/state 복원 -> combo/selection 복원 ->
+// 초기 렌더 -> 렌더 후 후처리"가 한 블록에 뭉쳐 있던 부분이다.
+// 이 helper들은 switchMode(INITIAL_MODE) 호출 자체는 감추지 않고, 그 앞뒤의 boot 책임만 분리한다.
+// 이유:
+// - switchMode는 실제 렌더/부수효과 진입점이라 여기까지 helper 안으로 숨기면 디버깅이 어려워진다.
+// - 반면 기간 복원, canonical rows 준비, combo/selection 복원, 렌더 후 finalize는 boot 책임으로
+//   묶는 편이 saved bootstrap slim 방향과 잘 맞는다.
+// - 새 helper를 추가할 때는 반드시 SNAPSHOT_RUNTIME_BOOT_HELPERS와
+//   buildSnapshotSerializedHelperSection()를 같이 갱신해야 한다.
+function restoreSnapshotUiBootState(initialMode) {
+  const cachedUi = getCachedUiState();
+  if (cachedUi && typeof cachedUi.allSitesPeriodDays !== "undefined") {
+    allSitesPeriodDays = normalizeAllSitesPeriodDays(cachedUi.allSitesPeriodDays);
+  } else {
+    allSitesPeriodDays = normalizeAllSitesPeriodDays(
+      EXPORT_PAYLOAD.ui && typeof EXPORT_PAYLOAD.ui.allSitesPeriodDays !== "undefined"
+        ? EXPORT_PAYLOAD.ui.allSitesPeriodDays
+        : EXPORT_PAYLOAD.allSitesPeriodDays
+    );
+  }
+  assignColors();
+  window.__sadvRows = (EXPORT_PAYLOAD.summaryRows || []).filter(function (row) {
+    return row && allSites.includes(row.site);
+  });
+  ensureCurrentSite();
+  buildCombo(window.__sadvRows.length ? window.__sadvRows : null);
+  if (curSite) setComboSite(curSite);
+  setAllSitesLabel();
+  return initialMode;
+}
+
+function finalizeSnapshotUiBoot() {
+  bindSnapshotAllCardLinks();
+  applySnapshotReportDecorations();
+  notifySnapshotShellState();
+}
+
 const SNAPSHOT_RUNTIME_BOOT_HELPERS = [
   createSnapshotPublicFacade,
   publishSnapshotRuntimeApis,
+  restoreSnapshotUiBootState,
+  finalizeSnapshotUiBoot,
 ];
 
 const SNAPSHOT_ALL_SITES_HELPER_PACK = [
@@ -12605,28 +12645,9 @@ function buildSnapshotSerializedHelperSection() {
     };
     publishSnapshotRuntimeApis(snapshotApi);
     if (snapshotUiReady) {
-      const cachedUi = getCachedUiState();
-      if (cachedUi && typeof cachedUi.allSitesPeriodDays !== "undefined") {
-        allSitesPeriodDays = normalizeAllSitesPeriodDays(cachedUi.allSitesPeriodDays);
-      } else {
-        allSitesPeriodDays = normalizeAllSitesPeriodDays(
-          EXPORT_PAYLOAD.ui && typeof EXPORT_PAYLOAD.ui.allSitesPeriodDays !== "undefined"
-            ? EXPORT_PAYLOAD.ui.allSitesPeriodDays
-            : EXPORT_PAYLOAD.allSitesPeriodDays
-        );
-      }
-      assignColors();
-      window.__sadvRows = (EXPORT_PAYLOAD.summaryRows || []).filter(function (row) {
-        return row && allSites.includes(row.site);
-      });
-      ensureCurrentSite();
-      buildCombo(window.__sadvRows.length ? window.__sadvRows : null);
-      if (curSite) setComboSite(curSite);
-      setAllSitesLabel();
+      restoreSnapshotUiBootState(INITIAL_MODE);
       switchMode(INITIAL_MODE);
-      bindSnapshotAllCardLinks();
-      applySnapshotReportDecorations();
-      notifySnapshotShellState();
+      finalizeSnapshotUiBoot();
     }
   <\/script>
 </body>

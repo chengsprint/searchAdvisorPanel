@@ -151,6 +151,19 @@
   boot/provider wiring 책임 helper이므로,
   이 helper들을 우회해서 `window.__sadvApi` / `window.__SEARCHADVISOR_SNAPSHOT_API__`
   를 직접 다시 만지지 않도록 주의한다.
+- boot helper는 `SNAPSHOT_RUNTIME_BOOT_HELPERS`에 넣고 관리한다.
+  새 helper를 추가할 때는 `SNAPSHOT_UI_CONTROLS_HELPER_PACK`나
+  `SNAPSHOT_ALL_SITES_HELPER_PACK`로 보내지 말고, 먼저 그 helper가
+  "payload/state 복원 / provider wiring / shell host boot" 책임인지 확인한다.
+- snapshot boot에는 두 단계가 있다.
+  1) offline runtime 내부 boot (`restoreSnapshotUiBootState`, `finalizeSnapshotUiBoot` 등)
+  2) export 시점 HTML shell injection (`buildSnapshotShellBootstrapScript`, `injectSnapshotReactShell`)
+  어느 단계 helper인지 문서와 pack 선언에서 먼저 구분하고 수정한다.
+- `restoreSnapshotUiBootState()`는 "기간/rows/selection/combo 복원"까지만 담당하고,
+  `switchMode(INITIAL_MODE)` 호출은 바깥에 남긴다.
+  렌더 진입점까지 helper 안에 숨기면 saved 회귀가 났을 때 부수효과를 추적하기 어렵다.
+- `finalizeSnapshotUiBoot()`는 반드시 `switchMode(INITIAL_MODE)` 뒤에서만 호출한다.
+  카드 링크 바인딩과 report decoration은 렌더된 DOM이 있어야 정상 동작한다.
 - 직렬화 섹션 편집은 `buildSnapshotSerializedHelperSection()`을 기준으로 본다.
   helper pack 배치/순서/설명을 조정할 때는 이 함수와 pack 선언부를 같이 보며,
   템플릿 본문 안에서 다시 helper 직렬화 블록을 낱개로 늘리지 않는다.

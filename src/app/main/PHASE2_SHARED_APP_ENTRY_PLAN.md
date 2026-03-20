@@ -157,6 +157,11 @@ all-sites helper를 분리해 놓았지만,
    "공통 UI helper pack" 개념으로 직렬화 범위를 묶는다.
 4. bootstrap 단계에서 richer API 생성과 public facade 게시를 helper로 분리해,
    `12-snapshot.js`가 직접 global publish 세부 구현을 덜 알게 만든다.
+5. offline runtime 내부 boot도
+   - "payload/state/rows/selection/combo 복원"
+   - "render 후 finalize"
+   같은 명시적 helper로 나눠, `switchMode(INITIAL_MODE)` 같은 렌더 진입점은
+   가능한 한 바깥에 남긴다.
 
 주의:
 - 지금 단계에서 완전한 bundler 교체는 하지 않는다.
@@ -177,6 +182,8 @@ all-sites helper를 분리해 놓았지만,
    - shell host boot
 2. 이 중 UI 구현 책임과 boot 책임을 분리
 3. UI 책임은 공통 파일 쪽으로 더 이동
+4. boot helper는 `SNAPSHOT_RUNTIME_BOOT_HELPERS`로만 직렬화하고,
+   export 시점 shell injection helper와 offline runtime 내부 boot helper를 문서상에서 구분한다.
 
 주의:
 - 이 단계에서 saved HTML 구조를 깨면 안 된다.
