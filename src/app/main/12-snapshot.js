@@ -435,6 +435,41 @@ function serializeSnapshotHelperPack(helperPack) {
     .join("\n");
 }
 
+function buildSnapshotSerializedHelperSection() {
+  return [
+    buildRenderers.toString(),
+    assignColors.toString(),
+    [
+      "// Shared public entry seam:",
+      "// Phase 2에서는 live/saved가 같은 public facade(window.__sadvApi)를",
+      "// 같은 helper를 통해 게시/해제하도록 수렴시킨다.",
+      serializeSnapshotHelperPack(SNAPSHOT_SHARED_PUBLIC_ENTRY_HELPERS),
+    ].join("\n"),
+    [
+      "// Snapshot runtime boot helpers:",
+      "// snapshot richer API 생성과 public facade publish를 분리해",
+      "// bootstrap 책임을 \"state/provider wiring\" 쪽으로 더 좁힌다.",
+      serializeSnapshotHelperPack(SNAPSHOT_RUNTIME_BOOT_HELPERS),
+    ].join("\n"),
+    [
+      "// All-sites local helper contract:",
+      "// 10-all-sites-view.js는 canonical rows read/write와 card-selection을",
+      "// local helper로 감싸고 있으므로, saved HTML도 이 helper들을 먼저",
+      "// serialize해야 renderAllSites/buildAllSitesDisplayWrap 경로가 깨지지 않는다.",
+      serializeSnapshotHelperPack(SNAPSHOT_ALL_SITES_HELPER_PACK),
+    ].join("\n"),
+    [
+      "// Shared UI controls helper contract:",
+      "// 09-ui-controls.js가 semantic selection helpers를 통해 mode/site/tab",
+      "// interaction을 공통화하고 있으므로, saved HTML 직렬화도 이 helper들을",
+      "// 의존 함수들보다 먼저 같이 실어야 한다.",
+      "// live는 번들 전체가 한 스코프에 있지만, saved는 allowlist에 넣은 함수만",
+      "// 포함되므로 여기서 빠지면 saved-only is-not-defined 회귀가 생긴다.",
+      serializeSnapshotHelperPack(SNAPSHOT_UI_CONTROLS_HELPER_PACK),
+    ].join("\n"),
+  ].join("\n");
+}
+
 /**
  * Build standalone HTML snapshot string with embedded payload
  * Creates a complete HTML document with the SearchAdvisor UI and data
@@ -924,28 +959,7 @@ function serializeSnapshotHelperPack(helperPack) {
       diagnosis: createDiagnosisRenderer,
       insight: createInsightRenderer,
     };
-    ${buildRenderers.toString()}
-    ${assignColors.toString()}
-    // Shared public entry seam:
-    // Phase 2에서는 live/saved가 같은 public facade(window.__sadvApi)를
-    // 같은 helper를 통해 게시/해제하도록 수렴시킨다.
-    ${serializeSnapshotHelperPack(SNAPSHOT_SHARED_PUBLIC_ENTRY_HELPERS)}
-    // Snapshot runtime boot helpers:
-    // snapshot richer API 생성과 public facade publish를 분리해
-    // bootstrap 책임을 "state/provider wiring" 쪽으로 더 좁힌다.
-    ${serializeSnapshotHelperPack(SNAPSHOT_RUNTIME_BOOT_HELPERS)}
-    // All-sites local helper contract:
-    // 10-all-sites-view.js는 canonical rows read/write와 card-selection을
-    // local helper로 감싸고 있으므로, saved HTML도 이 helper들을 먼저
-    // serialize해야 renderAllSites/buildAllSitesDisplayWrap 경로가 깨지지 않는다.
-    ${serializeSnapshotHelperPack(SNAPSHOT_ALL_SITES_HELPER_PACK)}
-    // Shared UI controls helper contract:
-    // 09-ui-controls.js가 semantic selection helpers를 통해 mode/site/tab
-    // interaction을 공통화하고 있으므로, saved HTML 직렬화도 이 helper들을
-    // 의존 함수들보다 먼저 같이 실어야 한다.
-    // live는 번들 전체가 한 스코프에 있지만, saved는 allowlist에 넣은 함수만
-    // 포함되므로 여기서 빠지면 saved-only is-not-defined 회귀가 생긴다.
-    ${serializeSnapshotHelperPack(SNAPSHOT_UI_CONTROLS_HELPER_PACK)}
+    ${buildSnapshotSerializedHelperSection()}
     ${ensureCurrentSite.toString()}
     ${buildCombo.toString()}
     ${setComboSite.toString()}
