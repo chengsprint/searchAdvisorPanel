@@ -216,6 +216,10 @@ Phase 2 이상에서 다루는 것이 원칙이다.
 
 ## 7. Phase 2 / 3을 위한 준비 포인트
 
+Phase 2 정본 계획 문서:
+
+- `src/app/main/PHASE2_SHARED_APP_ENTRY_PLAN.md`
+
 ### Phase 2 (Shared App Entry)
 - live/saved가 같은 UI 엔트리를 타게 만들기
 - saved는 offline provider만 다르게
