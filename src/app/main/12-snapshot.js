@@ -1567,7 +1567,8 @@
   }
 
   function injectSnapshotReactShell(html, payload) {
-    if (!html.includes('<div id="sadv-bd">')) {
+    const panelBodyPattern = /<div\b([^>]*\bid=(["'])sadv-bd\2[^>]*)>/i;
+    if (!panelBodyPattern.test(html)) {
       throw new Error("snapshot panel not found");
     }
     const reactShellCss = escapeInlineStyleText(
@@ -1582,7 +1583,10 @@
       "<body>",
       `<body><script>window.__SEARCHADVISOR_RUNTIME_KIND__="snapshot";window.__SEARCHADVISOR_SNAPSHOT_SHELL_STATE__=${stringifyForInlineJson(shellState)};<\/script>`,
     );
-    html = html.replace('<div id="sadv-bd">', `<div id="sadv-react-shell-host"></div><div id="sadv-bd">`);
+    html = html.replace(
+      panelBodyPattern,
+      `<div id="sadv-react-shell-host"></div><div$1>`,
+    );
     html = html.replace(
       "</body>",
       `<script>${escapeInlineScriptText(buildSnapshotShellBootstrapScript())}<\/script></body>`,
