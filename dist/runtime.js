@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T14:52:09Z";
-var __SADV_GIT_HEAD__="4fbe603";
+var __SADV_BUILD_STAMP__="2026-03-20T14:55:11Z";
+var __SADV_GIT_HEAD__="cdd3205";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -12429,7 +12429,7 @@ function savedAtIso(d) {
         });
       });
     }
-    window.__SEARCHADVISOR_SNAPSHOT_API__ = {
+    const snapshotApi = {
       getState: cloneSnapshotShellState,
       getCapabilities: function () {
         return typeof getRuntimeCapabilities === "function"
@@ -12522,15 +12522,30 @@ function savedAtIso(d) {
         return false;
       },
     };
-    // Phase 1 contract alignment:
-    // saved HTML도 live와 같은 public API 이름(window.__sadvApi)을 노출해야
-    // external QA/audit/automation이 runtime kind를 몰라도 동일한 제어 계약으로 접근할 수 있다.
-    // snapshot 전용 richer API는 __SEARCHADVISOR_SNAPSHOT_API__에 유지하고,
-    // public facade는 같은 객체를 alias로 재사용한다.
+    window.__SEARCHADVISOR_SNAPSHOT_API__ = snapshotApi;
+    const publicApi = {
+      // Phase 2 thin public facade:
+      // __SEARCHADVISOR_SNAPSHOT_API__는 richer snapshot control surface를 유지하고,
+      // __sadvApi는 live와 이름/역할을 맞춘 공통 subset만 노출한다.
+      // 이렇게 분리해 두면 external automation/QA는 public facade만 보고,
+      // snapshot 전용 제어는 richer API에만 남겨 책임을 분리할 수 있다.
+      getState: snapshotApi.getState,
+      getCapabilities: snapshotApi.getCapabilities,
+      isReady: snapshotApi.isReady,
+      waitUntilReady: snapshotApi.waitUntilReady,
+      subscribe: snapshotApi.subscribe,
+      switchMode: snapshotApi.switchMode,
+      setSite: snapshotApi.setSite,
+      switchSite: snapshotApi.switchSite,
+      setTab: snapshotApi.setTab,
+      refresh: snapshotApi.refresh,
+      download: snapshotApi.download,
+      close: snapshotApi.close,
+    };
     if (typeof setRuntimePublicApi === "function") {
-      setRuntimePublicApi(window.__SEARCHADVISOR_SNAPSHOT_API__);
+      setRuntimePublicApi(publicApi);
     } else {
-      window.__sadvApi = window.__SEARCHADVISOR_SNAPSHOT_API__;
+      window.__sadvApi = publicApi;
     }
     if (snapshotUiReady) {
       const cachedUi = getCachedUiState();
@@ -12716,7 +12731,20 @@ function savedAtIso(d) {
       '    close: function () { return false; },',
       "  };",
       "  window.__SEARCHADVISOR_SNAPSHOT_API__ = api;",
-      '  if (typeof setRuntimePublicApi === "function") setRuntimePublicApi(api); else window.__sadvApi = api;',
+      "  const publicApi = {",
+      "    getState: api.getState,",
+      "    isReady: api.isReady,",
+      "    waitUntilReady: api.waitUntilReady,",
+      "    subscribe: api.subscribe,",
+      "    switchMode: api.switchMode,",
+      "    setSite: api.setSite,",
+      "    switchSite: api.switchSite,",
+      "    setTab: api.setTab,",
+      "    refresh: api.refresh,",
+      "    download: api.download,",
+      "    close: api.close,",
+      "  };",
+      '  if (typeof setRuntimePublicApi === "function") setRuntimePublicApi(publicApi); else window.__sadvApi = publicApi;',
       '  const target = document.getElementById("sadv-p") || document.body;',
       '  if (target) {',
       '    // React 18 호환 가능한 DOM 관찰자 사용',
