@@ -159,6 +159,12 @@
   1) offline runtime 내부 boot (`restoreSnapshotUiBootState`, `finalizeSnapshotUiBoot` 등)
   2) export 시점 HTML shell injection (`buildSnapshotShellBootstrapScript`, `injectSnapshotReactShell`)
   어느 단계 helper인지 문서와 pack 선언에서 먼저 구분하고 수정한다.
+- export 시점 shell injection 쪽을 건드릴 때는
+  `ensureSnapshotReactShellHostMarkup()`,
+  `injectSnapshotRuntimeShellState()`,
+  `appendSnapshotShellBootstrap()`
+  같은 helper를 우선 본다.
+  이 단계는 HTML 문자열 후처리 책임이므로, offline runtime 내부 상태 복원 helper와 섞지 않는다.
 - `restoreSnapshotUiBootState()`는 "기간/rows/selection/combo 복원"까지만 담당하고,
   `switchMode(INITIAL_MODE)` 호출은 바깥에 남긴다.
   렌더 진입점까지 helper 안에 숨기면 saved 회귀가 났을 때 부수효과를 추적하기 어렵다.

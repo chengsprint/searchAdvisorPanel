@@ -184,6 +184,11 @@ all-sites helper를 분리해 놓았지만,
 3. UI 책임은 공통 파일 쪽으로 더 이동
 4. boot helper는 `SNAPSHOT_RUNTIME_BOOT_HELPERS`로만 직렬화하고,
    export 시점 shell injection helper와 offline runtime 내부 boot helper를 문서상에서 구분한다.
+5. export 시점 shell injection도
+   - host 보장
+   - runtime shell state 주입
+   - bootstrap script 주입
+   으로 helper를 나눠, `injectSnapshotReactShell()`이 조립 함수 역할만 하도록 좁힌다.
 
 주의:
 - 이 단계에서 saved HTML 구조를 깨면 안 된다.
