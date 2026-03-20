@@ -140,11 +140,17 @@
   saved HTML 직렬화 allowlist에 같이 실리는지 확인해야 한다.
 - Phase 2부터는 helper를 낱개 allowlist로 흩어 두지 말고,
   `SNAPSHOT_SHARED_PUBLIC_ENTRY_HELPERS`,
+  `SNAPSHOT_RUNTIME_BOOT_HELPERS`,
   `SNAPSHOT_ALL_SITES_HELPER_PACK`,
   `SNAPSHOT_UI_CONTROLS_HELPER_PACK`
   같은 pack 단위로 관리한다.
   새 helper가 해당 책임 범위에 추가되면 pack에 먼저 넣고,
   그 뒤 saved HTML fresh audit를 돌리는 순서를 지킨다.
+- 특히 `createSnapshotPublicFacade`, `publishSnapshotRuntimeApis`는
+  "snapshot richer API 생성"과 "public facade 게시"를 분리하는
+  boot/provider wiring 책임 helper이므로,
+  이 helper들을 우회해서 `window.__sadvApi` / `window.__SEARCHADVISOR_SNAPSHOT_API__`
+  를 직접 다시 만지지 않도록 주의한다.
 - saved HTML은 snapshot 전용 richer API를 `window.__SEARCHADVISOR_SNAPSHOT_API__`에 유지하더라도,
   공용 제어 계약은 live와 같은 `window.__sadvApi` alias로도 노출해야 한다.
   그래야 QA/audit/외부 automation이 runtime kind를 분기하지 않고

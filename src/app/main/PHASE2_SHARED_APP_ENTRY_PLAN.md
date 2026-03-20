@@ -155,6 +155,8 @@ all-sites helper를 분리해 놓았지만,
    어떤 dependency cluster를 이루는지 문서화한다.
 3. 가능하면 helper 단위 allowlist가 아니라
    "공통 UI helper pack" 개념으로 직렬화 범위를 묶는다.
+4. bootstrap 단계에서 richer API 생성과 public facade 게시를 helper로 분리해,
+   `12-snapshot.js`가 직접 global publish 세부 구현을 덜 알게 만든다.
 
 주의:
 - 지금 단계에서 완전한 bundler 교체는 하지 않는다.
