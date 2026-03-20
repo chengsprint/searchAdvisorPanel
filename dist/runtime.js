@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T06:09:35Z";
-var __SADV_GIT_HEAD__="98783ed";
+var __SADV_BUILD_STAMP__="2026-03-20T06:21:15Z";
+var __SADV_GIT_HEAD__="a270ac7";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -7731,7 +7731,10 @@ if (typeof window !== "undefined") {
  */
 
 function isSnapshotRuntime() {
-  return typeof window !== "undefined" && !!window.__SEARCHADVISOR_EXPORT_PAYLOAD__;
+  if (typeof window === "undefined") return false;
+  if (window.__SEARCHADVISOR_RUNTIME_KIND__ === "snapshot") return true;
+  if (window.__SEARCHADVISOR_RUNTIME_KIND__ === "live") return false;
+  return !!window.__SEARCHADVISOR_SNAPSHOT_API__;
 }
 
 function isLiveRuntime() {
@@ -11761,7 +11764,7 @@ function savedAtIso(d) {
     );
     html = html.replace(
       "<body>",
-      `<body><script>window.__SEARCHADVISOR_SNAPSHOT_SHELL_STATE__=${stringifyForInlineJson(shellState)};<\/script>`,
+      `<body><script>window.__SEARCHADVISOR_RUNTIME_KIND__="snapshot";window.__SEARCHADVISOR_SNAPSHOT_SHELL_STATE__=${stringifyForInlineJson(shellState)};<\/script>`,
     );
     html = html.replace('<div id="sadv-bd">', `<div id="sadv-react-shell-host"></div><div id="sadv-bd">`);
     html = html.replace(
@@ -12300,6 +12303,9 @@ function renderFailureSummary(stats) {
 
 // Async initialization - wait for site list to load
 console.log('[Init] Starting async initialization...');
+if (typeof window !== "undefined") {
+  window.__SEARCHADVISOR_RUNTIME_KIND__ = "live";
+}
   /**
    * Initialize the SearchAdvisor application
    * Loads site list, sets up UI state, and renders initial view

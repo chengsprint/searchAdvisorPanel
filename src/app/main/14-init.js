@@ -14,6 +14,9 @@
 
 // Async initialization - wait for site list to load
 console.log('[Init] Starting async initialization...');
+if (typeof window !== "undefined") {
+  window.__SEARCHADVISOR_RUNTIME_KIND__ = "live";
+}
   /**
    * Initialize the SearchAdvisor application
    * Loads site list, sets up UI state, and renders initial view
