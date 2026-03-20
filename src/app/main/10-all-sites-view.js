@@ -2,6 +2,27 @@
 // ALL-SITES-VIEW - All sites view rendering and export
 // ============================================================
 
+/**
+ * Read selection state for the all-sites view through the public seam first.
+ *
+ * Why this helper exists:
+ * - all-sites view currently has several request/render guards that only need
+ *   the current mode/site/tab, not the raw globals themselves.
+ * - pulling those reads behind one helper reduces repeated fallback objects and
+ *   makes later shared-app migration easier without changing behavior now.
+ */
+function getAllSitesSelectionState() {
+  return typeof getRuntimeSelectionState === "function"
+    ? getRuntimeSelectionState()
+    : { curMode, curSite, curTab };
+}
+
+function getAllSitesCanonicalRows() {
+  return typeof getRuntimeRows === "function"
+    ? getRuntimeRows()
+    : (Array.isArray(window.__sadvRows) && window.__sadvRows.length ? window.__sadvRows.slice() : []);
+}
+
 function buildAllSitesPeriodToolbar(periodDays) {
   const currentDays = normalizeAllSitesPeriodDays(periodDays);
   const bar = document.createElement("div");
@@ -339,15 +360,9 @@ function buildAllSitesDisplayWrap(baseRows) {
 }
 
 function renderAllSitesFromCanonicalRows() {
-  const selectionState =
-    typeof getRuntimeSelectionState === "function"
-      ? getRuntimeSelectionState()
-      : { curMode, curSite, curTab };
+  const selectionState = getAllSitesSelectionState();
   if (!bdEl || selectionState.curMode !== CONFIG.MODE.ALL) return;
-  const canonicalRows =
-    typeof getRuntimeRows === "function"
-      ? getRuntimeRows()
-      : (Array.isArray(window.__sadvRows) && window.__sadvRows.length ? window.__sadvRows.slice() : []);
+  const canonicalRows = getAllSitesCanonicalRows();
   if (!canonicalRows.length) return;
   const wrap = buildAllSitesDisplayWrap(canonicalRows);
   bdEl.replaceChildren(wrap);
@@ -425,10 +440,7 @@ async function renderAllSites() {
     // 이유:
     // - live/saved가 같은 "현재 모드" 해석 규칙을 공유해야 하고
     // - 이후 shared app entry 단계에서 global 직접 read를 줄여야 하기 때문이다.
-    const currentSelectionState =
-      typeof getRuntimeSelectionState === "function"
-        ? getRuntimeSelectionState()
-        : { curMode, curSite, curTab };
+    const currentSelectionState = getAllSitesSelectionState();
     if (requestId !== allViewReqId || currentSelectionState.curMode !== CONFIG.MODE.ALL) return;
     if (ratio >= CONFIG.PROGRESS.META_PHASE_RATIO_START && missingDiagnosisMetaCount === 0) return;
     if (loadingDetail) loadingDetail.textContent = label;
@@ -467,10 +479,7 @@ async function renderAllSites() {
     );
     const batchResults = await Promise.allSettled(batchSites.map((site) => fetchExposeData(site)));
     {
-      const currentSelectionState =
-        typeof getRuntimeSelectionState === "function"
-          ? getRuntimeSelectionState()
-          : { curMode, curSite, curTab };
+      const currentSelectionState = getAllSitesSelectionState();
       if (requestId !== allViewReqId || currentSelectionState.curMode !== CONFIG.MODE.ALL) return;
     }
     let failedCount = 0;
@@ -512,10 +521,7 @@ async function renderAllSites() {
       batchSites.map((site) => fetchDiagnosisMeta(site, siteDataBySite[site] || null)),
     );
     {
-      const currentSelectionState =
-        typeof getRuntimeSelectionState === "function"
-          ? getRuntimeSelectionState()
-          : { curMode, curSite, curTab };
+      const currentSelectionState = getAllSitesSelectionState();
       if (requestId !== allViewReqId || currentSelectionState.curMode !== CONFIG.MODE.ALL) return;
     }
     batchResults.forEach(function (result, offset) {
@@ -548,10 +554,7 @@ async function renderAllSites() {
   }
   buildCombo(rows);
   {
-    const currentSelectionState =
-      typeof getRuntimeSelectionState === "function"
-        ? getRuntimeSelectionState()
-        : { curMode, curSite, curTab };
+    const currentSelectionState = getAllSitesSelectionState();
     if (requestId !== allViewReqId || currentSelectionState.curMode !== CONFIG.MODE.ALL) return;
   }
   renderAllSitesFromCanonicalRows();
@@ -575,10 +578,7 @@ async function collectExportData(onProgress, options) {
   const summaryRows = [];
   const batchSize = FULL_REFRESH_BATCH_SIZE;
   const refreshMode = options && options.refreshMode === "refresh" ? "refresh" : "cache-first";
-  const selectionState =
-    typeof getRuntimeSelectionState === "function"
-      ? getRuntimeSelectionState()
-      : { curMode, curSite, curTab };
+  const selectionState = getAllSitesSelectionState();
   const allSitesPeriodDays =
     typeof getRuntimeAllSitesPeriodDays === "function"
       ? getRuntimeAllSitesPeriodDays()
