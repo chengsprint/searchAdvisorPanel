@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T16:12:58Z";
-var __SADV_GIT_HEAD__="5a85a6b";
+var __SADV_BUILD_STAMP__="2026-03-20T16:14:47Z";
+var __SADV_GIT_HEAD__="0aa1fc6";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -12710,10 +12710,15 @@ function buildSnapshotSerializedHelperSection() {
     ];
   }
   // Phase 3 Workstream A:
-  // buildSnapshotApiCompatScript는 saved richer API가 아직 없을 때만 쓰이는 compat bridge다.
-  // 첫 라운드에서는 동작을 바꾸지 않고, 문자열 line builder를 책임 단위로 나눠
-  // 다음 라운드에 state clone / DOM sync / action fallback / observer wiring을
-  // 개별적으로 읽고 다룰 수 있게 만드는 데 집중한다.
+  // buildSnapshotApiCompatScript는 "현재 활성 saved bootstrap 경로"가 아니라
+  // saved richer API가 없던 시절을 위한 legacy/dormant compat bridge에 가깝다.
+  // 즉 지금 실제 활성 경로는 buildSnapshotHtml() 안의 inline snapshotApi + publishSnapshotRuntimeApis()
+  // 쪽이고, 이 함수는 그 경로를 대체하는 정본이 아니다.
+  //
+  // 그래서 첫 라운드 목표도 동작 변경이 아니라:
+  // - compat bridge의 내부 책임을 읽기 가능한 line builder 단위로 나누고
+  // - state clone / DOM sync / action fallback / observer wiring 경계를 드러내며
+  // - 나중에 "정말 이 bridge를 유지할지/줄일지" 판단하기 쉽게 만드는 데 있다.
   function buildSnapshotApiCompatStateLines() {
     return [
       "  const shellStateSource = window.__SEARCHADVISOR_SNAPSHOT_SHELL_STATE__ || {};",
@@ -12823,6 +12828,9 @@ function buildSnapshotSerializedHelperSection() {
       "    waitUntilReady: function () { return Promise.resolve(true); },",
       "    subscribe: function (listener) { listeners.add(listener); return function () { listeners.delete(listener); }; },",
       '    switchMode: function (mode) { if (typeof switchMode === "function") switchMode(mode); else { const button = document.querySelector("#sadv-mode-bar [data-m=\\"" + mode + "\\"]"); if (button) button.click(); } scheduleSync(); },',
+      // `switchSite`는 canonical action이고, `setSite`는 backward-compat alias다.
+      // 둘의 동작이 현재 같아 보여도 compat bridge에서는 alias를 유지해
+      // 과거 external caller를 깨지 않도록 한다.
       '    setSite: function (site) { if (typeof setComboSite === "function") setComboSite(site); else { const items = Array.from(document.querySelectorAll(".sadv-combo-item")); const button = items.find(function (item) { return (item.getAttribute("data-site") || "") === site; }); if (button) button.click(); } if (typeof switchMode === "function") switchMode("site"); scheduleSync(); },',
       '    switchSite: function (site) { if (typeof setComboSite === "function") setComboSite(site); else { const items = Array.from(document.querySelectorAll(".sadv-combo-item")); const button = items.find(function (item) { return (item.getAttribute("data-site") || "") === site; }); if (button) button.click(); } if (typeof switchMode === "function") switchMode("site"); scheduleSync(); },',
       '    setTab: function (tab) { if (typeof setTab === "function") setTab(tab); else { const button = document.querySelector("#sadv-tabs [data-t=\\"" + tab + "\\"]"); if (button) button.click(); } scheduleSync(); },',
