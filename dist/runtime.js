@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T14:20:36Z";
-var __SADV_GIT_HEAD__="b98948c";
+var __SADV_BUILD_STAMP__="2026-03-20T14:47:08Z";
+var __SADV_GIT_HEAD__="b5c6bb2";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -8162,6 +8162,28 @@ function getRuntimeCapabilities() {
   };
 }
 
+function setRuntimePublicApi(api) {
+  // Phase 2 public entry seam:
+  // live/saved가 공용 제어 facade(window.__sadvApi)를 각각 직접 만지지 않고
+  // 같은 게시 entry를 통과하게 만든다.
+  //
+  // 왜 필요한가:
+  // - 이후 shared app entry 단계에서 public facade shape를 한 곳에서 바꾸기 쉽다.
+  // - saved가 richer snapshot API를 별도로 갖더라도, 외부 automation/QA는
+  //   동일한 public facade 이름만 보면 된다.
+  if (typeof window === "undefined") return api || null;
+  if (!api || typeof api !== "object") {
+    delete window.__sadvApi;
+    return null;
+  }
+  window.__sadvApi = api;
+  return window.__sadvApi;
+}
+
+function clearRuntimePublicApi() {
+  return setRuntimePublicApi(null);
+}
+
 function getRuntimeShellState() {
   // shell state는 UI가 읽는 최소 공통 상태다.
   //
@@ -10304,7 +10326,8 @@ function applyUiControlsTab(tab) {
         if (typeof stopCacheExpiryMonitor === "function") stopCacheExpiryMonitor();
         if (panel) panel.remove();
         if (inj) inj.remove();
-        if (typeof window !== "undefined") delete window.__sadvApi;
+        if (typeof clearRuntimePublicApi === "function") clearRuntimePublicApi();
+        else if (typeof window !== "undefined") delete window.__sadvApi;
       });
     }
   } else {
@@ -10312,7 +10335,7 @@ function applyUiControlsTab(tab) {
   }
 
   if (typeof window !== "undefined") {
-    window.__sadvApi = {
+    const publicApi = {
       getState: __sadvSnapshot,
       getCapabilities: function () {
         return resolveRuntimeCapabilities();
@@ -10396,10 +10419,13 @@ function applyUiControlsTab(tab) {
         if (typeof stopCacheExpiryMonitor === "function") stopCacheExpiryMonitor();
         if (panel) panel.remove();
         if (inj) inj.remove();
-        delete window.__sadvApi;
+        if (typeof clearRuntimePublicApi === "function") clearRuntimePublicApi();
+        else delete window.__sadvApi;
         return true;
       },
     };
+    if (typeof setRuntimePublicApi === "function") setRuntimePublicApi(publicApi);
+    else window.__sadvApi = publicApi;
   }
 
 // ============================================================
@@ -12001,6 +12027,11 @@ function savedAtIso(d) {
     };
     ${buildRenderers.toString()}
     ${assignColors.toString()}
+    // Shared public entry seam:
+    // Phase 2에서는 live/saved가 같은 public facade(window.__sadvApi)를
+    // 같은 helper를 통해 게시/해제하도록 수렴시킨다.
+    ${setRuntimePublicApi.toString()}
+    ${clearRuntimePublicApi.toString()}
     // All-sites local helper contract:
     // 10-all-sites-view.js는 canonical rows read/write와 card-selection을
     // local helper로 감싸고 있으므로, saved HTML도 이 helper들을 먼저
@@ -12479,7 +12510,11 @@ function savedAtIso(d) {
     // external QA/audit/automation이 runtime kind를 몰라도 동일한 제어 계약으로 접근할 수 있다.
     // snapshot 전용 richer API는 __SEARCHADVISOR_SNAPSHOT_API__에 유지하고,
     // public facade는 같은 객체를 alias로 재사용한다.
-    window.__sadvApi = window.__SEARCHADVISOR_SNAPSHOT_API__;
+    if (typeof setRuntimePublicApi === "function") {
+      setRuntimePublicApi(window.__SEARCHADVISOR_SNAPSHOT_API__);
+    } else {
+      window.__sadvApi = window.__SEARCHADVISOR_SNAPSHOT_API__;
+    }
     if (snapshotUiReady) {
       const cachedUi = getCachedUiState();
       if (cachedUi && typeof cachedUi.allSitesPeriodDays !== "undefined") {
@@ -12663,7 +12698,7 @@ function savedAtIso(d) {
       '    close: function () { return false; },',
       "  };",
       "  window.__SEARCHADVISOR_SNAPSHOT_API__ = api;",
-      '  window.__sadvApi = api;',
+      '  if (typeof setRuntimePublicApi === "function") setRuntimePublicApi(api); else window.__sadvApi = api;',
       '  const target = document.getElementById("sadv-p") || document.body;',
       '  if (target) {',
       '    // React 18 호환 가능한 DOM 관찰자 사용',

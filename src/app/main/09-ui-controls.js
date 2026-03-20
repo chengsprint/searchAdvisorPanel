@@ -767,7 +767,8 @@ function applyUiControlsTab(tab) {
         if (typeof stopCacheExpiryMonitor === "function") stopCacheExpiryMonitor();
         if (panel) panel.remove();
         if (inj) inj.remove();
-        if (typeof window !== "undefined") delete window.__sadvApi;
+        if (typeof clearRuntimePublicApi === "function") clearRuntimePublicApi();
+        else if (typeof window !== "undefined") delete window.__sadvApi;
       });
     }
   } else {
@@ -775,7 +776,7 @@ function applyUiControlsTab(tab) {
   }
 
   if (typeof window !== "undefined") {
-    window.__sadvApi = {
+    const publicApi = {
       getState: __sadvSnapshot,
       getCapabilities: function () {
         return resolveRuntimeCapabilities();
@@ -859,8 +860,11 @@ function applyUiControlsTab(tab) {
         if (typeof stopCacheExpiryMonitor === "function") stopCacheExpiryMonitor();
         if (panel) panel.remove();
         if (inj) inj.remove();
-        delete window.__sadvApi;
+        if (typeof clearRuntimePublicApi === "function") clearRuntimePublicApi();
+        else delete window.__sadvApi;
         return true;
       },
     };
+    if (typeof setRuntimePublicApi === "function") setRuntimePublicApi(publicApi);
+    else window.__sadvApi = publicApi;
   }
