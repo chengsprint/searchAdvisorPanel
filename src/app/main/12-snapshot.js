@@ -244,6 +244,9 @@
       allSites: Array.isArray(allSites) ? allSites : [],
       rows: Array.isArray(summaryRows) ? summaryRows.slice() : [],
       siteMeta: siteMeta && typeof siteMeta === "object" ? siteMeta : {},
+      mergedMeta: Object.prototype.hasOwnProperty.call(payload || {}, "mergedMeta")
+        ? payload.mergedMeta
+        : null,
       curMode: curMode === "site" ? "site" : "all",
       curSite:
         typeof curSite === "string"
@@ -934,7 +937,10 @@
         })
           ? curTab
           : "overview",
-        runtimeVersion: window.__SEARCHADVISOR_RUNTIME_VERSION__ || "snapshot",
+        runtimeVersion:
+          window.__SEARCHADVISOR_RUNTIME_VERSION__ ||
+          EXPORT_PAYLOAD.generatorVersion ||
+          "snapshot",
         cacheMeta: updatedAt
           ? {
               label: "snapshot",

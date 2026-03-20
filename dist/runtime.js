@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T03:33:13Z";
-var __SADV_GIT_HEAD__="c4e6e5c";
+var __SADV_BUILD_STAMP__="2026-03-20T04:57:37Z";
+var __SADV_GIT_HEAD__="1ec0b57";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -10242,6 +10242,9 @@ function savedAtIso(d) {
       allSites: Array.isArray(allSites) ? allSites : [],
       rows: Array.isArray(summaryRows) ? summaryRows.slice() : [],
       siteMeta: siteMeta && typeof siteMeta === "object" ? siteMeta : {},
+      mergedMeta: Object.prototype.hasOwnProperty.call(payload || {}, "mergedMeta")
+        ? payload.mergedMeta
+        : null,
       curMode: curMode === "site" ? "site" : "all",
       curSite:
         typeof curSite === "string"
@@ -10932,7 +10935,10 @@ function savedAtIso(d) {
         })
           ? curTab
           : "overview",
-        runtimeVersion: window.__SEARCHADVISOR_RUNTIME_VERSION__ || "snapshot",
+        runtimeVersion:
+          window.__SEARCHADVISOR_RUNTIME_VERSION__ ||
+          EXPORT_PAYLOAD.generatorVersion ||
+          "snapshot",
         cacheMeta: updatedAt
           ? {
               label: "snapshot",
