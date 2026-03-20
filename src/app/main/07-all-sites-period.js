@@ -23,7 +23,7 @@
  * - 색인 추이 관련 필드는 pass-through
  */
 
-const ALL_SITES_PERIOD_OPTIONS = [7, 30, 60, 90];
+const ALL_SITES_PERIOD_OPTIONS = [1, 7, 30, 60, 90];
 
 function normalizeAllSitesPeriodDays(value) {
   const parsed = Number(value);

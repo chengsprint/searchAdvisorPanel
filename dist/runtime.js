@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T10:40:17Z";
-var __SADV_GIT_HEAD__="7942122";
+var __SADV_BUILD_STAMP__="2026-03-20T10:49:15Z";
+var __SADV_GIT_HEAD__="447f647";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -7535,7 +7535,7 @@ function injectDemoData() {
  * - 색인 추이 관련 필드는 pass-through
  */
 
-const ALL_SITES_PERIOD_OPTIONS = [7, 30, 60, 90];
+const ALL_SITES_PERIOD_OPTIONS = [1, 7, 30, 60, 90];
 
 function normalizeAllSitesPeriodDays(value) {
   const parsed = Number(value);

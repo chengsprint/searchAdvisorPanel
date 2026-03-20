@@ -523,8 +523,8 @@ async function main() {
     'saved HTML capabilities should disable live-only actions',
   );
   assertAudit(
-    result.contract.periodButtons.length === 4,
-    'saved HTML should expose 4 all-sites period buttons (7/30/60/90)',
+    result.contract.periodButtons.length === 5,
+    'saved HTML should expose 5 all-sites period buttons (1/7/30/60/90)',
   );
   assertAudit(
     result.contract.periodButtons.filter((button) => button.pressed === 'true').length === 1,
