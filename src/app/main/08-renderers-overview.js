@@ -58,31 +58,10 @@ function createOverviewRenderer(data) {
       ]),
     );
 
-    // Period comparison
-    const prevCR = period.prevClickRatio != null ? parseFloat(period.prevClickRatio) : null;
-    const prevER = period.prevExposeRatio != null ? parseFloat(period.prevExposeRatio) : null;
-    if (prevCR !== null || prevER !== null) {
-      wrap.appendChild(
-        kpiGrid(
-          [
-            prevCR !== null && {
-              label: "클릭 전기비",
-              value: (prevCR >= 0 ? "+" : "") + prevCR + "%",
-              color: prevCR >= 0 ? C.green : C.red,
-              sub: "90일 전 대비",
-              icon: prevCR >= 0 ? ICONS.up : ICONS.down,
-            },
-            prevER !== null && {
-              label: "노출 전기비",
-              value: (prevER >= 0 ? "+" : "") + prevER + "%",
-              color: prevER >= 0 ? C.green : C.red,
-              sub: "90일 전 대비",
-              icon: prevER >= 0 ? ICONS.up : ICONS.down,
-            },
-          ].filter(Boolean),
-        ),
-      );
-    }
+    // 전기비 KPI는 정보량 대비 세로 공간 점유가 크고, overview 첫 화면의 핵심
+    // "현재 상태" 집중도를 흐려서 제거한다. 필요 시 추후 별도 섹션/인사이트로
+    // 옮기는 편이 더 적합하다. 공통 overview renderer에서 제거해 live/snapshot
+    // 양쪽 모두 동일하게 단순화한다.
 
     // Charts
     wrap.appendChild(

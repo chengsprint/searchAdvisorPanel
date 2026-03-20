@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T09:38:35Z";
-var __SADV_GIT_HEAD__="f632033";
+var __SADV_BUILD_STAMP__="2026-03-20T09:46:04Z";
+var __SADV_GIT_HEAD__="026b31c";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -8145,31 +8145,10 @@ function createOverviewRenderer(data) {
       ]),
     );
 
-    // Period comparison
-    const prevCR = period.prevClickRatio != null ? parseFloat(period.prevClickRatio) : null;
-    const prevER = period.prevExposeRatio != null ? parseFloat(period.prevExposeRatio) : null;
-    if (prevCR !== null || prevER !== null) {
-      wrap.appendChild(
-        kpiGrid(
-          [
-            prevCR !== null && {
-              label: "클릭 전기비",
-              value: (prevCR >= 0 ? "+" : "") + prevCR + "%",
-              color: prevCR >= 0 ? C.green : C.red,
-              sub: "90일 전 대비",
-              icon: prevCR >= 0 ? ICONS.up : ICONS.down,
-            },
-            prevER !== null && {
-              label: "노출 전기비",
-              value: (prevER >= 0 ? "+" : "") + prevER + "%",
-              color: prevER >= 0 ? C.green : C.red,
-              sub: "90일 전 대비",
-              icon: prevER >= 0 ? ICONS.up : ICONS.down,
-            },
-          ].filter(Boolean),
-        ),
-      );
-    }
+    // 전기비 KPI는 정보량 대비 세로 공간 점유가 크고, overview 첫 화면의 핵심
+    // "현재 상태" 집중도를 흐려서 제거한다. 필요 시 추후 별도 섹션/인사이트로
+    // 옮기는 편이 더 적합하다. 공통 overview renderer에서 제거해 live/snapshot
+    // 양쪽 모두 동일하게 단순화한다.
 
     // Charts
     wrap.appendChild(
