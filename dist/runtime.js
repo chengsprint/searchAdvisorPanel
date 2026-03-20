@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T15:54:40Z";
-var __SADV_GIT_HEAD__="fe79048";
+var __SADV_BUILD_STAMP__="2026-03-20T16:12:58Z";
+var __SADV_GIT_HEAD__="5a85a6b";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -12709,10 +12709,13 @@ function buildSnapshotSerializedHelperSection() {
       "  };",
     ];
   }
-  function buildSnapshotApiCompatScript() {
+  // Phase 3 Workstream A:
+  // buildSnapshotApiCompatScript는 saved richer API가 아직 없을 때만 쓰이는 compat bridge다.
+  // 첫 라운드에서는 동작을 바꾸지 않고, 문자열 line builder를 책임 단위로 나눠
+  // 다음 라운드에 state clone / DOM sync / action fallback / observer wiring을
+  // 개별적으로 읽고 다룰 수 있게 만드는 데 집중한다.
+  function buildSnapshotApiCompatStateLines() {
     return [
-      "(function () {",
-      "  if (window.__SEARCHADVISOR_SNAPSHOT_API__) return;",
       "  const shellStateSource = window.__SEARCHADVISOR_SNAPSHOT_SHELL_STATE__ || {};",
       "  const snapshotState = {",
       '    accountLabel: shellStateSource.accountLabel || "",',
@@ -12763,6 +12766,11 @@ function buildSnapshotSerializedHelperSection() {
       "      try { listener(nextState); } catch (_) {}",
       "    });",
       "  }",
+    ];
+  }
+
+  function buildSnapshotApiCompatDomSyncLines() {
+    return [
       "  function getSiteShortName(site) {",
       '    if (!site) return "site";',
       '    if (site.indexOf("https://") === 0) return site.slice(8);',
@@ -12804,6 +12812,11 @@ function buildSnapshotSerializedHelperSection() {
       "    notify();",
       "  }",
       "  function scheduleSync() { Promise.resolve().then(syncFromLegacy); }",
+    ];
+  }
+
+  function buildSnapshotApiCompatInteractionLines() {
+    return [
       "  const api = {",
       "    getState: cloneState,",
       "    isReady: function () { return true; },",
@@ -12837,6 +12850,15 @@ function buildSnapshotSerializedHelperSection() {
       "    }",
       "  }",
       "  syncFromLegacy();",
+    ];
+  }
+  function buildSnapshotApiCompatScript() {
+    return [
+      "(function () {",
+      "  if (window.__SEARCHADVISOR_SNAPSHOT_API__) return;",
+      ...buildSnapshotApiCompatStateLines(),
+      ...buildSnapshotApiCompatDomSyncLines(),
+      ...buildSnapshotApiCompatInteractionLines(),
       "})();",
     ].join("\n");
   }

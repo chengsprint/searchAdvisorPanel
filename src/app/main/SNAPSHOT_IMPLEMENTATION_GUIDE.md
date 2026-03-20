@@ -171,6 +171,12 @@
   `appendSnapshotShellBootstrap()`
   같은 helper를 우선 본다.
   이 단계는 HTML 문자열 후처리 책임이므로, offline runtime 내부 상태 복원 helper와 섞지 않는다.
+- `buildSnapshotApiCompatScript()`를 건드릴 때는 compat bridge 전체를 한 번에 뒤집지 말고,
+  `buildSnapshotApiCompatStateLines()`,
+  `buildSnapshotApiCompatDomSyncLines()`,
+  `buildSnapshotApiCompatInteractionLines()`
+  같은 line builder 단위로 먼저 나눈다.
+  Phase 3 첫 단계의 목표는 "동작 변경"이 아니라 "읽기 가능한 경계 만들기"다.
 - `restoreSnapshotUiBootState()`는 "기간/rows/selection/combo 복원"까지만 담당하고,
   `switchMode(INITIAL_MODE)` 호출은 바깥에 남긴다.
   렌더 진입점까지 helper 안에 숨기면 saved 회귀가 났을 때 부수효과를 추적하기 어렵다.

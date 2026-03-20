@@ -71,6 +71,11 @@ Phase 3 첫 삽은 **`buildSnapshotApiCompatScript()` 책임 정리**를 권장�
 ### Workstream A — Snapshot Compat Bridge Slim
 - `buildSnapshotApiCompatScript()` 내부 책임 분리
 - state clone / DOM sync / public action fallback / observer wiring 구분
+- 1차 정리 기준:
+  - `buildSnapshotApiCompatStateLines()`
+  - `buildSnapshotApiCompatDomSyncLines()`
+  - `buildSnapshotApiCompatInteractionLines()`
+  처럼 line builder를 책임 단위로 나누고, 동작 변경 없이 읽기 경계를 먼저 만든다.
 
 ### Workstream B — Shell Bootstrap String Reduction
 - `buildSnapshotShellBootstrapScript()` 안의 mount/unmount/portal 조립을 더 좁힘
