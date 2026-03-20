@@ -151,6 +151,9 @@
   boot/provider wiring 책임 helper이므로,
   이 helper들을 우회해서 `window.__sadvApi` / `window.__SEARCHADVISOR_SNAPSHOT_API__`
   를 직접 다시 만지지 않도록 주의한다.
+- 직렬화 섹션 편집은 `buildSnapshotSerializedHelperSection()`을 기준으로 본다.
+  helper pack 배치/순서/설명을 조정할 때는 이 함수와 pack 선언부를 같이 보며,
+  템플릿 본문 안에서 다시 helper 직렬화 블록을 낱개로 늘리지 않는다.
 - saved HTML은 snapshot 전용 richer API를 `window.__SEARCHADVISOR_SNAPSHOT_API__`에 유지하더라도,
   공용 제어 계약은 live와 같은 `window.__sadvApi` alias로도 노출해야 한다.
   그래야 QA/audit/외부 automation이 runtime kind를 분기하지 않고
