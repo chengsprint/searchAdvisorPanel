@@ -363,6 +363,17 @@
         (typeof SITE_COLORS_MAP !== "undefined" && SITE_COLORS_MAP && SITE_COLORS_MAP[row.site]) ||
         COLORS[index % COLORS.length] ||
         C.green;
+      // Keep saved HTML visually in lockstep with the live all-sites detail card.
+      // Compact viewports use the same 2-column rule so 6~7 digit metrics do not
+      // clip in the nested KPI tiles when reopened on mobile.
+      const isCompactViewport = typeof window !== "undefined" && window.innerWidth <= 768;
+      const detailGridTemplate = isCompactViewport
+        ? "grid-template-columns:repeat(2,minmax(0,1fr));gap:6px"
+        : "grid-template-columns:repeat(3,minmax(0,1fr));gap:8px";
+      const detailCardPadding = isCompactViewport ? "padding:7px 6px" : "padding:8px";
+      const detailValueSize = isCompactViewport ? "font-size:13px" : "font-size:14px";
+      const detailLabelSize = isCompactViewport ? "font-size:9px" : "font-size:10px";
+      const detailSpanStyle = isCompactViewport ? "grid-column:1 / -1;" : "";
       const card = document.createElement("button");
       card.type = "button";
       card.className = "sadv-allcard";
@@ -386,11 +397,10 @@
         siteColor +
         '">상세 보기</div>' +
         "</div>" +
-        '<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px">' +
-        '<div style="padding:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02)"><div style="font-size:10px;color:#a8a8a8;margin-bottom:4px">클릭</div><div style="font-size:14px;font-weight:800;color:' + siteColor + '">' + escHtml(fmt(row.totalC || 0)) + "</div></div>" +
-        '<div style="padding:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02)"><div style="font-size:10px;color:#a8a8a8;margin-bottom:4px">노출</div><div style="font-size:14px;font-weight:800;color:' + (C.blue || siteColor) + '">' + escHtml(fmt(row.totalE || 0)) + "</div></div>" +
-        '<div style="padding:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02)"><div style="font-size:10px;color:#a8a8a8;margin-bottom:4px">CTR</div><div style="font-size:14px;font-weight:800;color:' + (C.amber || siteColor) + '">' + escHtml((Number(row.avgCtr) || 0).toFixed(2) + "%") + "</div></div>" +
-        '<div style="padding:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02)"><div style="font-size:10px;color:#a8a8a8;margin-bottom:4px">색인</div><div style="font-size:14px;font-weight:800;color:' + (C.orange || siteColor) + '">' + escHtml(fmt(row.diagnosisIndexedCurrent || 0)) + "</div></div>" +
+        '<div style="display:grid;' + detailGridTemplate + '">' +
+        '<div style="' + detailCardPadding + ';border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);text-align:center;min-width:0"><div style="' + detailLabelSize + ';color:#a8a8a8;margin-bottom:4px">클릭</div><div style="' + detailValueSize + ';font-weight:800;line-height:1.12;letter-spacing:-0.03em;color:' + siteColor + ';white-space:nowrap">' + escHtml(fmt(row.totalC || 0)) + "</div></div>" +
+        '<div style="' + detailCardPadding + ';border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);text-align:center;min-width:0"><div style="' + detailLabelSize + ';color:#a8a8a8;margin-bottom:4px">노출</div><div style="' + detailValueSize + ';font-weight:800;line-height:1.12;letter-spacing:-0.03em;color:' + (C.blue || siteColor) + ';white-space:nowrap">' + escHtml(((Number(row.totalE) || 0) / 10000).toFixed(1)) + '만</div></div>' +
+        '<div style="' + detailSpanStyle + detailCardPadding + ';border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);text-align:center;min-width:0"><div style="' + detailLabelSize + ';color:#a8a8a8;margin-bottom:4px">CTR</div><div style="' + detailValueSize + ';font-weight:800;line-height:1.12;letter-spacing:-0.03em;color:' + (C.amber || siteColor) + ';white-space:nowrap">' + escHtml((Number(row.avgCtr) || 0).toFixed(2) + "%") + "</div></div>" +
         "</div>";
       // Keep reopened saved HTML visually aligned with the live all-sites card
       // contract. The payload already contains click/index trend series, so

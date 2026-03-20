@@ -236,11 +236,15 @@ async function renderAllSites() {
       : "";
 
     // Responsive card layout
+    // Mobile note: 6~7 digit metrics were clipping inside the nested site-detail
+    // KPI boxes. Keep the live card readable by switching to 2 columns and
+    // letting the CTR tile span the full row on compact viewports.
     const isMobile = window.innerWidth <= 768;
-    const gridTemplate = isMobile ? "grid-template-columns:repeat(3,minmax(0,1fr));gap:6px" : "grid-template-columns:repeat(3,minmax(0,1fr));gap:8px";
-    const paddingStyle = isMobile ? "padding:6px" : "padding:8px";
-    const fontSizeValue = isMobile ? "font-size:14px" : "font-size:15px";
+    const gridTemplate = isMobile ? "grid-template-columns:repeat(2,minmax(0,1fr));gap:6px" : "grid-template-columns:repeat(3,minmax(0,1fr));gap:8px";
+    const paddingStyle = isMobile ? "padding:7px 6px" : "padding:8px";
+    const fontSizeValue = isMobile ? "font-size:13px" : "font-size:15px";
     const fontSizeLabel = isMobile ? "font-size:9px" : "font-size:10px";
+    const statSpanStyle = isMobile ? "grid-column:1 / -1;" : "";
 
     card.innerHTML = sanitizeHTML(
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="display:flex;align-items:center;gap:8px;min-width:0"><div style="width:10px;height:10px;border-radius:50%;background:' +
@@ -281,7 +285,9 @@ async function renderAllSites() {
       escHtml((r.totalE / 10000).toFixed(1)) +
       '만</div><div style="' +
       fontSizeLabel +
-      ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">노출</div></div><div style="text-align:center;min-width:0;background:' +
+      ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">노출</div></div><div style="' +
+      statSpanStyle +
+      'text-align:center;min-width:0;background:' +
       toneBg +
       ';border:1px solid ' +
       toneBorder +
