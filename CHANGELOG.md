@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- 외부 스크립트 고정 진입점을 위한 `dist/loader.js` 추가
+- 운영 승인 버전을 선언하는 `dist/stable.json` 추가
+- stable manifest를 안전하게 갱신하는 `scripts/write_stable_manifest.js` 추가
+- `docs/LOADER_STABLE_WORKFLOW_20260320.md`, `dist/LOADER_STABLE_CONTRACT.md` 추가
+
+### Changed
+- 운영 반영 전략을 `runtime.js 직접 링크` 대신 `loader.js -> stable.json -> runtime.js` 구조로 정리
+- 개발 채널(`main`)과 운영 채널(`release`)을 분리하는 최소 복잡도 GitHub 워크플로우 문서화
+
 ## [2.0.4] - 2026-03-20
 
 ### Fixed

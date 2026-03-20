@@ -14,6 +14,7 @@
     "test:watch": "jest --watch",
     "test:ci": "jest --ci --coverage --maxWorkers=2",
     "audit:snapshot-html": "node scripts/snapshot_workflow_audit.js",
+    "release:stable": "node scripts/write_stable_manifest.js",
     "lint": "eslint src/**/*.js tests/**/*.js",
     "lint:fix": "eslint src/**/*.js tests/**/*.js --fix",
     "format": "prettier --write \"src/**/*.js\" \"tests/**/*.js\"",
