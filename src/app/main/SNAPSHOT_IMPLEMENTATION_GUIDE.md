@@ -111,6 +111,8 @@
 
 - helper/token 누락 여부
 - shell/api parity
+- runtime kind / shell host / public API contract
+- read-only capability contract
 - runtimeVersion parity
 - mergedMeta parity
 
