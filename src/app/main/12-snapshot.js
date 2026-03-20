@@ -582,12 +582,13 @@
     .snapshot-meta-details[open] .snapshot-meta-summary::after{content:"\uba54\ud0c0 \uc811\uae30"}
     .snapshot-meta-title{font-size:13px;font-weight:800;line-height:1.2;color:#fff8df}
     .snapshot-meta-copy{margin-top:6px;font-size:11px;line-height:1.7;color:#d7bf78}
-    #sadv-p{
+    .snapshot-shell>#sadv-p{
       position:relative !important;
       top:auto !important;
       left:auto !important;
       right:auto !important;
       width:100% !important;
+      max-width:none !important;
       box-sizing:border-box !important;
       height:auto !important;
       margin:0 !important;
@@ -618,7 +619,7 @@
         padding:10px 12px;
         border-radius:16px;
       }
-      #sadv-p{
+      .snapshot-shell>#sadv-p{
         border-radius:16px !important;
       }
       #sadv-header{
