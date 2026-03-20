@@ -912,6 +912,17 @@
     ${pearson.toString()}
     ${createInlineError.toString()}
     ${createStateCard.toString()}
+    ${isSnapshotRuntime.toString()}
+    ${isLiveRuntime.toString()}
+    ${getRuntimeMode.toString()}
+    ${getRuntimeCapabilities.toString()}
+    ${getRuntimeShellState.toString()}
+    ${getRuntimeRows.toString()}
+    ${getRuntimeAllSites.toString()}
+    ${getRuntimeSiteMeta.toString()}
+    ${getRuntimeMergedMeta.toString()}
+    ${getRuntimeCacheMeta.toString()}
+    ${getRuntimeSiteData.toString()}
     ${buildSiteSummaryRow.toString()}
     ${prepareRendererData.toString()}
     ${createOverviewRenderer.toString()}
@@ -1299,6 +1310,17 @@
     }
     window.__SEARCHADVISOR_SNAPSHOT_API__ = {
       getState: cloneSnapshotShellState,
+      getCapabilities: function () {
+        return typeof getRuntimeCapabilities === "function"
+          ? getRuntimeCapabilities()
+          : {
+              mode: "snapshot",
+              canRefresh: false,
+              canSave: false,
+              canClose: false,
+              isReadOnly: true,
+            };
+      },
       isReady: function () {
         return snapshotUiReady;
       },

@@ -43,6 +43,7 @@ const MODULES = [
   'app/main/05-demo-mode.js',
   'app/main/06-merge-manager.js',
   'app/main/07-ui-state.js',
+  'app/main/07-data-provider.js',
   // Renderer modules (must be in this order)
   'app/main/08-renderers-overview.js',
   'app/main/08-renderers-daily.js',

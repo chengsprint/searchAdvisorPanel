@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T05:57:08Z";
-var __SADV_GIT_HEAD__="74f72ef";
+var __SADV_BUILD_STAMP__="2026-03-20T06:09:35Z";
+var __SADV_GIT_HEAD__="98783ed";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -7722,6 +7722,128 @@ if (typeof window !== "undefined") {
 }
 
 /**
+ * Runtime provider facade
+ *
+ * 목적:
+ * - UI 계층이 live/snapshot 전역 상태를 직접 덜 보게 만들기
+ * - data/state 읽기 경계를 한 곳으로 모으기
+ * - 1단계 리팩토링에서 "어디서 읽는지"만 분리하고 UI는 그대로 유지하기
+ */
+
+function isSnapshotRuntime() {
+  return typeof window !== "undefined" && !!window.__SEARCHADVISOR_EXPORT_PAYLOAD__;
+}
+
+function isLiveRuntime() {
+  return !isSnapshotRuntime();
+}
+
+function getRuntimeMode() {
+  return isSnapshotRuntime() ? "snapshot" : "live";
+}
+
+function getRuntimeCapabilities() {
+  if (isSnapshotRuntime()) {
+    return {
+      mode: "snapshot",
+      canRefresh: false,
+      canSave: false,
+      canClose: false,
+      isReadOnly: true,
+    };
+  }
+  return {
+    mode: "live",
+    canRefresh: true,
+    canSave: true,
+    canClose: true,
+    isReadOnly: false,
+  };
+}
+
+function getRuntimeShellState() {
+  if (isSnapshotRuntime()) {
+    if (
+      typeof window !== "undefined" &&
+      window.__SEARCHADVISOR_SNAPSHOT_API__ &&
+      typeof window.__SEARCHADVISOR_SNAPSHOT_API__.getState === "function"
+    ) {
+      return window.__SEARCHADVISOR_SNAPSHOT_API__.getState();
+    }
+    if (
+      typeof buildSnapshotShellState === "function" &&
+      typeof window !== "undefined" &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+    ) {
+      return buildSnapshotShellState(window.__SEARCHADVISOR_EXPORT_PAYLOAD__);
+    }
+  }
+  if (typeof buildLiveShellState === "function") return buildLiveShellState();
+  if (typeof __sadvSnapshot === "function") return __sadvSnapshot();
+  return {
+    curMode: typeof curMode === "string" ? curMode : CONFIG.MODE.ALL,
+    curSite: typeof curSite === "string" ? curSite : null,
+    curTab: typeof curTab === "string" ? curTab : "overview",
+    allSites: Array.isArray(allSites) ? allSites.slice() : [],
+    rows: Array.isArray(window.__sadvRows) ? window.__sadvRows.slice() : [],
+    accountLabel: "",
+    runtimeVersion: "runtime",
+    cacheMeta: null,
+  };
+}
+
+function getRuntimeRows() {
+  const state = getRuntimeShellState();
+  if (state && Array.isArray(state.rows)) return state.rows.slice();
+  return Array.isArray(window.__sadvRows) ? window.__sadvRows.slice() : [];
+}
+
+function getRuntimeAllSites() {
+  const state = getRuntimeShellState();
+  if (state && Array.isArray(state.allSites)) return state.allSites.slice();
+  return Array.isArray(allSites) ? allSites.slice() : [];
+}
+
+function getRuntimeSiteMeta() {
+  const state = getRuntimeShellState();
+  if (state && state.siteMeta && typeof state.siteMeta === "object") return state.siteMeta;
+  if (typeof getSnapshotMetaState === "function") {
+    const metaState = getSnapshotMetaState();
+    return metaState && metaState.siteMeta && typeof metaState.siteMeta === "object"
+      ? metaState.siteMeta
+      : {};
+  }
+  return {};
+}
+
+function getRuntimeMergedMeta() {
+  const state = getRuntimeShellState();
+  if (state && Object.prototype.hasOwnProperty.call(state, "mergedMeta")) return state.mergedMeta;
+  if (typeof getMergedMetaState === "function") return getMergedMetaState();
+  return null;
+}
+
+function getRuntimeCacheMeta() {
+  const state = getRuntimeShellState();
+  return state && state.cacheMeta ? state.cacheMeta : null;
+}
+
+function getRuntimeSiteData(site) {
+  if (!site) return null;
+  if (isSnapshotRuntime()) {
+    const payload =
+      typeof window !== "undefined" && window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+        ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+        : null;
+    if (payload && payload.dataBySite && typeof payload.dataBySite === "object") {
+      return payload.dataBySite[site] || null;
+    }
+    return null;
+  }
+  return null;
+}
+
+/**
  * Overview Tab Renderer
  * Displays key performance indicators and trend charts
  *
@@ -8891,10 +9013,13 @@ function getAvailableRenderers() {
  */
   function setAllSitesLabel() {
     if (!labelEl) return;
-    const mergedMeta = getMergedMetaState();
+    const mergedMeta =
+      typeof getRuntimeMergedMeta === "function" ? getRuntimeMergedMeta() : getMergedMetaState();
+    const runtimeSites =
+      typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
     const summary = isMergedReport() && mergedMeta && mergedMeta.sourceCount
-      ? `${allSites.length}개 사이트 등록됨 · ${mergedMeta.sourceCount}개 스냅샷 병합`
-      : `${allSites.length}개 사이트 등록됨`;
+      ? `${runtimeSites.length}개 사이트 등록됨 · ${mergedMeta.sourceCount}개 스냅샷 병합`
+      : `${runtimeSites.length}개 사이트 등록됨`;
     const labelTextEl = labelEl.querySelector("span");
     labelEl.classList.remove("sadv-meta-hidden");
     if (labelTextEl) labelTextEl.textContent = summary;
@@ -8926,8 +9051,14 @@ function getAvailableRenderers() {
   function syncLiveHeaderMeta(snapshot) {
     const metaEl = document.getElementById("sadv-cache-meta");
     if (!metaEl) return;
-    const state = snapshot && snapshot.cacheMeta ? snapshot : __sadvSnapshot();
-    const cacheMeta = state && state.cacheMeta ? state.cacheMeta : null;
+    const state =
+      snapshot && snapshot.cacheMeta
+        ? snapshot
+        : (typeof getRuntimeShellState === "function" ? getRuntimeShellState() : __sadvSnapshot());
+    const cacheMeta =
+      state && state.cacheMeta
+        ? state.cacheMeta
+        : (typeof getRuntimeCacheMeta === "function" ? getRuntimeCacheMeta() : null);
     if (!cacheMeta || !cacheMeta.updatedAt) {
       metaEl.innerHTML = "";
       return;
@@ -9015,7 +9146,9 @@ function getAvailableRenderers() {
       rows && rows.length
         ? rows.map((r) => r.site).filter((site) => allSites.includes(site))
         : [];
-    const restSites = allSites.filter((s) => !rowsMap[s]);
+    const runtimeSites =
+      typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
+    const restSites = runtimeSites.filter((s) => !rowsMap[s]);
     const orderedSites = [...rowSites, ...restSites];
 
     // Create search container
@@ -9425,6 +9558,17 @@ function getAvailableRenderers() {
   if (typeof window !== "undefined") {
     window.__sadvApi = {
       getState: __sadvSnapshot,
+      getCapabilities: function () {
+        return typeof getRuntimeCapabilities === "function"
+          ? getRuntimeCapabilities()
+          : {
+              mode: "live",
+              canRefresh: true,
+              canSave: true,
+              canClose: true,
+              isReadOnly: false,
+            };
+      },
       isReady: function () {
         return __sadvInitialReady;
       },
@@ -10949,6 +11093,17 @@ function savedAtIso(d) {
     ${pearson.toString()}
     ${createInlineError.toString()}
     ${createStateCard.toString()}
+    ${isSnapshotRuntime.toString()}
+    ${isLiveRuntime.toString()}
+    ${getRuntimeMode.toString()}
+    ${getRuntimeCapabilities.toString()}
+    ${getRuntimeShellState.toString()}
+    ${getRuntimeRows.toString()}
+    ${getRuntimeAllSites.toString()}
+    ${getRuntimeSiteMeta.toString()}
+    ${getRuntimeMergedMeta.toString()}
+    ${getRuntimeCacheMeta.toString()}
+    ${getRuntimeSiteData.toString()}
     ${buildSiteSummaryRow.toString()}
     ${prepareRendererData.toString()}
     ${createOverviewRenderer.toString()}
@@ -11336,6 +11491,17 @@ function savedAtIso(d) {
     }
     window.__SEARCHADVISOR_SNAPSHOT_API__ = {
       getState: cloneSnapshotShellState,
+      getCapabilities: function () {
+        return typeof getRuntimeCapabilities === "function"
+          ? getRuntimeCapabilities()
+          : {
+              mode: "snapshot",
+              canRefresh: false,
+              canSave: false,
+              canClose: false,
+              isReadOnly: true,
+            };
+      },
       isReady: function () {
         return snapshotUiReady;
       },
@@ -11683,7 +11849,11 @@ function savedAtIso(d) {
     );
     let d;
     try {
-      d = await fetchSiteData(site);
+      if (typeof getRuntimeMode === "function" && getRuntimeMode() === "snapshot") {
+        d = typeof getRuntimeSiteData === "function" ? getRuntimeSiteData(site) : null;
+      } else {
+        d = await fetchSiteData(site);
+      }
     } catch (e) {
       bdEl.innerHTML = createInlineError(
         ERROR_MESSAGES.DATA_LOAD_FAILED,

@@ -58,10 +58,13 @@
  */
   function setAllSitesLabel() {
     if (!labelEl) return;
-    const mergedMeta = getMergedMetaState();
+    const mergedMeta =
+      typeof getRuntimeMergedMeta === "function" ? getRuntimeMergedMeta() : getMergedMetaState();
+    const runtimeSites =
+      typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
     const summary = isMergedReport() && mergedMeta && mergedMeta.sourceCount
-      ? `${allSites.length}개 사이트 등록됨 · ${mergedMeta.sourceCount}개 스냅샷 병합`
-      : `${allSites.length}개 사이트 등록됨`;
+      ? `${runtimeSites.length}개 사이트 등록됨 · ${mergedMeta.sourceCount}개 스냅샷 병합`
+      : `${runtimeSites.length}개 사이트 등록됨`;
     const labelTextEl = labelEl.querySelector("span");
     labelEl.classList.remove("sadv-meta-hidden");
     if (labelTextEl) labelTextEl.textContent = summary;
@@ -93,8 +96,14 @@
   function syncLiveHeaderMeta(snapshot) {
     const metaEl = document.getElementById("sadv-cache-meta");
     if (!metaEl) return;
-    const state = snapshot && snapshot.cacheMeta ? snapshot : __sadvSnapshot();
-    const cacheMeta = state && state.cacheMeta ? state.cacheMeta : null;
+    const state =
+      snapshot && snapshot.cacheMeta
+        ? snapshot
+        : (typeof getRuntimeShellState === "function" ? getRuntimeShellState() : __sadvSnapshot());
+    const cacheMeta =
+      state && state.cacheMeta
+        ? state.cacheMeta
+        : (typeof getRuntimeCacheMeta === "function" ? getRuntimeCacheMeta() : null);
     if (!cacheMeta || !cacheMeta.updatedAt) {
       metaEl.innerHTML = "";
       return;
@@ -182,7 +191,9 @@
       rows && rows.length
         ? rows.map((r) => r.site).filter((site) => allSites.includes(site))
         : [];
-    const restSites = allSites.filter((s) => !rowsMap[s]);
+    const runtimeSites =
+      typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
+    const restSites = runtimeSites.filter((s) => !rowsMap[s]);
     const orderedSites = [...rowSites, ...restSites];
 
     // Create search container
@@ -592,6 +603,17 @@
   if (typeof window !== "undefined") {
     window.__sadvApi = {
       getState: __sadvSnapshot,
+      getCapabilities: function () {
+        return typeof getRuntimeCapabilities === "function"
+          ? getRuntimeCapabilities()
+          : {
+              mode: "live",
+              canRefresh: true,
+              canSave: true,
+              canClose: true,
+              isReadOnly: false,
+            };
+      },
       isReady: function () {
         return __sadvInitialReady;
       },
