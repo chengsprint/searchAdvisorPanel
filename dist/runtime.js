@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T14:15:59Z";
-var __SADV_GIT_HEAD__="3a50d96";
+var __SADV_BUILD_STAMP__="2026-03-20T14:20:36Z";
+var __SADV_GIT_HEAD__="b98948c";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -12474,6 +12474,12 @@ function savedAtIso(d) {
         return false;
       },
     };
+    // Phase 1 contract alignment:
+    // saved HTML도 live와 같은 public API 이름(window.__sadvApi)을 노출해야
+    // external QA/audit/automation이 runtime kind를 몰라도 동일한 제어 계약으로 접근할 수 있다.
+    // snapshot 전용 richer API는 __SEARCHADVISOR_SNAPSHOT_API__에 유지하고,
+    // public facade는 같은 객체를 alias로 재사용한다.
+    window.__sadvApi = window.__SEARCHADVISOR_SNAPSHOT_API__;
     if (snapshotUiReady) {
       const cachedUi = getCachedUiState();
       if (cachedUi && typeof cachedUi.allSitesPeriodDays !== "undefined") {
@@ -12657,6 +12663,7 @@ function savedAtIso(d) {
       '    close: function () { return false; },',
       "  };",
       "  window.__SEARCHADVISOR_SNAPSHOT_API__ = api;",
+      '  window.__sadvApi = api;',
       '  const target = document.getElementById("sadv-p") || document.body;',
       '  if (target) {',
       '    // React 18 호환 가능한 DOM 관찰자 사용',

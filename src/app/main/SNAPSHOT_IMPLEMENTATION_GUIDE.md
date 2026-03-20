@@ -138,6 +138,10 @@
   (`getAllSitesSelectionState`, `getAllSitesCanonicalRows`,
   `setAllSitesCanonicalRows`, `setAllSitesSelectedSite`)도
   saved HTML 직렬화 allowlist에 같이 실리는지 확인해야 한다.
+- saved HTML은 snapshot 전용 richer API를 `window.__SEARCHADVISOR_SNAPSHOT_API__`에 유지하더라도,
+  공용 제어 계약은 live와 같은 `window.__sadvApi` alias로도 노출해야 한다.
+  그래야 QA/audit/외부 automation이 runtime kind를 분기하지 않고
+  `switchMode/setSite/setTab/getState`를 같은 이름으로 호출할 수 있다.
 - `ensureCurrentSite`, `buildCombo`, `setComboSite`, `renderTab`, `switchMode`처럼
   saved가 직접 호출하는 공통 UI 함수는 **그 함수가 참조하는 helper까지 같이 serialize**
   되는지 반드시 확인한다.
