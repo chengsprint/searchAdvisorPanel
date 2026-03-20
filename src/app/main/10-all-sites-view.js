@@ -55,9 +55,6 @@ function setAllSitesCanonicalRows(rows) {
  */
 function setAllSitesSelectedSite(site) {
   if (typeof setRuntimeSite === "function") return setRuntimeSite(site);
-  if (typeof setRuntimeSelectionState === "function") {
-    return setRuntimeSelectionState({ curSite: site });
-  }
   curSite = site;
   return getAllSitesSelectionState();
 }

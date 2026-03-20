@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T13:31:41Z";
-var __SADV_GIT_HEAD__="7bd114e";
+var __SADV_BUILD_STAMP__="2026-03-20T13:33:10Z";
+var __SADV_GIT_HEAD__="b3bf092";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -9575,51 +9575,20 @@ function getUiControlsSelectionState() {
 }
 
 /**
- * Apply a partial selection update using the provider/action seam first.
- *
- * Why this helper exists:
- * - `09-ui-controls.js` is still a hotspot where the same fallback chain
- *   (`setRuntimeX` -> `setRuntimeSelectionState` -> direct global write)
- *   was duplicated in multiple handlers.
- * - Repeating that chain increases the chance that live/saved behavior drifts
- *   when one branch is updated and another is forgotten.
- * - Keeping the fallback order in one helper is a small but high-value Phase 1
- *   step because this file is the shared UI interaction hub for live and saved.
- *
- * Guardrail:
- * - This helper must stay "selection only". It must not render, notify, fetch,
- *   or switch modes/tabs by itself. Callers still own those side-effects so
- *   current interaction order remains stable for live/saved parity.
- */
-function applyUiControlsSelectionPatch(patch) {
-  if (!patch || typeof patch !== "object") return getUiControlsSelectionState();
-  if (typeof setRuntimeSelectionState === "function") {
-    return setRuntimeSelectionState(patch);
-  }
-  if (Object.prototype.hasOwnProperty.call(patch, "curMode")) {
-    curMode = patch.curMode;
-  }
-  if (Object.prototype.hasOwnProperty.call(patch, "curSite")) {
-    curSite = patch.curSite;
-  }
-  if (Object.prototype.hasOwnProperty.call(patch, "curTab")) {
-    curTab = patch.curTab;
-  }
-  return getUiControlsSelectionState();
-}
-
-/**
  * Semantic action wrapper for mode changes inside shared UI controls.
  *
  * Why not write `curMode` directly?
  * - Live and saved already have dedicated action seams (`setRuntimeMode`)
- *   that know how to project the same semantic action into different runtimes.
- * - This helper keeps the UI code semantic ("set mode") while still preserving
- *   a legacy fallback when the seam is unavailable during early boot/tests.
+  *   that know how to project the same semantic action into different runtimes.
+ * - Phase 1 후반부터는 UI가 generic patch seam(`setRuntimeSelectionState`)까지
+ *   직접 아는 범위를 줄이고, 가능한 한 semantic wrapper만 호출하게 만든다.
+ * - 이 helper keeps the UI code semantic ("set mode") while still preserving
+ *   a last-resort legacy fallback when the seam is unavailable during early boot/tests.
  */
 function applyUiControlsMode(mode) {
   if (typeof setRuntimeMode === "function") return setRuntimeMode(mode);
-  return applyUiControlsSelectionPatch({ curMode: mode });
+  curMode = mode;
+  return getUiControlsSelectionState();
 }
 
 /**
@@ -9632,10 +9601,17 @@ function applyUiControlsMode(mode) {
  * That separation matters because saved HTML still relies on the current
  * caller-owned rendering order, and changing that order here would be a
  * riskier Phase 2/3 style refactor.
+ *
+ * Guardrail:
+ * - Like applyUiControlsMode/applyUiControlsTab, this helper now stops at the
+ *   semantic action seam (`setRuntimeSite`) and falls back directly to the
+ *   legacy local state only as a last resort.
+ * - UI controls no longer need to know about the generic patch seam here.
  */
 function applyUiControlsSite(site) {
   if (typeof setRuntimeSite === "function") return setRuntimeSite(site);
-  return applyUiControlsSelectionPatch({ curSite: site });
+  curSite = site;
+  return getUiControlsSelectionState();
 }
 
 /**
@@ -9643,10 +9619,16 @@ function applyUiControlsSite(site) {
  *
  * Keeping tab selection behind one helper makes live/saved parity easier to
  * audit and reduces duplicated fallback branches in click/API handlers.
+ *
+ * Phase 1 note:
+ * - The UI layer now prefers semantic actions only.
+ * - If the runtime tab seam does not exist yet, we fall back directly to the
+ *   local mutable state instead of routing back through a generic patch API.
  */
 function applyUiControlsTab(tab) {
   if (typeof setRuntimeTab === "function") return setRuntimeTab(tab);
-  return applyUiControlsSelectionPatch({ curTab: tab });
+  curTab = tab;
+  return getUiControlsSelectionState();
 }
 
   /**
@@ -10477,9 +10459,6 @@ function setAllSitesCanonicalRows(rows) {
  */
 function setAllSitesSelectedSite(site) {
   if (typeof setRuntimeSite === "function") return setRuntimeSite(site);
-  if (typeof setRuntimeSelectionState === "function") {
-    return setRuntimeSelectionState({ curSite: site });
-  }
   curSite = site;
   return getAllSitesSelectionState();
 }
