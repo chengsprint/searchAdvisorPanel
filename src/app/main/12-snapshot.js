@@ -1594,7 +1594,7 @@ function buildSnapshotSerializedHelperSection() {
     ];
   }
 
-  function buildSnapshotApiCompatDomSyncLines() {
+  function buildSnapshotApiCompatLabelResolverLines() {
     return [
       "  function getSiteShortName(site) {",
       '    if (!site) return "site";',
@@ -1620,6 +1620,11 @@ function buildSnapshotSerializedHelperSection() {
       "      return site.toLowerCase() === normalized || getSiteShortName(site).toLowerCase() === normalized || getSiteLabel(site).toLowerCase() === normalized;",
       "    }) || null;",
       "  }",
+    ];
+  }
+
+  function buildSnapshotApiCompatSyncLines() {
+    return [
       "  function syncFromLegacy() {",
       '    const activeMode = document.querySelector("#sadv-mode-bar .sadv-mode.on");',
       '    const activeTab = document.querySelector("#sadv-tabs .sadv-t.on");',
@@ -1640,7 +1645,7 @@ function buildSnapshotSerializedHelperSection() {
     ];
   }
 
-  function buildSnapshotApiCompatInteractionLines() {
+  function buildSnapshotApiCompatActionLines() {
     return [
       "  const api = {",
       "    getState: cloneState,",
@@ -1659,6 +1664,11 @@ function buildSnapshotSerializedHelperSection() {
       '    close: function () { return false; },',
       "  };",
       "  publishSnapshotRuntimeApis(api);",
+    ];
+  }
+
+  function buildSnapshotApiCompatObserverLines() {
+    return [
       '  const target = document.getElementById("sadv-p") || document.body;',
       '  if (target) {',
       '    // React 18 호환 가능한 DOM 관찰자 사용',
@@ -1685,8 +1695,10 @@ function buildSnapshotSerializedHelperSection() {
       "(function () {",
       "  if (window.__SEARCHADVISOR_SNAPSHOT_API__) return;",
       ...buildSnapshotApiCompatStateLines(),
-      ...buildSnapshotApiCompatDomSyncLines(),
-      ...buildSnapshotApiCompatInteractionLines(),
+      ...buildSnapshotApiCompatLabelResolverLines(),
+      ...buildSnapshotApiCompatSyncLines(),
+      ...buildSnapshotApiCompatActionLines(),
+      ...buildSnapshotApiCompatObserverLines(),
       "})();",
     ].join("\n");
   }

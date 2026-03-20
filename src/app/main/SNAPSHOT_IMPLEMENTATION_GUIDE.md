@@ -173,8 +173,10 @@
   이 단계는 HTML 문자열 후처리 책임이므로, offline runtime 내부 상태 복원 helper와 섞지 않는다.
 - `buildSnapshotApiCompatScript()`를 건드릴 때는 compat bridge 전체를 한 번에 뒤집지 말고,
   `buildSnapshotApiCompatStateLines()`,
-  `buildSnapshotApiCompatDomSyncLines()`,
-  `buildSnapshotApiCompatInteractionLines()`
+  `buildSnapshotApiCompatLabelResolverLines()`,
+  `buildSnapshotApiCompatSyncLines()`,
+  `buildSnapshotApiCompatActionLines()`,
+  `buildSnapshotApiCompatObserverLines()`
   같은 line builder 단위로 먼저 나눈다.
   Phase 3 첫 단계의 목표는 "동작 변경"이 아니라 "읽기 가능한 경계 만들기"다.
 - 특히 `buildSnapshotApiCompatScript()`는 현재 활성 saved bootstrap 정본이 아니라,
