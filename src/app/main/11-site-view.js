@@ -62,7 +62,16 @@
       ).outerHTML;
       return;
     }
-    if (requestId !== siteViewReqId || site !== curSite) return;
+    // Phase 1 seam:
+    // site detail request guard도 현재 선택 사이트를 selection seam에서 읽는다.
+    // 이유:
+    // - live/saved가 같은 "현재 선택 사이트" 정의를 공유해야 하고
+    // - 향후 curSite direct read 제거 시 가장 먼저 안전하게 옮길 수 있는 읽기 지점이기 때문이다.
+    const selectionState =
+      typeof getRuntimeSelectionState === "function"
+        ? getRuntimeSelectionState()
+        : { curMode, curSite, curTab };
+    if (requestId !== siteViewReqId || site !== selectionState.curSite) return;
     if (!d || !d.expose || !d.expose.items || !d.expose.items.length) {
       bdEl.replaceChildren(
         createStateCard(

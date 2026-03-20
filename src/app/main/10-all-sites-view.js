@@ -417,7 +417,17 @@ async function renderAllSites() {
   const startTime = Date.now();
 
   const setProgress = function (label, ratio, note) {
-    if (requestId !== allViewReqId || curMode !== CONFIG.MODE.ALL) return;
+    // Phase 1 seam:
+    // all-sites loading/progress 가드는 더 이상 curMode 전역을 직접 믿지 않고
+    // selection seam을 통해 현재 모드를 읽는다.
+    // 이유:
+    // - live/saved가 같은 "현재 모드" 해석 규칙을 공유해야 하고
+    // - 이후 shared app entry 단계에서 global 직접 read를 줄여야 하기 때문이다.
+    const currentSelectionState =
+      typeof getRuntimeSelectionState === "function"
+        ? getRuntimeSelectionState()
+        : { curMode, curSite, curTab };
+    if (requestId !== allViewReqId || currentSelectionState.curMode !== CONFIG.MODE.ALL) return;
     if (ratio >= CONFIG.PROGRESS.META_PHASE_RATIO_START && missingDiagnosisMetaCount === 0) return;
     if (loadingDetail) loadingDetail.textContent = label;
     if (loadingBar) loadingBar.style.width = Math.max(6, Math.round(ratio * 100)) + "%";
@@ -454,7 +464,13 @@ async function renderAllSites() {
       CONFIG.PROGRESS.BASE_RATIO_START + (Math.min(i + batchSites.length, sitesToLoad.length) / sitesToLoad.length) * CONFIG.PROGRESS.EXPOSE_PHASE_RATIO_RANGE,
     );
     const batchResults = await Promise.allSettled(batchSites.map((site) => fetchExposeData(site)));
-    if (requestId !== allViewReqId || curMode !== "all") return;
+    {
+      const currentSelectionState =
+        typeof getRuntimeSelectionState === "function"
+          ? getRuntimeSelectionState()
+          : { curMode, curSite, curTab };
+      if (requestId !== allViewReqId || currentSelectionState.curMode !== CONFIG.MODE.ALL) return;
+    }
     let failedCount = 0;
     let firstBatchError = null;
     batchResults.forEach(function (result, offset) {
@@ -493,7 +509,13 @@ async function renderAllSites() {
     const batchResults = await Promise.allSettled(
       batchSites.map((site) => fetchDiagnosisMeta(site, siteDataBySite[site] || null)),
     );
-    if (requestId !== allViewReqId || curMode !== "all") return;
+    {
+      const currentSelectionState =
+        typeof getRuntimeSelectionState === "function"
+          ? getRuntimeSelectionState()
+          : { curMode, curSite, curTab };
+      if (requestId !== allViewReqId || currentSelectionState.curMode !== CONFIG.MODE.ALL) return;
+    }
     batchResults.forEach(function (result, offset) {
       metaLoaded += 1;
       if (result.status === "fulfilled") {
@@ -519,7 +541,13 @@ async function renderAllSites() {
   rows.sort((a, b) => b.totalC - a.totalC);
   window.__sadvRows = rows;
   buildCombo(rows);
-  if (requestId !== allViewReqId || curMode !== "all") return;
+  {
+    const currentSelectionState =
+      typeof getRuntimeSelectionState === "function"
+        ? getRuntimeSelectionState()
+        : { curMode, curSite, curTab };
+    if (requestId !== allViewReqId || currentSelectionState.curMode !== CONFIG.MODE.ALL) return;
+  }
   renderAllSitesFromCanonicalRows();
 }
 

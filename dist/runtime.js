@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T12:39:41Z";
-var __SADV_GIT_HEAD__="ec26168";
+var __SADV_BUILD_STAMP__="2026-03-20T12:51:46Z";
+var __SADV_GIT_HEAD__="b2ace2f";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -7707,7 +7707,7 @@ function buildLiveShellState() {
     curTab,
     allSitesPeriodDays: normalizeAllSitesPeriodDays(allSitesPeriodDays),
     allSites: [...allSites],
-    rows: window.__sadvRows || [],
+    rows: typeof getCanonicalRowsState === "function" ? getCanonicalRowsState() : (window.__sadvRows || []),
     accountLabel: snapshotAccountLabel,
     runtimeVersion: window.__SEARCHADVISOR_RUNTIME_VERSION__ || "runtime",
     cacheMeta: getLiveCacheMeta(),
@@ -7736,6 +7736,25 @@ function getAllSitesPeriodDaysState() {
 function setAllSitesPeriodDaysState(days) {
   allSitesPeriodDays = normalizeAllSitesPeriodDays(days);
   return allSitesPeriodDays;
+}
+
+function getCanonicalRowsState() {
+  // canonical rows는 아직 완전한 state contract로 승격되기 전이므로
+  // 내부 저장소는 계속 window.__sadvRows를 사용한다.
+  //
+  // 다만 Phase 1부터는 UI가 이 전역 저장소를 직접 읽기보다
+  // 공용 getter를 통과하도록 점진적으로 수렴시킨다.
+  return Array.isArray(window.__sadvRows) ? window.__sadvRows.slice() : [];
+}
+
+function setCanonicalRowsState(rows) {
+  // 중요:
+  // - 이 함수는 canonical rows "저장 위치"를 추상화하는 seam이다.
+  // - 지금 단계에서는 여전히 window.__sadvRows가 실제 저장소지만,
+  //   이후 phase에서 data.rows contract로 이동할 때 호출 지점을 한 번에 교체하기 쉽다.
+  // - 반드시 배열 사본을 써서 render helper가 원본 배열을 우발적으로 mutate하지 않게 한다.
+  window.__sadvRows = Array.isArray(rows) ? rows.slice() : [];
+  return getCanonicalRowsState();
 }
 
 function getSelectionStateValue() {
@@ -8174,6 +8193,21 @@ function getRuntimeShellState() {
 function getRuntimeRows() {
   const state = getRuntimeShellState();
   if (state && Array.isArray(state.rows)) return state.rows.slice();
+  if (typeof getCanonicalRowsState === "function") return getCanonicalRowsState();
+  return Array.isArray(window.__sadvRows) ? window.__sadvRows.slice() : [];
+}
+
+function setRuntimeRows(rows) {
+  // Phase 1 write seam:
+  // 전체현황 canonical rows 저장 위치를 UI 코드가 직접 알지 않게 한다.
+  //
+  // 주의:
+  // - 이 함수는 "rows를 저장"만 담당한다.
+  // - render/notify는 호출 측이 기존 흐름을 유지하게 두어 회귀를 줄인다.
+  if (typeof setCanonicalRowsState === "function") {
+    return setCanonicalRowsState(rows);
+  }
+  window.__sadvRows = Array.isArray(rows) ? rows.slice() : [];
   return Array.isArray(window.__sadvRows) ? window.__sadvRows.slice() : [];
 }
 
@@ -8274,6 +8308,21 @@ function setRuntimeSelectionState(patch) {
     curSite,
     curTab,
   };
+}
+
+function setRuntimeMode(mode) {
+  // action seam 1차:
+  // mode/site/tab을 한 번에 바꾸는 범용 patch seam은 유지하되,
+  // UI 코드가 의도를 더 명확히 표현하도록 얇은 action wrapper를 제공한다.
+  return setRuntimeSelectionState({ curMode: mode });
+}
+
+function setRuntimeSite(site) {
+  return setRuntimeSelectionState({ curSite: site });
+}
+
+function setRuntimeTab(tab) {
+  return setRuntimeSelectionState({ curTab: tab });
 }
 
 function getRuntimeAllSitesPeriodDays() {
@@ -9999,10 +10048,19 @@ function getAvailableRenderers() {
  * @see {buildRenderers}
  */
   function renderTab(R) {
-    if (!bdEl || !R || typeof R[curTab] !== "function") return;
+    // Phase 1 seam:
+    // tab renderer도 curTab 전역을 직접 참조하지 않고 selection seam을 통해 읽기 시작한다.
+    // 여기서 먼저 read 경로만 옮기고, 실제 tab action flow(setTab/switchMode 호출 순서)는
+    // 그대로 두어 saved HTML 회귀 위험을 낮춘다.
+    const selectionState =
+      typeof getRuntimeSelectionState === "function"
+        ? getRuntimeSelectionState()
+        : { curTab };
+    const activeTab = selectionState.curTab;
+    if (!bdEl || !R || typeof R[activeTab] !== "function") return;
     bdEl.setAttribute("role", "tabpanel");
     bdEl.id = "sadv-tabpanel";
-    bdEl.replaceChildren(R[curTab]());
+    bdEl.replaceChildren(R[activeTab]());
     bdEl.scrollTop = 0;
   }
   if (modeBar) {
@@ -10676,7 +10734,17 @@ async function renderAllSites() {
   const startTime = Date.now();
 
   const setProgress = function (label, ratio, note) {
-    if (requestId !== allViewReqId || curMode !== CONFIG.MODE.ALL) return;
+    // Phase 1 seam:
+    // all-sites loading/progress 가드는 더 이상 curMode 전역을 직접 믿지 않고
+    // selection seam을 통해 현재 모드를 읽는다.
+    // 이유:
+    // - live/saved가 같은 "현재 모드" 해석 규칙을 공유해야 하고
+    // - 이후 shared app entry 단계에서 global 직접 read를 줄여야 하기 때문이다.
+    const currentSelectionState =
+      typeof getRuntimeSelectionState === "function"
+        ? getRuntimeSelectionState()
+        : { curMode, curSite, curTab };
+    if (requestId !== allViewReqId || currentSelectionState.curMode !== CONFIG.MODE.ALL) return;
     if (ratio >= CONFIG.PROGRESS.META_PHASE_RATIO_START && missingDiagnosisMetaCount === 0) return;
     if (loadingDetail) loadingDetail.textContent = label;
     if (loadingBar) loadingBar.style.width = Math.max(6, Math.round(ratio * 100)) + "%";
@@ -10713,7 +10781,13 @@ async function renderAllSites() {
       CONFIG.PROGRESS.BASE_RATIO_START + (Math.min(i + batchSites.length, sitesToLoad.length) / sitesToLoad.length) * CONFIG.PROGRESS.EXPOSE_PHASE_RATIO_RANGE,
     );
     const batchResults = await Promise.allSettled(batchSites.map((site) => fetchExposeData(site)));
-    if (requestId !== allViewReqId || curMode !== "all") return;
+    {
+      const currentSelectionState =
+        typeof getRuntimeSelectionState === "function"
+          ? getRuntimeSelectionState()
+          : { curMode, curSite, curTab };
+      if (requestId !== allViewReqId || currentSelectionState.curMode !== CONFIG.MODE.ALL) return;
+    }
     let failedCount = 0;
     let firstBatchError = null;
     batchResults.forEach(function (result, offset) {
@@ -10752,7 +10826,13 @@ async function renderAllSites() {
     const batchResults = await Promise.allSettled(
       batchSites.map((site) => fetchDiagnosisMeta(site, siteDataBySite[site] || null)),
     );
-    if (requestId !== allViewReqId || curMode !== "all") return;
+    {
+      const currentSelectionState =
+        typeof getRuntimeSelectionState === "function"
+          ? getRuntimeSelectionState()
+          : { curMode, curSite, curTab };
+      if (requestId !== allViewReqId || currentSelectionState.curMode !== CONFIG.MODE.ALL) return;
+    }
     batchResults.forEach(function (result, offset) {
       metaLoaded += 1;
       if (result.status === "fulfilled") {
@@ -10778,7 +10858,13 @@ async function renderAllSites() {
   rows.sort((a, b) => b.totalC - a.totalC);
   window.__sadvRows = rows;
   buildCombo(rows);
-  if (requestId !== allViewReqId || curMode !== "all") return;
+  {
+    const currentSelectionState =
+      typeof getRuntimeSelectionState === "function"
+        ? getRuntimeSelectionState()
+        : { curMode, curSite, curTab };
+    if (requestId !== allViewReqId || currentSelectionState.curMode !== CONFIG.MODE.ALL) return;
+  }
   renderAllSitesFromCanonicalRows();
 }
 
@@ -12593,7 +12679,16 @@ function savedAtIso(d) {
       ).outerHTML;
       return;
     }
-    if (requestId !== siteViewReqId || site !== curSite) return;
+    // Phase 1 seam:
+    // site detail request guard도 현재 선택 사이트를 selection seam에서 읽는다.
+    // 이유:
+    // - live/saved가 같은 "현재 선택 사이트" 정의를 공유해야 하고
+    // - 향후 curSite direct read 제거 시 가장 먼저 안전하게 옮길 수 있는 읽기 지점이기 때문이다.
+    const selectionState =
+      typeof getRuntimeSelectionState === "function"
+        ? getRuntimeSelectionState()
+        : { curMode, curSite, curTab };
+    if (requestId !== siteViewReqId || site !== selectionState.curSite) return;
     if (!d || !d.expose || !d.expose.items || !d.expose.items.length) {
       bdEl.replaceChildren(
         createStateCard(
