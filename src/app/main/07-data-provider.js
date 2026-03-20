@@ -114,6 +114,10 @@ function getRuntimeRows() {
 }
 
 function getRuntimeAllSites() {
+  // stage 2 seam:
+  // UI 계층은 allSites 전역을 직접 읽기보다 이 facade를 우선 사용한다.
+  // 그래야 live/snapshot이 사이트 목록을 어떤 provider에서 읽는지
+  // 한 곳에서 교체/감사할 수 있다.
   const state = getRuntimeShellState();
   if (state && Array.isArray(state.allSites)) return state.allSites.slice();
   return Array.isArray(allSites) ? allSites.slice() : [];
@@ -132,6 +136,8 @@ function getRuntimeSiteMeta() {
 }
 
 function getRuntimeMergedMeta() {
+  // mergedMeta는 shell/header/export가 함께 참조하는 공통 읽기값이다.
+  // 앞으로는 direct getMergedMetaState() 호출을 줄이고 이 seam으로 수렴한다.
   const state = getRuntimeShellState();
   if (state && Object.prototype.hasOwnProperty.call(state, "mergedMeta")) return state.mergedMeta;
   if (typeof getMergedMetaState === "function") return getMergedMetaState();
