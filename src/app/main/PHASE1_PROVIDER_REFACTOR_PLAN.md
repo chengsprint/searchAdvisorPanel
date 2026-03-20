@@ -170,6 +170,8 @@ UI 자체는 공통 엔트리를 타게 만드는 것이 목표다.
     semantic action seam + 최후 local fallback만 알도록 좁힘
   - canonical rows read helper도 direct `window.__sadvRows`보다
     `getCanonicalRowsState()`를 우선 사용하도록 한 단계 더 canonical seam 쪽으로 정리
+  - canonical rows write helper도 raw storage write를 직접 알지 않고
+    provider/state seam까지만 알도록 좁힘
 - `11-site-view.js`
   - request guard의 `curSite` direct read를 selection seam으로 이동
 - `06-merge-manager.js`
