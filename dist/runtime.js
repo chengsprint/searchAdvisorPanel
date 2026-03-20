@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T09:10:34Z";
-var __SADV_GIT_HEAD__="c4ccda4";
+var __SADV_BUILD_STAMP__="2026-03-20T09:21:45Z";
+var __SADV_GIT_HEAD__="56ac4ce";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -1498,7 +1498,7 @@ function buildPanelUserErrorState(userMessage, technicalError = null, context = 
 
   if (userMessage === ERROR_MESSAGES.INVALID_ENCID) {
     hint =
-      "현재 페이지에서 사용자 정보를 읽지 못했습니다. 네이버 서치어드바이저 리포트/분석 페이지에서 새로고침 후 다시 실행해 주세요.";
+      "현재 페이지에서 사용자 정보를 읽지 못했습니다. 보통 서치어드바이저 로그인이 풀렸거나, 서치어드바이저가 아닌 페이지에서 실행했을 때 이런 문제가 생깁니다. 네이버/서치어드바이저에 다시 로그인한 뒤 해당 리포트 페이지에서 새로고침 후 다시 실행해 주세요.";
   } else if (context === "downloadSnapshot") {
     hint =
       "저장 직전 화면 상태를 다시 수집하는 과정에서 문제가 생겼습니다. 잠시 후 다시 저장하거나, 패널을 새로고침한 뒤 다시 시도해 주세요.";
