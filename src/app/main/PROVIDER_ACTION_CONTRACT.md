@@ -107,6 +107,25 @@ actions = {
 }
 ```
 
+### public facade 게시 규칙
+
+`window.__sadvApi`는 live/saved 모두가 공유하는 **canonical public facade 이름**으로 간주한다.
+
+즉 앞으로는:
+
+- live가 `window.__sadvApi = {...}` 를 직접 쓰는 구조
+- saved가 별도로 `window.__sadvApi = api` 를 직접 쓰는 구조
+
+를 유지하기보다,
+가능한 한 공통 helper(`setRuntimePublicApi` / `clearRuntimePublicApi`)를 통해
+게시/해제하도록 수렴시킨다.
+
+이유:
+- public entry 수렴이 쉬워진다.
+- automation/QA가 runtime kind를 모른 채 같은 facade를 쓸 수 있다.
+- saved richer API(`window.__SEARCHADVISOR_SNAPSHOT_API__`)와
+  public facade(`window.__sadvApi`)의 역할을 분리해 유지하기 쉽다.
+
 ### 목적
 - UI가 간단해짐
 - live/saved 차이를 action layer가 흡수 가능

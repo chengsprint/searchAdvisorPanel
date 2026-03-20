@@ -856,6 +856,11 @@
     };
     ${buildRenderers.toString()}
     ${assignColors.toString()}
+    // Shared public entry seam:
+    // Phase 2에서는 live/saved가 같은 public facade(window.__sadvApi)를
+    // 같은 helper를 통해 게시/해제하도록 수렴시킨다.
+    ${setRuntimePublicApi.toString()}
+    ${clearRuntimePublicApi.toString()}
     // All-sites local helper contract:
     // 10-all-sites-view.js는 canonical rows read/write와 card-selection을
     // local helper로 감싸고 있으므로, saved HTML도 이 helper들을 먼저
@@ -1334,7 +1339,11 @@
     // external QA/audit/automation이 runtime kind를 몰라도 동일한 제어 계약으로 접근할 수 있다.
     // snapshot 전용 richer API는 __SEARCHADVISOR_SNAPSHOT_API__에 유지하고,
     // public facade는 같은 객체를 alias로 재사용한다.
-    window.__sadvApi = window.__SEARCHADVISOR_SNAPSHOT_API__;
+    if (typeof setRuntimePublicApi === "function") {
+      setRuntimePublicApi(window.__SEARCHADVISOR_SNAPSHOT_API__);
+    } else {
+      window.__sadvApi = window.__SEARCHADVISOR_SNAPSHOT_API__;
+    }
     if (snapshotUiReady) {
       const cachedUi = getCachedUiState();
       if (cachedUi && typeof cachedUi.allSitesPeriodDays !== "undefined") {
@@ -1518,7 +1527,7 @@
       '    close: function () { return false; },',
       "  };",
       "  window.__SEARCHADVISOR_SNAPSHOT_API__ = api;",
-      '  window.__sadvApi = api;',
+      '  if (typeof setRuntimePublicApi === "function") setRuntimePublicApi(api); else window.__sadvApi = api;',
       '  const target = document.getElementById("sadv-p") || document.body;',
       '  if (target) {',
       '    // React 18 호환 가능한 DOM 관찰자 사용',

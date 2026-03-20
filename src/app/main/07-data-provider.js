@@ -66,6 +66,28 @@ function getRuntimeCapabilities() {
   };
 }
 
+function setRuntimePublicApi(api) {
+  // Phase 2 public entry seam:
+  // live/saved가 공용 제어 facade(window.__sadvApi)를 각각 직접 만지지 않고
+  // 같은 게시 entry를 통과하게 만든다.
+  //
+  // 왜 필요한가:
+  // - 이후 shared app entry 단계에서 public facade shape를 한 곳에서 바꾸기 쉽다.
+  // - saved가 richer snapshot API를 별도로 갖더라도, 외부 automation/QA는
+  //   동일한 public facade 이름만 보면 된다.
+  if (typeof window === "undefined") return api || null;
+  if (!api || typeof api !== "object") {
+    delete window.__sadvApi;
+    return null;
+  }
+  window.__sadvApi = api;
+  return window.__sadvApi;
+}
+
+function clearRuntimePublicApi() {
+  return setRuntimePublicApi(null);
+}
+
 function getRuntimeShellState() {
   // shell state는 UI가 읽는 최소 공통 상태다.
   //
