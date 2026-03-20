@@ -189,10 +189,16 @@ all-sites helper를 분리해 놓았지만,
    - runtime shell state 주입
    - bootstrap script 주입
    으로 helper를 나눠, `injectSnapshotReactShell()`이 조립 함수 역할만 하도록 좁힌다.
+6. shell host mount 책임은 `buildSnapshotShellBootstrapScript()` 안에서도 다시 나눠,
+   shell node id 목록, mount 조립, unmount 조립을 helper/상수로 분리해
+   shell host 계약을 읽기 쉽게 만든다.
 
 주의:
 - 이 단계에서 saved HTML 구조를 깨면 안 된다.
 - "동작 동일성"이 "구조 순수성"보다 우선이다.
+- 특히 boot 순서
+  `publishSnapshotRuntimeApis -> restoreSnapshotUiBootState -> switchMode(INITIAL_MODE) -> finalizeSnapshotUiBoot`
+  는 현재 contract로 취급한다. helper 추출 과정에서도 이 순서를 먼저 보존한다.
 
 ---
 

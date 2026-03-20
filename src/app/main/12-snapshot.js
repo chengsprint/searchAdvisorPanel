@@ -464,6 +464,8 @@ const SNAPSHOT_UI_CONTROLS_HELPER_PACK = [
   applyUiControlsTab,
 ];
 
+const SNAPSHOT_SHELL_NODE_IDS = ["sadv-header", "sadv-mode-bar", "sadv-site-bar", "sadv-tabs"];
+
 function serializeSnapshotHelperPack(helperPack) {
   return helperPack
     .filter(function (fn) {
@@ -1475,6 +1477,7 @@ function buildSnapshotSerializedHelperSection() {
     return html;
   }
   function buildSnapshotShellBootstrapScript() {
+    const shellIdsJson = JSON.stringify(SNAPSHOT_SHELL_NODE_IDS);
     return [
       "(function () {",
       '  const host = document.getElementById("sadv-react-shell-host");',
@@ -1493,7 +1496,7 @@ function buildSnapshotSerializedHelperSection() {
       '    mount.id = "sadv-react-shell-root";',
       "  }",
       '  mount.setAttribute("data-sadvx", "snapshot-shell");',
-      '  const shellIds = ["sadv-header", "sadv-mode-bar", "sadv-site-bar", "sadv-tabs"];',
+      `  const shellIds = ${shellIdsJson};`,
       "  const moved = [];",
       "  shellIds.forEach(function (id) {",
       "    const node = document.getElementById(id);",
@@ -1509,6 +1512,13 @@ function buildSnapshotSerializedHelperSection() {
       "  if (hideStyle) hideStyle.remove();",
       "  host.replaceChildren(mount);",
       "  host.appendChild(portal);",
+      ...buildSnapshotShellUnmountLines(),
+      "})();",
+    ].join(String.fromCharCode(10));
+  }
+
+  function buildSnapshotShellUnmountLines() {
+    return [
       "  window.__SEARCHADVISOR_SNAPSHOT_SHELL_UNMOUNT__ = function () {",
       "    moved.forEach(function (entry) {",
       "      if (entry.parent) entry.parent.insertBefore(entry.node, entry.next);",
@@ -1517,8 +1527,7 @@ function buildSnapshotSerializedHelperSection() {
       "    host.appendChild(portal);",
       "    delete window.__SEARCHADVISOR_SNAPSHOT_SHELL_UNMOUNT__;",
       "  };",
-      "})();",
-    ].join(String.fromCharCode(10));
+    ];
   }
   function buildSnapshotApiCompatScript() {
     return [

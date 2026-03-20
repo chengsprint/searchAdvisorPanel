@@ -138,6 +138,12 @@
   (`getAllSitesSelectionState`, `getAllSitesCanonicalRows`,
   `setAllSitesCanonicalRows`, `setAllSitesSelectedSite`)도
   saved HTML 직렬화 allowlist에 같이 실리는지 확인해야 한다.
+- helper pack 분류 규칙:
+  - payload/state 복원, provider wiring, shell host boot → `SNAPSHOT_RUNTIME_BOOT_HELPERS`
+  - public facade publish/clear → `SNAPSHOT_SHARED_PUBLIC_ENTRY_HELPERS`
+  - mode/site/tab 의미 action wrapper → `SNAPSHOT_UI_CONTROLS_HELPER_PACK`
+  - canonical rows / all-sites selection helper → `SNAPSHOT_ALL_SITES_HELPER_PACK`
+  새 helper를 추가할 때는 "무엇을 계산하나?"보다 "어느 책임층에 속하나?"를 먼저 보고 pack을 고른다.
 - Phase 2부터는 helper를 낱개 allowlist로 흩어 두지 말고,
   `SNAPSHOT_SHARED_PUBLIC_ENTRY_HELPERS`,
   `SNAPSHOT_RUNTIME_BOOT_HELPERS`,
@@ -170,6 +176,13 @@
   렌더 진입점까지 helper 안에 숨기면 saved 회귀가 났을 때 부수효과를 추적하기 어렵다.
 - `finalizeSnapshotUiBoot()`는 반드시 `switchMode(INITIAL_MODE)` 뒤에서만 호출한다.
   카드 링크 바인딩과 report decoration은 렌더된 DOM이 있어야 정상 동작한다.
+- boot 실행 순서 불변식:
+  1) `publishSnapshotRuntimeApis`
+  2) `restoreSnapshotUiBootState`
+  3) `switchMode(INITIAL_MODE)`
+  4) `finalizeSnapshotUiBoot`
+  이 순서는 구현 디테일이 아니라 계약에 가깝다. 중간 단계를 helper 안으로 숨기거나
+  순서를 바꾸면 saved-only 회귀가 날 가능성이 높다.
 - 직렬화 섹션 편집은 `buildSnapshotSerializedHelperSection()`을 기준으로 본다.
   helper pack 배치/순서/설명을 조정할 때는 이 함수와 pack 선언부를 같이 보며,
   템플릿 본문 안에서 다시 helper 직렬화 블록을 낱개로 늘리지 않는다.

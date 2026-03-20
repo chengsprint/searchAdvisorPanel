@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T15:50:49Z";
-var __SADV_GIT_HEAD__="73006e5";
+var __SADV_BUILD_STAMP__="2026-03-20T15:54:40Z";
+var __SADV_GIT_HEAD__="fe79048";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -11644,6 +11644,8 @@ const SNAPSHOT_UI_CONTROLS_HELPER_PACK = [
   applyUiControlsTab,
 ];
 
+const SNAPSHOT_SHELL_NODE_IDS = ["sadv-header", "sadv-mode-bar", "sadv-site-bar", "sadv-tabs"];
+
 function serializeSnapshotHelperPack(helperPack) {
   return helperPack
     .filter(function (fn) {
@@ -12655,6 +12657,7 @@ function buildSnapshotSerializedHelperSection() {
     return html;
   }
   function buildSnapshotShellBootstrapScript() {
+    const shellIdsJson = JSON.stringify(SNAPSHOT_SHELL_NODE_IDS);
     return [
       "(function () {",
       '  const host = document.getElementById("sadv-react-shell-host");',
@@ -12673,7 +12676,7 @@ function buildSnapshotSerializedHelperSection() {
       '    mount.id = "sadv-react-shell-root";',
       "  }",
       '  mount.setAttribute("data-sadvx", "snapshot-shell");',
-      '  const shellIds = ["sadv-header", "sadv-mode-bar", "sadv-site-bar", "sadv-tabs"];',
+      `  const shellIds = ${shellIdsJson};`,
       "  const moved = [];",
       "  shellIds.forEach(function (id) {",
       "    const node = document.getElementById(id);",
@@ -12689,6 +12692,13 @@ function buildSnapshotSerializedHelperSection() {
       "  if (hideStyle) hideStyle.remove();",
       "  host.replaceChildren(mount);",
       "  host.appendChild(portal);",
+      ...buildSnapshotShellUnmountLines(),
+      "})();",
+    ].join(String.fromCharCode(10));
+  }
+
+  function buildSnapshotShellUnmountLines() {
+    return [
       "  window.__SEARCHADVISOR_SNAPSHOT_SHELL_UNMOUNT__ = function () {",
       "    moved.forEach(function (entry) {",
       "      if (entry.parent) entry.parent.insertBefore(entry.node, entry.next);",
@@ -12697,8 +12707,7 @@ function buildSnapshotSerializedHelperSection() {
       "    host.appendChild(portal);",
       "    delete window.__SEARCHADVISOR_SNAPSHOT_SHELL_UNMOUNT__;",
       "  };",
-      "})();",
-    ].join(String.fromCharCode(10));
+    ];
   }
   function buildSnapshotApiCompatScript() {
     return [
