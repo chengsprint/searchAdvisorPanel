@@ -1580,7 +1580,7 @@
     );
     html = html.replace(
       "<body>",
-      `<body><script>window.__SEARCHADVISOR_SNAPSHOT_SHELL_STATE__=${stringifyForInlineJson(shellState)};<\/script>`,
+      `<body><script>window.__SEARCHADVISOR_RUNTIME_KIND__="snapshot";window.__SEARCHADVISOR_SNAPSHOT_SHELL_STATE__=${stringifyForInlineJson(shellState)};<\/script>`,
     );
     html = html.replace('<div id="sadv-bd">', `<div id="sadv-react-shell-host"></div><div id="sadv-bd">`);
     html = html.replace(

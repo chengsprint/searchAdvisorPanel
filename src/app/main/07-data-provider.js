@@ -8,7 +8,10 @@
  */
 
 function isSnapshotRuntime() {
-  return typeof window !== "undefined" && !!window.__SEARCHADVISOR_EXPORT_PAYLOAD__;
+  if (typeof window === "undefined") return false;
+  if (window.__SEARCHADVISOR_RUNTIME_KIND__ === "snapshot") return true;
+  if (window.__SEARCHADVISOR_RUNTIME_KIND__ === "live") return false;
+  return !!window.__SEARCHADVISOR_SNAPSHOT_API__;
 }
 
 function isLiveRuntime() {
