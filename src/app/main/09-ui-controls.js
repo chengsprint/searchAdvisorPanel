@@ -817,6 +817,15 @@ function applyUiControlsTab(tab) {
       setSite: function (site) {
         setComboSite(site);
       },
+      switchSite: function (site) {
+        // Phase 2 convergence:
+        // action contract 문서의 canonical 의미는 "site 선택 + site mode 진입"이다.
+        // 기존 setSite는 호환성 유지용으로 남기고, 공통 facade에는 의미가 더 명확한
+        // switchSite를 추가해 live/saved가 같은 intent를 표현하게 한다.
+        setComboSite(site);
+        const selectionState = getUiControlsSelectionState();
+        if (selectionState.curMode !== CONFIG.MODE.SITE) switchMode(CONFIG.MODE.SITE);
+      },
       setTab: function (tab) {
         const selectionState = getUiControlsSelectionState();
         if (!tabsEl || !TABS.some(function (item) { return item.id === tab; }) || selectionState.curTab === tab) return;
