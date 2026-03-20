@@ -567,10 +567,19 @@
  * @see {buildRenderers}
  */
   function renderTab(R) {
-    if (!bdEl || !R || typeof R[curTab] !== "function") return;
+    // Phase 1 seam:
+    // tab renderer도 curTab 전역을 직접 참조하지 않고 selection seam을 통해 읽기 시작한다.
+    // 여기서 먼저 read 경로만 옮기고, 실제 tab action flow(setTab/switchMode 호출 순서)는
+    // 그대로 두어 saved HTML 회귀 위험을 낮춘다.
+    const selectionState =
+      typeof getRuntimeSelectionState === "function"
+        ? getRuntimeSelectionState()
+        : { curTab };
+    const activeTab = selectionState.curTab;
+    if (!bdEl || !R || typeof R[activeTab] !== "function") return;
     bdEl.setAttribute("role", "tabpanel");
     bdEl.id = "sadv-tabpanel";
-    bdEl.replaceChildren(R[curTab]());
+    bdEl.replaceChildren(R[activeTab]());
     bdEl.scrollTop = 0;
   }
   if (modeBar) {

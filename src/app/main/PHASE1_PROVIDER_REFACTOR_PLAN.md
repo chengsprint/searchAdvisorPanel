@@ -143,6 +143,39 @@ UI 자체는 공통 엔트리를 타게 만드는 것이 목표다.
 
 ---
 
+## 6.1 진행 상태 트래킹
+
+이 문서는 설계 문서이면서 동시에 **Phase 1 진행 현황 기록** 역할도 겸한다.
+다음 작업자는 아래 상태를 먼저 확인하고 이어서 작업해야 한다.
+
+### 완료
+- 문서/계약/guardrail 고정
+- `07-data-provider.js` selection setter seam 추가
+- `07-ui-state.js` selection state entry(`getSelectionStateValue` / `setSelectionStateValue`) 추가
+- `09-ui-controls.js`
+  - combo/site/tab/mode 일부가 selection seam을 타도록 1차 정리
+  - `renderTab()`이 `curTab` 직접 read 대신 selection seam read를 우선 사용하도록 2차 정리
+- `10-all-sites-view.js`
+  - canonical rows read를 facade 우선으로 정리
+  - all-sites progress/render guard의 `curMode` direct read를 selection seam으로 이동
+- `11-site-view.js`
+  - request guard의 `curSite` direct read를 selection seam으로 이동
+
+### 아직 남음
+- `09-ui-controls.js` 내부 direct global fallback 추가 축소
+- `10-all-sites-view.js`의 canonical rows write(`window.__sadvRows = rows`) 축소 준비
+- `12-snapshot.js`를 boot/provider 중심으로 좁히는 2단계 준비
+- shared app entry 도입 전, public action seam 추가 정리
+
+### 이번 단계에서 의도적으로 보류한 것
+- `12-snapshot.js` 로컬 `curMode/curSite/curTab` 대수술
+- `switchMode()/setComboSite()/setTab()` 호출 순서 변경
+- `window.__sadvRows` 즉시 제거
+
+이 보류 항목들은 모두 saved HTML 회귀 위험이 커서 **Phase 1 후반 또는 Phase 2**로 넘긴다.
+
+---
+
 ## 7. Phase 2 / 3을 위한 준비 포인트
 
 ### Phase 2 (Shared App Entry)
