@@ -150,6 +150,7 @@ all-sites helper를 분리해 놓았지만,
 
 해야 할 일:
 1. saved 직렬화 대상 helper를 "기능 단위"로 묶는다.
+   - 예: shared public entry / all-sites local helper / ui-controls helper
 2. `09-ui-controls.js` / `10-all-sites-view.js` helper가
    어떤 dependency cluster를 이루는지 문서화한다.
 3. 가능하면 helper 단위 allowlist가 아니라
