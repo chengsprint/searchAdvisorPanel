@@ -157,6 +157,20 @@ async function main() {
       hasTabs: !!document.getElementById("sadv-tabs"),
       hasSnapshotApi: !!snapshotApi,
       hasPublicApi: !!publicApi,
+      publicActions: publicApi
+        ? {
+            switchMode: typeof publicApi.switchMode === "function",
+            setSite: typeof publicApi.setSite === "function",
+            setTab: typeof publicApi.setTab === "function",
+          }
+        : null,
+      snapshotActions: snapshotApi
+        ? {
+            getState: typeof snapshotApi.getState === "function",
+            setSelectionState: typeof snapshotApi.setSelectionState === "function",
+            setAllSitesPeriodDays: typeof snapshotApi.setAllSitesPeriodDays === "function",
+          }
+        : null,
       capabilities: capabilities
         ? {
             mode: capabilities.mode || null,
@@ -180,6 +194,51 @@ async function main() {
           removedOrHidden: !el || el.hidden || getComputedStyle(el).display === "none",
         };
       }),
+    };
+  });
+
+  // Stage 1.7. Selection parity check.
+  // Saved HTML은 shell state / snapshot API state / 실제 DOM active 상태가
+  // 같은 selection을 가리켜야 한다. 여기서 어긋나면 UI가 얼핏 보여도
+  // reopen 이후 mode/tab/period 동기화가 이미 깨진 상태일 가능성이 높다.
+  result.initialSelectionParity = await page.evaluate(() => {
+    const shellState = window.__SEARCHADVISOR_SNAPSHOT_SHELL_STATE__ || null;
+    const snapshotApi = window.__SEARCHADVISOR_SNAPSHOT_API__ || null;
+    const apiState =
+      snapshotApi && typeof snapshotApi.getState === "function"
+        ? snapshotApi.getState()
+        : null;
+    const activeMode = document.querySelector('.sadv-mode.on')?.getAttribute('data-m') || null;
+    const activeTab = document.querySelector('.sadv-t.on')?.getAttribute('data-t') || null;
+    const activePeriodButton = document.querySelector('[data-all-sites-period][aria-pressed="true"]');
+    return {
+      shell: shellState
+        ? {
+            curMode: shellState.curMode || null,
+            curSite: shellState.curSite || null,
+            curTab: shellState.curTab || null,
+            allSitesPeriodDays:
+              typeof shellState.allSitesPeriodDays !== "undefined"
+                ? Number(shellState.allSitesPeriodDays)
+                : null,
+          }
+        : null,
+      api: apiState
+        ? {
+            curMode: apiState.curMode || null,
+            curSite: apiState.curSite || null,
+            curTab: apiState.curTab || null,
+            allSitesPeriodDays:
+              typeof apiState.allSitesPeriodDays !== "undefined"
+                ? Number(apiState.allSitesPeriodDays)
+                : null,
+          }
+        : null,
+      dom: {
+        curMode: activeMode,
+        curTab: activeTab,
+        allSitesPeriodDays: activePeriodButton ? Number(activePeriodButton.getAttribute('data-all-sites-period')) : null,
+      },
     };
   });
 
@@ -306,6 +365,30 @@ async function main() {
       (el) => el.dataset.site || "",
     ),
   }));
+
+  result.siteSelectionParity = await page.evaluate(() => {
+    const snapshotApi = window.__SEARCHADVISOR_SNAPSHOT_API__ || null;
+    const apiState =
+      snapshotApi && typeof snapshotApi.getState === "function"
+        ? snapshotApi.getState()
+        : null;
+    return {
+      api: apiState
+        ? {
+            curMode: apiState.curMode || null,
+            curSite: apiState.curSite || null,
+            curTab: apiState.curTab || null,
+          }
+        : null,
+      dom: {
+        curMode: document.querySelector('.sadv-mode.on')?.getAttribute('data-m') || null,
+        curSite:
+          Array.from(document.querySelectorAll(".sadv-combo-item.active"))
+            .map((el) => el.dataset.site || "")[0] || null,
+        curTab: document.querySelector('.sadv-t.on')?.getAttribute('data-t') || null,
+      },
+    };
+  });
 
   // Stage 6. Go back through all-sites card -> site mode path.
   // This covers the other common navigation entrypoint that bypasses combo
@@ -512,6 +595,20 @@ async function main() {
   assertAudit(result.contract.hasSnapshotApi, 'saved HTML should expose snapshot API');
   assertAudit(!!result.contract.capabilities, 'saved HTML should expose runtime capabilities');
   assertAudit(
+    !!result.contract.publicActions &&
+      result.contract.publicActions.switchMode &&
+      result.contract.publicActions.setSite &&
+      result.contract.publicActions.setTab,
+    'saved HTML public API should expose switchMode/setSite/setTab actions',
+  );
+  assertAudit(
+    !!result.contract.snapshotActions &&
+      result.contract.snapshotActions.getState &&
+      result.contract.snapshotActions.setSelectionState &&
+      result.contract.snapshotActions.setAllSitesPeriodDays,
+    'saved HTML snapshot API should expose getState/setSelectionState/setAllSitesPeriodDays',
+  );
+  assertAudit(
     !!result.contract.capabilities && result.contract.capabilities.isReadOnly,
     'saved HTML capabilities should report read-only mode',
   );
@@ -534,6 +631,21 @@ async function main() {
     Array.isArray(result.contract.hiddenActions) &&
       result.contract.hiddenActions.every((item) => item.removedOrHidden),
     'saved HTML action buttons should be removed or hidden in read-only mode',
+  );
+  assertAudit(
+    !!result.initialSelectionParity.shell &&
+      !!result.initialSelectionParity.api &&
+      result.initialSelectionParity.shell.curMode === result.initialSelectionParity.api.curMode &&
+      result.initialSelectionParity.shell.curTab === result.initialSelectionParity.api.curTab &&
+      result.initialSelectionParity.shell.allSitesPeriodDays === result.initialSelectionParity.api.allSitesPeriodDays,
+    'saved HTML shell/api selection state should agree on mode/tab/period',
+  );
+  assertAudit(
+    !!result.initialSelectionParity.dom &&
+      result.initialSelectionParity.dom.curMode === result.initialSelectionParity.api.curMode &&
+      result.initialSelectionParity.dom.curTab === result.initialSelectionParity.api.curTab &&
+      result.initialSelectionParity.dom.allSitesPeriodDays === result.initialSelectionParity.api.allSitesPeriodDays,
+    'saved HTML DOM active state should agree with API selection state on mode/tab/period',
   );
 
   assertAudit(result.siteMode.modeSite, 'saved HTML should switch into site mode');
@@ -587,6 +699,13 @@ async function main() {
       'combo selection should activate the expected searched site',
     );
   }
+  assertAudit(
+    !!result.siteSelectionParity.api &&
+      result.siteSelectionParity.api.curMode === result.siteSelectionParity.dom.curMode &&
+      result.siteSelectionParity.api.curSite === result.siteSelectionParity.dom.curSite &&
+      result.siteSelectionParity.api.curTab === result.siteSelectionParity.dom.curTab,
+    'saved HTML site-mode selection state should agree between API and DOM after combo selection',
+  );
 
   assertAudit(result.cardToSite.modeSite, 'all-sites card click should return to site mode');
   assertAudit(
