@@ -200,11 +200,19 @@ function buildSnapshotShellState(payload) {
   const updatedAt = cacheSavedAtValues.length
     ? new Date(Math.max.apply(null, cacheSavedAtValues))
     : savedAtValue;
+  const normalizedPayload = {
+    mergedMeta: Object.prototype.hasOwnProperty.call(payload || {}, "mergedMeta")
+      ? payload.mergedMeta
+      : null,
+  };
   return {
     accountLabel: accountLabel,
     allSites: Array.isArray(allSites) ? allSites : [],
     rows: Array.isArray(summaryRows) ? summaryRows.slice() : [],
     siteMeta: siteMeta && typeof siteMeta === "object" ? siteMeta : {},
+    mergedMeta: Object.prototype.hasOwnProperty.call(normalizedPayload, "mergedMeta")
+      ? normalizedPayload.mergedMeta
+      : null,
     curMode: curMode === CONFIG.MODE.SITE ? CONFIG.MODE.SITE : CONFIG.MODE.ALL,
     curSite:
       typeof curSite === "string"

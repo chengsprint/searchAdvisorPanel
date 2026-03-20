@@ -58,6 +58,129 @@
  * const shellState = buildSnapshotShellState(exportPayload);
  * console.log(shellState.accountLabel); // "user@example.com"
  */
+  const SNAPSHOT_OFFLINE_DEFAULT_MODE = "all";
+  const SNAPSHOT_OFFLINE_DEFAULT_TAB = "overview";
+  const SNAPSHOT_TAB_IDS = [
+    "overview",
+    "daily",
+    "queries",
+    "pages",
+    "crawl",
+    "backlink",
+    "diagnosis",
+    "insight",
+  ];
+
+  function getSnapshotPrimaryAccount(payload) {
+    if (!payload || !payload.__meta || !payload.accounts || typeof payload.accounts !== "object") {
+      return null;
+    }
+    const accountKeys = Object.keys(payload.accounts);
+    if (!accountKeys.length) return null;
+    const accountLabel = accountKeys[0];
+    return {
+      accountLabel,
+      account: payload.accounts[accountLabel] || null,
+    };
+  }
+
+  function extractSnapshotSourceState(sourcePayload) {
+    const primaryAccount = getSnapshotPrimaryAccount(sourcePayload);
+    if (primaryAccount) {
+      const account = primaryAccount.account || {};
+      return {
+        savedAt:
+          sourcePayload.__meta && Object.prototype.hasOwnProperty.call(sourcePayload.__meta, "savedAt")
+            ? sourcePayload.__meta.savedAt
+            : sourcePayload.savedAt || null,
+        accountLabel: primaryAccount.accountLabel || "",
+        accountEncId: account.encId || "unknown",
+        generatorVersion:
+          (sourcePayload.__meta && sourcePayload.__meta.generatorVersion) || "unknown",
+        exportFormat:
+          (sourcePayload.__meta && sourcePayload.__meta.exportFormat) || "snapshot-v2",
+        allSites: Array.isArray(account.sites) ? account.sites : [],
+        summaryRows: Array.isArray(sourcePayload.summaryRows) ? sourcePayload.summaryRows : [],
+        dataBySite:
+          account.dataBySite && typeof account.dataBySite === "object" ? account.dataBySite : {},
+        siteMeta:
+          account.siteMeta && typeof account.siteMeta === "object" ? account.siteMeta : {},
+        mergedMeta: Object.prototype.hasOwnProperty.call(sourcePayload, "mergedMeta")
+          ? sourcePayload.mergedMeta
+          : null,
+        curMode: SNAPSHOT_OFFLINE_DEFAULT_MODE,
+        curSite:
+          sourcePayload.ui && typeof sourcePayload.ui.curSite === "string"
+            ? sourcePayload.ui.curSite
+            : null,
+        curTab: SNAPSHOT_OFFLINE_DEFAULT_TAB,
+      };
+    }
+
+    const legacyPayload = sourcePayload && typeof sourcePayload === "object" ? sourcePayload : {};
+    return {
+      savedAt:
+        Object.prototype.hasOwnProperty.call(legacyPayload, "savedAt")
+          ? legacyPayload.savedAt
+          : null,
+      accountLabel: legacyPayload.accountLabel || "",
+      accountEncId: legacyPayload.accountEncId || legacyPayload.encId || "unknown",
+      generatorVersion:
+        legacyPayload.generatorVersion ||
+        (legacyPayload.__meta && legacyPayload.__meta.generatorVersion) ||
+        "unknown",
+      exportFormat:
+        legacyPayload.exportFormat ||
+        (legacyPayload.__meta && legacyPayload.__meta.exportFormat) ||
+        null,
+      allSites: Array.isArray(legacyPayload.allSites) ? legacyPayload.allSites : [],
+      summaryRows: Array.isArray(legacyPayload.summaryRows) ? legacyPayload.summaryRows : [],
+      dataBySite:
+        legacyPayload.dataBySite && typeof legacyPayload.dataBySite === "object"
+          ? legacyPayload.dataBySite
+          : {},
+      siteMeta:
+        legacyPayload.siteMeta && typeof legacyPayload.siteMeta === "object"
+          ? legacyPayload.siteMeta
+          : {},
+      mergedMeta: Object.prototype.hasOwnProperty.call(legacyPayload, "mergedMeta")
+        ? legacyPayload.mergedMeta
+        : null,
+      curMode:
+        legacyPayload.curMode === "site" ? "site" : SNAPSHOT_OFFLINE_DEFAULT_MODE,
+      curSite: typeof legacyPayload.curSite === "string" ? legacyPayload.curSite : null,
+      curTab:
+        SNAPSHOT_TAB_IDS.indexOf(legacyPayload.curTab) !== -1
+          ? legacyPayload.curTab
+          : SNAPSHOT_OFFLINE_DEFAULT_TAB,
+    };
+  }
+
+  function normalizeSnapshotPayloadForOfflineShell(sourcePayload) {
+    const sourceState = extractSnapshotSourceState(sourcePayload);
+    const legacyBasePayload =
+      sourcePayload &&
+      typeof sourcePayload === "object" &&
+      !(sourcePayload.__meta && sourcePayload.accounts)
+        ? Object.assign({}, sourcePayload)
+        : {};
+    return Object.assign(legacyBasePayload, {
+      savedAt: sourceState.savedAt,
+      accountLabel: sourceState.accountLabel,
+      accountEncId: sourceState.accountEncId,
+      generatorVersion: sourceState.generatorVersion,
+      exportFormat: sourceState.exportFormat || "snapshot-v2",
+      allSites: sourceState.allSites,
+      summaryRows: sourceState.summaryRows,
+      dataBySite: sourceState.dataBySite,
+      siteMeta: sourceState.siteMeta,
+      mergedMeta: sourceState.mergedMeta,
+      curMode: SNAPSHOT_OFFLINE_DEFAULT_MODE,
+      curSite: sourceState.curSite,
+      curTab: SNAPSHOT_OFFLINE_DEFAULT_TAB,
+    });
+  }
+
   function buildSnapshotShellState(payload) {
     // Handle V2 format
     let allSites, dataBySite, summaryRows, siteMeta, accountLabel, savedAt, curMode, curSite, curTab;
@@ -129,7 +252,10 @@
       curTab: snapshotTabIds.indexOf(curTab) !== -1
         ? curTab
         : "overview",
-      runtimeVersion: window.__SEARCHADVISOR_RUNTIME_VERSION__ || "snapshot",
+      runtimeVersion:
+        window.__SEARCHADVISOR_RUNTIME_VERSION__ ||
+        payload.generatorVersion ||
+        "snapshot",
       cacheMeta: updatedAt
         ? {
             label: "snapshot",
@@ -263,6 +389,51 @@
         '<div style="padding:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02)"><div style="font-size:10px;color:#a8a8a8;margin-bottom:4px">CTR</div><div style="font-size:14px;font-weight:800;color:' + (C.amber || siteColor) + '">' + escHtml((Number(row.avgCtr) || 0).toFixed(2) + "%") + "</div></div>" +
         '<div style="padding:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02)"><div style="font-size:10px;color:#a8a8a8;margin-bottom:4px">색인</div><div style="font-size:14px;font-weight:800;color:' + (C.orange || siteColor) + '">' + escHtml(fmt(row.diagnosisIndexedCurrent || 0)) + "</div></div>" +
         "</div>";
+      // Keep reopened saved HTML visually aligned with the live all-sites card
+      // contract. The payload already contains click/index trend series, so
+      // snapshot should render the same two mini graph surfaces instead of
+      // collapsing to KPI boxes only.
+      if (row.clicks && row.clicks.length > 1) {
+        const miniDates = (row.logs || []).map(function (log) {
+          return fmtB(log.date);
+        });
+        const mini = sparkline(row.clicks, miniDates, 36, siteColor, "");
+        mini.style.cssText += "opacity:.9";
+        card.appendChild(mini);
+      }
+      const indexBlock = document.createElement("div");
+      indexBlock.style.cssText =
+        "margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08)";
+      if (row.diagnosisIndexedValues && row.diagnosisIndexedValues.length > 1) {
+        indexBlock.innerHTML = sanitizeHTML(
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px"><span style="font-size:11px;font-weight:700;color:var(--sadv-text-secondary,#ffe9a8)">색인 추이</span><span style="font-size:13px;font-weight:800;color:' +
+            siteColor +
+            '">' +
+            escHtml(fmt(row.diagnosisIndexedCurrent || 0)) +
+            "건</span></div>"
+        );
+        const indexMini = sparkline(
+          row.diagnosisIndexedValues,
+          row.diagnosisIndexedDates || [],
+          44,
+          siteColor,
+          "건",
+          { minValue: 0 }
+        );
+        indexMini.style.cssText += "opacity:.9";
+        indexBlock.appendChild(indexMini);
+      } else {
+        const metaCode = row.diagnosisMetaCode == null ? "-" : String(row.diagnosisMetaCode);
+        const httpText = row.diagnosisMetaStatus == null ? "-" : String(row.diagnosisMetaStatus);
+        indexBlock.innerHTML = sanitizeHTML(
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px"><span style="font-size:11px;font-weight:700;color:var(--sadv-text-secondary,#ffe9a8)">색인 추이</span><span style="font-size:12px;color:var(--sadv-text-tertiary,#b9a55a)">응답 확인</span></div><div style="font-size:11px;line-height:1.5;color:var(--sadv-text-tertiary,#b9a55a)">HTTP ' +
+            escHtml(httpText) +
+            " / code " +
+            escHtml(metaCode) +
+            "</div>"
+        );
+      }
+      card.appendChild(indexBlock);
       card.addEventListener("click", function () {
         if (typeof setComboSite === "function") setComboSite(row.site);
         if (typeof switchMode === "function" && curMode !== "site") switchMode("site");
@@ -442,34 +613,15 @@
   <script>
     // <!-- SADV_PAYLOAD_START -->
     const EXPORT_PAYLOAD_RAW = ${exportPayloadJson};
-    // Normalize V2 format to legacy format for snapshot HTML compatibility
-    const EXPORT_PAYLOAD = (function normalizePayload(p) {
-      if (p.__meta && p.accounts) {
-        // V2 format - convert to legacy format
-        const accountKeys = Object.keys(p.accounts);
-        const firstAccount = accountKeys.length > 0 ? p.accounts[accountKeys[0]] : null;
-        return {
-          savedAt: p.__meta.savedAt || p.savedAt,
-          accountLabel: accountKeys[0] || "",
-          accountEncId: firstAccount?.encId || "unknown",
-          generatorVersion: p.__meta.generatorVersion || "unknown",
-          exportFormat: p.__meta.exportFormat || "snapshot-v2",
-          allSites: firstAccount?.sites || [],
-          summaryRows: p.summaryRows || [],
-          dataBySite: firstAccount?.dataBySite || {},
-          siteMeta: firstAccount?.siteMeta || {},
-          mergedMeta: p.mergedMeta || null,
-          curMode: "all",
-          curSite: p.ui?.curSite || null,
-          curTab: "overview"
-        };
-      }
-      // Legacy format - return as is
-      return Object.assign({}, p, {
-        curMode: "all",
-        curTab: "overview",
-      });
-    })(EXPORT_PAYLOAD_RAW);
+    const SNAPSHOT_OFFLINE_DEFAULT_MODE = ${JSON.stringify(SNAPSHOT_OFFLINE_DEFAULT_MODE)};
+    const SNAPSHOT_OFFLINE_DEFAULT_TAB = ${JSON.stringify(SNAPSHOT_OFFLINE_DEFAULT_TAB)};
+    const SNAPSHOT_TAB_IDS = ${JSON.stringify(SNAPSHOT_TAB_IDS)};
+    const getSnapshotPrimaryAccount = ${getSnapshotPrimaryAccount.toString()};
+    const extractSnapshotSourceState = ${extractSnapshotSourceState.toString()};
+    const normalizeSnapshotPayloadForOfflineShell = ${normalizeSnapshotPayloadForOfflineShell.toString()};
+    // Normalize the active source payload into the legacy-compatible shell payload
+    // that the reopened saved HTML currently consumes.
+    const EXPORT_PAYLOAD = normalizeSnapshotPayloadForOfflineShell(EXPORT_PAYLOAD_RAW);
     // <!-- SADV_PAYLOAD_END -->
     window.__SEARCHADVISOR_EXPORT_PAYLOAD__ = EXPORT_PAYLOAD;
     const SITE_META_MAP = EXPORT_PAYLOAD.siteMeta || {};
@@ -1174,10 +1326,11 @@
       "    allSites: Array.isArray(shellStateSource.allSites) ? shellStateSource.allSites.slice() : [],",
       "    rows: Array.isArray(shellStateSource.rows) ? shellStateSource.rows.slice() : [],",
       '    siteMeta: shellStateSource.siteMeta && typeof shellStateSource.siteMeta === "object" ? shellStateSource.siteMeta : {},',
+      '    mergedMeta: Object.prototype.hasOwnProperty.call(shellStateSource, "mergedMeta") ? shellStateSource.mergedMeta : null,',
       '    curMode: shellStateSource.curMode === "site" ? "site" : "all",',
       '    curSite: typeof shellStateSource.curSite === "string" ? shellStateSource.curSite : null,',
       '    curTab: typeof shellStateSource.curTab === "string" ? shellStateSource.curTab : "overview",',
-      '    runtimeVersion: shellStateSource.runtimeVersion || "snapshot",',
+      '    runtimeVersion: shellStateSource.runtimeVersion || EXPORT_PAYLOAD.generatorVersion || "snapshot",',
       "    cacheMeta: shellStateSource.cacheMeta",
       "      ? {",
       '          label: shellStateSource.cacheMeta.label || "snapshot",',
@@ -1195,6 +1348,7 @@
       "      allSites: Array.isArray(snapshotState.allSites) ? snapshotState.allSites.slice() : [],",
       "      rows: Array.isArray(snapshotState.rows) ? snapshotState.rows.slice() : [],",
       '      siteMeta: snapshotState.siteMeta && typeof snapshotState.siteMeta === "object" ? snapshotState.siteMeta : {},',
+      '      mergedMeta: Object.prototype.hasOwnProperty.call(snapshotState, "mergedMeta") ? snapshotState.mergedMeta : null,',
       '      curMode: snapshotState.curMode === "site" ? "site" : "all",',
       '      curSite: typeof snapshotState.curSite === "string" ? snapshotState.curSite : null,',
       '      curTab: typeof snapshotState.curTab === "string" ? snapshotState.curTab : "overview",',
