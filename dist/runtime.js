@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T06:44:26Z";
-var __SADV_GIT_HEAD__="911e929";
+var __SADV_BUILD_STAMP__="2026-03-20T06:50:46Z";
+var __SADV_GIT_HEAD__="62ff9f9";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -7837,6 +7837,10 @@ function getRuntimeRows() {
 }
 
 function getRuntimeAllSites() {
+  // stage 2 seam:
+  // UI 계층은 allSites 전역을 직접 읽기보다 이 facade를 우선 사용한다.
+  // 그래야 live/snapshot이 사이트 목록을 어떤 provider에서 읽는지
+  // 한 곳에서 교체/감사할 수 있다.
   const state = getRuntimeShellState();
   if (state && Array.isArray(state.allSites)) return state.allSites.slice();
   return Array.isArray(allSites) ? allSites.slice() : [];
@@ -7855,6 +7859,8 @@ function getRuntimeSiteMeta() {
 }
 
 function getRuntimeMergedMeta() {
+  // mergedMeta는 shell/header/export가 함께 참조하는 공통 읽기값이다.
+  // 앞으로는 direct getMergedMetaState() 호출을 줄이고 이 seam으로 수렴한다.
   const state = getRuntimeShellState();
   if (state && Object.prototype.hasOwnProperty.call(state, "mergedMeta")) return state.mergedMeta;
   if (typeof getMergedMetaState === "function") return getMergedMetaState();
@@ -9028,7 +9034,13 @@ function getAvailableRenderers() {
  * console.log(SITE_COLORS_MAP['https://example.com']); // "#10b981"
  */
   function assignColors() {
-    allSites.forEach((s, i) => {
+    // stage 2-2 seam:
+    // 컬러 매핑은 UI 표현 책임이지만, "어떤 사이트 집합을 기준으로 칠할지"는
+    // provider facade를 통해 읽는 편이 안전하다.
+    // 그래야 snapshot/live가 서로 다른 입력원을 써도 색상 할당 기준이 한 곳으로 모인다.
+    const runtimeSites =
+      typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
+    runtimeSites.forEach((s, i) => {
       if (!SITE_COLORS_MAP[s]) SITE_COLORS_MAP[s] = COLORS[i % COLORS.length];
     });
   }
@@ -9041,11 +9053,17 @@ function getAvailableRenderers() {
  * console.log(site); // "https://example.com" or null
  */
   function ensureCurrentSite() {
-    if (!allSites.length) {
+    // stage 2-2 seam:
+    // 현재 사이트 보정도 allSites 전역 배열을 직접 신뢰하지 않고
+    // facade가 말해주는 현재 runtime site list를 기준으로 맞춘다.
+    // 이 함수는 site mode 진입/복원 경로에서 자주 호출되므로 회귀 방지 가치가 크다.
+    const runtimeSites =
+      typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
+    if (!runtimeSites.length) {
       curSite = null;
       return null;
     }
-    if (!curSite || !allSites.includes(curSite)) curSite = allSites[0];
+    if (!curSite || !runtimeSites.includes(curSite)) curSite = runtimeSites[0];
     return curSite;
   }
   /**
@@ -9196,17 +9214,17 @@ function getAvailableRenderers() {
       console.error('[buildCombo] sadv-combo-drop not found!');
       return;
     }
+    const runtimeSites =
+      typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
     const rowsMap = {};
     if (rows && rows.length)
       rows.forEach((r) => {
-        if (allSites.includes(r.site)) rowsMap[r.site] = r;
+        if (runtimeSites.includes(r.site)) rowsMap[r.site] = r;
       });
     const rowSites =
       rows && rows.length
-        ? rows.map((r) => r.site).filter((site) => allSites.includes(site))
+        ? rows.map((r) => r.site).filter((site) => runtimeSites.includes(site))
         : [];
-    const runtimeSites =
-      typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
     const restSites = runtimeSites.filter((s) => !rowsMap[s]);
     const orderedSites = [...rowSites, ...restSites];
 
@@ -9306,7 +9324,11 @@ function getAvailableRenderers() {
  * @see {buildCombo}
  */
   function setComboSite(site) {
-    if (!site || !allSites.includes(site)) return;
+    // combo 선택은 live/snapshot 공통 상호작용이다.
+    // 따라서 site 유효성 판정도 facade를 경유해 provider 경계를 존중한다.
+    const runtimeSites =
+      typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
+    if (!site || !runtimeSites.includes(site)) return;
     const sameSite = curSite === site;
     curSite = site;
     const col = SITE_COLORS_MAP[site] || C.muted,
