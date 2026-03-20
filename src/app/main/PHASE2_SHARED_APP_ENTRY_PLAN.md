@@ -276,3 +276,58 @@ Phase 2 초입이 제대로 시작됐다고 보려면:
 
 이 단계가 끝나면 다음엔
 실제 shared app entry 수렴 폭을 더 넓히는 작업으로 넘어갈 수 있다.
+
+---
+
+## 11. 현재 진행 상태 (2026-03-21 기준)
+
+현재까지 Phase 2에서 이미 정리된 것:
+
+### Workstream A
+1. `setRuntimePublicApi / clearRuntimePublicApi` 도입
+2. live/saved 모두 `window.__sadvApi`를 canonical public facade로 게시
+3. `switchSite(site)`를 canonical public action으로 정착
+4. saved richer API(`__SEARCHADVISOR_SNAPSHOT_API__`)와 public facade(`__sadvApi`)를 분리
+
+### Workstream B
+1. helper 직렬화를 pack 단위로 관리
+2. `SNAPSHOT_SHARED_PUBLIC_ENTRY_HELPERS`
+3. `SNAPSHOT_RUNTIME_BOOT_HELPERS`
+4. `SNAPSHOT_ALL_SITES_HELPER_PACK`
+5. `SNAPSHOT_UI_CONTROLS_HELPER_PACK`
+
+### Workstream C
+1. `createSnapshotPublicFacade / publishSnapshotRuntimeApis` 추출
+2. `restoreSnapshotUiBootState / finalizeSnapshotUiBoot` 추출
+3. `buildSnapshotSerializedHelperSection()` 추출
+4. export 시점 shell injection helper
+   - `ensureSnapshotReactShellHostMarkup`
+   - `injectSnapshotRuntimeShellState`
+   - `appendSnapshotShellBootstrap`
+   로 분리
+5. shell host mount 가독성 보강
+   - `SNAPSHOT_SHELL_NODE_IDS`
+   - `buildSnapshotShellUnmountLines`
+
+현재 fresh saved HTML 기준 QA는 반복적으로 `failures: []` 상태를 유지하고 있다.
+
+---
+
+## 12. 현재 남은 coupling hotspot
+
+지금 시점에서 굳이 급하게 건드릴 필요는 없지만,
+Phase 3 또는 이후 라운드에서 우선 검토할 후보는 아래다.
+
+1. `buildSnapshotShellBootstrapScript()`
+   - shell host mount/unmount가 여전히 문자열 스크립트 조립에 남아 있다.
+2. `buildSnapshotApiCompatScript()`
+   - legacy compat/runtime bridge 책임이 크고, richer API fallback과 결합돼 있다.
+3. `normalizeSnapshotPayloadForOfflineShell()`
+   - payload 계약 중심부라 fan-out이 크다. 지금은 안정화 우선으로 보류한다.
+4. `injectSnapshotReactShell()`
+   - helper로 많이 나뉘었지만 여전히 regex/string 후처리 기반이다.
+5. transitive serialization dependency
+   - helper pack이 생겼지만, pack 내부 helper가 참조하는 체인까지 항상 fresh saved audit로 확인해야 한다.
+
+이 5개는 "지금 당장 수정해야 하는 버그"가 아니라,
+"구조를 더 순수하게 만들고 싶을 때 Phase 3에서 볼 후보"로 취급한다.

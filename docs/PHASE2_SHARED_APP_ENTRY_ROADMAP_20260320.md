@@ -56,3 +56,46 @@ Phase 2 작업을 시작하기 전 아래가 만족돼야 한다.
 4. 현재 공용 facade 계약이 문서로 고정되어 있을 것
 
 현재 기준으로 위 4개는 이미 충족돼 있다.
+
+## 현재 진행 요약 (2026-03-21 업데이트)
+
+현재까지 확인된 상태:
+
+- 제품 안정화/호환성 트랙: 사실상 완료
+- Live / Saved / Merge 호환성: 유지
+- fresh saved HTML audit: 반복적으로 `failures: []`
+
+Phase 2에서 이미 얻은 것:
+
+1. public facade canonical action 정리
+   - `switchMode`
+   - `setSite`
+   - `switchSite`
+   - `setTab`
+2. saved public facade와 richer snapshot API 역할 분리
+3. helper serialization pack 정리
+4. runtime boot helper 추출
+5. export 시점 shell injection helper 분리
+6. shell host mount 책임 가독성 개선
+
+즉 현재 Phase 2는 "진입" 단계가 아니라,
+"후반부 마감"에 가까운 상태다.
+
+## 지금 남은 가장 현실적인 일
+
+1. fresh saved HTML을 최신 ref 기준으로 간헐적으로 다시 audit
+2. 문서에 남은 coupling hotspot / Phase 3 후보를 계속 고정
+3. 무리한 대수술보다, stable contract를 유지한 채 Phase 2를 마감
+
+## Phase 3 후보 메모
+
+현재 문서 기준으로 다음 후보는 Phase 3에서 다룬다.
+
+- `buildSnapshotShellBootstrapScript()`의 문자열 조립 책임 추가 축소
+- `buildSnapshotApiCompatScript()` 정리
+- `normalizeSnapshotPayloadForOfflineShell()` 구조 재검토
+- regex/string 기반 injection 후처리 추가 개선
+
+핵심 원칙:
+
+> 지금은 “더 순수한 구조”보다 “회귀 없는 상태에서 마감 기준을 굳히는 것”이 우선이다.
