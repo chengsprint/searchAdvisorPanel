@@ -104,6 +104,36 @@ function setAllSitesPeriodDaysState(days) {
   return allSitesPeriodDays;
 }
 
+function getSelectionStateValue() {
+  return {
+    curMode,
+    curSite,
+    curTab,
+  };
+}
+
+function setSelectionStateValue(patch) {
+  // Phase 1 seam:
+  // selection(curMode/curSite/curTab)을 한 번에 다루는 공용 entry를 만든다.
+  //
+  // 왜 필요한가:
+  // - UI가 curMode/curSite/curTab를 여기저기 직접 바꾸기 시작하면
+  //   saved/live parity와 후속 provider 분리가 다시 어려워진다.
+  // - 지금은 작은 seam이지만, 장기적으로는 public action/state contract의
+  //   내부 구현으로 수렴해야 한다.
+  if (!patch || typeof patch !== "object") return getSelectionStateValue();
+  if (patch.curMode === CONFIG.MODE.ALL || patch.curMode === CONFIG.MODE.SITE) {
+    curMode = patch.curMode;
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, "curSite")) {
+    curSite = typeof patch.curSite === "string" ? patch.curSite : null;
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, "curTab")) {
+    curTab = typeof patch.curTab === "string" ? patch.curTab : "overview";
+  }
+  return getSelectionStateValue();
+}
+
 /**
  * Notify all registered listeners of UI state changes
  * Calls each listener with the current snapshot

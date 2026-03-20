@@ -86,12 +86,23 @@
     // 이 함수는 site mode 진입/복원 경로에서 자주 호출되므로 회귀 방지 가치가 크다.
     const runtimeSites =
       typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
+    const selectionState =
+      typeof getRuntimeSelectionState === "function"
+        ? getRuntimeSelectionState()
+        : { curSite };
+    const currentSite = selectionState.curSite;
     if (!runtimeSites.length) {
-      curSite = null;
+      if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curSite: null });
+      else curSite = null;
       return null;
     }
-    if (!curSite || !runtimeSites.includes(curSite)) curSite = runtimeSites[0];
-    return curSite;
+    if (!currentSite || !runtimeSites.includes(currentSite)) {
+      const nextSite = runtimeSites[0];
+      if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curSite: nextSite });
+      else curSite = nextSite;
+      return nextSite;
+    }
+    return currentSite;
   }
   /**
  * Update the all sites label text in the header
@@ -280,6 +291,11 @@
 
     drop.replaceChildren(searchDiv, countDiv);
     orderedSites.forEach(function (s) {
+      const selectionState =
+        typeof getRuntimeSelectionState === "function"
+          ? getRuntimeSelectionState()
+          : { curSite };
+      const activeSite = selectionState.curSite;
       const col = SITE_COLORS_MAP[s] || C.muted,
         fullLabel = getSiteLabel(s),
         shortName = getSiteShortName(s),
@@ -288,11 +304,11 @@
         clickStr = row ? fmt(row.totalC) + "\uD074\uB9AD" : "—",
         clickCol = row ? C.green : C.muted;
       const item = document.createElement("div");
-      item.className = "sadv-combo-item sadv-copt" + (s === curSite ? " active" : "");
+      item.className = "sadv-combo-item sadv-copt" + (s === activeSite ? " active" : "");
       item.dataset.site = s;
       item.setAttribute("tabindex", "0");
       item.setAttribute("role", "option");
-      item.setAttribute("aria-selected", s === curSite ? "true" : "false");
+      item.setAttribute("aria-selected", s === activeSite ? "true" : "false");
       item.style.cursor = "pointer";
       item.innerHTML = `<div class="sadv-combo-item-dot" style="background:${col}"></div><div class="sadv-combo-item-info"><div class="sadv-combo-item-name">${escHtml(shortName || fullLabel || s)}</div><div class="sadv-combo-item-url">${escHtml(siteUrlLabel || fullLabel || s)}</div></div><div class="sadv-combo-item-click" style="color:${clickCol}">${escHtml(clickStr)}</div>`;
       item.addEventListener("click", function () {
@@ -356,8 +372,16 @@
     const runtimeSites =
       typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
     if (!site || !runtimeSites.includes(site)) return;
-    const sameSite = curSite === site;
-    curSite = site;
+    const selectionState =
+      typeof getRuntimeSelectionState === "function"
+        ? getRuntimeSelectionState()
+        : { curSite, curMode, curTab };
+    const sameSite = selectionState.curSite === site;
+    if (typeof setRuntimeSelectionState === "function") {
+      setRuntimeSelectionState({ curSite: site });
+    } else {
+      curSite = site;
+    }
     const col = SITE_COLORS_MAP[site] || C.muted,
       shortName = getSiteLabel(site);
     const comboDot = document.getElementById("sadv-combo-dot");
@@ -371,7 +395,11 @@
     });
     setCachedUiState();
     if (typeof notifySnapshotShellState === "function") notifySnapshotShellState();
-    if (curMode === CONFIG.MODE.SITE && !sameSite) loadSiteView(site);
+    const nextSelectionState =
+      typeof getRuntimeSelectionState === "function"
+        ? getRuntimeSelectionState()
+        : { curMode, curSite, curTab };
+    if (nextSelectionState.curMode === CONFIG.MODE.SITE && !sameSite) loadSiteView(site);
     __sadvNotify();
   }
   const comboWrapMain = document.getElementById("sadv-combo-wrap");
@@ -468,11 +496,16 @@
   if (tabsEl) {
     tabsEl.setAttribute("role", "tablist");
     tabsEl.replaceChildren(...TABS.map((t) => {
+      const selectionState =
+        typeof getRuntimeSelectionState === "function"
+          ? getRuntimeSelectionState()
+          : { curTab };
+      const activeTab = selectionState.curTab;
       const btn = document.createElement("button");
-      btn.className = `sadv-t${t.id === curTab ? " on" : ""}`;
+      btn.className = `sadv-t${t.id === activeTab ? " on" : ""}`;
       btn.dataset.t = t.id;
       btn.setAttribute("role", "tab");
-      btn.setAttribute("aria-selected", t.id === curTab ? "true" : "false");
+      btn.setAttribute("aria-selected", t.id === activeTab ? "true" : "false");
       btn.setAttribute("aria-controls", "sadv-tabpanel");
       btn.style.cssText = "display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;flex:0 0 auto";
       btn.innerHTML = `${t.icon}${escHtml(t.label)}`;
@@ -480,8 +513,16 @@
     }));
     tabsEl.addEventListener("click", function (e) {
       const t = e.target.closest("[data-t]");
-      if (!t || t.dataset.t === curTab) return;
-      curTab = t.dataset.t;
+      const selectionState =
+        typeof getRuntimeSelectionState === "function"
+          ? getRuntimeSelectionState()
+          : { curTab };
+      if (!t || t.dataset.t === selectionState.curTab) return;
+      if (typeof setRuntimeSelectionState === "function") {
+        setRuntimeSelectionState({ curTab: t.dataset.t });
+      } else {
+        curTab = t.dataset.t;
+      }
       tabsEl.querySelectorAll(".sadv-t").forEach((b) => {
         b.classList.remove("on");
         b.setAttribute("aria-selected", "false");
@@ -576,16 +617,22 @@
  * @see {loadSiteView}
  */
   function switchMode(mode) {
-    if (mode === curMode) return;
+    const selectionState =
+      typeof getRuntimeSelectionState === "function"
+        ? getRuntimeSelectionState()
+        : { curMode, curSite, curTab };
+    if (mode === selectionState.curMode) return;
     if (!modeBar || !siteBar || !tabsEl) {
-      curMode = mode;
+      if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curMode: mode });
+      else curMode = mode;
       console.warn("[UI Controls] Missing mode UI containers; switchMode skipped");
       setCachedUiState();
       if (typeof notifySnapshotShellState === "function") notifySnapshotShellState();
       __sadvNotify();
       return;
     }
-    curMode = mode;
+    if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curMode: mode });
+    else curMode = mode;
     modeBar
       .querySelectorAll(".sadv-mode")
       .forEach((b) => {
@@ -606,9 +653,13 @@
       siteBar.classList.add("show");
       tabsEl.classList.add("show");
       ensureCurrentSite();
-      if (curSite) {
-        setComboSite(curSite);
-        loadSiteView(curSite);
+      const nextSelectionState =
+        typeof getRuntimeSelectionState === "function"
+          ? getRuntimeSelectionState()
+          : { curSite };
+      if (nextSelectionState.curSite) {
+        setComboSite(nextSelectionState.curSite);
+        loadSiteView(nextSelectionState.curSite);
       }
     }
     setCachedUiState();
@@ -722,8 +773,13 @@
         setComboSite(site);
       },
       setTab: function (tab) {
-        if (!tabsEl || !TABS.some(function (item) { return item.id === tab; }) || curTab === tab) return;
-        curTab = tab;
+        const selectionState =
+          typeof getRuntimeSelectionState === "function"
+            ? getRuntimeSelectionState()
+            : { curTab };
+        if (!tabsEl || !TABS.some(function (item) { return item.id === tab; }) || selectionState.curTab === tab) return;
+        if (typeof setRuntimeSelectionState === "function") setRuntimeSelectionState({ curTab: tab });
+        else curTab = tab;
         tabsEl.querySelectorAll(".sadv-t").forEach(function (b) {
           b.classList.remove("on");
           b.setAttribute("aria-selected", "false");

@@ -293,7 +293,11 @@ function buildAllSitesDisplayWrap(baseRows) {
     }
     const card = e.target.closest(".sadv-allcard");
     if (card && card.dataset.site) {
-      curSite = card.dataset.site;
+      if (typeof setRuntimeSelectionState === "function") {
+        setRuntimeSelectionState({ curSite: card.dataset.site });
+      } else {
+        curSite = card.dataset.site;
+      }
       switchMode("site");
     }
   });
@@ -333,9 +337,15 @@ function buildAllSitesDisplayWrap(baseRows) {
 }
 
 function renderAllSitesFromCanonicalRows() {
-  if (!bdEl || curMode !== CONFIG.MODE.ALL) return;
+  const selectionState =
+    typeof getRuntimeSelectionState === "function"
+      ? getRuntimeSelectionState()
+      : { curMode, curSite, curTab };
+  if (!bdEl || selectionState.curMode !== CONFIG.MODE.ALL) return;
   const canonicalRows =
-    Array.isArray(window.__sadvRows) && window.__sadvRows.length ? window.__sadvRows.slice() : [];
+    typeof getRuntimeRows === "function"
+      ? getRuntimeRows()
+      : (Array.isArray(window.__sadvRows) && window.__sadvRows.length ? window.__sadvRows.slice() : []);
   if (!canonicalRows.length) return;
   const wrap = buildAllSitesDisplayWrap(canonicalRows);
   bdEl.replaceChildren(wrap);
