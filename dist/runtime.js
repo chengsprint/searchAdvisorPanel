@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T06:28:04Z";
-var __SADV_GIT_HEAD__="f4ca02f";
+var __SADV_BUILD_STAMP__="2026-03-20T06:44:26Z";
+var __SADV_GIT_HEAD__="911e929";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -7728,9 +7728,29 @@ if (typeof window !== "undefined") {
  * - UI 계층이 live/snapshot 전역 상태를 직접 덜 보게 만들기
  * - data/state 읽기 경계를 한 곳으로 모으기
  * - 1단계 리팩토링에서 "어디서 읽는지"만 분리하고 UI는 그대로 유지하기
+ *
+ * 왜 필요한가:
+ * - 지금까지는 UI 코드가 allSites / mergedMeta / cacheMeta / snapshot payload를
+ *   각 파일에서 직접 읽는 경향이 있었다.
+ * - 그러면 design supply chain(UI)와 data supply chain(provider)가 다시 섞여
+ *   live/snapshot drift가 커진다.
+ *
+ * 이번 1단계의 의도:
+ * - UI를 갈아엎는 것이 아니다.
+ * - 대신 "어디서 읽는지"만 facade 뒤로 숨겨서,
+ *   다음 단계에서 provider 분리를 더 안전하게 진행할 발판을 만든다.
  */
 
 function isSnapshotRuntime() {
+  // 중요:
+  // snapshot 판별을 EXPORT_PAYLOAD 존재 여부에만 의존하면 안 된다.
+  // 라이브 패널도 저장 직전/직후 payload를 잠깐 들고 있을 수 있기 때문이다.
+  //
+  // 그래서 runtime kind 플래그를 최우선 기준으로 사용한다.
+  // - live  : window.__SEARCHADVISOR_RUNTIME_KIND__ = "live"
+  // - snapshot: window.__SEARCHADVISOR_RUNTIME_KIND__ = "snapshot"
+  //
+  // fallback으로 snapshot API 존재 여부만 본다.
   if (typeof window === "undefined") return false;
   if (window.__SEARCHADVISOR_RUNTIME_KIND__ === "snapshot") return true;
   if (window.__SEARCHADVISOR_RUNTIME_KIND__ === "live") return false;
@@ -7746,6 +7766,11 @@ function getRuntimeMode() {
 }
 
 function getRuntimeCapabilities() {
+  // capability는 UI가 provider를 직접 모르고도
+  // "이 런타임에서 가능한 기능"만 읽게 만들기 위한 얇은 계약이다.
+  //
+  // 1단계에서는 선언적 노출이 목적이고,
+  // 이후 단계에서 버튼/행동 제어가 이 capability를 더 적극적으로 소비하게 된다.
   if (isSnapshotRuntime()) {
     return {
       mode: "snapshot",
@@ -7765,6 +7790,16 @@ function getRuntimeCapabilities() {
 }
 
 function getRuntimeShellState() {
+  // shell state는 UI가 읽는 최소 공통 상태다.
+  //
+  // 우선순위:
+  // 1) snapshot이면 snapshot API getState()
+  // 2) snapshot bootstrap 초기 구간이면 buildSnapshotShellState(payload)
+  // 3) live면 buildLiveShellState()
+  // 4) 마지막 fallback
+  //
+  // 즉 이 함수는 "UI가 지금 어떤 공급원에서 상태를 읽어야 하는가"를
+  // 한곳으로 몰아주는 역할이다.
   if (isSnapshotRuntime()) {
     if (
       typeof window !== "undefined" &&
@@ -7832,6 +7867,12 @@ function getRuntimeCacheMeta() {
 }
 
 function getRuntimeSiteData(site) {
+  // 1단계 seam:
+  // site detail view가 provider를 직접 의식하지 않도록,
+  // snapshot이면 payload에서 읽고 live면 null을 돌려 기존 fetch path를 유지한다.
+  //
+  // 다음 단계에서는 이 seam을 바탕으로
+  // live provider / offline provider를 더 명확히 분리할 수 있다.
   if (!site) return null;
   if (isSnapshotRuntime()) {
     const payload =
@@ -9122,6 +9163,21 @@ function getAvailableRenderers() {
       `<span style="${chipStyle}" title="${escHtml(titleParts.join(" · "))}">${escHtml(compactParts.join(" · "))}</span>`
     );
   }
+  function resolveRuntimeCapabilities() {
+    // stage 2 boundary:
+    // 버튼/행동 제어는 더 이상 "현재 런타임이 live일 것이다"를 가정하지 않는다.
+    // UI는 provider 내부 구현 대신 capability 계약만 읽고,
+    // 실제 가능 여부는 provider facade가 책임진다.
+    return typeof getRuntimeCapabilities === "function"
+      ? getRuntimeCapabilities()
+      : {
+          mode: "live",
+          canRefresh: true,
+          canSave: true,
+          canClose: true,
+          isReadOnly: false,
+        };
+  }
   /**
  * Build the site selector combo box dropdown
  * Creates clickable items for each site with search functionality
@@ -9511,49 +9567,65 @@ function getAvailableRenderers() {
     __sadvNotify();
   }
 
+  const runtimeCapabilities = resolveRuntimeCapabilities();
   var sadvRefreshBtnEl = document.getElementById("sadv-refresh-btn");
   if (sadvRefreshBtnEl) {
-    sadvRefreshBtnEl.addEventListener("click", async function () {
-      if (this.disabled || this.dataset.busy === "true") return;
-      const btn = this;
-      const originalHTML = btn.innerHTML;
-      btn.dataset.busy = "true";
-      btn.disabled = true;
-      btn.classList.add("spinning");
-      btn.innerHTML = ICONS.refresh + " 로딩 중...";
-      try {
-        await runFullRefreshPipeline({ trigger: "manual", button: btn });
-      } finally {
-        btn.classList.remove("spinning");
-        btn.disabled = false;
-        btn.dataset.busy = "false";
-        btn.innerHTML = originalHTML;
-        __sadvNotify();
-      }
-    });
+    if (!runtimeCapabilities.canRefresh) {
+      sadvRefreshBtnEl.style.display = "none";
+      sadvRefreshBtnEl.setAttribute("aria-hidden", "true");
+    } else {
+      sadvRefreshBtnEl.addEventListener("click", async function () {
+        if (this.disabled || this.dataset.busy === "true") return;
+        const btn = this;
+        const originalHTML = btn.innerHTML;
+        btn.dataset.busy = "true";
+        btn.disabled = true;
+        btn.classList.add("spinning");
+        btn.innerHTML = ICONS.refresh + " 로딩 중...";
+        try {
+          await runFullRefreshPipeline({ trigger: "manual", button: btn });
+        } finally {
+          btn.classList.remove("spinning");
+          btn.disabled = false;
+          btn.dataset.busy = "false";
+          btn.innerHTML = originalHTML;
+          __sadvNotify();
+        }
+      });
+    }
   } else {
     console.warn("[UI Controls] #sadv-refresh-btn not found during initialization");
   }
 
   var sadvSaveBtnEl = document.getElementById("sadv-save-btn");
   if (sadvSaveBtnEl) {
-    sadvSaveBtnEl.addEventListener("click", function () {
-      downloadSnapshot();
-    });
+    if (!runtimeCapabilities.canSave) {
+      sadvSaveBtnEl.style.display = "none";
+      sadvSaveBtnEl.setAttribute("aria-hidden", "true");
+    } else {
+      sadvSaveBtnEl.addEventListener("click", function () {
+        downloadSnapshot();
+      });
+    }
   } else {
     console.warn("[UI Controls] #sadv-save-btn not found during initialization");
   }
 
   var sadvCloseBtnEl = document.getElementById("sadv-x");
   if (sadvCloseBtnEl) {
-    sadvCloseBtnEl.addEventListener("click", function () {
-      const panel = document.getElementById("sadv-p");
-      const inj = document.getElementById("sadv-inj");
-      if (typeof stopCacheExpiryMonitor === "function") stopCacheExpiryMonitor();
-      if (panel) panel.remove();
-      if (inj) inj.remove();
-      if (typeof window !== "undefined") delete window.__sadvApi;
-    });
+    if (!runtimeCapabilities.canClose) {
+      sadvCloseBtnEl.style.display = "none";
+      sadvCloseBtnEl.setAttribute("aria-hidden", "true");
+    } else {
+      sadvCloseBtnEl.addEventListener("click", function () {
+        const panel = document.getElementById("sadv-p");
+        const inj = document.getElementById("sadv-inj");
+        if (typeof stopCacheExpiryMonitor === "function") stopCacheExpiryMonitor();
+        if (panel) panel.remove();
+        if (inj) inj.remove();
+        if (typeof window !== "undefined") delete window.__sadvApi;
+      });
+    }
   } else {
     console.warn("[UI Controls] #sadv-x not found during initialization");
   }
@@ -9562,15 +9634,7 @@ function getAvailableRenderers() {
     window.__sadvApi = {
       getState: __sadvSnapshot,
       getCapabilities: function () {
-        return typeof getRuntimeCapabilities === "function"
-          ? getRuntimeCapabilities()
-          : {
-              mode: "live",
-              canRefresh: true,
-              canSave: true,
-              canClose: true,
-              isReadOnly: false,
-            };
+        return resolveRuntimeCapabilities();
       },
       isReady: function () {
         return __sadvInitialReady;
@@ -9624,11 +9688,17 @@ function getAvailableRenderers() {
         __sadvNotify();
       },
       refresh: function () {
+        const capabilities = resolveRuntimeCapabilities();
+        if (!capabilities.canRefresh) return false;
         const btn = document.getElementById("sadv-refresh-btn");
         if (btn) btn.click();
+        return !!btn;
       },
       download: function () {
+        const capabilities = resolveRuntimeCapabilities();
+        if (!capabilities.canSave) return false;
         downloadSnapshot();
+        return true;
       },
       exportSnapshotData: function (onProgress, options) {
         return collectExportData(onProgress, options);
@@ -9637,12 +9707,15 @@ function getAvailableRenderers() {
         return buildSnapshotHtml(savedAt, payload);
       },
       close: function () {
+        const capabilities = resolveRuntimeCapabilities();
+        if (!capabilities.canClose) return false;
         const panel = document.getElementById("sadv-p");
         const inj = document.getElementById("sadv-inj");
         if (typeof stopCacheExpiryMonitor === "function") stopCacheExpiryMonitor();
         if (panel) panel.remove();
         if (inj) inj.remove();
         delete window.__sadvApi;
+        return true;
       },
     };
   }
@@ -9663,14 +9736,21 @@ async function renderAllSites() {
   // 전체현황 UI 정본(parity source).
   // 저장본 전체현황이 이 구조와 멀어지기 시작하면 drift가 생기므로,
   // 카드 구조/미니 KPI/그래프/반응형 규칙 변경 시 snapshot 쪽도 함께 점검한다.
+  //
+  // stage 2 seam:
+  // fetch는 live provider가 계속 담당하지만,
+  // 어떤 사이트/메타를 기준으로 그릴지는 facade를 통해 읽는다.
+  // 즉 UI 정본은 유지하고 입력 경계만 provider 쪽으로 밀어낸다.
   const requestId = ++allViewReqId;
+  const runtimeSites =
+    typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
   setAllSitesLabel();
   const loading = document.createElement("div");
   loading.style.cssText =
     "padding:" + T.spaceCardXl + " " + T.spaceCardLg + ";color:var(--sadv-text-secondary,#c6c6c6);text-align:left;line-height:1.6;background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);box-shadow:" + T.shadowCard;
 
   // 예상 소요 시간 계산 (사이트당 약 0.5초로 가정)
-  const estimatedTimeSeconds = Math.ceil(allSites.length * 0.5);
+  const estimatedTimeSeconds = Math.ceil(runtimeSites.length * 0.5);
   const estimatedTimeText = estimatedTimeSeconds > 60
     ? `${Math.floor(estimatedTimeSeconds / 60)}분 ${estimatedTimeSeconds % 60}초`
     : `${estimatedTimeSeconds}초`;
@@ -9685,7 +9765,7 @@ async function renderAllSites() {
   bdEl.innerHTML = "";
   bdEl.appendChild(loading);
 
-  if (!allSites.length) {
+  if (!runtimeSites.length) {
     bdEl.replaceChildren(
       createStateCard(
         "사이트 목록을 찾을 수 없어요",
@@ -9696,7 +9776,7 @@ async function renderAllSites() {
     );
     return;
   }
-  const sitesToLoad = allSites;
+  const sitesToLoad = runtimeSites;
   const siteDataBySite = {};
   const loadingDetail = loading.querySelector("#sadv-all-progress-detail");
   const loadingBar = loading.querySelector("#sadv-all-progress-bar");
@@ -9811,7 +9891,8 @@ async function renderAllSites() {
   window.__sadvRows = rows;
   buildCombo(rows);
   const wrap = document.createElement("div");
-  const mergedMeta = getMergedMetaState();
+  const mergedMeta =
+    typeof getRuntimeMergedMeta === "function" ? getRuntimeMergedMeta() : getMergedMetaState();
   if (isMergedReport() && mergedMeta && mergedMeta.accounts) {
     wrap.appendChild(createMergedAccountsInfo(mergedMeta));
   }
@@ -10068,11 +10149,13 @@ async function collectExportData(onProgress, options) {
   const exportAccountLabel = liveAccountInfo?.accountLabel || accountLabel || "";
   const exportEncId = liveAccountInfo?.encId || encId || "unknown";
   await ensureExportSiteList(refreshMode);
-  const total = allSites.length;
+  const exportSites =
+    typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
+  const total = exportSites.length;
   let done = 0;
   const stats = { success: 0, partial: 0, failed: 0, errors: [] };
-  for (let i = 0; i < allSites.length; i += batchSize) {
-    const batch = allSites.slice(i, i + batchSize);
+  for (let i = 0; i < exportSites.length; i += batchSize) {
+    const batch = exportSites.slice(i, i + batchSize);
     const results = await Promise.allSettled(
       batch.map(function (site) {
         return resolveExportSiteData(site, { refreshMode });
@@ -10122,7 +10205,7 @@ async function collectExportData(onProgress, options) {
       done++;
       if (onProgress) onProgress(done, total, site, stats);
     });
-    if (refreshMode === "refresh" && i + batchSize < allSites.length) {
+    if (refreshMode === "refresh" && i + batchSize < exportSites.length) {
       const jitter = Math.floor(Math.random() * FULL_REFRESH_JITTER_MS);
       await new Promise(function (resolve) {
         setTimeout(resolve, FULL_REFRESH_SITE_DELAY_MS + jitter);
@@ -10150,7 +10233,7 @@ async function collectExportData(onProgress, options) {
     accounts: {
       [accountEmail]: {
         encId: exportEncId,
-        sites: [...allSites],
+        sites: [...exportSites],
         siteMeta: typeof getSiteMetaMap === "function" ? getSiteMetaMap() : {},
         dataBySite: dataBySite
       }
@@ -10160,7 +10243,10 @@ async function collectExportData(onProgress, options) {
       curSite,
       curTab
     },
-    mergedMeta: typeof getMergedMetaState === "function" ? getMergedMetaState() : null,
+    mergedMeta:
+      typeof getRuntimeMergedMeta === "function"
+        ? getRuntimeMergedMeta()
+        : (typeof getMergedMetaState === "function" ? getMergedMetaState() : null),
     summaryRows,
     stats
   };
@@ -10213,6 +10299,11 @@ function savedAtIso(d) {
  * @see {buildSnapshotHtml}
  */
   async function downloadSnapshot() {
+    const capabilities =
+      typeof getRuntimeCapabilities === "function" ? getRuntimeCapabilities() : null;
+    if (capabilities && capabilities.isReadOnly) {
+      throw new Error("snapshot export is disabled in read-only mode");
+    }
     const btn = document.getElementById("sadv-save-btn");
     const originalText = btn.textContent;
     btn.disabled = true;
