@@ -420,6 +420,10 @@ async function collectExportData(onProgress, options) {
   const summaryRows = [];
   const batchSize = FULL_REFRESH_BATCH_SIZE;
   const refreshMode = options && options.refreshMode === "refresh" ? "refresh" : "cache-first";
+  const selectionState =
+    typeof getRuntimeSelectionState === "function"
+      ? getRuntimeSelectionState()
+      : { curMode, curSite, curTab };
   const liveAccountInfo =
     typeof ACCOUNT_UTILS !== "undefined" && ACCOUNT_UTILS && typeof ACCOUNT_UTILS.getAccountInfo === "function"
       ? ACCOUNT_UTILS.getAccountInfo()
@@ -517,9 +521,9 @@ async function collectExportData(onProgress, options) {
       }
     },
     ui: {
-      curMode,
-      curSite,
-      curTab
+      curMode: selectionState.curMode,
+      curSite: selectionState.curSite,
+      curTab: selectionState.curTab
     },
     mergedMeta:
       typeof getRuntimeMergedMeta === "function"

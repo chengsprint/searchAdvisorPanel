@@ -34,10 +34,12 @@
     if (capabilities && capabilities.isReadOnly) {
       throw new Error("snapshot export is disabled in read-only mode");
     }
+    const runtimeSites =
+      typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
     const btn = document.getElementById("sadv-save-btn");
     const originalText = btn.textContent;
     btn.disabled = true;
-    btn.textContent = "0/" + allSites.length;
+    btn.textContent = "0/" + runtimeSites.length;
     try {
       const savedAt = new Date();
       const payload = await collectExportData(

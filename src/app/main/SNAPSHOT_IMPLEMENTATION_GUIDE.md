@@ -43,6 +43,10 @@
 - snapshot은 영향 범위만 검토
 - 가능하면 UI 파일이 전역 상태를 직접 읽지 않게 하고,
   `07-data-provider.js` facade를 먼저 확장해 seam을 만든다.
+- 현재 권장 seam:
+  - `getRuntimeAllSites()`
+  - `getRuntimeMergedMeta()`
+  - `getRuntimeSelectionState()`
 
 ### C. snapshot entry / export 변경
 
@@ -119,6 +123,8 @@
 3. helper/style token 의존성을 “아마 있겠지”라고 가정하지 말 것
 4. `dist/runtime.js`를 정본처럼 직접 수정하지 말 것
 5. saved HTML 재생성 검증 없이 parity 완료라고 판단하지 말 것
+6. 공통 UI 파일에서 `allSites`, `curMode`, `curSite`, `curTab` 직접 참조를 늘리는 방향으로
+   임시 수정하지 말 것. 먼저 facade seam 추가 가능성을 검토한다.
 
 ---
 

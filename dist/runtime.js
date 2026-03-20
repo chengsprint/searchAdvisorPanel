@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T06:50:46Z";
-var __SADV_GIT_HEAD__="62ff9f9";
+var __SADV_BUILD_STAMP__="2026-03-20T06:52:19Z";
+var __SADV_GIT_HEAD__="092b2ad";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -7872,6 +7872,32 @@ function getRuntimeCacheMeta() {
   return state && state.cacheMeta ? state.cacheMeta : null;
 }
 
+function getRuntimeSelectionState() {
+  // stage 2-2 seam:
+  // export/offline/live가 현재 선택 상태(curMode/curSite/curTab)를 직접 전역에서
+  // 주워 읽지 않도록, shell state를 통과한 최소 shape를 제공한다.
+  //
+  // 의도:
+  // - UI selection을 단일 shape로 읽게 만들기
+  // - 나중에 snapshot/live가 selection 복원 방식을 바꿔도
+  //   호출자는 이 seam만 유지하면 되게 하기
+  const state = getRuntimeShellState();
+  return {
+    curMode:
+      state && typeof state.curMode === "string"
+        ? state.curMode
+        : (typeof curMode === "string" ? curMode : CONFIG.MODE.ALL),
+    curSite:
+      state && typeof state.curSite === "string"
+        ? state.curSite
+        : (typeof curSite === "string" ? curSite : null),
+    curTab:
+      state && typeof state.curTab === "string"
+        ? state.curTab
+        : (typeof curTab === "string" ? curTab : "overview"),
+  };
+}
+
 function getRuntimeSiteData(site) {
   // 1단계 seam:
   // site detail view가 provider를 직접 의식하지 않도록,
@@ -10164,6 +10190,10 @@ async function collectExportData(onProgress, options) {
   const summaryRows = [];
   const batchSize = FULL_REFRESH_BATCH_SIZE;
   const refreshMode = options && options.refreshMode === "refresh" ? "refresh" : "cache-first";
+  const selectionState =
+    typeof getRuntimeSelectionState === "function"
+      ? getRuntimeSelectionState()
+      : { curMode, curSite, curTab };
   const liveAccountInfo =
     typeof ACCOUNT_UTILS !== "undefined" && ACCOUNT_UTILS && typeof ACCOUNT_UTILS.getAccountInfo === "function"
       ? ACCOUNT_UTILS.getAccountInfo()
@@ -10261,9 +10291,9 @@ async function collectExportData(onProgress, options) {
       }
     },
     ui: {
-      curMode,
-      curSite,
-      curTab
+      curMode: selectionState.curMode,
+      curSite: selectionState.curSite,
+      curTab: selectionState.curTab
     },
     mergedMeta:
       typeof getRuntimeMergedMeta === "function"
@@ -10326,10 +10356,12 @@ function savedAtIso(d) {
     if (capabilities && capabilities.isReadOnly) {
       throw new Error("snapshot export is disabled in read-only mode");
     }
+    const runtimeSites =
+      typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
     const btn = document.getElementById("sadv-save-btn");
     const originalText = btn.textContent;
     btn.disabled = true;
-    btn.textContent = "0/" + allSites.length;
+    btn.textContent = "0/" + runtimeSites.length;
     try {
       const savedAt = new Date();
       const payload = await collectExportData(

@@ -35,6 +35,13 @@
 - read-only bootstrap
 - snapshot compat API
 
+추가 경계 규칙:
+
+- 공통 UI 파일은 `allSites`, `mergedMeta`, `cacheMeta`, `curMode`, `curSite`, `curTab`
+  같은 값을 직접 전역에서 읽기보다 **provider facade (`07-data-provider.js`)** 를 우선 사용한다.
+- 특히 `09-ui-controls.js`, `10-all-sites-view.js`, `11-site-view.js` 에서
+  새로운 전역 직접 참조를 늘리는 방식으로 문제를 해결하지 않는다.
+
 ### 원칙 C — snapshot 전용 UI는 예외로만 허용
 
 허용 범위:
@@ -155,6 +162,7 @@ snapshot entry 변경으로 본다.
 3. provider 차이를 UI 차이로 해결하지 말 것
 4. `12-snapshot.js` 안에 새로운 표현 로직을 과도하게 집어넣지 말 것
 5. 공통 renderer 수정 후 saved HTML 검증을 생략하지 말 것
+6. 공통 UI에서 `allSites`/`mergedMeta`/selection state 직접 참조를 다시 늘리지 말 것
 
 ---
 

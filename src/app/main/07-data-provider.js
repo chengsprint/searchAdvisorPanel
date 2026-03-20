@@ -149,6 +149,32 @@ function getRuntimeCacheMeta() {
   return state && state.cacheMeta ? state.cacheMeta : null;
 }
 
+function getRuntimeSelectionState() {
+  // stage 2-2 seam:
+  // export/offline/live가 현재 선택 상태(curMode/curSite/curTab)를 직접 전역에서
+  // 주워 읽지 않도록, shell state를 통과한 최소 shape를 제공한다.
+  //
+  // 의도:
+  // - UI selection을 단일 shape로 읽게 만들기
+  // - 나중에 snapshot/live가 selection 복원 방식을 바꿔도
+  //   호출자는 이 seam만 유지하면 되게 하기
+  const state = getRuntimeShellState();
+  return {
+    curMode:
+      state && typeof state.curMode === "string"
+        ? state.curMode
+        : (typeof curMode === "string" ? curMode : CONFIG.MODE.ALL),
+    curSite:
+      state && typeof state.curSite === "string"
+        ? state.curSite
+        : (typeof curSite === "string" ? curSite : null),
+    curTab:
+      state && typeof state.curTab === "string"
+        ? state.curTab
+        : (typeof curTab === "string" ? curTab : "overview"),
+  };
+}
+
 function getRuntimeSiteData(site) {
   // 1단계 seam:
   // site detail view가 provider를 직접 의식하지 않도록,
