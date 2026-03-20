@@ -48,6 +48,7 @@ async function main() {
   const page = await browser.newPage({ viewport: { width: 1400, height: 1200 } });
   const pageErrors = [];
   const consoleErrors = [];
+  const auditNotes = [];
 
   page.on("pageerror", (error) => pageErrors.push(String(error)));
   page.on("console", (msg) => {
@@ -61,6 +62,7 @@ async function main() {
 
   const result = {};
   const failures = [];
+  const stepErrors = {};
 
   function assertAudit(condition, message) {
     if (!condition) failures.push(message);
@@ -344,13 +346,35 @@ async function main() {
     };
   });
   if (comboSearchSeed.searchTerm) {
-    await page.fill("#sadv-combo-search", comboSearchSeed.searchTerm);
+    try {
+      const searchInput = page.locator("#sadv-combo-search");
+      const inputVisible = await searchInput.isVisible({ timeout: 1500 });
+      if (!inputVisible) {
+        stepErrors.comboSearch = "combo-search-input-not-visible";
+        auditNotes.push("[combo-search-input] combo-search-input-not-visible");
+      } else {
+        await page.evaluate((term) => {
+          const input = document.getElementById("sadv-combo-search");
+          if (!input) return;
+          input.value = term;
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+          input.dispatchEvent(new Event("change", { bubbles: true }));
+        }, comboSearchSeed.searchTerm);
+      }
+    } catch (error) {
+      stepErrors.comboSearch = error && error.message ? error.message : String(error);
+      auditNotes.push(
+        `[combo-search-input] ${stepErrors.comboSearch}`,
+      );
+    }
   }
   await page.waitForTimeout(200);
   result.comboSearch = await page.evaluate(() => {
     const items = Array.from(document.querySelectorAll(".sadv-combo-item[data-site]"));
+    const input = document.getElementById("sadv-combo-search");
     return {
       searchTerm: document.getElementById("sadv-combo-search")?.value || "",
+      inputVisible: !!(input && input.offsetParent),
       totalItems: items.length,
       visibleItems: items
         .filter((el) => getComputedStyle(el).display !== "none")
@@ -358,6 +382,7 @@ async function main() {
       hiddenCount: items.filter((el) => getComputedStyle(el).display === "none").length,
     };
   });
+  result.comboSearch.stepError = stepErrors.comboSearch || null;
 
   // Stage 5. Select one visible site and confirm the saved HTML shell updates.
   const visibleItems = await page.locator('.sadv-combo-item[data-site]').evaluateAll((els) =>
@@ -366,8 +391,15 @@ async function main() {
       .map((el) => el.getAttribute("data-site")),
   );
   if (visibleItems.length > 0) {
-    await page.locator(`.sadv-combo-item[data-site="${visibleItems[0]}"]`).click();
-    await page.waitForTimeout(500);
+    try {
+      await page.locator(`.sadv-combo-item[data-site="${visibleItems[0]}"]`).click();
+      await page.waitForTimeout(500);
+    } catch (error) {
+      stepErrors.comboSelect = error && error.message ? error.message : String(error);
+      auditNotes.push(
+        `[combo-select-click] ${stepErrors.comboSelect}`,
+      );
+    }
   }
 
   result.comboSelect = await page.evaluate(() => ({
@@ -379,6 +411,7 @@ async function main() {
       (el) => el.dataset.site || "",
     ),
   }));
+  result.comboSelect.stepError = stepErrors.comboSelect || null;
 
   result.siteSelectionParity = await page.evaluate(() => {
     const snapshotApi = window.__SEARCHADVISOR_SNAPSHOT_API__ || null;
@@ -413,21 +446,34 @@ async function main() {
     );
   });
   await page.waitForTimeout(400);
-  await page.locator(".sadv-allcard[data-site]").first().click();
-  await page.waitForTimeout(500);
+  try {
+    await page.locator(".sadv-allcard[data-site]").first().click();
+    await page.waitForTimeout(500);
+  } catch (error) {
+    stepErrors.cardToSite = error && error.message ? error.message : String(error);
+    auditNotes.push(
+      `[all-sites-card-click] ${stepErrors.cardToSite}`,
+    );
+  }
 
   result.cardToSite = await page.evaluate(() => ({
     modeAll: !!document.querySelector('.sadv-mode[data-m="all"].on'),
     modeSite: !!document.querySelector('.sadv-mode[data-m="site"].on'),
     comboLabel: document.getElementById("sadv-combo-label")?.textContent?.trim() || null,
   }));
+  result.cardToSite.stepError = stepErrors.cardToSite || null;
 
   // Stage 7. Sub-tab transition. Saved HTML can sometimes restore the first tab
   // but fail on later tab event wiring or body rerender.
   const visibleTabs = await page.locator(".sadv-t").allTextContents();
   if (visibleTabs.length > 1) {
-    await page.locator(".sadv-t").nth(1).click();
-    await page.waitForTimeout(300);
+    try {
+      await page.locator(".sadv-t").nth(1).click();
+      await page.waitForTimeout(300);
+    } catch (error) {
+      stepErrors.subTabs = error && error.message ? error.message : String(error);
+      auditNotes.push(`[sub-tabs] ${stepErrors.subTabs}`);
+    }
   }
 
   result.subTabs = await page.evaluate(() => ({
@@ -436,6 +482,7 @@ async function main() {
       on: el.classList.contains("on"),
     })),
   }));
+  result.subTabs.stepError = stepErrors.subTabs || null;
 
   // Stage 7.5. Representative sub-tab data presence check.
   // Tab wiring can still look healthy while the rendered body silently falls
@@ -564,6 +611,7 @@ async function main() {
   // correlate UI regressions with missing bindings/style dependencies.
   result.pageErrors = pageErrors;
   result.consoleErrors = consoleErrors;
+  result.auditNotes = auditNotes;
   result.failures = failures;
 
   assertAudit(result.initial.modeAll, 'initial mode should start in all-sites view');
@@ -656,6 +704,7 @@ async function main() {
   );
   assertAudit(
     !!result.initialSelectionParity.dom &&
+      !!result.initialSelectionParity.api &&
       result.initialSelectionParity.dom.curMode === result.initialSelectionParity.api.curMode &&
       result.initialSelectionParity.dom.curTab === result.initialSelectionParity.api.curTab &&
       result.initialSelectionParity.dom.allSitesPeriodDays === result.initialSelectionParity.api.allSitesPeriodDays,
@@ -681,8 +730,16 @@ async function main() {
   );
 
   assertAudit(
+    !result.comboSearch.stepError,
+    `combo search step should complete without runtime interaction error${result.comboSearch.stepError ? `: ${result.comboSearch.stepError}` : ""}`,
+  );
+  assertAudit(
     !!result.comboSearch.searchTerm,
     'combo search step should derive a real search term from the reopened saved HTML',
+  );
+  assertAudit(
+    result.comboSearch.inputVisible,
+    'combo search input should be visible before filtering starts',
   );
   assertAudit(
     result.comboSearch.visibleItems.length > 0,
@@ -699,6 +756,10 @@ async function main() {
     );
   }
 
+  assertAudit(
+    !result.comboSelect.stepError,
+    `combo selection should complete without click error${result.comboSelect.stepError ? `: ${result.comboSelect.stepError}` : ""}`,
+  );
   assertAudit(
     result.comboSelect.activeItems.length > 0,
     'combo selection should leave one active combo item',
@@ -723,9 +784,17 @@ async function main() {
 
   assertAudit(result.cardToSite.modeSite, 'all-sites card click should return to site mode');
   assertAudit(
+    !result.cardToSite.stepError,
+    `all-sites card click should complete without interaction error${result.cardToSite.stepError ? `: ${result.cardToSite.stepError}` : ""}`,
+  );
+  assertAudit(
     Array.isArray(result.subTabs.visibleTabs) &&
       result.subTabs.visibleTabs.some((tab) => tab.on),
     'saved HTML should keep one active sub-tab after tab navigation',
+  );
+  assertAudit(
+    !result.subTabs.stepError,
+    `sub-tab transition should complete without click error${result.subTabs.stepError ? `: ${result.subTabs.stepError}` : ""}`,
   );
   assertAudit(
     !!result.subTabData &&

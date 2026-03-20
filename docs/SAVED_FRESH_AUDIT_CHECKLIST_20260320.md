@@ -5,6 +5,7 @@
 중요:
 - **오래된 saved HTML로 현재 runtime 회귀 여부를 판정하지 않는다**
 - 반드시 **현재 runtime으로 새로 저장한 파일**만 audit 대상으로 삼는다
+- audit 시작 전 **ref badge가 현재 검수 대상 runtime ref와 일치하는지** 먼저 확인한다
 
 ---
 
@@ -14,6 +15,7 @@ fresh saved HTML을 새로 생성한 뒤 아래를 순서대로 본다.
 
 ### 1) 초기 열림
 - ref badge 표시
+- ref badge가 현재 검수 대상 runtime ref와 일치
 - 패널 / 헤더 / 본문 / 탭 존재
 - `pageErrors = []`
 - `consoleErrors = []`
@@ -80,6 +82,9 @@ fresh saved HTML을 새로 생성한 뒤 아래를 순서대로 본다.
 ## 4. 주의사항
 
 - Saved 회귀는 UI보다 먼저 `pageerror / console error`로 본다
+- ref badge가 오래된 커밋(예: 현재 head보다 한참 이전 ref)이면, 그 결과는 **현재 코드 회귀가 아니라 stale saved HTML**일 가능성을 먼저 본다
+- audit 스크립트는 깨진 saved HTML을 만나도 **중간 예외로 죽지 말고** 가능한 한 JSON 결과와 `failures`를 끝까지 남겨야 한다
+- `auditNotes`는 hard failure가 아니라 “어느 단계가 예외로 건너뛰었는지”를 남기는 보조 진단 필드로 취급한다
 - Phase 1에서는 `12-snapshot.js` 대수술보다 contract 유지 여부를 우선 본다
 - selection/action/provider contract가 깨졌다면 UI가 얼핏 보이더라도 통과로 처리하지 않는다
 
