@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T05:19:18Z";
-var __SADV_GIT_HEAD__="ff13371";
+var __SADV_BUILD_STAMP__="2026-03-20T05:23:21Z";
+var __SADV_GIT_HEAD__="77df1b9";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -2113,15 +2113,22 @@ function chartCard(title, valueStr, valueCol, svgEl, labelsArr) {
 // KPI grid function
 function kpiGrid(items) {
   const g = document.createElement("div");
-  g.style.cssText = `display:grid;grid-template-columns:repeat(${Math.min(items.length, 4)},minmax(0,1fr));gap:12px;margin-bottom:${T.spaceCard}`;
   const isCompactViewport = typeof window !== "undefined" && window.innerWidth <= 768;
-  const valueFontSize = isCompactViewport ? "17px" : "18px";
+  const columns = isCompactViewport
+    ? Math.min(items.length, 2)
+    : Math.min(items.length, 4);
+  g.style.cssText = `display:grid;grid-template-columns:repeat(${columns},minmax(0,1fr));gap:${isCompactViewport ? "8px" : "12px"};margin-bottom:${T.spaceCard}`;
+  const valueFontSize = isCompactViewport ? "15px" : "18px";
+  const labelFontSize = isCompactViewport ? "10px" : "11px";
+  const subFontSize = isCompactViewport ? "10px" : "11px";
+  const cardPadding = isCompactViewport ? "14px 12px" : `${T.spaceCard} 18px`;
+  const minHeight = isCompactViewport ? "96px" : "104px";
   items.forEach(function (it) {
     const d = document.createElement("div");
     d.style.cssText =
-      "background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);border-radius:" + T.radiusNone + ";padding:" + T.spaceCard + " 18px;text-align:center;min-width:0;min-height:104px;display:flex;flex-direction:column;justify-content:flex-start;align-items:center;transition:all 0.2s;box-shadow:" + T.shadowCard + ";overflow:hidden";
+      "background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);border-radius:" + T.radiusNone + ";padding:" + cardPadding + ";text-align:center;min-width:0;min-height:" + minHeight + ";display:flex;flex-direction:column;justify-content:flex-start;align-items:center;transition:all 0.2s;box-shadow:" + T.shadowCard + ";overflow:hidden";
     const iconHtml = it.icon ? `<div style="margin-bottom:10px;color:${it.color || 'var(--sadv-text-secondary,#c6c6c6)'};opacity:0.92">${it.icon}</div>` : "";
-    d.innerHTML = sanitizeHTML(`${iconHtml}<div style="width:100%;font-size:11px;color:var(--sadv-text-tertiary,#8d8d8d);line-height:1.4;margin-bottom:8px;word-break:keep-all;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;text-align:center">${escHtml(it.label)}</div><div style="width:100%;font-size:${valueFontSize};font-weight:650;color:${it.color || C.text};line-height:1.06;letter-spacing:-0.01em;word-break:keep-all;text-align:center">${escHtml(it.value)}</div><div style="width:100%;font-size:11px;color:var(--sadv-text-secondary,#c6c6c6);line-height:1.4;margin-top:8px;visibility:${it.sub ? "visible" : "hidden"};text-align:center">${escHtml(it.sub || "&nbsp;")}</div>`);
+    d.innerHTML = sanitizeHTML(`${iconHtml}<div style="width:100%;font-size:${labelFontSize};color:var(--sadv-text-tertiary,#8d8d8d);line-height:1.4;margin-bottom:${isCompactViewport ? "6px" : "8px"};word-break:keep-all;font-weight:600;text-transform:uppercase;letter-spacing:${isCompactViewport ? "0.02em" : "0.04em"};text-align:center">${escHtml(it.label)}</div><div style="width:100%;font-size:${valueFontSize};font-weight:650;color:${it.color || C.text};line-height:1.06;letter-spacing:${isCompactViewport ? "-0.03em" : "-0.01em"};word-break:keep-all;text-align:center">${escHtml(it.value)}</div><div style="width:100%;font-size:${subFontSize};color:var(--sadv-text-secondary,#c6c6c6);line-height:1.4;margin-top:${isCompactViewport ? "6px" : "8px"};visibility:${it.sub ? "visible" : "hidden"};text-align:center">${escHtml(it.sub || "&nbsp;")}</div>`);
     g.appendChild(d);
   });
   return g;
