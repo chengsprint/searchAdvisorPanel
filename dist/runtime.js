@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-20T04:57:37Z";
-var __SADV_GIT_HEAD__="1ec0b57";
+var __SADV_BUILD_STAMP__="2026-03-20T05:16:34Z";
+var __SADV_GIT_HEAD__="05fa97a";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -10532,13 +10532,17 @@ function savedAtIso(d) {
   <title>${escHtml("SearchAdvisor Snapshot - " + siteLabel)}</title>
   <style>
     html,body{margin:0;padding:0;background:#050505;color:#fff7dd;font-family:"IBM Plex Sans KR","IBM Plex Sans",Pretendard,system-ui,sans-serif}
-    body{padding:28px 18px 40px}
+    body{padding:28px 18px 40px;display:flex;flex-direction:column;align-items:center}
     a{color:#ffd400}
     :root{--snapshot-panel-width:520px}
-    .snapshot-meta{
+    .snapshot-shell{
       width:min(100%,var(--snapshot-panel-width));
       box-sizing:border-box;
-      margin:0 auto 12px;
+    }
+    .snapshot-meta{
+      width:100%;
+      box-sizing:border-box;
+      margin:0 0 12px;
       padding:10px 12px;
       border:1px solid #4a3b00;
       border-radius:20px;
@@ -10579,11 +10583,12 @@ function savedAtIso(d) {
     #sadv-p{
       position:relative !important;
       top:auto !important;
+      left:auto !important;
       right:auto !important;
-      width:min(100%,var(--snapshot-panel-width)) !important;
+      width:100% !important;
       box-sizing:border-box !important;
       height:auto !important;
-      margin:0 auto !important;
+      margin:0 !important;
       border:1px solid #4a3b00 !important;
       border-radius:20px !important;
       overflow:hidden !important;
@@ -10599,18 +10604,43 @@ function savedAtIso(d) {
       z-index:2147483646 !important;
       margin:0 !important;
     }
+    @media (max-width: 640px){
+      body{
+        padding:16px 12px 28px;
+      }
+      .snapshot-shell{
+        width:100%;
+      }
+      .snapshot-meta{
+        margin-bottom:10px;
+        padding:10px 12px;
+        border-radius:16px;
+      }
+      #sadv-p{
+        border-radius:16px !important;
+      }
+      #sadv-header{
+        padding:16px 18px 10px 18px !important;
+      }
+      #sadv-bd{
+        padding-left:12px !important;
+        padding-right:12px !important;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="snapshot-meta">
-    <details class="snapshot-meta-details">
-      <summary class="snapshot-meta-summary">
-        <span class="snapshot-meta-title">SearchAdvisor Snapshot</span>
-      </summary>
-      <div class="snapshot-meta-copy">\uc800\uc7a5 \uc2dc\uac01: ${escHtml(savedLabel)}<br>\ud504\ub85c\uadf8\ub7a8 \ubc84\uc804: ${escHtml((window.__SEARCHADVISOR_RUNTIME_VERSION__ || "snapshot"))}</div>
-    </details>
+  <div class="snapshot-shell">
+    <div class="snapshot-meta">
+      <details class="snapshot-meta-details">
+        <summary class="snapshot-meta-summary">
+          <span class="snapshot-meta-title">SearchAdvisor Snapshot</span>
+        </summary>
+        <div class="snapshot-meta-copy">\uc800\uc7a5 \uc2dc\uac01: ${escHtml(savedLabel)}<br>\ud504\ub85c\uadf8\ub7a8 \ubc84\uc804: ${escHtml((window.__SEARCHADVISOR_RUNTIME_VERSION__ || "snapshot"))}</div>
+      </details>
+    </div>
+    ${clone.outerHTML}
   </div>
-  ${clone.outerHTML}
   <script>
     // <!-- SADV_PAYLOAD_START -->
     const EXPORT_PAYLOAD_RAW = ${exportPayloadJson};
