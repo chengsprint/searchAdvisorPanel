@@ -7,18 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.5] - 2026-03-21
+
 ### Added
 - 외부 스크립트 고정 진입점을 위한 `dist/loader.js` 추가
 - 운영 승인 버전을 선언하는 `dist/stable.json` 추가
 - stable manifest를 안전하게 갱신하는 `scripts/write_stable_manifest.js` 추가
 - `docs/LOADER_STABLE_WORKFLOW_20260320.md`, `dist/LOADER_STABLE_CONTRACT.md` 추가
+- 전체현황 기간 필터(`1일 / 7일 / 30일 / 60일 / 90일`) 추가
+- canonical public action `switchSite(site)` 추가
+- `docs/PHASE2_FINAL_HANDOFF_20260321.md` 추가
+- `docs/PHASE3_CURRENT_SCOPE_HANDOFF_20260321.md` 추가
 
 ### Changed
 - 운영 반영 전략을 `runtime.js 직접 링크` 대신 `loader.js -> stable.json -> runtime.js` 구조로 정리
 - 개발 채널(`main`)과 운영 채널(`release`)을 분리하는 최소 복잡도 GitHub 워크플로우 문서화
+- provider/action/rows seam을 정리해 Live / Saved / Merge가 더 공통 contract를 따르도록 수렴
+- snapshot helper 직렬화를 helper pack 단위로 재구성하고, public facade / runtime boot / shell injection 책임을 더 읽기 쉽게 분리
+- dormant compat bridge를 state / label / sync / action / observer / body assembly 단위로 세분화
+- Phase 3 current planned scope를 문서와 코드 주석 기준으로 마감 가능한 상태로 정리
 
 ### Fixed
 - `fetchExposeData`/`INVALID_ENCID` 등 사용자 오류가 콘솔에만 남고 패널에는 잘 보이지 않던 문제를 패널 상단 오류 배너로 보완
+- 새 크롬/무캐시 환경에서 `console/board` 페이지가 사이트 목록을 복구하지 못하던 회귀를 legacy `api-board/list/<encId>` fallback 복구로 수정
+- saved HTML에서 helper 누락/직렬화 순서 문제로 발생하던 전체현황 전환, period, 콤보, 카드 클릭 관련 회귀를 반복 보강
+- saved public facade / snapshot richer API alias / selection parity 관련 잔여 불일치 정리
+
+### Validation
+- `npm run build` 통과
+- `npm run check` 통과
+- `node tests/merge-test.js` 통과
+- `node tests/phase1-verify-runtime.js` 통과
+- fresh saved HTML 기준 `scripts/snapshot_workflow_audit.js` 반복 통과 (`failures: []`, `pageErrors: []`, `consoleErrors: []`)
+
+### Documentation
+- `docs/RELEASE_NOTES_v2.0.5_20260321.md` 추가
+- `src/app/main/PHASE3_BOOTSTRAP_REDUCTION_PLAN.md` 보강
+- `src/app/main/SNAPSHOT_IMPLEMENTATION_GUIDE.md` 보강
+
+## [Unreleased]
+
 
 ## [2.0.4] - 2026-03-20
 
