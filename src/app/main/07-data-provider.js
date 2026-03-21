@@ -95,6 +95,8 @@ function createDefaultRuntimeSaveStatus() {
     active: false,
     state: "idle",
     phase: null,
+    runtimeType: "live",
+    uiHidden: false,
     stageLabel: "",
     detail: "",
     startedAt: null,
