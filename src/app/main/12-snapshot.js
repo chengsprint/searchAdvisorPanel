@@ -1623,7 +1623,7 @@ function buildSnapshotSerializedHelperSection() {
     ];
   }
 
-  function buildSnapshotApiCompatSyncLines() {
+  function buildSnapshotApiCompatSyncDomReadLines() {
     return [
       "  function syncFromLegacy() {",
       '    const activeMode = document.querySelector("#sadv-mode-bar .sadv-mode.on");',
@@ -1632,6 +1632,11 @@ function buildSnapshotSerializedHelperSection() {
       '    const siteLabel = document.querySelector("#sadv-site-label span") || document.getElementById("sadv-site-label");',
       "    if (activeMode) snapshotState.curMode = activeMode.getAttribute('data-m') === 'site' ? 'site' : 'all';",
       "    if (activeTab) snapshotState.curTab = activeTab.getAttribute('data-t') || 'overview';",
+    ];
+  }
+
+  function buildSnapshotApiCompatSyncResolvedSiteLines() {
+    return [
       "    const resolvedSite =",
       '      resolveSiteFromLegacyLabel(comboLabel ? comboLabel.textContent : "") ||',
       '      resolveSiteFromLegacyLabel(siteLabel ? siteLabel.textContent : "") ||',
@@ -1641,7 +1646,24 @@ function buildSnapshotSerializedHelperSection() {
       "    snapshotState.curSite = resolvedSite;",
       "    notify();",
       "  }",
+    ];
+  }
+
+  function buildSnapshotApiCompatSyncScheduleLines() {
+    return [
       "  function scheduleSync() { Promise.resolve().then(syncFromLegacy); }",
+    ];
+  }
+
+  function buildSnapshotApiCompatSyncLines() {
+    return [
+      // sync slice:
+      // dormant compat bridge라도 DOM을 어디서 읽는지, 선택 사이트를 어떻게 해석하는지,
+      // 그리고 언제 microtask로 다시 sync하는지를 분리해 두어야
+      // 나중에 bridge 유지/제거 판단을 더 안전하게 할 수 있다.
+      ...buildSnapshotApiCompatSyncDomReadLines(),
+      ...buildSnapshotApiCompatSyncResolvedSiteLines(),
+      ...buildSnapshotApiCompatSyncScheduleLines(),
     ];
   }
 

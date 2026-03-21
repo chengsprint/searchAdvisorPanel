@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-21T00:40:49Z";
-var __SADV_GIT_HEAD__="8463abd";
+var __SADV_BUILD_STAMP__="2026-03-21T00:50:23Z";
+var __SADV_GIT_HEAD__="ce45a59";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -12886,7 +12886,7 @@ function buildSnapshotSerializedHelperSection() {
     ];
   }
 
-  function buildSnapshotApiCompatSyncLines() {
+  function buildSnapshotApiCompatSyncDomReadLines() {
     return [
       "  function syncFromLegacy() {",
       '    const activeMode = document.querySelector("#sadv-mode-bar .sadv-mode.on");',
@@ -12895,6 +12895,11 @@ function buildSnapshotSerializedHelperSection() {
       '    const siteLabel = document.querySelector("#sadv-site-label span") || document.getElementById("sadv-site-label");',
       "    if (activeMode) snapshotState.curMode = activeMode.getAttribute('data-m') === 'site' ? 'site' : 'all';",
       "    if (activeTab) snapshotState.curTab = activeTab.getAttribute('data-t') || 'overview';",
+    ];
+  }
+
+  function buildSnapshotApiCompatSyncResolvedSiteLines() {
+    return [
       "    const resolvedSite =",
       '      resolveSiteFromLegacyLabel(comboLabel ? comboLabel.textContent : "") ||',
       '      resolveSiteFromLegacyLabel(siteLabel ? siteLabel.textContent : "") ||',
@@ -12904,7 +12909,24 @@ function buildSnapshotSerializedHelperSection() {
       "    snapshotState.curSite = resolvedSite;",
       "    notify();",
       "  }",
+    ];
+  }
+
+  function buildSnapshotApiCompatSyncScheduleLines() {
+    return [
       "  function scheduleSync() { Promise.resolve().then(syncFromLegacy); }",
+    ];
+  }
+
+  function buildSnapshotApiCompatSyncLines() {
+    return [
+      // sync slice:
+      // dormant compat bridge라도 DOM을 어디서 읽는지, 선택 사이트를 어떻게 해석하는지,
+      // 그리고 언제 microtask로 다시 sync하는지를 분리해 두어야
+      // 나중에 bridge 유지/제거 판단을 더 안전하게 할 수 있다.
+      ...buildSnapshotApiCompatSyncDomReadLines(),
+      ...buildSnapshotApiCompatSyncResolvedSiteLines(),
+      ...buildSnapshotApiCompatSyncScheduleLines(),
     ];
   }
 

@@ -184,6 +184,12 @@
   `buildSnapshotApiCompatMutationObserverLines()`,
   `buildSnapshotApiCompatObserverFinalizeLines()`
   처럼 더 세밀하게 나누는 다음 slice로 적합하다.
+  sync 단계도 같은 이유로 비교적 안전한 slice다.
+  `buildSnapshotApiCompatSyncDomReadLines()`,
+  `buildSnapshotApiCompatSyncResolvedSiteLines()`,
+  `buildSnapshotApiCompatSyncScheduleLines()`
+  처럼 쪼개더라도, `syncFromLegacy()`가 읽는 DOM selector와
+  resolved-site 우선순위는 바꾸지 않는 것이 불변식이다.
   반대로 action fallback은 `setSite`/`switchSite` alias 의미와
   `scheduleSync()` 타이밍을 그대로 유지해야 하므로,
   지금 단계에서는 구조 변경보다 주석/문서 고정이 우선이다.
