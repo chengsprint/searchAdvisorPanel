@@ -1594,7 +1594,7 @@ function buildSnapshotSerializedHelperSection() {
     ];
   }
 
-  function buildSnapshotApiCompatLabelResolverLines() {
+  function buildSnapshotApiCompatSiteShortNameLines() {
     return [
       "  function getSiteShortName(site) {",
       '    if (!site) return "site";',
@@ -1602,12 +1602,22 @@ function buildSnapshotSerializedHelperSection() {
       '    if (site.indexOf("http://") === 0) return site.slice(7);',
       "    return site;",
       "  }",
+    ];
+  }
+
+  function buildSnapshotApiCompatSiteLabelLines() {
+    return [
       "  function getSiteLabel(site) {",
       '    if (!site) return "site";',
       '    const meta = snapshotState.siteMeta && typeof snapshotState.siteMeta === "object" ? snapshotState.siteMeta[site] || null : null;',
       '    const label = meta ? (meta.displayLabel || meta.label || meta.shortName || "").trim() : "";',
       "    return label || getSiteShortName(site);",
       "  }",
+    ];
+  }
+
+  function buildSnapshotApiCompatLegacySiteResolverLines() {
+    return [
       "  function resolveSiteFromLegacyLabel(labelText) {",
       '    const trimmed = (labelText || "").trim();',
       "    if (!trimmed) return null;",
@@ -1620,6 +1630,14 @@ function buildSnapshotSerializedHelperSection() {
       "      return site.toLowerCase() === normalized || getSiteShortName(site).toLowerCase() === normalized || getSiteLabel(site).toLowerCase() === normalized;",
       "    }) || null;",
       "  }",
+    ];
+  }
+
+  function buildSnapshotApiCompatLabelResolverLines() {
+    return [
+      ...buildSnapshotApiCompatSiteShortNameLines(),
+      ...buildSnapshotApiCompatSiteLabelLines(),
+      ...buildSnapshotApiCompatLegacySiteResolverLines(),
     ];
   }
 

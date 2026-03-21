@@ -184,6 +184,13 @@
   `buildSnapshotApiCompatMutationObserverLines()`,
   `buildSnapshotApiCompatObserverFinalizeLines()`
   처럼 더 세밀하게 나누는 다음 slice로 적합하다.
+  label resolver도 같은 이유로 비교적 안전한 구조-only slice다.
+  `buildSnapshotApiCompatSiteShortNameLines()`,
+  `buildSnapshotApiCompatSiteLabelLines()`,
+  `buildSnapshotApiCompatLegacySiteResolverLines()`
+  처럼 나눌 수 있지만, `https://` / `http://` 제거 규칙,
+  `displayLabel || label || shortName` 우선순위,
+  exact match 이후 lower-case normalized match 순서는 불변식으로 본다.
   sync 단계도 같은 이유로 비교적 안전한 slice다.
   `buildSnapshotApiCompatSyncDomReadLines()`,
   `buildSnapshotApiCompatSyncResolvedSiteLines()`,
