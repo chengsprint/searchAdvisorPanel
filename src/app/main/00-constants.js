@@ -705,6 +705,8 @@ const ERROR_MESSAGES = {
   DOWNLOAD_FAILED: "파일 다운로드에 실패했어요. 다시 시도해주세요.",
   HTML_SAVE_ERROR: "HTML 저장 중 오류가 발생했어요. 다시 시도해주세요.",
   EXPORT_INCOMPLETE: "일부 사이트 데이터를 내보내지 못했어요.",
+  SAVE_BLOCKED_PANEL_ERROR: "패널 작업 중 문제가 남아 있어 저장을 진행하지 않았어요.",
+  SAVE_BLOCKED_TOO_MANY_FAILURES: "조회 실패 사이트가 많아 저장을 진행하지 않았어요.",
 
   // Import/Merge Errors
   IMPORT_FAILED: "데이터 가져오기에 실패했어요.",
@@ -793,9 +795,18 @@ function buildPanelUserErrorState(userMessage, technicalError = null, context = 
   if (userMessage === ERROR_MESSAGES.INVALID_ENCID) {
     hint =
       "현재 페이지에서 사용자 정보를 읽지 못했습니다. 보통 서치어드바이저 로그인이 풀렸거나, 서치어드바이저가 아닌 페이지에서 실행했을 때 이런 문제가 생깁니다. 네이버/서치어드바이저에 다시 로그인한 뒤 해당 리포트 페이지에서 새로고침 후 다시 실행해 주세요.";
+  } else if (userMessage === ERROR_MESSAGES.SAVE_BLOCKED_PANEL_ERROR) {
+    hint =
+      "패널 작업 중 치명적인 오류가 감지되어 저장을 중단했습니다. 현재 페이지를 새로고침한 뒤 패널을 다시 실행하고, 오류가 사라진 뒤 다시 저장해 주세요.";
+  } else if (userMessage === ERROR_MESSAGES.SAVE_BLOCKED_TOO_MANY_FAILURES) {
+    hint =
+      "사이트 조회 실패 비율이 허용 범위를 넘어 저장을 중단했습니다. 잠시 후 다시 시도하거나, 새로고침 후 데이터가 안정적으로 채워진 뒤 다시 저장해 주세요.";
   } else if (context === "downloadSnapshot") {
     hint =
       "저장 직전 화면 상태를 다시 수집하는 과정에서 문제가 생겼습니다. 잠시 후 다시 저장하거나, 패널을 새로고침한 뒤 다시 시도해 주세요.";
+  } else if (context === "downloadSnapshot-blocked") {
+    hint =
+      "저장 결과를 신뢰하기 어려운 상태라 다운로드를 막았습니다. 오류 배너나 실패 비율을 확인한 뒤 다시 시도해 주세요.";
   }
 
   return {

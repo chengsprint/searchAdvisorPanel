@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-21T15:58:37Z";
-var __SADV_GIT_HEAD__="c50fb4a";
+var __SADV_BUILD_STAMP__="2026-03-21T17:08:48Z";
+var __SADV_GIT_HEAD__="3cefb5d";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -1430,6 +1430,8 @@ const ERROR_MESSAGES = {
   DOWNLOAD_FAILED: "파일 다운로드에 실패했어요. 다시 시도해주세요.",
   HTML_SAVE_ERROR: "HTML 저장 중 오류가 발생했어요. 다시 시도해주세요.",
   EXPORT_INCOMPLETE: "일부 사이트 데이터를 내보내지 못했어요.",
+  SAVE_BLOCKED_PANEL_ERROR: "패널 작업 중 문제가 남아 있어 저장을 진행하지 않았어요.",
+  SAVE_BLOCKED_TOO_MANY_FAILURES: "조회 실패 사이트가 많아 저장을 진행하지 않았어요.",
 
   // Import/Merge Errors
   IMPORT_FAILED: "데이터 가져오기에 실패했어요.",
@@ -1518,9 +1520,18 @@ function buildPanelUserErrorState(userMessage, technicalError = null, context = 
   if (userMessage === ERROR_MESSAGES.INVALID_ENCID) {
     hint =
       "현재 페이지에서 사용자 정보를 읽지 못했습니다. 보통 서치어드바이저 로그인이 풀렸거나, 서치어드바이저가 아닌 페이지에서 실행했을 때 이런 문제가 생깁니다. 네이버/서치어드바이저에 다시 로그인한 뒤 해당 리포트 페이지에서 새로고침 후 다시 실행해 주세요.";
+  } else if (userMessage === ERROR_MESSAGES.SAVE_BLOCKED_PANEL_ERROR) {
+    hint =
+      "패널 작업 중 치명적인 오류가 감지되어 저장을 중단했습니다. 현재 페이지를 새로고침한 뒤 패널을 다시 실행하고, 오류가 사라진 뒤 다시 저장해 주세요.";
+  } else if (userMessage === ERROR_MESSAGES.SAVE_BLOCKED_TOO_MANY_FAILURES) {
+    hint =
+      "사이트 조회 실패 비율이 허용 범위를 넘어 저장을 중단했습니다. 잠시 후 다시 시도하거나, 새로고침 후 데이터가 안정적으로 채워진 뒤 다시 저장해 주세요.";
   } else if (context === "downloadSnapshot") {
     hint =
       "저장 직전 화면 상태를 다시 수집하는 과정에서 문제가 생겼습니다. 잠시 후 다시 저장하거나, 패널을 새로고침한 뒤 다시 시도해 주세요.";
+  } else if (context === "downloadSnapshot-blocked") {
+    hint =
+      "저장 결과를 신뢰하기 어려운 상태라 다운로드를 막았습니다. 오류 배너나 실패 비율을 확인한 뒤 다시 시도해 주세요.";
   }
 
   return {
@@ -11557,6 +11568,7 @@ let backgroundSnapshotSaveInFlightPromise = null;
 let snapshotSaveOverlayCleanupTimer = null;
 let snapshotSaveOverlaySuppressed = false;
 let snapshotBackgroundCleanupTimer = null;
+const SNAPSHOT_SAVE_BLOCK_FAILED_RATIO = 0.2;
 
 function createIdleDirectSaveStatus() {
   return {
@@ -11751,6 +11763,7 @@ function buildSnapshotSaveOverlayTitle(status) {
   if (state === "triggering-download") return "다운로드 시작 중";
   if (state === "completed-with-issues") return "저장 완료 · 이슈 있음";
   if (state === "completed") return "저장 완료";
+  if (state === "blocked") return "저장 중단";
   if (state === "failed") return "저장 실패";
   return "저장 대기 중";
 }
@@ -11759,6 +11772,7 @@ function buildSnapshotSaveOverlayAccent(status) {
   const state = status && typeof status.state === "string" ? status.state : "idle";
   if (state === "completed-with-issues") return C.amber;
   if (state === "completed") return C.green;
+  if (state === "blocked") return C.red;
   if (state === "failed") return C.red;
   if (state === "refreshing") return C.blue;
   if (state === "checking-cache") return C.amber;
@@ -11818,7 +11832,10 @@ function renderSnapshotSaveOverlay(status) {
     typeof progress.total === "number" ? String(progress.total) : "0";
   overlay.dataset.percent = String(pct);
   overlay.dataset.stopped =
-    !status.active && (status.state === "completed" || status.state === "failed")
+    !status.active &&
+    (status.state === "completed" ||
+      status.state === "failed" ||
+      status.state === "blocked")
       ? "true"
       : "false";
   overlay.innerHTML = sanitizeHTML(
@@ -11865,6 +11882,10 @@ function renderSnapshotSaveOverlay(status) {
     snapshotSaveOverlayCleanupTimer = setTimeout(function () {
       removeSnapshotSaveOverlay();
     }, 1800);
+  } else if (!status.active && status.state === "blocked") {
+    snapshotSaveOverlayCleanupTimer = setTimeout(function () {
+      removeSnapshotSaveOverlay();
+    }, 4200);
   }
 }
 
@@ -11944,6 +11965,95 @@ function buildDirectSaveRefreshDecision() {
     decision.reason = "site-data-expired";
   }
   return decision;
+}
+
+function getSnapshotPayloadSiteCount(payload, fallbackCount) {
+  if (payload && payload.__meta && payload.accounts && typeof payload.accounts === "object") {
+    const accountKeys = Object.keys(payload.accounts);
+    const firstAccount = accountKeys.length > 0 ? payload.accounts[accountKeys[0]] : null;
+    const sites = firstAccount && Array.isArray(firstAccount.sites) ? firstAccount.sites : null;
+    if (sites) return sites.length;
+  }
+  if (payload && Array.isArray(payload.allSites)) return payload.allSites.length;
+  if (typeof fallbackCount === "number" && fallbackCount >= 0) return fallbackCount;
+  return 0;
+}
+
+function getActiveSnapshotPanelUserError() {
+  if (typeof window === "undefined" || typeof document === "undefined") return null;
+  const activeBanner = document.getElementById("sadv-user-error-banner");
+  const lastUserError = window.__SEARCHADVISOR_LAST_USER_ERROR__;
+  if (!activeBanner || !lastUserError || typeof lastUserError !== "object") return null;
+  return lastUserError;
+}
+
+function buildSnapshotSaveBlockDecision(payload, runtimeSites) {
+  const activePanelError = getActiveSnapshotPanelUserError();
+  const stats = payload && payload.stats && typeof payload.stats === "object"
+    ? payload.stats
+    : { success: 0, partial: 0, failed: 0, errors: [] };
+  const totalSites = getSnapshotPayloadSiteCount(
+    payload,
+    Array.isArray(runtimeSites) ? runtimeSites.length : 0,
+  );
+  const failedCount = typeof stats.failed === "number" ? stats.failed : 0;
+  const failureRatio = totalSites > 0 ? failedCount / totalSites : failedCount > 0 ? 1 : 0;
+
+  if (activePanelError) {
+    return {
+      blocked: true,
+      reason: "panel-user-error",
+      userMessage: ERROR_MESSAGES.SAVE_BLOCKED_PANEL_ERROR,
+      detail:
+        "패널 작업 중 치명적인 오류가 남아 있어 저장을 중단했어요. 현재 오류를 먼저 해결한 뒤 다시 시도해 주세요.",
+      technicalMessage:
+        typeof activePanelError.message === "string" ? activePanelError.message : null,
+      stats: stats,
+      totalSites: totalSites,
+      failedCount: failedCount,
+      failureRatio: failureRatio,
+    };
+  }
+
+  if (totalSites > 0 && failureRatio > SNAPSHOT_SAVE_BLOCK_FAILED_RATIO) {
+    return {
+      blocked: true,
+      reason: "failure-ratio-exceeded",
+      userMessage: ERROR_MESSAGES.SAVE_BLOCKED_TOO_MANY_FAILURES,
+      detail:
+        "조회 실패 사이트가 " +
+        failedCount +
+        " / " +
+        totalSites +
+        "개(" +
+        Math.round(failureRatio * 100) +
+        "%)라 저장을 중단했어요. 허용 기준은 20% 이하입니다.",
+      technicalMessage:
+        "failed=" +
+        failedCount +
+        ", total=" +
+        totalSites +
+        ", ratio=" +
+        Math.round(failureRatio * 100) +
+        "%",
+      stats: stats,
+      totalSites: totalSites,
+      failedCount: failedCount,
+      failureRatio: failureRatio,
+    };
+  }
+
+  return {
+    blocked: false,
+    reason: null,
+    userMessage: null,
+    detail: "",
+    technicalMessage: null,
+    stats: stats,
+    totalSites: totalSites,
+    failedCount: failedCount,
+    failureRatio: failureRatio,
+  };
 }
 
 function buildDirectSaveDecisionDetail(decision) {
@@ -12135,6 +12245,42 @@ function restoreSnapshotSaveButton(btn, originalText) {
           site: null,
           cacheDecision: cacheDecision,
         });
+        const saveBlockDecision = buildSnapshotSaveBlockDecision(payload, runtimeSites);
+        if (saveBlockDecision.blocked) {
+          showError(
+            saveBlockDecision.userMessage,
+            saveBlockDecision.technicalMessage,
+            "downloadSnapshot-blocked",
+            {
+              dedupeKey: "downloadSnapshot-blocked::" + saveBlockDecision.reason,
+              dedupeWindowMs: 1500,
+            },
+          );
+          pushSnapshotSaveStatus({
+            active: false,
+            state: "blocked",
+            phase: "download",
+            stageLabel: "저장 중단",
+            detail: saveBlockDecision.detail,
+            completedAt: Date.now(),
+            cacheDecision: cacheDecision,
+            stats: saveBlockDecision.stats,
+            fileName: null,
+            site: null,
+            error: {
+              message: saveBlockDecision.userMessage,
+              context: "downloadSnapshot-blocked",
+            },
+          });
+          return {
+            ok: false,
+            status: "blocked",
+            reason: saveBlockDecision.reason,
+            downloaded: false,
+            stats: saveBlockDecision.stats,
+            block: saveBlockDecision,
+          };
+        }
         const html = injectSnapshotReactShell(buildSnapshotHtml(savedAt, payload), payload);
         const fileName = buildSnapshotDownloadFileName(savedAt);
         pushSnapshotSaveStatus({
