@@ -1539,7 +1539,7 @@ function buildSnapshotSerializedHelperSection() {
   // - compat bridge의 내부 책임을 읽기 가능한 line builder 단위로 나누고
   // - state clone / DOM sync / action fallback / observer wiring 경계를 드러내며
   // - 나중에 "정말 이 bridge를 유지할지/줄일지" 판단하기 쉽게 만드는 데 있다.
-  function buildSnapshotApiCompatStateLines() {
+  function buildSnapshotApiCompatStateSeedLines() {
     return [
       "  const shellStateSource = window.__SEARCHADVISOR_SNAPSHOT_SHELL_STATE__ || {};",
       "  const snapshotState = {",
@@ -1563,6 +1563,11 @@ function buildSnapshotSerializedHelperSection() {
       "      : null,",
       "  };",
       "  const listeners = new Set();",
+    ];
+  }
+
+  function buildSnapshotApiCompatStateCloneLines() {
+    return [
       "  function cloneState() {",
       "    return {",
       "      accountLabel: snapshotState.accountLabel,",
@@ -1585,12 +1590,25 @@ function buildSnapshotSerializedHelperSection() {
       "        : null,",
       "    };",
       "  }",
+    ];
+  }
+
+  function buildSnapshotApiCompatStateNotifyLines() {
+    return [
       "  function notify() {",
       "    const nextState = cloneState();",
       "    listeners.forEach(function (listener) {",
       "      try { listener(nextState); } catch (_) {}",
       "    });",
       "  }",
+    ];
+  }
+
+  function buildSnapshotApiCompatStateLines() {
+    return [
+      ...buildSnapshotApiCompatStateSeedLines(),
+      ...buildSnapshotApiCompatStateCloneLines(),
+      ...buildSnapshotApiCompatStateNotifyLines(),
     ];
   }
 

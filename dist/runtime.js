@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-21T01:00:54Z";
-var __SADV_GIT_HEAD__="3e46896";
+var __SADV_BUILD_STAMP__="2026-03-21T01:04:55Z";
+var __SADV_GIT_HEAD__="c2b0013";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -12802,7 +12802,7 @@ function buildSnapshotSerializedHelperSection() {
   // - compat bridge의 내부 책임을 읽기 가능한 line builder 단위로 나누고
   // - state clone / DOM sync / action fallback / observer wiring 경계를 드러내며
   // - 나중에 "정말 이 bridge를 유지할지/줄일지" 판단하기 쉽게 만드는 데 있다.
-  function buildSnapshotApiCompatStateLines() {
+  function buildSnapshotApiCompatStateSeedLines() {
     return [
       "  const shellStateSource = window.__SEARCHADVISOR_SNAPSHOT_SHELL_STATE__ || {};",
       "  const snapshotState = {",
@@ -12826,6 +12826,11 @@ function buildSnapshotSerializedHelperSection() {
       "      : null,",
       "  };",
       "  const listeners = new Set();",
+    ];
+  }
+
+  function buildSnapshotApiCompatStateCloneLines() {
+    return [
       "  function cloneState() {",
       "    return {",
       "      accountLabel: snapshotState.accountLabel,",
@@ -12848,12 +12853,25 @@ function buildSnapshotSerializedHelperSection() {
       "        : null,",
       "    };",
       "  }",
+    ];
+  }
+
+  function buildSnapshotApiCompatStateNotifyLines() {
+    return [
       "  function notify() {",
       "    const nextState = cloneState();",
       "    listeners.forEach(function (listener) {",
       "      try { listener(nextState); } catch (_) {}",
       "    });",
       "  }",
+    ];
+  }
+
+  function buildSnapshotApiCompatStateLines() {
+    return [
+      ...buildSnapshotApiCompatStateSeedLines(),
+      ...buildSnapshotApiCompatStateCloneLines(),
+      ...buildSnapshotApiCompatStateNotifyLines(),
     ];
   }
 
