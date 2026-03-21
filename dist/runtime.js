@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-21T13:49:54Z";
-var __SADV_GIT_HEAD__="a957ad0";
+var __SADV_BUILD_STAMP__="2026-03-21T15:20:42Z";
+var __SADV_GIT_HEAD__="20c167e";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -2991,16 +2991,39 @@ if (old) {
   return;
 }
 
+const sadvBootRequest =
+  typeof window !== "undefined" && window.__SEARCHADVISOR_BOOT_REQUEST__
+    ? window.__SEARCHADVISOR_BOOT_REQUEST__
+    : null;
+const sadvBootBackgroundSave =
+  !!(
+    sadvBootRequest &&
+    typeof sadvBootRequest === "object" &&
+    sadvBootRequest.action === "background-download"
+  );
+
 // Inject style to adjust HTML margin for the panel
 const inj = document.createElement("style");
 inj.id = "sadv-inj";
-inj.textContent = `html{margin-right:min(${PNL}px,100vw) !important;transition:margin-right .25s ease;box-sizing:border-box}@media(max-width:${CONFIG.UI.MOBILE_BREAKPOINT}px){html{margin-right:0 !important}}`;
+inj.textContent = sadvBootBackgroundSave
+  ? `html{margin-right:0 !important;box-sizing:border-box}`
+  : `html{margin-right:min(${PNL}px,100vw) !important;transition:margin-right .25s ease;box-sizing:border-box}@media(max-width:${CONFIG.UI.MOBILE_BREAKPOINT}px){html{margin-right:0 !important}}`;
 document.head.appendChild(inj);
 
 // Create main panel
 const p = document.createElement("div");
 p.id = "sadv-p";
 p.style.cssText = `position:fixed;top:0;right:0;width:min(${PNL}px,100vw);max-width:100vw;height:100vh;display:flex;flex-direction:column;background:${C.bg0};z-index:9999999;font-family:"IBM Plex Sans KR","IBM Plex Sans",Pretendard,system-ui,sans-serif;font-size:13px;color:${C.text};border-left:1px solid ${C.border};box-sizing:border-box;box-shadow:-20px 0 40px rgba(0,0,0,0.45)`;
+if (sadvBootBackgroundSave) {
+  // Background-download boot mode:
+  // 패널을 아예 만들지 않으면 저장본 parity에 필요한 width/layout 측정이 달라질 수 있다.
+  // 따라서 mounted 상태는 유지하되, first-frame부터 비가시/비대화형 + offscreen으로 둔다.
+  p.dataset.sadvBootHidden = "true";
+  p.style.visibility = "hidden";
+  p.style.opacity = "0";
+  p.style.pointerEvents = "none";
+  p.style.transform = "translateX(calc(100% + 48px))";
+}
 p.innerHTML = sanitizeHTML(`<style>#sadv-p *{box-sizing:border-box}#sadv-p ::-webkit-scrollbar{width:6px}#sadv-p ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}#sadv-header{padding:20px;border-bottom:1px solid #1e293b;background:rgba(2,6,23,0.8);backdrop-filter:blur(12px)}#sadv-mode-bar{display:flex;gap:4px;margin-top:16px;background:#0f172a;padding:4px;border-radius:12px;border:1px solid #334155}.sadv-mode{flex:1;background:transparent;border:none;color:#94a3b8;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}.sadv-mode.on{background:#1e293b;color:#0ea5e9;box-shadow:0 4px 6px -1px rgba(0,0,0,0.2)}#sadv-site-bar{margin-top:12px;position:relative;display:none}#sadv-site-bar.show{display:block}#sadv-combo-wrap{position:relative}#sadv-combo-btn{width:100%;background:#0f172a;border:1px solid #334155;color:#f8fafc;border-radius:10px;padding:10px 36px 10px 12px;font-size:13px;cursor:pointer;text-align:left;font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:10px}#sadv-combo-btn:hover{border-color:#0ea5e9;background:#1e293b}#sadv-combo-btn:focus-visible{outline:2px solid #0ea5e9;outline-offset:2px;box-shadow:0 0 0 4px rgba(14, 165, 233, 0.1)}#sadv-combo-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#64748b}#sadv-combo-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:500}#sadv-combo-arrow{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#64748b;font-size:12px;pointer-events:none;transition:transform .2s}#sadv-combo-wrap.open #sadv-combo-arrow{transform:translateY(-50%) rotate(180deg)}#sadv-combo-drop{display:none;position:absolute;top:calc(100% + 8px);left:0;right:0;background:#0f172a;border:1px solid #334155;border-radius:12px;padding:6px;z-index:100;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);max-height:300px;overflow-y:auto}#sadv-combo-wrap.open #sadv-combo-drop{display:block}.sadv-combo-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;cursor:pointer;transition:all .1s;border:1px solid transparent}.sadv-combo-item:hover{background:#1e293b}.sadv-combo-item:focus-visible{outline:2px solid #0ea5e9;outline-offset:-2px}.sadv-combo-item.active{background:#1e293b;border-color:#334155;color:#0ea5e9}#sadv-tabs{display:none;flex-wrap:wrap;gap:6px;padding:12px 20px;background:#020617;border-bottom:1px solid #1e293b;justify-content:center}#sadv-tabs.show{display:flex;justify-content:center}#sadv-tabs::-webkit-scrollbar{display:none}.sadv-t{background:transparent;border:1px solid transparent;color:#64748b;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}.sadv-t:hover{color:#f8fafc;background:#1e293b}.sadv-t.on{background:rgba(14,165,233,0.1);border-color:rgba(14,165,233,0.2);color:#0ea5e9}#sadv-refresh-btn,#sadv-save-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s;white-space:nowrap;flex-shrink:0;min-width:74px;line-height:1.1}#sadv-refresh-btn:hover,#sadv-save-btn:hover{border-color:#0ea5e9;color:#0ea5e9;background:#1e293b}#sadv-refresh-btn:focus-visible,#sadv-save-btn:focus-visible{outline:2px solid #0ea5e9;outline-offset:2px;box-shadow:0 0 0 4px rgba(14, 165, 233, 0.1)}#sadv-cache-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}#sadv-bd{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px}#sadv-tabpanel{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px}.sadv-allcard{background:#0f172a;border:1px solid #1e293b;border-radius:16px;padding:20px;margin-bottom:16px;cursor:pointer;transition:all .2s}.sadv-allcard:hover{border-color:#334155;transform:translateY(-2px)}</style><div id="sadv-header"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:7px;font-size:18px;font-weight:800;letter-spacing:-0.03em"><span style="display:inline-flex;opacity:0.95">${ICONS.logoSearch}</span>Search<span style="color:#ffd400">Advisor</span></div><div id="sadv-account-badge" style="display:none;padding:4px 12px;border-radius:999px;border:1px solid rgba(255,212,0,0.2);color:#ffd400;background:rgba(255,212,0,0.12);font-size:11px;font-weight:600;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div></div><div id="sadv-site-label" style="font-size:11px;color:#64748b;margin-top:4px;display:flex;align-items:center;gap:4px">\ub85c\ub529 \uc911...</div><div id="sadv-cache-meta"></div></div><div style="display:flex;gap:8px;align-items:center"><button id="sadv-refresh-btn" class="sadv-btn" title="새로고침" style="display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;flex-shrink:0;min-width:74px">${ICONS.refresh} 새로고침</button><button id="sadv-save-btn" class="sadv-btn" title="현재 화면 저장" style="display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;flex-shrink:0;min-width:74px">${ICONS.save} 저장</button><button id="sadv-x" style="background:none;border:1px solid #1e293b;color:#475569;width:32px;height:32px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s">${ICONS.xMark}</button></div></div><div id="sadv-mode-bar"><button class="sadv-mode on" data-m="all" style="display:inline-flex;align-items:center;justify-content:center;gap:5px">${ICONS.globe} 전체현황</button><button class="sadv-mode" data-m="site" style="display:inline-flex;align-items:center;justify-content:center;gap:5px">${ICONS.layers} 사이트별</button></div><div id="sadv-site-bar"><div id="sadv-combo-wrap"><button id="sadv-combo-btn"><span id="sadv-combo-dot"></span><span id="sadv-combo-label">\uc0ac\uc774\ud2b8 \uc120\ud0dd</span></button><span id="sadv-combo-arrow" style="display:inline-flex;align-items:center">${ICONS.chevronDown}</span><div id="sadv-combo-drop"></div></div></div></div><div id="sadv-tabs"></div><div id="sadv-bd"><div style="padding:60px 20px;text-align:center;color:#64748b">⏳ \ub85c\ub529 \uc911...</div></div>`);
 const initialShellStyleEl = p.querySelector("style");
 if (initialShellStyleEl) {
@@ -10689,6 +10712,18 @@ function applyUiControlsTab(tab) {
         downloadSnapshot();
         return Promise.resolve(true);
       },
+      loadAndDirectSaveHeadless: function (options) {
+        const capabilities = resolveRuntimeCapabilities();
+        if (!capabilities.canSave) return Promise.resolve(false);
+        if (typeof runBackgroundSnapshotDownload === "function") {
+          return runBackgroundSnapshotDownload(options);
+        }
+        if (typeof directSaveSnapshot === "function") {
+          return directSaveSnapshot({ ...(options || {}), headless: true });
+        }
+        downloadSnapshot();
+        return Promise.resolve(true);
+      },
       exportSnapshotData: function (onProgress, options) {
         return collectExportData(onProgress, options);
       },
@@ -11478,8 +11513,10 @@ function savedAtIso(d) {
  */
 let snapshotSaveInFlightPromise = null;
 let directSaveInFlightPromise = null;
+let backgroundSnapshotSaveInFlightPromise = null;
 let snapshotSaveOverlayCleanupTimer = null;
 let snapshotSaveOverlaySuppressed = false;
+let snapshotBackgroundCleanupTimer = null;
 
 function createIdleDirectSaveStatus() {
   return {
@@ -11509,10 +11546,32 @@ function clearSnapshotSaveOverlayCleanupTimer() {
   }
 }
 
+function clearSnapshotBackgroundCleanupTimer() {
+  if (snapshotBackgroundCleanupTimer) {
+    clearTimeout(snapshotBackgroundCleanupTimer);
+    snapshotBackgroundCleanupTimer = null;
+  }
+}
+
 function removeSnapshotSaveOverlay() {
   clearSnapshotSaveOverlayCleanupTimer();
   const existing = document.getElementById("sadv-save-status-overlay");
   if (existing) existing.remove();
+}
+
+function getSnapshotBootRequest() {
+  if (typeof window === "undefined") return null;
+  const request = window.__SEARCHADVISOR_BOOT_REQUEST__;
+  return request && typeof request === "object" ? request : null;
+}
+
+function isBackgroundDownloadBootRequest(request) {
+  return !!(request && request.action === "background-download");
+}
+
+function clearSnapshotBootRequest() {
+  if (typeof window === "undefined") return;
+  delete window.__SEARCHADVISOR_BOOT_REQUEST__;
 }
 
 function setSnapshotSaveOverlaySuppressed(suppressed) {
@@ -11549,11 +11608,63 @@ function createSnapshotHeadlessUiRestore() {
   };
 }
 
+function applySnapshotBackgroundSaveUiHidden() {
+  const targets = [];
+  const selectors = ['#sadv-p', 'button[title="최상단 이동"]'];
+  selectors.forEach(function (selector) {
+    document.querySelectorAll(selector).forEach(function (node) {
+      if (!node || targets.some(function (entry) { return entry.node === node; })) return;
+      targets.push({
+        node: node,
+        visibility: node.style.visibility || "",
+        opacity: node.style.opacity || "",
+        pointerEvents: node.style.pointerEvents || "",
+        transform: node.style.transform || "",
+      });
+      node.style.visibility = "hidden";
+      node.style.opacity = "0";
+      node.style.pointerEvents = "none";
+      if (node.id === "sadv-p") {
+        node.style.transform = "translateX(calc(100% + 48px))";
+        node.dataset.sadvBootHidden = "true";
+      }
+    });
+  });
+  return function cleanupSnapshotBackgroundSaveUi() {
+    targets.forEach(function (entry) {
+      if (!entry.node) return;
+      entry.node.style.visibility = entry.visibility;
+      entry.node.style.opacity = entry.opacity;
+      entry.node.style.pointerEvents = entry.pointerEvents;
+      entry.node.style.transform = entry.transform;
+      if (entry.node.id === "sadv-p") {
+        delete entry.node.dataset.sadvBootHidden;
+      }
+    });
+  };
+}
+
 function getDirectSaveHeadlessMode(options) {
   return !!(
     options &&
     (options.headless === true || options.hidePanel === true || options.silentUi === true)
   );
+}
+
+function scheduleSnapshotBackgroundRuntimeCleanup(delayMs) {
+  clearSnapshotBackgroundCleanupTimer();
+  snapshotBackgroundCleanupTimer = setTimeout(function () {
+    snapshotBackgroundCleanupTimer = null;
+    const panel = document.getElementById("sadv-p");
+    const inj = document.getElementById("sadv-inj");
+    removeSnapshotSaveOverlay();
+    if (typeof stopCacheExpiryMonitor === "function") stopCacheExpiryMonitor();
+    if (panel) panel.remove();
+    if (inj) inj.remove();
+    if (typeof clearRuntimePublicApi === "function") clearRuntimePublicApi();
+    else if (typeof window !== "undefined") delete window.__sadvApi;
+    if (typeof resetRuntimeSaveStatus === "function") resetRuntimeSaveStatus();
+  }, Math.max(0, delayMs || 1800));
 }
 
 function getSnapshotSaveRuntimeType() {
@@ -12194,6 +12305,42 @@ function restoreSnapshotSaveButton(btn, originalText) {
       directSaveInFlightPromise = null;
     }
   }
+
+/**
+ * Background download mode
+ *
+ * 요구사항:
+ * - 기존 저장 버튼(downloadSnapshot)과 동일한 저장 경로를 써야 한다.
+ * - 패널은 first-frame부터 사용자에게 보이지 않아야 한다.
+ * - 대신 중앙 상태 모달은 유지해 외부 드라이버/사용자가 진행 상태를 본다.
+ * - 성공/실패 후 1~2초 뒤 런타임을 정리해 화면을 원상태로 둔다.
+ *
+ * 즉 directSave처럼 refresh 판단을 추가하지 않고,
+ * "현재 저장 버튼을 백그라운드처럼 실행"하는 orchestrator다.
+ */
+  async function runBackgroundSnapshotDownload(options) {
+    if (backgroundSnapshotSaveInFlightPromise) return backgroundSnapshotSaveInFlightPromise;
+    const capabilities =
+      typeof getRuntimeCapabilities === "function" ? getRuntimeCapabilities() : null;
+    if (capabilities && !capabilities.canSave) return false;
+    const cleanupDelay =
+      options && typeof options.cleanupDelayMs === "number" ? options.cleanupDelayMs : 1800;
+    applySnapshotBackgroundSaveUiHidden();
+    backgroundSnapshotSaveInFlightPromise = (async function () {
+      clearSnapshotBootRequest();
+      return await downloadSnapshot();
+    })();
+    try {
+      const result = await backgroundSnapshotSaveInFlightPromise;
+      scheduleSnapshotBackgroundRuntimeCleanup(cleanupDelay);
+      return result;
+    } catch (error) {
+      scheduleSnapshotBackgroundRuntimeCleanup(cleanupDelay);
+      throw error;
+    } finally {
+      backgroundSnapshotSaveInFlightPromise = null;
+    }
+  }
   /**
  * Build snapshot shell state from a V2 payload
  * Extracts UI state, metadata, and site information from a saved snapshot
@@ -12503,6 +12650,7 @@ function createSnapshotPublicFacade(snapshotApi) {
     switchSite: snapshotApi.switchSite,
     setTab: snapshotApi.setTab,
     directSave: snapshotApi.directSave,
+    loadAndDirectSaveHeadless: snapshotApi.loadAndDirectSaveHeadless,
     refresh: snapshotApi.refresh,
     download: snapshotApi.download,
     close: snapshotApi.close,
@@ -12659,6 +12807,7 @@ function buildSnapshotSerializedHelperSection() {
     clone.style.removeProperty("pointer-events");
     clone.style.removeProperty("background");
     clone.style.removeProperty("border-left-color");
+    delete clone.dataset.sadvBootHidden;
     delete clone.dataset.sadvSaveHidden;
     delete clone.dataset.sadvPrevVisibility;
     delete clone.dataset.sadvPrevPointerEvents;
@@ -13600,6 +13749,9 @@ function buildSnapshotSerializedHelperSection() {
       refresh: function () {
         return false;
       },
+      loadAndDirectSaveHeadless: function () {
+        return false;
+      },
       download: function () {
         return false;
       },
@@ -13877,6 +14029,7 @@ function buildSnapshotSerializedHelperSection() {
       '    getSaveStatus: function () { return ' + JSON.stringify({ ...createIdleDirectSaveStatus(), runtimeType: "saved" }) + '; },',
       '    subscribeSaveStatus: function () { return function () {}; },',
       '    refresh: function () { return false; },',
+      '    loadAndDirectSaveHeadless: function () { return false; },',
       '    download: function () { return false; },',
       '    directSave: function () { return false; },',
       '    close: function () { return false; },',
@@ -14728,6 +14881,24 @@ if (typeof window !== "undefined") {
         syncPendingPanelUserError();
       }
       __sadvMarkReady();
+      const bootRequest =
+        typeof window !== "undefined" && window.__SEARCHADVISOR_BOOT_REQUEST__
+          ? window.__SEARCHADVISOR_BOOT_REQUEST__
+          : null;
+      if (
+        bootRequest &&
+        typeof bootRequest === "object" &&
+        bootRequest.action === "background-download" &&
+        typeof runBackgroundSnapshotDownload === "function"
+      ) {
+        Promise.resolve()
+          .then(function () {
+            return runBackgroundSnapshotDownload(bootRequest);
+          })
+          .catch(function (error) {
+            console.error("[Init] Background snapshot download failed:", error);
+          });
+      }
     };
 
     // React 18 Concurrent Mode 지원 시 사용

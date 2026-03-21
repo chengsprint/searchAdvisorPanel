@@ -107,6 +107,24 @@ if (typeof window !== "undefined") {
         syncPendingPanelUserError();
       }
       __sadvMarkReady();
+      const bootRequest =
+        typeof window !== "undefined" && window.__SEARCHADVISOR_BOOT_REQUEST__
+          ? window.__SEARCHADVISOR_BOOT_REQUEST__
+          : null;
+      if (
+        bootRequest &&
+        typeof bootRequest === "object" &&
+        bootRequest.action === "background-download" &&
+        typeof runBackgroundSnapshotDownload === "function"
+      ) {
+        Promise.resolve()
+          .then(function () {
+            return runBackgroundSnapshotDownload(bootRequest);
+          })
+          .catch(function (error) {
+            console.error("[Init] Background snapshot download failed:", error);
+          });
+      }
     };
 
     // React 18 Concurrent Mode 지원 시 사용

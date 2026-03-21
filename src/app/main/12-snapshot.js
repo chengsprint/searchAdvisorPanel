@@ -21,8 +21,10 @@
  */
 let snapshotSaveInFlightPromise = null;
 let directSaveInFlightPromise = null;
+let backgroundSnapshotSaveInFlightPromise = null;
 let snapshotSaveOverlayCleanupTimer = null;
 let snapshotSaveOverlaySuppressed = false;
+let snapshotBackgroundCleanupTimer = null;
 
 function createIdleDirectSaveStatus() {
   return {
@@ -52,10 +54,32 @@ function clearSnapshotSaveOverlayCleanupTimer() {
   }
 }
 
+function clearSnapshotBackgroundCleanupTimer() {
+  if (snapshotBackgroundCleanupTimer) {
+    clearTimeout(snapshotBackgroundCleanupTimer);
+    snapshotBackgroundCleanupTimer = null;
+  }
+}
+
 function removeSnapshotSaveOverlay() {
   clearSnapshotSaveOverlayCleanupTimer();
   const existing = document.getElementById("sadv-save-status-overlay");
   if (existing) existing.remove();
+}
+
+function getSnapshotBootRequest() {
+  if (typeof window === "undefined") return null;
+  const request = window.__SEARCHADVISOR_BOOT_REQUEST__;
+  return request && typeof request === "object" ? request : null;
+}
+
+function isBackgroundDownloadBootRequest(request) {
+  return !!(request && request.action === "background-download");
+}
+
+function clearSnapshotBootRequest() {
+  if (typeof window === "undefined") return;
+  delete window.__SEARCHADVISOR_BOOT_REQUEST__;
 }
 
 function setSnapshotSaveOverlaySuppressed(suppressed) {
@@ -92,11 +116,63 @@ function createSnapshotHeadlessUiRestore() {
   };
 }
 
+function applySnapshotBackgroundSaveUiHidden() {
+  const targets = [];
+  const selectors = ['#sadv-p', 'button[title="최상단 이동"]'];
+  selectors.forEach(function (selector) {
+    document.querySelectorAll(selector).forEach(function (node) {
+      if (!node || targets.some(function (entry) { return entry.node === node; })) return;
+      targets.push({
+        node: node,
+        visibility: node.style.visibility || "",
+        opacity: node.style.opacity || "",
+        pointerEvents: node.style.pointerEvents || "",
+        transform: node.style.transform || "",
+      });
+      node.style.visibility = "hidden";
+      node.style.opacity = "0";
+      node.style.pointerEvents = "none";
+      if (node.id === "sadv-p") {
+        node.style.transform = "translateX(calc(100% + 48px))";
+        node.dataset.sadvBootHidden = "true";
+      }
+    });
+  });
+  return function cleanupSnapshotBackgroundSaveUi() {
+    targets.forEach(function (entry) {
+      if (!entry.node) return;
+      entry.node.style.visibility = entry.visibility;
+      entry.node.style.opacity = entry.opacity;
+      entry.node.style.pointerEvents = entry.pointerEvents;
+      entry.node.style.transform = entry.transform;
+      if (entry.node.id === "sadv-p") {
+        delete entry.node.dataset.sadvBootHidden;
+      }
+    });
+  };
+}
+
 function getDirectSaveHeadlessMode(options) {
   return !!(
     options &&
     (options.headless === true || options.hidePanel === true || options.silentUi === true)
   );
+}
+
+function scheduleSnapshotBackgroundRuntimeCleanup(delayMs) {
+  clearSnapshotBackgroundCleanupTimer();
+  snapshotBackgroundCleanupTimer = setTimeout(function () {
+    snapshotBackgroundCleanupTimer = null;
+    const panel = document.getElementById("sadv-p");
+    const inj = document.getElementById("sadv-inj");
+    removeSnapshotSaveOverlay();
+    if (typeof stopCacheExpiryMonitor === "function") stopCacheExpiryMonitor();
+    if (panel) panel.remove();
+    if (inj) inj.remove();
+    if (typeof clearRuntimePublicApi === "function") clearRuntimePublicApi();
+    else if (typeof window !== "undefined") delete window.__sadvApi;
+    if (typeof resetRuntimeSaveStatus === "function") resetRuntimeSaveStatus();
+  }, Math.max(0, delayMs || 1800));
 }
 
 function getSnapshotSaveRuntimeType() {
@@ -737,6 +813,42 @@ function restoreSnapshotSaveButton(btn, originalText) {
       directSaveInFlightPromise = null;
     }
   }
+
+/**
+ * Background download mode
+ *
+ * 요구사항:
+ * - 기존 저장 버튼(downloadSnapshot)과 동일한 저장 경로를 써야 한다.
+ * - 패널은 first-frame부터 사용자에게 보이지 않아야 한다.
+ * - 대신 중앙 상태 모달은 유지해 외부 드라이버/사용자가 진행 상태를 본다.
+ * - 성공/실패 후 1~2초 뒤 런타임을 정리해 화면을 원상태로 둔다.
+ *
+ * 즉 directSave처럼 refresh 판단을 추가하지 않고,
+ * "현재 저장 버튼을 백그라운드처럼 실행"하는 orchestrator다.
+ */
+  async function runBackgroundSnapshotDownload(options) {
+    if (backgroundSnapshotSaveInFlightPromise) return backgroundSnapshotSaveInFlightPromise;
+    const capabilities =
+      typeof getRuntimeCapabilities === "function" ? getRuntimeCapabilities() : null;
+    if (capabilities && !capabilities.canSave) return false;
+    const cleanupDelay =
+      options && typeof options.cleanupDelayMs === "number" ? options.cleanupDelayMs : 1800;
+    applySnapshotBackgroundSaveUiHidden();
+    backgroundSnapshotSaveInFlightPromise = (async function () {
+      clearSnapshotBootRequest();
+      return await downloadSnapshot();
+    })();
+    try {
+      const result = await backgroundSnapshotSaveInFlightPromise;
+      scheduleSnapshotBackgroundRuntimeCleanup(cleanupDelay);
+      return result;
+    } catch (error) {
+      scheduleSnapshotBackgroundRuntimeCleanup(cleanupDelay);
+      throw error;
+    } finally {
+      backgroundSnapshotSaveInFlightPromise = null;
+    }
+  }
   /**
  * Build snapshot shell state from a V2 payload
  * Extracts UI state, metadata, and site information from a saved snapshot
@@ -1046,6 +1158,7 @@ function createSnapshotPublicFacade(snapshotApi) {
     switchSite: snapshotApi.switchSite,
     setTab: snapshotApi.setTab,
     directSave: snapshotApi.directSave,
+    loadAndDirectSaveHeadless: snapshotApi.loadAndDirectSaveHeadless,
     refresh: snapshotApi.refresh,
     download: snapshotApi.download,
     close: snapshotApi.close,
@@ -1202,6 +1315,7 @@ function buildSnapshotSerializedHelperSection() {
     clone.style.removeProperty("pointer-events");
     clone.style.removeProperty("background");
     clone.style.removeProperty("border-left-color");
+    delete clone.dataset.sadvBootHidden;
     delete clone.dataset.sadvSaveHidden;
     delete clone.dataset.sadvPrevVisibility;
     delete clone.dataset.sadvPrevPointerEvents;
@@ -2143,6 +2257,9 @@ function buildSnapshotSerializedHelperSection() {
       refresh: function () {
         return false;
       },
+      loadAndDirectSaveHeadless: function () {
+        return false;
+      },
       download: function () {
         return false;
       },
@@ -2420,6 +2537,7 @@ function buildSnapshotSerializedHelperSection() {
       '    getSaveStatus: function () { return ' + JSON.stringify({ ...createIdleDirectSaveStatus(), runtimeType: "saved" }) + '; },',
       '    subscribeSaveStatus: function () { return function () {}; },',
       '    refresh: function () { return false; },',
+      '    loadAndDirectSaveHeadless: function () { return false; },',
       '    download: function () { return false; },',
       '    directSave: function () { return false; },',
       '    close: function () { return false; },',
