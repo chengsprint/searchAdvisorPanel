@@ -218,11 +218,11 @@ async function installStatusProbe(page) {
   });
 }
 
-async function startDirectSave(page) {
-  return page.evaluate(() => {
+async function startDirectSave(page, options) {
+  return page.evaluate((directSaveOptions) => {
     window.__SADV_DIRECTSAVE_RESULT__ = null;
     window.__SADV_DIRECTSAVE_ERROR__ = null;
-    window.__SADV_DIRECTSAVE_PROMISE__ = window.__sadvApi.directSave()
+    window.__SADV_DIRECTSAVE_PROMISE__ = window.__sadvApi.directSave(directSaveOptions)
       .then((result) => {
         window.__SADV_DIRECTSAVE_RESULT__ = result;
         return result;
@@ -232,11 +232,13 @@ async function startDirectSave(page) {
         throw error;
       });
     return true;
-  });
+  }, options || null);
 }
 
 async function waitForSaveState(page, expectedState, timeoutMs = 30000) {
   await page.waitForFunction((state) => {
+    const status = window.__SEARCHADVISOR_SAVE_STATUS__;
+    if (status && status.state === state) return true;
     const el = document.getElementById('sadv-save-status-overlay');
     return !!el && el.dataset.state === state;
   }, expectedState, { timeout: timeoutMs });
@@ -258,10 +260,14 @@ async function getScenarioResult(page, downloadTriggered) {
     saveStatus: window.__sadvApi.getSaveStatus(),
     directSaveResult: window.__SADV_DIRECTSAVE_RESULT__,
     directSaveError: window.__SADV_DIRECTSAVE_ERROR__,
+    captureProbe: window.__SADV_CAPTURE_PROBE__ || null,
     saveEvents: Array.isArray(window.__SADV_SAVE_EVENTS) ? window.__SADV_SAVE_EVENTS : [],
     overlayState: document.getElementById('sadv-save-status-overlay')?.dataset?.state || null,
     overlayPhase: document.getElementById('sadv-save-status-overlay')?.dataset?.phase || null,
+    overlayUiHidden: document.getElementById('sadv-save-status-overlay')?.dataset?.uiHidden || null,
     overlayText: document.getElementById('sadv-save-status-overlay')?.innerText || '',
+    panelVisibility: document.getElementById('sadv-p') ? getComputedStyle(document.getElementById('sadv-p')).visibility : null,
+    panelOpacity: document.getElementById('sadv-p') ? getComputedStyle(document.getElementById('sadv-p')).opacity : null,
     failureSummaryText: document.getElementById('sadv-refresh-failure-summary')?.innerText || '',
     downloadTriggered: downloadTriggeredValue,
   }), downloadTriggered);
@@ -322,7 +328,7 @@ async function runScenario(browser, scenario, dataset) {
     await scenario.beforeStart(page, dataset);
   }
 
-  await startDirectSave(page);
+  await startDirectSave(page, scenario.directSaveOptions || null);
 
   if (scenario.captureState) {
     await waitForSaveState(page, scenario.captureState, scenario.captureTimeoutMs || 30000);
@@ -330,6 +336,19 @@ async function runScenario(browser, scenario, dataset) {
 
   if (scenario.beforeCapture) {
     await scenario.beforeCapture(page);
+  }
+  if (scenario.captureProbe) {
+    await page.evaluate(() => {
+      const overlay = document.getElementById('sadv-save-status-overlay');
+      const panel = document.getElementById('sadv-p');
+      window.__SADV_CAPTURE_PROBE__ = {
+        overlayPresent: !!overlay,
+        overlayState: overlay?.dataset?.state || null,
+        overlayUiHidden: overlay?.dataset?.uiHidden || null,
+        panelVisibility: panel ? getComputedStyle(panel).visibility : null,
+        panelOpacity: panel ? getComputedStyle(panel).opacity : null,
+      };
+    });
   }
 
   await page.screenshot({
@@ -373,7 +392,7 @@ async function runSavedVerification(browser, savedHtmlPath) {
   await page.waitForSelector('#sadv-p', { timeout: 15000 });
   await page.waitForFunction(() => !!window.__sadvApi, null, { timeout: 15000 });
   await page.screenshot({
-    path: path.join(SCREENSHOT_DIR, '06-saved-runtime-opened.png'),
+    path: path.join(SCREENSHOT_DIR, '07-saved-runtime-opened.png'),
     fullPage: true,
   });
   const result = await page.evaluate(() => ({
@@ -385,9 +404,9 @@ async function runSavedVerification(browser, savedHtmlPath) {
   await page.close();
   await context.close();
   return {
-    name: '06-saved-runtime-opened',
+    name: '07-saved-runtime-opened',
     description: '저장된 HTML을 다시 열었을 때 saveStatus.runtimeType이 saved로 보이는지 확인',
-    screenshot: '06-saved-runtime-opened.png',
+    screenshot: '07-saved-runtime-opened.png',
     result,
     consoleMessages,
     pageErrors,
@@ -407,6 +426,23 @@ function renderScenarioSection(lines, scenarioResult) {
   lines.push(`- phase: ${saveStatus.phase || '(none)'}`);
   lines.push(`- runtimeType: ${saveStatus.runtimeType || '(none)'}`);
   lines.push(`- downloadTriggered: ${scenarioResult.result.downloadTriggered ? 'true' : 'false'}`);
+  if (scenarioResult.result.overlayUiHidden != null) {
+    lines.push(`- overlay uiHidden: ${scenarioResult.result.overlayUiHidden}`);
+  }
+  if (scenarioResult.result.panelVisibility != null) {
+    lines.push(`- panel visibility: ${scenarioResult.result.panelVisibility}`);
+  }
+  if (scenarioResult.result.panelOpacity != null) {
+    lines.push(`- panel opacity: ${scenarioResult.result.panelOpacity}`);
+  }
+  if (scenarioResult.result.captureProbe) {
+    const probe = scenarioResult.result.captureProbe;
+    lines.push(`- capture probe overlayPresent: ${probe.overlayPresent ? 'true' : 'false'}`);
+    lines.push(`- capture probe overlayState: ${probe.overlayState || '(none)'}`);
+    lines.push(`- capture probe overlayUiHidden: ${probe.overlayUiHidden || '(none)'}`);
+    lines.push(`- capture probe panel visibility: ${probe.panelVisibility || '(none)'}`);
+    lines.push(`- capture probe panel opacity: ${probe.panelOpacity || '(none)'}`);
+  }
   if (directSaveResult) {
     lines.push(`- directSave 반환 ok: ${String(!!directSaveResult.ok)}`);
     lines.push(`- directSave 반환 status: ${directSaveResult.status || '(none)'}`);
@@ -519,6 +555,18 @@ async function main() {
       },
       captureState: 'completed',
     },
+    {
+      name: '06-headless-direct-save-success',
+      description: 'headless directSave가 저장 중 패널을 숨기고 overlay 없이 완료되는지 확인',
+      screenshot: '06-headless-direct-save-success.png',
+      directSaveOptions: { headless: true },
+      captureState: 'refreshing',
+      captureTimeoutMs: 40000,
+      captureProbe: true,
+      beforeCapture: async (page) => {
+        await page.waitForTimeout(300);
+      },
+    },
   ];
 
   const results = [];
@@ -550,6 +598,7 @@ async function main() {
     '- 캐시 미스 후 자동 갱신 저장',
     '- 일부 요청 실패 후 `completed-with-issues`',
     '- 다운로드 채널 차단 후 `failed`',
+    '- headless directSave',
     '',
   ];
 

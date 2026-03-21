@@ -122,9 +122,15 @@ actions = {
   - 현재 기본 의미는 **cache-first 저장**
 - `directSave(options)`는 smart save entry다.
   - 의미: **캐시 없음/만료/불완전 데이터 여부를 점검하고, 필요하면 full refresh 후 저장**
+  - `options.headless === true`(또는 `hidePanel` / `silentUi`)면
+    저장 중 live 패널과 중앙 overlay를 일시적으로 숨긴다.
+    단, 패널을 unmount하거나 `display:none`으로 내리지 않고 mounted 상태를 유지해
+    저장본이 "현재 라이브 패널과 동일한 DOM/레이아웃" 기준으로 생성되도록 한다.
 - `getSaveStatus()` / `subscribeSaveStatus(listener)`는 external automation용 관찰 계약이다.
   - Python/browser automation이 저장 진행 상태를 안정적으로 추적할 수 있어야 한다.
   - UI overlay, 전역 mirror 상태, public facade가 같은 상태 객체를 보도록 유지한다.
+  - 상태 객체는 `runtimeType` 외에도 `uiHidden` 플래그를 노출해,
+    headless directSave 여부를 DOM 없이도 판별할 수 있어야 한다.
 
 ### public facade 게시 규칙
 

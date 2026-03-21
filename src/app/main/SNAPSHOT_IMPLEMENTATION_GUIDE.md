@@ -256,6 +256,13 @@
   세 entry가 같은 정보를 바라보도록 유지해야 한다.
   저장 상태 UI는 중앙 모달형 overlay를 사용하며, 상태 객체와 DOM 모두 `runtimeType`
   (`live` / `saved` / `merge`)를 함께 노출해 외부 automation과 사용자가 같은 타입 판정을 공유해야 한다.
+- `directSave({ headless: true })`는 저장 중 패널과 overlay를 **일시적으로 숨기되**
+  panel mount 자체는 유지해야 한다.
+  저장본은 live 패널 DOM을 그대로 clone/serialize하므로,
+  `display:none`처럼 panel width를 0으로 만드는 방식은 parity를 깨뜨릴 수 있다.
+  따라서 현재 headless 구현은 `visibility:hidden + opacity:0 + pointer-events:none`만 사용한다.
+- headless directSave를 external automation이 안정적으로 추적할 수 있게
+  save status mirror와 `#sadv-save-status-overlay` dataset에는 `uiHidden` 정보도 함께 노출한다.
 - `ensureCurrentSite`, `buildCombo`, `setComboSite`, `renderTab`, `switchMode`처럼
   saved가 직접 호출하는 공통 UI 함수는 **그 함수가 참조하는 helper까지 같이 serialize**
   되는지 반드시 확인한다.
