@@ -80,6 +80,7 @@ function buildSnapshotSaveOverlayTitle(status) {
   if (state === "collecting") return "저장 데이터 수집 중";
   if (state === "building-html") return "HTML 저장본 생성 중";
   if (state === "triggering-download") return "다운로드 시작 중";
+  if (state === "completed-with-issues") return "저장 완료 · 이슈 있음";
   if (state === "completed") return "저장 완료";
   if (state === "failed") return "저장 실패";
   return "저장 대기 중";
@@ -87,6 +88,7 @@ function buildSnapshotSaveOverlayTitle(status) {
 
 function buildSnapshotSaveOverlayAccent(status) {
   const state = status && typeof status.state === "string" ? status.state : "idle";
+  if (state === "completed-with-issues") return C.amber;
   if (state === "completed") return C.green;
   if (state === "failed") return C.red;
   if (state === "refreshing") return C.blue;
@@ -270,6 +272,29 @@ function buildDirectSaveDecisionDetail(decision) {
   return "캐시가 만료되었거나 불완전해서 최신 데이터를 갱신한 뒤 저장합니다.";
 }
 
+function hasSnapshotSaveIssues(stats) {
+  return !!(
+    stats &&
+    (stats.failed > 0 ||
+      stats.partial > 0 ||
+      (Array.isArray(stats.errors) && stats.errors.length > 0))
+  );
+}
+
+function buildSnapshotSaveIssuesDetail(stats, fileName) {
+  const safeStats = stats || { failed: 0, partial: 0 };
+  const summary =
+    "실패 " +
+    String(safeStats.failed || 0) +
+    "개 · 부분 " +
+    String(safeStats.partial || 0) +
+    "개";
+  if (fileName) {
+    return "일부 요청 이슈가 있었지만 저장본은 생성되었습니다. " + summary + " · " + fileName;
+  }
+  return "일부 요청 이슈가 있었지만 저장본은 생성되었습니다. " + summary;
+}
+
 function buildSnapshotDownloadFileName(savedAt) {
   return (
     "searchadvisor-" +
@@ -437,20 +462,32 @@ function restoreSnapshotSaveButton(btn, originalText) {
         setTimeout(function () {
           URL.revokeObjectURL(link.href);
         }, 1000);
+        const saveStats =
+          payload && payload.stats ? payload.stats : { success: 0, partial: 0, failed: 0, errors: [] };
+        const hasIssues = hasSnapshotSaveIssues(saveStats);
+        if (hasIssues && typeof renderFailureSummary === "function") {
+          renderFailureSummary(saveStats);
+        }
         pushSnapshotSaveStatus({
           active: false,
-          state: "completed",
+          state: hasIssues ? "completed-with-issues" : "completed",
           phase: "download",
-          stageLabel: "저장 완료",
-          detail: "브라우저 다운로드 요청을 전송했어요.",
+          stageLabel: hasIssues ? "저장 완료 · 이슈 있음" : "저장 완료",
+          detail: hasIssues
+            ? buildSnapshotSaveIssuesDetail(saveStats, fileName)
+            : "브라우저 다운로드 요청을 전송했어요.",
           fileName: fileName,
           completedAt: Date.now(),
           cacheDecision: cacheDecision,
+          stats: saveStats,
         });
         return {
           ok: true,
+          status: hasIssues ? "completed-with-issues" : "completed",
+          hasIssues: hasIssues,
           fileName: fileName,
           payload: payload,
+          stats: saveStats,
         };
       } catch (e) {
         pushSnapshotSaveStatus({
