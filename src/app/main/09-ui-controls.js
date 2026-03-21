@@ -748,6 +748,9 @@ function applyUiControlsTab(tab) {
       sadvSaveBtnEl.setAttribute("aria-hidden", "true");
     } else {
       sadvSaveBtnEl.addEventListener("click", function () {
+        const saveStatus =
+          typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null;
+        if (saveStatus && saveStatus.active) return;
         downloadSnapshot();
       });
     }
@@ -765,6 +768,8 @@ function applyUiControlsTab(tab) {
         const panel = document.getElementById("sadv-p");
         const inj = document.getElementById("sadv-inj");
         if (typeof stopCacheExpiryMonitor === "function") stopCacheExpiryMonitor();
+        if (typeof removeSnapshotSaveOverlay === "function") removeSnapshotSaveOverlay();
+        if (typeof resetRuntimeSaveStatus === "function") resetRuntimeSaveStatus();
         if (panel) panel.remove();
         if (inj) inj.remove();
         if (typeof clearRuntimePublicApi === "function") clearRuntimePublicApi();
@@ -780,6 +785,11 @@ function applyUiControlsTab(tab) {
       getState: __sadvSnapshot,
       getCapabilities: function () {
         return resolveRuntimeCapabilities();
+      },
+      getSaveStatus: function () {
+        return typeof getRuntimeSaveStatus === "function"
+          ? getRuntimeSaveStatus()
+          : null;
       },
       isReady: function () {
         return __sadvInitialReady;
@@ -810,6 +820,11 @@ function applyUiControlsTab(tab) {
         return function () {
           __sadvListeners.delete(fn);
         };
+      },
+      subscribeSaveStatus: function (fn) {
+        return typeof subscribeRuntimeSaveStatus === "function"
+          ? subscribeRuntimeSaveStatus(fn)
+          : function () {};
       },
       switchMode: function (mode) {
         switchMode(mode);
@@ -852,8 +867,20 @@ function applyUiControlsTab(tab) {
       download: function () {
         const capabilities = resolveRuntimeCapabilities();
         if (!capabilities.canSave) return false;
+        const saveStatus =
+          typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null;
+        if (saveStatus && saveStatus.active) return false;
         downloadSnapshot();
         return true;
+      },
+      directSave: function (options) {
+        const capabilities = resolveRuntimeCapabilities();
+        if (!capabilities.canSave) return Promise.resolve(false);
+        if (typeof directSaveSnapshot === "function") {
+          return directSaveSnapshot(options);
+        }
+        downloadSnapshot();
+        return Promise.resolve(true);
       },
       exportSnapshotData: function (onProgress, options) {
         return collectExportData(onProgress, options);
@@ -867,6 +894,8 @@ function applyUiControlsTab(tab) {
         const panel = document.getElementById("sadv-p");
         const inj = document.getElementById("sadv-inj");
         if (typeof stopCacheExpiryMonitor === "function") stopCacheExpiryMonitor();
+        if (typeof removeSnapshotSaveOverlay === "function") removeSnapshotSaveOverlay();
+        if (typeof resetRuntimeSaveStatus === "function") resetRuntimeSaveStatus();
         if (panel) panel.remove();
         if (inj) inj.remove();
         if (typeof clearRuntimePublicApi === "function") clearRuntimePublicApi();

@@ -57,6 +57,9 @@ provider = {
 ```js
 provider.refresh()
 provider.downloadSnapshot()
+provider.directSave()
+provider.getSaveStatus()
+provider.subscribeSaveStatus(listener)
 provider.closePanel()
 ```
 
@@ -103,6 +106,9 @@ actions = {
   setAllSitesPeriod(days),
   refresh(),
   downloadSnapshot(),
+  directSave(options),
+  getSaveStatus(),
+  subscribeSaveStatus(listener),
   close(),
 }
 ```
@@ -112,6 +118,13 @@ actions = {
   - 의미: **site 선택 + site mode 진입**
 - `setSite(site)`는 기존 외부 호환성을 위해 public facade에 남아 있을 수 있지만,
   장기적으로는 `switchSite(site)` 쪽이 더 명확한 intent 이름으로 간주된다.
+- `downloadSnapshot()`은 기존 buttonless save entry다.
+  - 현재 기본 의미는 **cache-first 저장**
+- `directSave(options)`는 smart save entry다.
+  - 의미: **캐시 없음/만료/불완전 데이터 여부를 점검하고, 필요하면 full refresh 후 저장**
+- `getSaveStatus()` / `subscribeSaveStatus(listener)`는 external automation용 관찰 계약이다.
+  - Python/browser automation이 저장 진행 상태를 안정적으로 추적할 수 있어야 한다.
+  - UI overlay, 전역 mirror 상태, public facade가 같은 상태 객체를 보도록 유지한다.
 
 ### public facade 게시 규칙
 

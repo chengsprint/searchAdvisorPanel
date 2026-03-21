@@ -68,21 +68,50 @@ function renderFullRefreshProgress(label, detail, progress, stats) {
  *   await runFullRefreshPipeline({ trigger: 'cache-expiry' });
  * }
  */
-function shouldBootstrapFullRefresh() {
-  if (!allSites.length) return false;
+function getBootstrapFullRefreshStatus() {
+  if (!allSites.length) {
+    return {
+      shouldRefresh: false,
+      reason: null,
+      ttlMs: getDataTtlMs(),
+      siteCount: 0,
+      siteListMissing: false,
+      siteListExpired: false,
+      expiredSites: 0,
+    };
+  }
   const now = Date.now();
   const ttlMs = getDataTtlMs();
   const siteListTs = getSiteListCacheStamp();
   const memCache = typeof getMemCache === "function" ? getMemCache() : null;
   const hasLiveSiteList = Array.isArray(allSites) && allSites.length > 0;
+  const status = {
+    shouldRefresh: false,
+    reason: null,
+    ttlMs: ttlMs,
+    siteCount: Array.isArray(allSites) ? allSites.length : 0,
+    siteListMissing: false,
+    siteListExpired: false,
+    expiredSites: 0,
+  };
   if (!(typeof siteListTs === "number")) {
-    if (!hasLiveSiteList) return true;
+    if (!hasLiveSiteList) {
+      status.shouldRefresh = true;
+      status.reason = "site-list-missing";
+      status.siteListMissing = true;
+      return status;
+    }
   } else if (now - siteListTs >= ttlMs) {
-    return true;
+    status.shouldRefresh = true;
+    status.reason = "site-list-expired";
+    status.siteListExpired = true;
   }
-  return allSites.some(function (site) {
+  allSites.forEach(function (site) {
     const siteTs = getSiteDataCacheStamp(site);
-    if (typeof siteTs === "number") return now - siteTs >= ttlMs;
+    if (typeof siteTs === "number") {
+      if (now - siteTs >= ttlMs) status.expiredSites += 1;
+      return;
+    }
     const memData = memCache && memCache[site];
     const initData =
       (typeof window !== "undefined" && window.__sadvInitData && window.__sadvInitData.sites
@@ -99,9 +128,19 @@ function shouldBootstrapFullRefresh() {
       (initData && typeof initData.__cacheSavedAt === "number" && initData.__cacheSavedAt) ||
       (initData && typeof initData.ts === "number" && initData.ts) ||
       null;
-    if (typeof liveTs === "number") return now - liveTs >= ttlMs;
-    return false;
+    if (typeof liveTs === "number" && now - liveTs >= ttlMs) {
+      status.expiredSites += 1;
+    }
   });
+  if (status.expiredSites > 0) {
+    status.shouldRefresh = true;
+    if (!status.reason) status.reason = "site-data-expired";
+  }
+  return status;
+}
+
+function shouldBootstrapFullRefresh() {
+  return !!getBootstrapFullRefreshStatus().shouldRefresh;
 }
 
 let fullRefreshInFlightPromise = null;
@@ -157,6 +196,7 @@ async function runFullRefreshPipeline(options = {}) {
   if (fullRefreshInFlightPromise) return fullRefreshInFlightPromise;
   fullRefreshInFlightPromise = (async function () {
   const trigger = options && options.trigger ? options.trigger : "manual";
+  const shouldRenderProgress = !(options && options.renderProgress === false);
   const triggerLabel =
     trigger === "cache-expiry"
       ? "\uce90\uc2dc\uac00 \ub9cc\ub8cc\ub418\uc5b4 \uc804\uccb4 \ub370\uc774\ud130\ub97c \ub2e4\uc2dc \uc218\uc9d1\ud558\uace0 \uc788\uc5b4\uc694."
@@ -170,8 +210,10 @@ async function runFullRefreshPipeline(options = {}) {
     ttlMs: getDataTtlMs(),
     siteCount: allSites.length,
   });
-  renderFullRefreshProgress(triggerLabel, triggerDetail, 0);
-  labelEl.innerHTML = sanitizeHTML("<span>\uc804\uccb4 \uc7ac\uc218\uc9d1 \uc9c4\ud589 \uc911</span>");
+  if (shouldRenderProgress) {
+    renderFullRefreshProgress(triggerLabel, triggerDetail, 0);
+    labelEl.innerHTML = sanitizeHTML("<span>\uc804\uccb4 \uc7ac\uc218\uc9d1 \uc9c4\ud589 \uc911</span>");
+  }
   const btn = options && options.button ? options.button : null;
   const payload = await collectExportData(
     function (done, total, site, stats) {
@@ -185,8 +227,13 @@ async function runFullRefreshPipeline(options = {}) {
         safeTotal +
         " \uc0ac\uc774\ud2b8 \ucc98\ub9ac \uc911" +
         (shortSite ? " · " + shortSite : "");
-      renderFullRefreshProgress(triggerLabel, detail, done / safeTotal, stats);
+      if (shouldRenderProgress) {
+        renderFullRefreshProgress(triggerLabel, detail, done / safeTotal, stats);
+      }
       if (btn) btn.textContent = done + "/" + safeTotal;
+      if (options && typeof options.onProgress === "function") {
+        options.onProgress(done, safeTotal, site, stats);
+      }
     },
     { refreshMode: "refresh" },
   );

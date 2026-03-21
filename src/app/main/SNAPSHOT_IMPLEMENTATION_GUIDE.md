@@ -247,6 +247,13 @@
   공용 제어 계약은 live와 같은 `window.__sadvApi` alias로도 노출해야 한다.
   그래야 QA/audit/외부 automation이 runtime kind를 분기하지 않고
   `switchMode/setSite/setTab/getState`를 같은 이름으로 호출할 수 있다.
+- live 런타임의 저장 파이프라인은 이제
+  - `download()` = cache-first buttonless save
+  - `directSave()` = stale/missing cache를 점검하고 필요하면 refresh 후 저장
+  으로 의미가 나뉜다.
+  이때 외부 automation이 읽는 canonical 상태는
+  `window.__SEARCHADVISOR_SAVE_STATUS__` / `getSaveStatus()` / `subscribeSaveStatus()`
+  세 entry가 같은 정보를 바라보도록 유지해야 한다.
 - `ensureCurrentSite`, `buildCombo`, `setComboSite`, `renderTab`, `switchMode`처럼
   saved가 직접 호출하는 공통 UI 함수는 **그 함수가 참조하는 helper까지 같이 serialize**
   되는지 반드시 확인한다.
