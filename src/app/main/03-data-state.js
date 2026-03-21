@@ -7,6 +7,63 @@
  * @param {boolean} refresh - Force refresh from cache
  * @returns {Promise<Array>} List of site URLs
  */
+async function recoverSiteListFromBoardApi() {
+  // Fresh profile / 새 크롬처럼 local cache가 비어 있는 환경에서는
+  // `__sadvInitData`나 merged/export payload가 아직 없더라도
+  // board 페이지의 encId만 찾을 수 있으면 legacy `api-board/list/<encId>` 경로로
+  // 사이트 목록을 복구할 수 있다.
+  //
+  // 왜 이 fallback을 유지하나:
+  // - 과거 runtime은 board 페이지에서도 이 복구 경로로 사이트 목록을 채웠고,
+  // - 새 프로필에서만 `사이트 목록을 찾을 수 없어요`가 뜨는 회귀를 막으려면
+  //   initData/cache 의존만으로는 부족하기 때문이다.
+  //
+  // 주의:
+  // - export payload / merged data / init data / cache보다 후순위다.
+  // - verified 사이트만 채택한다.
+  // - 성공하면 caller가 cache + global allSites를 동기화한다.
+  const encId = ACCOUNT_UTILS.getEncId();
+  if (!encId) {
+    console.warn("[loadSiteList] Board API fallback skipped: encId missing");
+    return [];
+  }
+
+  try {
+    const response = await fetchWithRetry(
+      "https://searchadvisor.naver.com/api-board/list/" + encId,
+      {
+        credentials: "include",
+        headers: { accept: "application/json" },
+      },
+    );
+
+    if (!response || !response.ok) {
+      console.warn("[loadSiteList] Board API fallback failed:", response ? response.status : "no-response");
+      return [];
+    }
+
+    const payload = await response.json();
+    const sites = Array.isArray(payload && payload.items)
+      ? payload.items
+          .filter(function (item) { return item && item.verified; })
+          .map(function (item) { return item && item.site; })
+          .filter(Boolean)
+          .sort()
+      : [];
+
+    if (sites.length) {
+      console.log("[loadSiteList] Recovered sites from board API fallback:", sites);
+    } else {
+      console.warn("[loadSiteList] Board API fallback returned no verified sites");
+    }
+
+    return sites;
+  } catch (e) {
+    console.warn("[loadSiteList] Board API fallback error:", e);
+    return [];
+  }
+}
+
 async function loadSiteList(refresh = false) {
   console.log('[loadSiteList] Called with refresh:', refresh);
   const cacheSites = function (sites) {
@@ -134,6 +191,32 @@ async function loadSiteList(refresh = false) {
       }
     } catch (e) {
       console.warn('[loadSiteList] V1 cache migration failed:', e);
+    }
+  }
+
+  // Legacy parity / fresh-profile recovery:
+  // initData/mergedData/cache/export payload가 모두 비어 있는 board 페이지에서도
+  // 예전 runtime은 encId -> api-board/list fallback으로 사이트 목록을 회복했다.
+  // 새 크롬 프로필에서만 전체현황이 비는 회귀를 막기 위해,
+  // 마지막 복구 경로로 이 fallback을 유지한다.
+  const recoveredSites = await recoverSiteListFromBoardApi();
+  if (recoveredSites.length) {
+    const allSites = getAllSites();
+    allSites.length = 0;
+    allSites.push(...recoveredSites);
+    cacheSites(recoveredSites);
+    return recoveredSites;
+  }
+
+  const siteMatch = location.search.match(/site=([^&]+)/);
+  if (siteMatch) {
+    const recoveredSite = decodeURIComponent(siteMatch[1]);
+    if (recoveredSite) {
+      const allSites = getAllSites();
+      allSites.length = 0;
+      allSites.push(recoveredSite);
+      cacheSites([recoveredSite]);
+      return [recoveredSite];
     }
   }
 
