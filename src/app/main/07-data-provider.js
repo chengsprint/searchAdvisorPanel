@@ -88,6 +88,167 @@ function clearRuntimePublicApi() {
   return setRuntimePublicApi(null);
 }
 
+const __sadvSaveStatusListeners = new Set();
+
+function createDefaultRuntimeSaveStatus() {
+  return {
+    active: false,
+    state: "idle",
+    phase: null,
+    stageLabel: "",
+    detail: "",
+    startedAt: null,
+    updatedAt: Date.now(),
+    completedAt: null,
+    progress: {
+      done: 0,
+      total: 0,
+      ratio: 0,
+      percent: 0,
+    },
+    stats: {
+      success: 0,
+      partial: 0,
+      failed: 0,
+      errors: [],
+    },
+    cacheDecision: {
+      neededRefresh: false,
+      reason: null,
+      missingSites: 0,
+      expiredSites: 0,
+    },
+    fileName: null,
+    site: null,
+    error: null,
+  };
+}
+
+function cloneRuntimeSaveStatus(status) {
+  const base = createDefaultRuntimeSaveStatus();
+  const source = status && typeof status === "object" ? status : {};
+  const sourceProgress =
+    source.progress && typeof source.progress === "object" ? source.progress : {};
+  const sourceStats = source.stats && typeof source.stats === "object" ? source.stats : {};
+  const sourceCacheDecision =
+    source.cacheDecision && typeof source.cacheDecision === "object"
+      ? source.cacheDecision
+      : {};
+  const sourceError = source.error && typeof source.error === "object" ? source.error : null;
+  return {
+    ...base,
+    ...source,
+    progress: {
+      ...base.progress,
+      ...sourceProgress,
+    },
+    stats: {
+      ...base.stats,
+      ...sourceStats,
+      errors: Array.isArray(sourceStats.errors) ? sourceStats.errors.slice() : [],
+    },
+    cacheDecision: {
+      ...base.cacheDecision,
+      ...sourceCacheDecision,
+    },
+    error: sourceError
+      ? {
+          message:
+            typeof sourceError.message === "string" ? sourceError.message : String(sourceError),
+          context:
+            typeof sourceError.context === "string" ? sourceError.context : null,
+        }
+      : null,
+  };
+}
+
+function getRuntimeSaveStatus() {
+  if (typeof window === "undefined") return createDefaultRuntimeSaveStatus();
+  if (!window.__SEARCHADVISOR_SAVE_STATUS__) {
+    window.__SEARCHADVISOR_SAVE_STATUS__ = createDefaultRuntimeSaveStatus();
+  }
+  return cloneRuntimeSaveStatus(window.__SEARCHADVISOR_SAVE_STATUS__);
+}
+
+function setRuntimeSaveStatus(patch) {
+  // 저장/직접저장 상태는 external automation과 UI overlay가 함께 읽는 공용 런타임 상태다.
+  //
+  // 왜 별도 seam이 필요한가:
+  // - save 진행률은 panel body/badge/button 텍스트만으로 추적하면 외부 스크립트가 읽기 어렵다.
+  // - public facade(window.__sadvApi)와 별도로 전역 mirror 상태를 두면
+  //   Python/browser automation이 polling과 subscribe 둘 다 안정적으로 사용할 수 있다.
+  // - 이후 live/saved parity를 더 끌어올릴 때도 "저장 상태를 어디에 쓰는지"를 한 곳에서 바꿀 수 있다.
+  const previous = getRuntimeSaveStatus();
+  const base =
+    patch &&
+    typeof patch === "object" &&
+    Object.prototype.hasOwnProperty.call(patch, "__replace") &&
+    patch.__replace
+      ? createDefaultRuntimeSaveStatus()
+      : previous;
+  const nextPatch = patch && typeof patch === "object" ? patch : {};
+  const next = cloneRuntimeSaveStatus({
+    ...base,
+    ...nextPatch,
+    progress:
+      nextPatch.progress && typeof nextPatch.progress === "object"
+        ? { ...base.progress, ...nextPatch.progress }
+        : base.progress,
+    stats:
+      nextPatch.stats && typeof nextPatch.stats === "object"
+        ? { ...base.stats, ...nextPatch.stats }
+        : base.stats,
+    cacheDecision:
+      nextPatch.cacheDecision && typeof nextPatch.cacheDecision === "object"
+        ? { ...base.cacheDecision, ...nextPatch.cacheDecision }
+        : base.cacheDecision,
+    error:
+      nextPatch.error && typeof nextPatch.error === "object"
+        ? {
+            message:
+              typeof nextPatch.error.message === "string"
+                ? nextPatch.error.message
+                : String(nextPatch.error),
+            context:
+              typeof nextPatch.error.context === "string" ? nextPatch.error.context : null,
+          }
+        : nextPatch.error === null
+          ? null
+          : base.error,
+    updatedAt:
+      typeof nextPatch.updatedAt === "number" ? nextPatch.updatedAt : Date.now(),
+  });
+  if (typeof window !== "undefined") {
+    window.__SEARCHADVISOR_SAVE_STATUS__ = next;
+  }
+  __sadvSaveStatusListeners.forEach(function (listener) {
+    try {
+      listener(cloneRuntimeSaveStatus(next));
+    } catch (e) {
+      console.error("[setRuntimeSaveStatus] Listener error:", e);
+    }
+  });
+  if (typeof __sadvNotify === "function") __sadvNotify();
+  return cloneRuntimeSaveStatus(next);
+}
+
+function resetRuntimeSaveStatus(extraPatch) {
+  return setRuntimeSaveStatus({
+    __replace: true,
+    ...(extraPatch && typeof extraPatch === "object" ? extraPatch : {}),
+  });
+}
+
+function subscribeRuntimeSaveStatus(listener) {
+  if (typeof listener !== "function") {
+    return function unsubscribeRuntimeSaveStatus() {};
+  }
+  __sadvSaveStatusListeners.add(listener);
+  return function unsubscribeRuntimeSaveStatus() {
+    __sadvSaveStatusListeners.delete(listener);
+  };
+}
+
 function getRuntimeShellState() {
   // shell state는 UI가 읽는 최소 공통 상태다.
   //

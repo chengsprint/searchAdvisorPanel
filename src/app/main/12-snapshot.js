@@ -19,62 +19,568 @@
  * - src/app/main/UI_DATA_PIPELINE_BOUNDARY.md
  * - src/app/main/SNAPSHOT_IMPLEMENTATION_GUIDE.md
  */
-  /**
+let snapshotSaveInFlightPromise = null;
+let directSaveInFlightPromise = null;
+let snapshotSaveOverlayCleanupTimer = null;
+
+function createIdleDirectSaveStatus() {
+  return {
+    active: false,
+    state: "idle",
+    phase: null,
+    stageLabel: "",
+    detail: "",
+    startedAt: null,
+    updatedAt: Date.now(),
+    completedAt: null,
+    progress: { done: 0, total: 0, ratio: 0, percent: 0 },
+    stats: { success: 0, partial: 0, failed: 0, errors: [] },
+    cacheDecision: { neededRefresh: false, reason: null, missingSites: 0, expiredSites: 0 },
+    fileName: null,
+    site: null,
+    error: null,
+  };
+}
+
+function clearSnapshotSaveOverlayCleanupTimer() {
+  if (snapshotSaveOverlayCleanupTimer) {
+    clearTimeout(snapshotSaveOverlayCleanupTimer);
+    snapshotSaveOverlayCleanupTimer = null;
+  }
+}
+
+function removeSnapshotSaveOverlay() {
+  clearSnapshotSaveOverlayCleanupTimer();
+  const existing = document.getElementById("sadv-save-status-overlay");
+  if (existing) existing.remove();
+}
+
+function ensureSnapshotSaveOverlay() {
+  let overlay = document.getElementById("sadv-save-status-overlay");
+  if (overlay) return overlay;
+  overlay = document.createElement("div");
+  overlay.id = "sadv-save-status-overlay";
+  overlay.style.cssText =
+    "position:fixed;top:84px;right:18px;z-index:2147483645;min-width:280px;max-width:360px;" +
+    "background:linear-gradient(180deg,rgba(17,17,20,0.97),rgba(10,10,12,0.96));" +
+    "border:1px solid rgba(255,212,0,0.18);box-shadow:0 14px 34px rgba(0,0,0,0.35);" +
+    "backdrop-filter:blur(10px);padding:14px 16px;color:var(--sadv-text,#fffdf5);" +
+    "font-family:" +
+    T.fontSans +
+    ";pointer-events:none";
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+function buildSnapshotSaveOverlayTitle(status) {
+  const state = status && typeof status.state === "string" ? status.state : "idle";
+  if (status && status.stageLabel) return status.stageLabel;
+  if (state === "checking-cache") return "저장 준비 중";
+  if (state === "refreshing") return "최신 데이터 갱신 중";
+  if (state === "collecting") return "저장 데이터 수집 중";
+  if (state === "building-html") return "HTML 저장본 생성 중";
+  if (state === "triggering-download") return "다운로드 시작 중";
+  if (state === "completed") return "저장 완료";
+  if (state === "failed") return "저장 실패";
+  return "저장 대기 중";
+}
+
+function buildSnapshotSaveOverlayAccent(status) {
+  const state = status && typeof status.state === "string" ? status.state : "idle";
+  if (state === "completed") return C.green;
+  if (state === "failed") return C.red;
+  if (state === "refreshing") return C.blue;
+  if (state === "checking-cache") return C.amber;
+  if (state === "triggering-download") return C.teal;
+  return C.amber;
+}
+
+function renderSnapshotSaveOverlay(status) {
+  if (!status || status.state === "idle") {
+    removeSnapshotSaveOverlay();
+    return;
+  }
+  clearSnapshotSaveOverlayCleanupTimer();
+  const overlay = ensureSnapshotSaveOverlay();
+  const title = buildSnapshotSaveOverlayTitle(status);
+  const accent = buildSnapshotSaveOverlayAccent(status);
+  const progress = status.progress && typeof status.progress === "object" ? status.progress : {};
+  const stats = status.stats && typeof status.stats === "object" ? status.stats : {};
+  const pct =
+    typeof progress.percent === "number"
+      ? Math.max(0, Math.min(100, Math.round(progress.percent)))
+      : 0;
+  const detail = typeof status.detail === "string" ? status.detail : "";
+  const site = typeof status.site === "string" && status.site ? status.site : "";
+  const cacheDecision =
+    status.cacheDecision && typeof status.cacheDecision === "object"
+      ? status.cacheDecision
+      : null;
+  const decisionHtml =
+    cacheDecision && cacheDecision.neededRefresh
+      ? '<span style="color:' +
+        C.amber +
+        '">캐시 갱신 필요</span>' +
+        (cacheDecision.reason
+          ? '<span style="color:rgba(255,253,245,0.58)"> · ' +
+            escHtml(String(cacheDecision.reason)) +
+            "</span>"
+          : "")
+      : '<span style="color:' + C.green + '">즉시 저장 가능</span>';
+  overlay.dataset.state = status.state || "idle";
+  overlay.dataset.phase = status.phase || "";
+  overlay.dataset.active = status.active ? "true" : "false";
+  overlay.dataset.current =
+    typeof progress.done === "number" ? String(progress.done) : "0";
+  overlay.dataset.total =
+    typeof progress.total === "number" ? String(progress.total) : "0";
+  overlay.dataset.percent = String(pct);
+  overlay.dataset.stopped =
+    !status.active && (status.state === "completed" || status.state === "failed")
+      ? "true"
+      : "false";
+  overlay.innerHTML = sanitizeHTML(
+    '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">' +
+      '<div style="min-width:0;flex:1">' +
+        '<div style="font-size:12px;font-weight:800;color:' + accent + ';margin-bottom:6px">' +
+          escHtml(title) +
+        "</div>" +
+        '<div style="font-size:11px;line-height:1.55;color:var(--sadv-text-secondary,#ffe9a8);margin-bottom:8px">' +
+          escHtml(detail || "진행 상태를 준비하고 있어요.") +
+        "</div>" +
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">' +
+          '<div style="flex:1;height:8px;border-radius:999px;background:rgba(255,255,255,0.06);overflow:hidden;border:1px solid rgba(255,255,255,0.06)">' +
+            '<div style="width:' + pct + '%;height:100%;background:' + accent + '"></div>' +
+          "</div>" +
+          '<span style="font-size:11px;font-weight:700;color:' + accent + ';min-width:42px;text-align:right">' +
+            escHtml(String(pct)) +
+            "%</span>" +
+        "</div>" +
+        '<div style="display:flex;flex-wrap:wrap;gap:10px;font-size:10px;color:rgba(255,253,245,0.65);margin-bottom:6px">' +
+          '<span>진행 ' + escHtml(String(progress.done || 0)) + '/' + escHtml(String(progress.total || 0)) + "</span>" +
+          '<span>완료 ' + escHtml(String(stats.success || 0)) + "</span>" +
+          '<span>부분 ' + escHtml(String(stats.partial || 0)) + "</span>" +
+          '<span>실패 ' + escHtml(String(stats.failed || 0)) + "</span>" +
+        "</div>" +
+        '<div style="font-size:10px;color:rgba(255,253,245,0.58);line-height:1.5">' +
+          decisionHtml +
+          (site ? '<div style="margin-top:4px;color:rgba(255,253,245,0.74)">현재 사이트 · ' + escHtml(site.replace("https://", "").replace("http://", "")) + "</div>" : "") +
+          (status.fileName ? '<div style="margin-top:4px;color:' + accent + '">' + escHtml(status.fileName) + "</div>" : "") +
+          (status.error && status.error.message ? '<div style="margin-top:6px;color:' + C.red + '">' + escHtml(status.error.message) + "</div>" : "") +
+        "</div>" +
+      "</div>" +
+    "</div>"
+  );
+  if (!status.active && status.state === "completed") {
+    snapshotSaveOverlayCleanupTimer = setTimeout(function () {
+      removeSnapshotSaveOverlay();
+    }, 1800);
+  }
+}
+
+function pushSnapshotSaveStatus(patch) {
+  const next =
+    typeof setRuntimeSaveStatus === "function"
+      ? setRuntimeSaveStatus(patch)
+      : (typeof cloneRuntimeSaveStatus === "function" ? cloneRuntimeSaveStatus(patch) : patch);
+  renderSnapshotSaveOverlay(next);
+  return next;
+}
+
+function buildDirectSaveRefreshDecision() {
+  const runtimeSites =
+    typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
+  const memCache = typeof getMemCache === "function" ? getMemCache() : null;
+  const bootstrapStatus =
+    typeof getBootstrapFullRefreshStatus === "function"
+      ? getBootstrapFullRefreshStatus()
+      : {
+          shouldRefresh:
+            typeof shouldBootstrapFullRefresh === "function"
+              ? shouldBootstrapFullRefresh()
+              : false,
+          reason: null,
+          ttlMs: typeof getDataTtlMs === "function" ? getDataTtlMs() : null,
+          expiredSites: 0,
+          siteListMissing: false,
+          siteListExpired: false,
+        };
+  const decision = {
+    neededRefresh: !!bootstrapStatus.shouldRefresh,
+    reason: bootstrapStatus.reason || null,
+    ttlMs: bootstrapStatus.ttlMs || null,
+    siteCount: Array.isArray(runtimeSites) ? runtimeSites.length : 0,
+    siteListMissing: !!bootstrapStatus.siteListMissing,
+    siteListExpired: !!bootstrapStatus.siteListExpired,
+    missingSites: 0,
+    expiredSites: bootstrapStatus.expiredSites || 0,
+  };
+  if (!runtimeSites.length) {
+    decision.neededRefresh = true;
+    decision.reason = decision.reason || "site-list-missing";
+    decision.siteListMissing = true;
+    return decision;
+  }
+  runtimeSites.forEach(function (site) {
+    const siteData =
+      (memCache && memCache[site]) ||
+      (typeof window !== "undefined" && window.__sadvInitData && window.__sadvInitData.sites
+        ? window.__sadvInitData.sites[site]
+        : null) ||
+      (typeof window !== "undefined" && window.__sadvMergedData && window.__sadvMergedData.sites
+        ? window.__sadvMergedData.sites[site]
+        : null) ||
+      (typeof window !== "undefined" &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__ &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.siteData
+        ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__.siteData[site]
+        : null) ||
+      null;
+    const hasCompleteData =
+      !!siteData && siteData.expose != null && siteData.detailLoaded === true;
+    if (!hasCompleteData) decision.missingSites += 1;
+  });
+  if (decision.missingSites > 0) {
+    decision.neededRefresh = true;
+    if (!decision.reason) decision.reason = "site-data-missing";
+  }
+  if (!decision.reason && decision.expiredSites > 0) {
+    decision.reason = "site-data-expired";
+  }
+  return decision;
+}
+
+function buildDirectSaveDecisionDetail(decision) {
+  if (!decision || !decision.neededRefresh) {
+    return "현재 캐시를 사용해 바로 저장을 시작합니다.";
+  }
+  if (decision.reason === "site-list-missing") {
+    return "사이트 목록 캐시가 없어 전체 데이터를 다시 수집한 뒤 저장합니다.";
+  }
+  if (decision.reason === "site-list-expired") {
+    return "사이트 목록 캐시가 만료되어 최신 데이터를 다시 수집한 뒤 저장합니다.";
+  }
+  if (decision.reason === "site-data-missing") {
+    return (
+      "저장에 필요한 사이트 데이터가 일부 비어 있어 " +
+      String(decision.missingSites || 0) +
+      "개 사이트를 포함해 전체 데이터를 갱신한 뒤 저장합니다."
+    );
+  }
+  return "캐시가 만료되었거나 불완전해서 최신 데이터를 갱신한 뒤 저장합니다.";
+}
+
+function buildSnapshotDownloadFileName(savedAt) {
+  return (
+    "searchadvisor-" +
+    accountIdFromLabel(accountLabel) +
+    "-" +
+    stampFile(savedAt) +
+    ".html"
+  );
+}
+
+function setSnapshotSaveButtonBusy(btn, text) {
+  if (!btn) return;
+  btn.disabled = true;
+  btn.dataset.busy = "true";
+  btn.textContent = text;
+}
+
+function restoreSnapshotSaveButton(btn, originalText) {
+  if (!btn) return;
+  btn.disabled = false;
+  btn.dataset.busy = "false";
+  btn.textContent = originalText;
+}
+
+/**
  * Download the current view as a standalone HTML snapshot file
- * Collects all data, generates HTML with embedded payload, and triggers download
- * @returns {Promise<void>}
+ * Collects all data, generates HTML with embedded payload, and triggers download.
+ *
+ * 확장 의도:
+ * - 기존 버튼 저장은 그대로 유지한다.
+ * - direct save는 이 함수에 payload/precomputed refresh 결과를 넘겨 재사용한다.
+ * - 저장 진행 상태는 window.__SEARCHADVISOR_SAVE_STATUS__와 overlay UI에 같이 publish한다.
+ *
+ * @param {Object} [options]
+ * @param {Object|null} [options.payload] - 이미 수집한 payload가 있으면 재사용
+ * @param {string} [options.refreshMode] - 'cache-first' | 'refresh'
+ * @param {number} [options.startedAt] - direct save orchestrator가 넘기는 시작 시각
+ * @param {Object|null} [options.cacheDecision] - direct save의 refresh 판단 결과
+ * @returns {Promise<Object>} { ok, fileName, payload }
  * @example
- * await downloadSnapshot(); // Downloads searchadvisor-user-20260315-143045.html
- * @see {collectExportData}
- * @see {buildSnapshotHtml}
+ * await downloadSnapshot(); // cache-first 저장
+ * await downloadSnapshot({ payload }); // 이미 refresh한 payload를 재사용해 즉시 저장
  */
-  async function downloadSnapshot() {
+  async function downloadSnapshot(options) {
+    if (snapshotSaveInFlightPromise) return snapshotSaveInFlightPromise;
+    snapshotSaveInFlightPromise = (async function () {
+      const capabilities =
+        typeof getRuntimeCapabilities === "function" ? getRuntimeCapabilities() : null;
+      if (capabilities && capabilities.isReadOnly) {
+        throw new Error("snapshot export is disabled in read-only mode");
+      }
+      const runtimeSites =
+        typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
+      const refreshMode =
+        options && options.refreshMode === "refresh" ? "refresh" : "cache-first";
+      const startedAt =
+        options && typeof options.startedAt === "number" ? options.startedAt : Date.now();
+      const cacheDecision =
+        options && options.cacheDecision && typeof options.cacheDecision === "object"
+          ? options.cacheDecision
+          : {
+              neededRefresh: refreshMode === "refresh",
+              reason: refreshMode === "refresh" ? "explicit-refresh" : null,
+              missingSites: 0,
+              expiredSites: 0,
+            };
+      const btn = document.getElementById("sadv-save-btn");
+      const originalText = btn ? btn.textContent : "저장";
+      setSnapshotSaveButtonBusy(btn, "0/" + runtimeSites.length);
+      pushSnapshotSaveStatus({
+        __replace: true,
+        active: true,
+        state: options && options.payload ? "building-html" : "collecting",
+        phase: "download",
+        stageLabel:
+          options && options.payload ? "HTML 저장본 생성 중" : "저장 데이터 수집 중",
+        detail:
+          options && options.payload
+            ? "최신 데이터 수집은 이미 끝났고, 오프라인 HTML 저장본을 조립하고 있어요."
+            : "저장본에 들어갈 사이트 데이터를 순서대로 수집하고 있어요.",
+        startedAt: startedAt,
+        completedAt: null,
+        progress: {
+          done: options && options.payload ? runtimeSites.length : 0,
+          total: runtimeSites.length,
+          ratio: options && options.payload ? 1 : 0,
+          percent: options && options.payload ? 100 : 0,
+        },
+        stats:
+          options && options.payload && options.payload.stats
+            ? options.payload.stats
+            : { success: 0, partial: 0, failed: 0, errors: [] },
+        cacheDecision: cacheDecision,
+        fileName: null,
+        site: null,
+        error: null,
+      });
+      try {
+        const savedAt = new Date();
+        const payload =
+          options && options.payload
+            ? options.payload
+            : await collectExportData(
+                function (done, total, site, stats) {
+                  const safeTotal = Math.max(1, total);
+                  setSnapshotSaveButtonBusy(btn, done + "/" + safeTotal);
+                  pushSnapshotSaveStatus({
+                    active: true,
+                    state: "collecting",
+                    phase: "download",
+                    stageLabel: "저장 데이터 수집 중",
+                    detail:
+                      done +
+                      " / " +
+                      safeTotal +
+                      " 사이트 처리 중" +
+                      (site ? " · " + site.replace("https://", "").replace("http://", "") : ""),
+                    progress: {
+                      done: done,
+                      total: safeTotal,
+                      ratio: safeTotal > 0 ? done / safeTotal : 0,
+                      percent: safeTotal > 0 ? Math.round((done / safeTotal) * 100) : 0,
+                    },
+                    stats: stats || { success: 0, partial: 0, failed: 0, errors: [] },
+                    site: site || null,
+                    cacheDecision: cacheDecision,
+                  });
+                },
+                { refreshMode: refreshMode },
+              );
+        pushSnapshotSaveStatus({
+          active: true,
+          state: "building-html",
+          phase: "download",
+          stageLabel: "HTML 저장본 생성 중",
+          detail: "오프라인에서도 열리는 단일 HTML 파일을 조립하고 있어요.",
+          progress: {
+            done: runtimeSites.length,
+            total: runtimeSites.length,
+            ratio: 1,
+            percent: 100,
+          },
+          stats: payload && payload.stats ? payload.stats : { success: 0, partial: 0, failed: 0, errors: [] },
+          site: null,
+          cacheDecision: cacheDecision,
+        });
+        const html = injectSnapshotReactShell(buildSnapshotHtml(savedAt, payload), payload);
+        const fileName = buildSnapshotDownloadFileName(savedAt);
+        pushSnapshotSaveStatus({
+          active: true,
+          state: "triggering-download",
+          phase: "download",
+          stageLabel: "다운로드 시작 중",
+          detail: "브라우저 다운로드를 트리거하고 있어요.",
+          fileName: fileName,
+          cacheDecision: cacheDecision,
+        });
+        const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(function () {
+          URL.revokeObjectURL(link.href);
+        }, 1000);
+        pushSnapshotSaveStatus({
+          active: false,
+          state: "completed",
+          phase: "download",
+          stageLabel: "저장 완료",
+          detail: "브라우저 다운로드 요청을 전송했어요.",
+          fileName: fileName,
+          completedAt: Date.now(),
+          cacheDecision: cacheDecision,
+        });
+        return {
+          ok: true,
+          fileName: fileName,
+          payload: payload,
+        };
+      } catch (e) {
+        pushSnapshotSaveStatus({
+          active: false,
+          state: "failed",
+          phase: "download",
+          stageLabel: "저장 실패",
+          detail:
+            "저장 중 오류가 발생했어요. 상태 객체와 오류 배너를 확인한 뒤 다시 시도해 주세요.",
+          completedAt: Date.now(),
+          error: {
+            message: e && e.message ? e.message : String(e),
+            context: "downloadSnapshot",
+          },
+          cacheDecision: cacheDecision,
+        });
+        showError(ERROR_MESSAGES.HTML_SAVE_ERROR, e, 'downloadSnapshot');
+        bdEl.innerHTML = createInlineError(
+          ERROR_MESSAGES.HTML_SAVE_ERROR,
+          function () {
+            downloadSnapshot();
+          },
+          '다시 시도'
+        ).outerHTML;
+        throw e;
+      } finally {
+        restoreSnapshotSaveButton(btn, originalText);
+      }
+    })();
+    try {
+      return await snapshotSaveInFlightPromise;
+    } finally {
+      snapshotSaveInFlightPromise = null;
+    }
+  }
+
+/**
+ * Smart direct save pipeline
+ *
+ * 목표:
+ * - 외부 스크립트가 버튼 클릭 없이 호출 가능해야 한다.
+ * - 캐시가 없거나 만료되었거나, 저장에 필요한 세부 데이터가 비어 있으면
+ *   자동으로 full refresh를 실행한 뒤 최신 payload로 저장해야 한다.
+ * - 저장 상태는 전역 상태 + overlay UI + public subscribe API에서 동시에 관찰 가능해야 한다.
+ *
+ * @param {Object} [options]
+ * @returns {Promise<Object|false>} live에서는 저장 결과 객체, read-only에서는 false
+ */
+  async function directSaveSnapshot(options) {
+    if (directSaveInFlightPromise) return directSaveInFlightPromise;
     const capabilities =
       typeof getRuntimeCapabilities === "function" ? getRuntimeCapabilities() : null;
-    if (capabilities && capabilities.isReadOnly) {
-      throw new Error("snapshot export is disabled in read-only mode");
-    }
-    const runtimeSites =
-      typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
-    const btn = document.getElementById("sadv-save-btn");
-    const originalText = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = "0/" + runtimeSites.length;
-    try {
-      const savedAt = new Date();
-      const payload = await collectExportData(
-        function (done, total) {
-          btn.textContent = done + "/" + total;
+    if (capabilities && !capabilities.canSave) return false;
+    directSaveInFlightPromise = (async function () {
+      const startedAt = Date.now();
+      const decision = buildDirectSaveRefreshDecision();
+      pushSnapshotSaveStatus({
+        __replace: true,
+        active: true,
+        state: "checking-cache",
+        phase: "prepare",
+        stageLabel: "저장 준비 중",
+        detail: buildDirectSaveDecisionDetail(decision),
+        startedAt: startedAt,
+        completedAt: null,
+        progress: {
+          done: 0,
+          total:
+            typeof getRuntimeAllSites === "function"
+              ? getRuntimeAllSites().length
+              : allSites.length,
+          ratio: 0,
+          percent: 0,
         },
-        { refreshMode: "cache-first" },
-      );
-      const html = injectSnapshotReactShell(buildSnapshotHtml(savedAt, payload), payload);
-      const fileName =
-        "searchadvisor-" +
-        accountIdFromLabel(accountLabel) +
-        "-" +
-        stampFile(savedAt) +
-        ".html";
-      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      setTimeout(function () {
-        URL.revokeObjectURL(link.href);
-      }, 1000);
-    } catch (e) {
-      showError(ERROR_MESSAGES.HTML_SAVE_ERROR, e, 'downloadSnapshot');
-      bdEl.innerHTML = createInlineError(
-        ERROR_MESSAGES.HTML_SAVE_ERROR,
-        () => downloadSnapshot(),
-        '다시 시도'
-      ).outerHTML;
+        stats: { success: 0, partial: 0, failed: 0, errors: [] },
+        cacheDecision: decision,
+        fileName: null,
+        site: null,
+        error: null,
+      });
+      let payload = options && options.payload ? options.payload : null;
+      if (!payload && decision.neededRefresh) {
+        pushSnapshotSaveStatus({
+          active: true,
+          state: "refreshing",
+          phase: "refresh",
+          stageLabel: "최신 데이터 갱신 중",
+          detail: buildDirectSaveDecisionDetail(decision),
+          cacheDecision: decision,
+        });
+        payload = await runFullRefreshPipeline({
+          trigger: "manual",
+          renderProgress: false,
+          onProgress: function (done, total, site, stats) {
+            const safeTotal = Math.max(1, total);
+            pushSnapshotSaveStatus({
+              active: true,
+              state: "refreshing",
+              phase: "refresh",
+              stageLabel: "최신 데이터 갱신 중",
+              detail:
+                done +
+                " / " +
+                safeTotal +
+                " 사이트를 최신 상태로 갱신 중" +
+                (site ? " · " + site.replace("https://", "").replace("http://", "") : ""),
+              progress: {
+                done: done,
+                total: safeTotal,
+                ratio: safeTotal > 0 ? done / safeTotal : 0,
+                percent: safeTotal > 0 ? Math.round((done / safeTotal) * 100) : 0,
+              },
+              stats: stats || { success: 0, partial: 0, failed: 0, errors: [] },
+              site: site || null,
+              cacheDecision: decision,
+            });
+          },
+        });
+      }
+      return downloadSnapshot({
+        payload: payload,
+        refreshMode: decision.neededRefresh ? "refresh" : "cache-first",
+        startedAt: startedAt,
+        cacheDecision: decision,
+      });
+    })();
+    try {
+      return await directSaveInFlightPromise;
     } finally {
-      btn.disabled = false;
-      btn.textContent = originalText;
+      directSaveInFlightPromise = null;
     }
   }
   /**
@@ -376,13 +882,16 @@ function createSnapshotPublicFacade(snapshotApi) {
   return {
     getState: snapshotApi.getState,
     getCapabilities: snapshotApi.getCapabilities,
+    getSaveStatus: snapshotApi.getSaveStatus,
     isReady: snapshotApi.isReady,
     waitUntilReady: snapshotApi.waitUntilReady,
     subscribe: snapshotApi.subscribe,
+    subscribeSaveStatus: snapshotApi.subscribeSaveStatus,
     switchMode: snapshotApi.switchMode,
     setSite: snapshotApi.setSite,
     switchSite: snapshotApi.switchSite,
     setTab: snapshotApi.setTab,
+    directSave: snapshotApi.directSave,
     refresh: snapshotApi.refresh,
     download: snapshotApi.download,
     close: snapshotApi.close,
@@ -1385,6 +1894,9 @@ function buildSnapshotSerializedHelperSection() {
               isReadOnly: true,
             };
       },
+      getSaveStatus: function () {
+        return createIdleDirectSaveStatus();
+      },
       isReady: function () {
         return snapshotUiReady;
       },
@@ -1396,6 +1908,9 @@ function buildSnapshotSerializedHelperSection() {
         return function () {
           SNAPSHOT_SHELL_LISTENERS.delete(listener);
         };
+      },
+      subscribeSaveStatus: function () {
+        return function () {};
       },
       switchMode: function (mode) {
         switchMode(mode);
@@ -1459,6 +1974,9 @@ function buildSnapshotSerializedHelperSection() {
         return false;
       },
       download: function () {
+        return false;
+      },
+      directSave: function () {
         return false;
       },
       close: function () {
@@ -1729,8 +2247,11 @@ function buildSnapshotSerializedHelperSection() {
 
   function buildSnapshotApiCompatNoopActionLines() {
     return [
+      '    getSaveStatus: function () { return ' + JSON.stringify(createIdleDirectSaveStatus()) + '; },',
+      '    subscribeSaveStatus: function () { return function () {}; },',
       '    refresh: function () { return false; },',
       '    download: function () { return false; },',
+      '    directSave: function () { return false; },',
       '    close: function () { return false; },',
     ];
   }

@@ -77,6 +77,8 @@ function buildLiveShellState() {
     accountLabel: snapshotAccountLabel,
     runtimeVersion: window.__SEARCHADVISOR_RUNTIME_VERSION__ || "runtime",
     cacheMeta: getLiveCacheMeta(),
+    saveStatus:
+      typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null,
   };
 }
 
