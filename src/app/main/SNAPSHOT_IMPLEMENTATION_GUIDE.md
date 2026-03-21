@@ -254,6 +254,8 @@
   이때 외부 automation이 읽는 canonical 상태는
   `window.__SEARCHADVISOR_SAVE_STATUS__` / `getSaveStatus()` / `subscribeSaveStatus()`
   세 entry가 같은 정보를 바라보도록 유지해야 한다.
+  저장 상태 UI는 중앙 모달형 overlay를 사용하며, 상태 객체와 DOM 모두 `runtimeType`
+  (`live` / `saved` / `merge`)를 함께 노출해 외부 automation과 사용자가 같은 타입 판정을 공유해야 한다.
 - `ensureCurrentSite`, `buildCombo`, `setComboSite`, `renderTab`, `switchMode`처럼
   saved가 직접 호출하는 공통 UI 함수는 **그 함수가 참조하는 helper까지 같이 serialize**
   되는지 반드시 확인한다.

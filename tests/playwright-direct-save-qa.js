@@ -8,6 +8,7 @@ const ROOT_DIR = path.resolve(__dirname, '..');
 const DIST_DIR = path.join(ROOT_DIR, 'dist');
 const ARTIFACT_ROOT = path.join(ROOT_DIR, 'test-results', 'direct-save-qa');
 const SCREENSHOT_DIR = path.join(ARTIFACT_ROOT, 'screenshots');
+const DOWNLOAD_DIR = path.join(ARTIFACT_ROOT, 'downloads');
 const REPORT_PATH = path.join(ARTIFACT_ROOT, 'direct-save-qa-report.md');
 const PORT = 8092;
 const HOST = `http://127.0.0.1:${PORT}`;
@@ -272,6 +273,7 @@ async function runScenario(browser, scenario, dataset) {
     acceptDownloads: true,
   });
   let downloadTriggered = false;
+  let downloadPath = null;
   context.on('page', () => {});
   const page = await context.newPage();
   const consoleMessages = [];
@@ -286,14 +288,26 @@ async function runScenario(browser, scenario, dataset) {
   page.on('download', async (download) => {
     downloadTriggered = true;
     try {
-      await download.path();
+      const safeName =
+        (scenario.name || 'download') + '-' + (download.suggestedFilename ? download.suggestedFilename() : 'artifact.html');
+      const targetPath = path.join(DOWNLOAD_DIR, safeName);
+      ensureDir(DOWNLOAD_DIR);
+      await download.saveAs(targetPath);
+      downloadPath = targetPath;
     } catch (e) {}
   });
 
-  await page.addInitScript((initData) => {
+  await page.addInitScript((seed) => {
     window.__FORCE_DEMO_MODE__ = true;
-    window.__sadvInitData = initData;
-  }, { sites: Object.fromEntries(DEMO_SITES.map((site) => [site, null])) });
+    window.__sadvInitData = seed.initData;
+    if (seed.initMergedData) {
+      window.__sadvMergedData = seed.initMergedData;
+    }
+  }, {
+    initData:
+      scenario.initData || { sites: Object.fromEntries(DEMO_SITES.map((site) => [site, null])) },
+    initMergedData: scenario.initMergedData || null,
+  });
 
   await page.goto(`${HOST}/__runner__.html`, { waitUntil: 'domcontentloaded' });
   if (scenario.preloadCache) {
@@ -333,6 +347,47 @@ async function runScenario(browser, scenario, dataset) {
     name: scenario.name,
     description: scenario.description,
     screenshot: scenario.screenshot,
+    downloadPath,
+    result,
+    consoleMessages,
+    pageErrors,
+  };
+}
+
+async function runSavedVerification(browser, savedHtmlPath) {
+  const context = await browser.newContext({
+    viewport: { width: 1600, height: 1400 },
+  });
+  const page = await context.newPage();
+  const consoleMessages = [];
+  const pageErrors = [];
+
+  page.on('console', (msg) => {
+    consoleMessages.push({ type: msg.type(), text: msg.text() });
+  });
+  page.on('pageerror', (error) => {
+    pageErrors.push(error.message || String(error));
+  });
+
+  await page.goto(`file://${savedHtmlPath}`, { waitUntil: 'load' });
+  await page.waitForSelector('#sadv-p', { timeout: 15000 });
+  await page.waitForFunction(() => !!window.__sadvApi, null, { timeout: 15000 });
+  await page.screenshot({
+    path: path.join(SCREENSHOT_DIR, '06-saved-runtime-opened.png'),
+    fullPage: true,
+  });
+  const result = await page.evaluate(() => ({
+    runtimeKind: window.__SEARCHADVISOR_RUNTIME_KIND__ || null,
+    saveStatus: window.__sadvApi.getSaveStatus(),
+    hasPublicApi: !!window.__sadvApi,
+    hasSnapshotApi: !!window.__SEARCHADVISOR_SNAPSHOT_API__,
+  }));
+  await page.close();
+  await context.close();
+  return {
+    name: '06-saved-runtime-opened',
+    description: '저장된 HTML을 다시 열었을 때 saveStatus.runtimeType이 saved로 보이는지 확인',
+    screenshot: '06-saved-runtime-opened.png',
     result,
     consoleMessages,
     pageErrors,
@@ -350,6 +405,7 @@ function renderScenarioSection(lines, scenarioResult) {
   lines.push(`- 캡처: screenshots/${scenarioResult.screenshot}`);
   lines.push(`- 최종 상태: ${saveStatus.state || '(none)'}`);
   lines.push(`- phase: ${saveStatus.phase || '(none)'}`);
+  lines.push(`- runtimeType: ${saveStatus.runtimeType || '(none)'}`);
   lines.push(`- downloadTriggered: ${scenarioResult.result.downloadTriggered ? 'true' : 'false'}`);
   if (directSaveResult) {
     lines.push(`- directSave 반환 ok: ${String(!!directSaveResult.ok)}`);
@@ -449,13 +505,32 @@ async function main() {
         await page.waitForTimeout(300);
       },
     },
+    {
+      name: '05-merge-direct-save-success',
+      description: '병합 메타가 있는 런타임에서 directSave가 MERGE 타입으로 동작하는지 확인',
+      screenshot: '05-merge-direct-save-success.png',
+      initData: { sites: Object.fromEntries(DEMO_SITES.map((site) => [site, null])) },
+      initMergedData: {
+        sites: freshDataset,
+        accounts_merged: ['alpha@demo.local', 'beta@demo.local'],
+      },
+      preloadCache: async (page, dataset) => {
+        await seedCache(page, dataset, freshTimestamp);
+      },
+      captureState: 'completed',
+    },
   ];
 
   const results = [];
+  let savedVerification = null;
   try {
     for (const scenario of scenarios) {
       const result = await runScenario(browser, scenario, freshDataset);
       results.push(result);
+    }
+    const savedSource = results.find((item) => item.name === '01-fresh-cache-direct-save-success');
+    if (savedSource && savedSource.downloadPath) {
+      savedVerification = await runSavedVerification(browser, savedSource.downloadPath);
     }
   } finally {
     await browser.close();
@@ -479,6 +554,21 @@ async function main() {
   ];
 
   results.forEach((scenarioResult) => renderScenarioSection(lines, scenarioResult));
+
+  if (savedVerification) {
+    lines.push(`## ${savedVerification.name}`);
+    lines.push('');
+    lines.push(`- 설명: ${savedVerification.description}`);
+    lines.push(`- 캡처: screenshots/${savedVerification.screenshot}`);
+    lines.push(`- runtimeKind: ${savedVerification.result.runtimeKind || '(none)'}`);
+    lines.push(`- saveStatus.runtimeType: ${savedVerification.result.saveStatus?.runtimeType || '(none)'}`);
+    lines.push(`- hasPublicApi: ${savedVerification.result.hasPublicApi ? 'true' : 'false'}`);
+    lines.push(`- hasSnapshotApi: ${savedVerification.result.hasSnapshotApi ? 'true' : 'false'}`);
+    if (savedVerification.pageErrors.length) {
+      lines.push(`- pageErrors: ${savedVerification.pageErrors.join(' | ')}`);
+    }
+    lines.push('');
+  }
 
   fs.writeFileSync(REPORT_PATH, lines.join('\n'), 'utf8');
   console.log(JSON.stringify({
