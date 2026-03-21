@@ -1799,15 +1799,24 @@ function buildSnapshotSerializedHelperSection() {
       ...buildSnapshotApiCompatObserverFinalizeLines(),
     ];
   }
-  function buildSnapshotApiCompatScript() {
+
+  function buildSnapshotApiCompatBodyLines() {
     return [
-      "(function () {",
-      "  if (window.__SEARCHADVISOR_SNAPSHOT_API__) return;",
       ...buildSnapshotApiCompatStateLines(),
       ...buildSnapshotApiCompatLabelResolverLines(),
       ...buildSnapshotApiCompatSyncLines(),
       ...buildSnapshotApiCompatActionLines(),
       ...buildSnapshotApiCompatObserverLines(),
+    ];
+  }
+
+  function buildSnapshotApiCompatScript() {
+    return [
+      "(function () {",
+      "  if (window.__SEARCHADVISOR_SNAPSHOT_API__) return;",
+      // compat bridge body 조립 순서는 state → label → sync → action → observer를 유지한다.
+      // 이 순서는 line builder를 더 잘게 나누더라도 깨지면 안 되는 읽기/초기화 계약이다.
+      ...buildSnapshotApiCompatBodyLines(),
       "})();",
     ].join("\n");
   }

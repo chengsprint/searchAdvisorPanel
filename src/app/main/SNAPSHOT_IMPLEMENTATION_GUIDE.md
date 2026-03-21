@@ -186,6 +186,11 @@
   처럼 나눌 수 있다.
   단, shell state에서 어떤 필드를 읽는지와 `cloneState()`가 반환하는 shape는
   compat bridge 소비자 계약으로 보고 바꾸지 않는다.
+- `buildSnapshotApiCompatScript()` 내부 조립 순서도
+  `buildSnapshotApiCompatBodyLines()`
+  같은 helper로 감싸서
+  state → label → sync → action → observer
+  순서를 눈에 보이는 계약으로 드러내는 것이 좋다.
 - observer wiring은 compat bridge 안에서도 비교적 fan-out이 작아서,
   `buildSnapshotApiCompatReactObserverLines()`,
   `buildSnapshotApiCompatMutationObserverLines()`,

@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-21T01:04:55Z";
-var __SADV_GIT_HEAD__="c2b0013";
+var __SADV_BUILD_STAMP__="2026-03-21T01:07:51Z";
+var __SADV_GIT_HEAD__="4543743";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -13062,15 +13062,24 @@ function buildSnapshotSerializedHelperSection() {
       ...buildSnapshotApiCompatObserverFinalizeLines(),
     ];
   }
-  function buildSnapshotApiCompatScript() {
+
+  function buildSnapshotApiCompatBodyLines() {
     return [
-      "(function () {",
-      "  if (window.__SEARCHADVISOR_SNAPSHOT_API__) return;",
       ...buildSnapshotApiCompatStateLines(),
       ...buildSnapshotApiCompatLabelResolverLines(),
       ...buildSnapshotApiCompatSyncLines(),
       ...buildSnapshotApiCompatActionLines(),
       ...buildSnapshotApiCompatObserverLines(),
+    ];
+  }
+
+  function buildSnapshotApiCompatScript() {
+    return [
+      "(function () {",
+      "  if (window.__SEARCHADVISOR_SNAPSHOT_API__) return;",
+      // compat bridge body 조립 순서는 state → label → sync → action → observer를 유지한다.
+      // 이 순서는 line builder를 더 잘게 나누더라도 깨지면 안 되는 읽기/초기화 계약이다.
+      ...buildSnapshotApiCompatBodyLines(),
       "})();",
     ].join("\n");
   }
