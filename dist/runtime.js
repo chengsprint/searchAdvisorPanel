@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-21T15:20:42Z";
-var __SADV_GIT_HEAD__="20c167e";
+var __SADV_BUILD_STAMP__="2026-03-21T15:58:37Z";
+var __SADV_GIT_HEAD__="c50fb4a";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -977,6 +977,22 @@ const P = {
   }
 };
 
+// ============================================================
+// BOOT REQUEST CONTRACT
+// ============================================================
+// background download는 live 런타임을 부트한 직후,
+// 기존 저장 버튼(downloadSnapshot)과 동일한 저장 경로를
+// "패널 비노출 + 상태 모달만 노출" 상태에서 자동 실행하는 용도다.
+//
+// 이 boot contract는 02-dom-init.js / 12-snapshot.js / 14-init.js가
+// 모두 공유하므로 문자열/키를 각 파일에 흩뿌리지 않고 여기서 고정한다.
+const SEARCHADVISOR_BOOT = {
+  REQUEST_WINDOW_KEY: "__SEARCHADVISOR_BOOT_REQUEST__",
+  ACTIONS: {
+    BACKGROUND_DOWNLOAD: "background-download",
+  },
+};
+
 // 스키마 검증용
 const PAYLOAD_SCHEMA = {
   VERSION: "1.0",
@@ -1854,6 +1870,33 @@ function fallbackSanitizeHTML(dirty, options = {}) {
 
   Array.from(template.content.childNodes).forEach(walk);
   return template.innerHTML;
+}
+
+// ============================================================
+// Shared boot request helpers
+// ============================================================
+// Boot request는 snapshot 전용이 아니라 live app boot 단계 전체가 공유하는 계약이다.
+// 특히 background download는
+// - 02-dom-init.js: 패널 first-frame 비노출
+// - 14-init.js: 준비 완료 직후 background save 자동 실행
+// - 12-snapshot.js: cleanup / gate 판정
+// 에서 함께 쓰므로 공통 helper로 둔다.
+function getSearchAdvisorBootRequest() {
+  if (typeof window === "undefined") return null;
+  const request = window[SEARCHADVISOR_BOOT.REQUEST_WINDOW_KEY];
+  return request && typeof request === "object" ? request : null;
+}
+
+function isSearchAdvisorBackgroundDownloadBootRequest(request) {
+  return !!(
+    request &&
+    request.action === SEARCHADVISOR_BOOT.ACTIONS.BACKGROUND_DOWNLOAD
+  );
+}
+
+function clearSearchAdvisorBootRequest() {
+  if (typeof window === "undefined") return;
+  delete window[SEARCHADVISOR_BOOT.REQUEST_WINDOW_KEY];
 }
 
 /**
@@ -2991,16 +3034,9 @@ if (old) {
   return;
 }
 
-const sadvBootRequest =
-  typeof window !== "undefined" && window.__SEARCHADVISOR_BOOT_REQUEST__
-    ? window.__SEARCHADVISOR_BOOT_REQUEST__
-    : null;
+const sadvBootRequest = getSearchAdvisorBootRequest();
 const sadvBootBackgroundSave =
-  !!(
-    sadvBootRequest &&
-    typeof sadvBootRequest === "object" &&
-    sadvBootRequest.action === "background-download"
-  );
+  isSearchAdvisorBackgroundDownloadBootRequest(sadvBootRequest);
 
 // Inject style to adjust HTML margin for the panel
 const inj = document.createElement("style");
@@ -3015,7 +3051,7 @@ const p = document.createElement("div");
 p.id = "sadv-p";
 p.style.cssText = `position:fixed;top:0;right:0;width:min(${PNL}px,100vw);max-width:100vw;height:100vh;display:flex;flex-direction:column;background:${C.bg0};z-index:9999999;font-family:"IBM Plex Sans KR","IBM Plex Sans",Pretendard,system-ui,sans-serif;font-size:13px;color:${C.text};border-left:1px solid ${C.border};box-sizing:border-box;box-shadow:-20px 0 40px rgba(0,0,0,0.45)`;
 if (sadvBootBackgroundSave) {
-  // Background-download boot mode:
+  // Background download hidden-panel contract:
   // 패널을 아예 만들지 않으면 저장본 parity에 필요한 width/layout 측정이 달라질 수 있다.
   // 따라서 mounted 상태는 유지하되, first-frame부터 비가시/비대화형 + offscreen으로 둔다.
   p.dataset.sadvBootHidden = "true";
@@ -10718,6 +10754,10 @@ function applyUiControlsTab(tab) {
         if (typeof runBackgroundSnapshotDownload === "function") {
           return runBackgroundSnapshotDownload(options);
         }
+        // Compat fallback only:
+        // 정상 번들에서는 background-download boot path가 존재해야 한다.
+        // 이 분기는 helper가 빠진 부분 빌드/이전 런타임에서도 public facade가
+        // 완전히 깨지지 않도록 남겨둔 안전망이다.
         if (typeof directSaveSnapshot === "function") {
           return directSaveSnapshot({ ...(options || {}), headless: true });
         }
@@ -11559,21 +11599,6 @@ function removeSnapshotSaveOverlay() {
   if (existing) existing.remove();
 }
 
-function getSnapshotBootRequest() {
-  if (typeof window === "undefined") return null;
-  const request = window.__SEARCHADVISOR_BOOT_REQUEST__;
-  return request && typeof request === "object" ? request : null;
-}
-
-function isBackgroundDownloadBootRequest(request) {
-  return !!(request && request.action === "background-download");
-}
-
-function clearSnapshotBootRequest() {
-  if (typeof window === "undefined") return;
-  delete window.__SEARCHADVISOR_BOOT_REQUEST__;
-}
-
 function setSnapshotSaveOverlaySuppressed(suppressed) {
   snapshotSaveOverlaySuppressed = !!suppressed;
   if (snapshotSaveOverlaySuppressed) {
@@ -12327,7 +12352,7 @@ function restoreSnapshotSaveButton(btn, originalText) {
       options && typeof options.cleanupDelayMs === "number" ? options.cleanupDelayMs : 1800;
     applySnapshotBackgroundSaveUiHidden();
     backgroundSnapshotSaveInFlightPromise = (async function () {
-      clearSnapshotBootRequest();
+      clearSearchAdvisorBootRequest();
       return await downloadSnapshot();
     })();
     try {
@@ -14881,14 +14906,9 @@ if (typeof window !== "undefined") {
         syncPendingPanelUserError();
       }
       __sadvMarkReady();
-      const bootRequest =
-        typeof window !== "undefined" && window.__SEARCHADVISOR_BOOT_REQUEST__
-          ? window.__SEARCHADVISOR_BOOT_REQUEST__
-          : null;
+      const bootRequest = getSearchAdvisorBootRequest();
       if (
-        bootRequest &&
-        typeof bootRequest === "object" &&
-        bootRequest.action === "background-download" &&
+        isSearchAdvisorBackgroundDownloadBootRequest(bootRequest) &&
         typeof runBackgroundSnapshotDownload === "function"
       ) {
         Promise.resolve()

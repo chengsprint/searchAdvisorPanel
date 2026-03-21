@@ -67,21 +67,6 @@ function removeSnapshotSaveOverlay() {
   if (existing) existing.remove();
 }
 
-function getSnapshotBootRequest() {
-  if (typeof window === "undefined") return null;
-  const request = window.__SEARCHADVISOR_BOOT_REQUEST__;
-  return request && typeof request === "object" ? request : null;
-}
-
-function isBackgroundDownloadBootRequest(request) {
-  return !!(request && request.action === "background-download");
-}
-
-function clearSnapshotBootRequest() {
-  if (typeof window === "undefined") return;
-  delete window.__SEARCHADVISOR_BOOT_REQUEST__;
-}
-
 function setSnapshotSaveOverlaySuppressed(suppressed) {
   snapshotSaveOverlaySuppressed = !!suppressed;
   if (snapshotSaveOverlaySuppressed) {
@@ -835,7 +820,7 @@ function restoreSnapshotSaveButton(btn, originalText) {
       options && typeof options.cleanupDelayMs === "number" ? options.cleanupDelayMs : 1800;
     applySnapshotBackgroundSaveUiHidden();
     backgroundSnapshotSaveInFlightPromise = (async function () {
-      clearSnapshotBootRequest();
+      clearSearchAdvisorBootRequest();
       return await downloadSnapshot();
     })();
     try {

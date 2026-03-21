@@ -250,7 +250,7 @@
 - live 런타임의 저장 파이프라인은 이제
   - `download()` = cache-first buttonless save
   - `directSave()` = stale/missing cache를 점검하고 필요하면 refresh 후 저장
-  - `loadAndDirectSaveHeadless()` = **기존 저장 버튼과 동일한 경로를 패널 비노출 상태에서 실행**
+  - `loadAndDirectSaveHeadless()` = **기존 저장 버튼과 동일한 background download 경로를 패널 비노출 상태에서 실행**
   으로 의미가 나뉜다.
   이때 외부 automation이 읽는 canonical 상태는
   `window.__SEARCHADVISOR_SAVE_STATUS__` / `getSaveStatus()` / `subscribeSaveStatus()`
@@ -269,6 +269,14 @@
   - 기존 `downloadSnapshot()` 경로를 그대로 실행한다.
   - 즉 "smart save"가 아니라 "기존 저장 버튼의 background 실행"으로 이해해야 한다.
   - 이 경로에서도 panel mount 자체는 유지하고, `display:none`은 사용하지 않는다.
+- background download boot contract는
+  - `SEARCHADVISOR_BOOT.REQUEST_WINDOW_KEY`
+  - `SEARCHADVISOR_BOOT.ACTIONS.BACKGROUND_DOWNLOAD`
+  - `getSearchAdvisorBootRequest()`
+  - `isSearchAdvisorBackgroundDownloadBootRequest()`
+  조합을 기준으로 읽는다.
+  문자열 `"background-download"`나 `window.__SEARCHADVISOR_BOOT_REQUEST__`를
+  개별 파일에서 직접 해석하지 않는다.
 - `ensureCurrentSite`, `buildCombo`, `setComboSite`, `renderTab`, `switchMode`처럼
   saved가 직접 호출하는 공통 UI 함수는 **그 함수가 참조하는 helper까지 같이 serialize**
   되는지 반드시 확인한다.

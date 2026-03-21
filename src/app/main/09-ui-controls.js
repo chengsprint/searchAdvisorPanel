@@ -888,6 +888,10 @@ function applyUiControlsTab(tab) {
         if (typeof runBackgroundSnapshotDownload === "function") {
           return runBackgroundSnapshotDownload(options);
         }
+        // Compat fallback only:
+        // 정상 번들에서는 background-download boot path가 존재해야 한다.
+        // 이 분기는 helper가 빠진 부분 빌드/이전 런타임에서도 public facade가
+        // 완전히 깨지지 않도록 남겨둔 안전망이다.
         if (typeof directSaveSnapshot === "function") {
           return directSaveSnapshot({ ...(options || {}), headless: true });
         }

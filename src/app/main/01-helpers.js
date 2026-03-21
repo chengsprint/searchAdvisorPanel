@@ -137,6 +137,33 @@ function fallbackSanitizeHTML(dirty, options = {}) {
   return template.innerHTML;
 }
 
+// ============================================================
+// Shared boot request helpers
+// ============================================================
+// Boot request는 snapshot 전용이 아니라 live app boot 단계 전체가 공유하는 계약이다.
+// 특히 background download는
+// - 02-dom-init.js: 패널 first-frame 비노출
+// - 14-init.js: 준비 완료 직후 background save 자동 실행
+// - 12-snapshot.js: cleanup / gate 판정
+// 에서 함께 쓰므로 공통 helper로 둔다.
+function getSearchAdvisorBootRequest() {
+  if (typeof window === "undefined") return null;
+  const request = window[SEARCHADVISOR_BOOT.REQUEST_WINDOW_KEY];
+  return request && typeof request === "object" ? request : null;
+}
+
+function isSearchAdvisorBackgroundDownloadBootRequest(request) {
+  return !!(
+    request &&
+    request.action === SEARCHADVISOR_BOOT.ACTIONS.BACKGROUND_DOWNLOAD
+  );
+}
+
+function clearSearchAdvisorBootRequest() {
+  if (typeof window === "undefined") return;
+  delete window[SEARCHADVISOR_BOOT.REQUEST_WINDOW_KEY];
+}
+
 /**
  * DOMPurify sanitizer for HTML content
  * Prevents XSS attacks by sanitizing HTML before injection

@@ -26,16 +26,9 @@ if (old) {
   return;
 }
 
-const sadvBootRequest =
-  typeof window !== "undefined" && window.__SEARCHADVISOR_BOOT_REQUEST__
-    ? window.__SEARCHADVISOR_BOOT_REQUEST__
-    : null;
+const sadvBootRequest = getSearchAdvisorBootRequest();
 const sadvBootBackgroundSave =
-  !!(
-    sadvBootRequest &&
-    typeof sadvBootRequest === "object" &&
-    sadvBootRequest.action === "background-download"
-  );
+  isSearchAdvisorBackgroundDownloadBootRequest(sadvBootRequest);
 
 // Inject style to adjust HTML margin for the panel
 const inj = document.createElement("style");
@@ -50,7 +43,7 @@ const p = document.createElement("div");
 p.id = "sadv-p";
 p.style.cssText = `position:fixed;top:0;right:0;width:min(${PNL}px,100vw);max-width:100vw;height:100vh;display:flex;flex-direction:column;background:${C.bg0};z-index:9999999;font-family:"IBM Plex Sans KR","IBM Plex Sans",Pretendard,system-ui,sans-serif;font-size:13px;color:${C.text};border-left:1px solid ${C.border};box-sizing:border-box;box-shadow:-20px 0 40px rgba(0,0,0,0.45)`;
 if (sadvBootBackgroundSave) {
-  // Background-download boot mode:
+  // Background download hidden-panel contract:
   // 패널을 아예 만들지 않으면 저장본 parity에 필요한 width/layout 측정이 달라질 수 있다.
   // 따라서 mounted 상태는 유지하되, first-frame부터 비가시/비대화형 + offscreen으로 둔다.
   p.dataset.sadvBootHidden = "true";

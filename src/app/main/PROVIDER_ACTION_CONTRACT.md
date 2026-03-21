@@ -100,17 +100,23 @@ UI는 provider를 직접 두드리지 말고 action을 호출한다.
 
 ```js
 actions = {
+  // canonical public facade names
   switchMode(mode),
   switchSite(site),
-  switchTab(tab),
-  setAllSitesPeriod(days),
+  setTab(tab),
   refresh(),
-  downloadSnapshot(),
+  download(),
   directSave(options),
   loadAndDirectSaveHeadless(options),
   getSaveStatus(),
   subscribeSaveStatus(listener),
   close(),
+
+  // internal / legacy / implementation names
+  setSite(site),
+  switchTab(tab),
+  downloadSnapshot(),
+  setAllSitesPeriod(days),
 }
 ```
 
@@ -119,16 +125,20 @@ actions = {
   - 의미: **site 선택 + site mode 진입**
 - `setSite(site)`는 기존 외부 호환성을 위해 public facade에 남아 있을 수 있지만,
   장기적으로는 `switchSite(site)` 쪽이 더 명확한 intent 이름으로 간주된다.
-- `downloadSnapshot()`은 기존 buttonless save entry다.
-  - 현재 기본 의미는 **cache-first 저장**
+- `download()`는 canonical public facade 이름이고,
+  내부 구현 helper 이름은 `downloadSnapshot()`이다.
+  - 기본 의미는 **cache-first 저장**
+- `setTab(tab)`는 canonical public facade 이름이고,
+  내부/legacy helper 이름으로는 `switchTab(tab)`이 남아 있을 수 있다.
+  - 의미는 동일하게 **현재 탭 전환**
 - `directSave(options)`는 smart save entry다.
   - 의미: **캐시 없음/만료/불완전 데이터 여부를 점검하고, 필요하면 full refresh 후 저장**
   - `options.headless === true`(또는 `hidePanel` / `silentUi`)면
     저장 중 live 패널과 중앙 overlay를 일시적으로 숨긴다.
     단, 패널을 unmount하거나 `display:none`으로 내리지 않고 mounted 상태를 유지해
     저장본이 "현재 라이브 패널과 동일한 DOM/레이아웃" 기준으로 생성되도록 한다.
-- `loadAndDirectSaveHeadless(options)`는 background save entry다.
-  - 의미: **기존 저장 버튼(downloadSnapshot)과 동일한 저장 경로를 패널 비노출 상태에서 실행**
+- `loadAndDirectSaveHeadless(options)`는 background download public entry다.
+  - 의미: **기존 저장 버튼(`download()` / 내부적으로는 `downloadSnapshot()`)과 동일한 저장 경로를 패널 비노출 상태에서 실행**
   - `directSave()`와 달리 refresh-if-stale 판단을 추가하지 않는다.
   - 중앙 상태 모달은 그대로 유지하고, 패널만 first-frame부터 가린 채 저장을 진행한다.
 - `getSaveStatus()` / `subscribeSaveStatus(listener)`는 external automation용 관찰 계약이다.
