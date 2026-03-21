@@ -1786,6 +1786,14 @@ function buildSnapshotSerializedHelperSection() {
     ];
   }
 
+  function buildSnapshotApiCompatObserverBodyLines() {
+    return [
+      ...buildSnapshotApiCompatReactObserverLines(),
+      ...buildSnapshotApiCompatMutationObserverLines(),
+      ...buildSnapshotApiCompatObserverFinalizeLines(),
+    ];
+  }
+
   function buildSnapshotApiCompatObserverLines() {
     return [
       '  const target = document.getElementById("sadv-p") || document.body;',
@@ -1794,9 +1802,7 @@ function buildSnapshotSerializedHelperSection() {
       '    // action 의미를 건드리지 않고 추가 분해하기 가장 안전한 slice다.',
       '    // React 18 compat observer와 MutationObserver fallback을 line builder 단위로 분리해',
       '    // 나중에 bridge 유지/제거 판단을 더 쉽게 만든다.',
-      ...buildSnapshotApiCompatReactObserverLines(),
-      ...buildSnapshotApiCompatMutationObserverLines(),
-      ...buildSnapshotApiCompatObserverFinalizeLines(),
+      ...buildSnapshotApiCompatObserverBodyLines(),
     ];
   }
 

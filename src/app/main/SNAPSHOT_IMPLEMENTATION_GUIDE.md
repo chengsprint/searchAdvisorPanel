@@ -194,7 +194,8 @@
 - observer wiring은 compat bridge 안에서도 비교적 fan-out이 작아서,
   `buildSnapshotApiCompatReactObserverLines()`,
   `buildSnapshotApiCompatMutationObserverLines()`,
-  `buildSnapshotApiCompatObserverFinalizeLines()`
+  `buildSnapshotApiCompatObserverFinalizeLines()`,
+  `buildSnapshotApiCompatObserverBodyLines()`
   처럼 더 세밀하게 나누는 다음 slice로 적합하다.
   label resolver도 같은 이유로 비교적 안전한 구조-only slice다.
   `buildSnapshotApiCompatSiteShortNameLines()`,
@@ -220,6 +221,9 @@
 - compat bridge action fallback은 `buildSnapshotApiCompatActionLines()` 안에 계속 큰 문자열로 두지 말고
   mode / site / tab / noop builder로 점진 분해한다.
   단, `setSite`는 `switchSite`의 backward-compat alias이므로 의미를 억지로 분리하지 않는다.
+- 현재 계획된 Phase 3 범위는 위 builder 분해와 조립 순서 고정까지를 포함해
+  사실상 마감선에 도달한 상태로 본다.
+  이후 작업은 "필수 잔여"가 아니라 deeper reduction / follow-up cleanup 성격으로 분류한다.
 - compat bridge 안의 `snapshotState`는 full runtime owner가 아니라
   `__SEARCHADVISOR_SNAPSHOT_SHELL_STATE__`를 바탕으로 한 shell mirror + selection mirror에 가깝다.
   `allSites/rows/siteMeta/mergedMeta/runtimeVersion/cacheMeta`는 shell state에서 초기화되고,
