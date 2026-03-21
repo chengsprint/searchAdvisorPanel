@@ -269,6 +269,16 @@
   - 기존 `downloadSnapshot()` 경로를 그대로 실행한다.
   - 즉 "smart save"가 아니라 "기존 저장 버튼의 background 실행"으로 이해해야 한다.
   - 이 경로에서도 panel mount 자체는 유지하고, `display:none`은 사용하지 않는다.
+- 저장 차단 정책은 세 저장 entry에서 동일해야 한다.
+  - `download()`
+  - `directSave()`
+  - `loadAndDirectSaveHeadless()`
+  위 3개 모두 같은 gate를 통과해야 한다.
+  - 치명적 패널 오류 배너가 살아 있으면 저장을 차단한다.
+  - `payload.stats.failed / totalSites > 20%`이면 저장을 차단한다.
+  - 차단 시 다운로드는 발생하지 않고, save status는 `blocked`가 된다.
+  - `completed-with-issues`는 저장이 허용된 경미/부분 이슈,
+    `blocked`는 정책상 다운로드를 멈춘 상태라는 의미로 구분한다.
 - background download boot contract는
   - `SEARCHADVISOR_BOOT.REQUEST_WINDOW_KEY`
   - `SEARCHADVISOR_BOOT.ACTIONS.BACKGROUND_DOWNLOAD`

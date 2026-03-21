@@ -146,6 +146,23 @@ actions = {
   - UI overlay, 전역 mirror 상태, public facade가 같은 상태 객체를 보도록 유지한다.
   - 상태 객체는 `runtimeType` 외에도 `uiHidden` 플래그를 노출해,
     headless directSave 여부를 DOM 없이도 판별할 수 있어야 한다.
+  - 상태 객체의 `state`는 `completed` / `completed-with-issues` / `failed` 외에도
+    정책상 다운로드를 중단한 `blocked`를 구분해야 한다.
+    즉 "예외 실패"와 "정책 차단"은 외부 드라이버가 다르게 해석할 수 있어야 한다.
+
+### 저장 차단(save blocking) 정책
+
+- 아래 3개는 같은 저장 차단 기준을 공유한다.
+  - `download()`
+  - `directSave(options)`
+  - `loadAndDirectSaveHeadless(options)`
+- 차단 조건:
+  1. 패널에 치명적 사용자 오류 배너가 살아 있음
+  2. 저장 payload 기준 `stats.failed / totalSites > 0.2`
+- 차단 시:
+  - 다운로드는 발생하지 않는다.
+  - 저장 상태는 `blocked`로 게시된다.
+  - 기존 에러 팝업/모달 톤으로 이유를 보여주고 자동으로 정리한다.
 
 ### public facade 게시 규칙
 

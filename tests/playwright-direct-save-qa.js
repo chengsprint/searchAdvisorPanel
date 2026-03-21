@@ -250,6 +250,7 @@ async function waitForSaveSettle(page, timeoutMs = 40000) {
     return !!status && status.active === false && (
       status.state === 'completed' ||
       status.state === 'completed-with-issues' ||
+      status.state === 'blocked' ||
       status.state === 'failed'
     );
   }, null, { timeout: timeoutMs });
@@ -502,26 +503,36 @@ async function main() {
     },
     {
       name: '03-partial-issue-direct-save',
-      description: '일부 expose 요청을 강제로 차단했을 때 completed-with-issues와 실패 요약 UI가 보이는지 확인',
+      description: '일부 사이트를 partial 상태로 강제했을 때 completed-with-issues와 실패 요약 UI가 보이는지 확인',
       screenshot: '03-partial-issue-direct-save.png',
+      preloadCache: async (page, dataset) => {
+        const partialDataset = JSON.parse(JSON.stringify(dataset));
+        partialDataset[DEMO_SITES[1]] = {
+          ...partialDataset[DEMO_SITES[1]],
+          crawl: null,
+          backlink: null,
+          detailLoaded: false,
+        };
+        await seedCache(page, partialDataset, freshTimestamp);
+      },
       beforeStart: async (page) => {
-        await page.evaluate((failSite) => {
+        await page.evaluate((partialSite) => {
           const originalFetch = window.fetch.bind(window);
           window.fetch = function (input, init) {
             const url = String(input);
-            if (
-              url.includes('searchadvisor.naver.com') &&
-              (url.includes('/report/expose/') || url.includes('field=expose')) &&
-              url.includes(encodeURIComponent(failSite))
-            ) {
-              return Promise.reject(new Error('Injected network block for directSave QA'));
+            const isTargetSite = url.includes(encodeURIComponent(partialSite));
+            const isDetailRequest =
+              url.includes('/report/crawl/') ||
+              url.includes('/report/backlink/') ||
+              url.includes('field=crawl') ||
+              url.includes('field=backlink');
+            if (isTargetSite && isDetailRequest) {
+              return Promise.reject(new Error('Injected partial detail block for directSave QA'));
             }
             return originalFetch(input, init);
           };
         }, DEMO_SITES[1]);
       },
-      captureState: 'completed-with-issues',
-      captureTimeoutMs: 40000,
       beforeCapture: async (page) => {
         await page.waitForTimeout(500);
       },
@@ -587,13 +598,67 @@ async function main() {
         await page.waitForTimeout(250);
       },
     },
+    {
+      name: '08-direct-save-blocked-on-failure-ratio',
+      description: '사이트 실패율이 20%를 넘으면 저장이 차단되고 다운로드가 발생하지 않는지 확인',
+      screenshot: '08-direct-save-blocked-on-failure-ratio.png',
+      beforeStart: async (page) => {
+        await page.evaluate(() => {
+          const originalFetch = window.fetch.bind(window);
+          window.fetch = function (input, init) {
+            const url = String(input);
+            const isExposeRequest =
+              url.includes('searchadvisor.naver.com') &&
+              (url.includes('/report/expose/') || url.includes('field=expose'));
+            if (isExposeRequest) {
+              return Promise.reject(new Error('Injected failure-ratio block for directSave QA'));
+            }
+            return originalFetch(input, init);
+          };
+        });
+      },
+      captureState: 'blocked',
+      captureTimeoutMs: 40000,
+      beforeCapture: async (page) => {
+        await page.waitForTimeout(400);
+      },
+    },
+    {
+      name: '09-direct-save-blocked-on-panel-error',
+      description: '치명적인 패널 사용자 오류 배너가 살아 있으면 저장이 차단되고 다운로드가 발생하지 않는지 확인',
+      screenshot: '09-direct-save-blocked-on-panel-error.png',
+      preloadCache: async (page, dataset) => {
+        await seedCache(page, dataset, freshTimestamp);
+      },
+      beforeStart: async (page) => {
+        await page.evaluate(() => {
+          const banner = document.createElement('div');
+          banner.id = 'sadv-user-error-banner';
+          banner.textContent = '패널 작업 중 문제가 발생했어요';
+          document.body.appendChild(banner);
+          window.__SEARCHADVISOR_LAST_USER_ERROR__ = {
+            message: '사용자 정보를 찾을 수 없어요. 서치어드바이저 페이지에서 다시 실행해주세요.',
+            technical: 'Injected panel user error for save blocking QA',
+            context: 'save-blocking-qa',
+            at: Date.now(),
+          };
+        });
+      },
+      captureState: 'blocked',
+      captureTimeoutMs: 40000,
+      beforeCapture: async (page) => {
+        await page.waitForTimeout(400);
+      },
+    },
   ];
 
   const results = [];
   let savedVerification = null;
   try {
     for (const scenario of scenarios) {
+      console.log(`[direct-save-qa] start ${scenario.name}`);
       const result = await runScenario(browser, scenario, freshDataset);
+      console.log(`[direct-save-qa] done ${scenario.name}`);
       results.push(result);
     }
     const savedSource = results.find((item) => item.name === '01-fresh-cache-direct-save-success');
