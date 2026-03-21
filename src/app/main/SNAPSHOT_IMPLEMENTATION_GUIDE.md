@@ -179,6 +179,13 @@
   `buildSnapshotApiCompatObserverLines()`
   같은 line builder 단위로 먼저 나눈다.
   Phase 3 첫 단계의 목표는 "동작 변경"이 아니라 "읽기 가능한 경계 만들기"다.
+- state builder도 같은 원칙으로
+  `buildSnapshotApiCompatStateSeedLines()`,
+  `buildSnapshotApiCompatStateCloneLines()`,
+  `buildSnapshotApiCompatStateNotifyLines()`
+  처럼 나눌 수 있다.
+  단, shell state에서 어떤 필드를 읽는지와 `cloneState()`가 반환하는 shape는
+  compat bridge 소비자 계약으로 보고 바꾸지 않는다.
 - observer wiring은 compat bridge 안에서도 비교적 fan-out이 작아서,
   `buildSnapshotApiCompatReactObserverLines()`,
   `buildSnapshotApiCompatMutationObserverLines()`,
