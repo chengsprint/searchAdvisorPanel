@@ -28,6 +28,7 @@ function createIdleDirectSaveStatus() {
     active: false,
     state: "idle",
     phase: null,
+    runtimeType: "live",
     stageLabel: "",
     detail: "",
     startedAt: null,
@@ -55,17 +56,49 @@ function removeSnapshotSaveOverlay() {
   if (existing) existing.remove();
 }
 
+function getSnapshotSaveRuntimeType() {
+  const capabilities =
+    typeof getRuntimeCapabilities === "function" ? getRuntimeCapabilities() : null;
+  if (capabilities && capabilities.isReadOnly) return "saved";
+  if (typeof isMultiAccountMode === "function" && isMultiAccountMode()) return "merge";
+  if (
+    typeof ACCOUNT_UTILS !== "undefined" &&
+    ACCOUNT_UTILS &&
+    typeof ACCOUNT_UTILS.isMultiAccount === "function" &&
+    ACCOUNT_UTILS.isMultiAccount()
+  ) {
+    return "merge";
+  }
+  if (
+    typeof window !== "undefined" &&
+    window.__sadvAccountState &&
+    window.__sadvAccountState.isMultiAccount
+  ) {
+    return "merge";
+  }
+  const mergedMeta =
+    typeof getMergedMetaState === "function"
+      ? getMergedMetaState()
+      : (typeof getRuntimeShellState === "function" ? getRuntimeShellState()?.mergedMeta : null);
+  if (mergedMeta && mergedMeta.isMerged) return "merge";
+  return "live";
+}
+
+function buildSnapshotSaveRuntimeTypeLabel(runtimeType) {
+  if (runtimeType === "saved") return "SAVED";
+  if (runtimeType === "merge") return "MERGE";
+  return "LIVE";
+}
+
 function ensureSnapshotSaveOverlay() {
   let overlay = document.getElementById("sadv-save-status-overlay");
   if (overlay) return overlay;
   overlay = document.createElement("div");
   overlay.id = "sadv-save-status-overlay";
   overlay.style.cssText =
-    "position:fixed;top:84px;right:18px;z-index:2147483645;min-width:280px;max-width:360px;" +
-    "background:linear-gradient(180deg,rgba(17,17,20,0.97),rgba(10,10,12,0.96));" +
-    "border:1px solid rgba(255,212,0,0.18);box-shadow:0 14px 34px rgba(0,0,0,0.35);" +
-    "backdrop-filter:blur(10px);padding:14px 16px;color:var(--sadv-text,#fffdf5);" +
-    "font-family:" +
+    "position:fixed;inset:0;z-index:2147483645;display:flex;align-items:center;justify-content:center;" +
+    "padding:24px;background:rgba(0,0,0,0.54);backdrop-filter:blur(6px);" +
+    "color:var(--sadv-text,#fffdf5);font-family:" +
     T.fontSans +
     ";pointer-events:none";
   document.body.appendChild(overlay);
@@ -114,6 +147,11 @@ function renderSnapshotSaveOverlay(status) {
       : 0;
   const detail = typeof status.detail === "string" ? status.detail : "";
   const site = typeof status.site === "string" && status.site ? status.site : "";
+  const runtimeType =
+    status && typeof status.runtimeType === "string" && status.runtimeType
+      ? status.runtimeType
+      : getSnapshotSaveRuntimeType();
+  const runtimeTypeLabel = buildSnapshotSaveRuntimeTypeLabel(runtimeType);
   const cacheDecision =
     status.cacheDecision && typeof status.cacheDecision === "object"
       ? status.cacheDecision
@@ -131,6 +169,7 @@ function renderSnapshotSaveOverlay(status) {
       : '<span style="color:' + C.green + '">즉시 저장 가능</span>';
   overlay.dataset.state = status.state || "idle";
   overlay.dataset.phase = status.phase || "";
+  overlay.dataset.runtimeType = runtimeType;
   overlay.dataset.active = status.active ? "true" : "false";
   overlay.dataset.current =
     typeof progress.done === "number" ? String(progress.done) : "0";
@@ -142,33 +181,41 @@ function renderSnapshotSaveOverlay(status) {
       ? "true"
       : "false";
   overlay.innerHTML = sanitizeHTML(
-    '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">' +
-      '<div style="min-width:0;flex:1">' +
-        '<div style="font-size:12px;font-weight:800;color:' + accent + ';margin-bottom:6px">' +
-          escHtml(title) +
-        "</div>" +
-        '<div style="font-size:11px;line-height:1.55;color:var(--sadv-text-secondary,#ffe9a8);margin-bottom:8px">' +
-          escHtml(detail || "진행 상태를 준비하고 있어요.") +
-        "</div>" +
-        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">' +
-          '<div style="flex:1;height:8px;border-radius:999px;background:rgba(255,255,255,0.06);overflow:hidden;border:1px solid rgba(255,255,255,0.06)">' +
-            '<div style="width:' + pct + '%;height:100%;background:' + accent + '"></div>' +
+    '<div style="pointer-events:none;width:min(100%,520px);border-radius:20px;border:1px solid rgba(255,255,255,0.10);background:linear-gradient(180deg,rgba(17,17,20,0.98),rgba(10,10,12,0.97));box-shadow:0 28px 80px rgba(0,0,0,0.45),0 0 0 1px rgba(255,255,255,0.03) inset;padding:18px 20px">' +
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">' +
+        '<div style="min-width:0;flex:1">' +
+          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">' +
+            '<span style="display:inline-flex;align-items:center;justify-content:center;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,0.10);background:rgba(255,255,255,0.04);font-size:10px;font-weight:800;letter-spacing:0.08em;color:' + accent + '">' +
+              escHtml(runtimeTypeLabel) +
+            "</span>" +
+            '<span style="font-size:12px;font-weight:800;color:' + accent + '">' +
+              escHtml(title) +
+            "</span>" +
           "</div>" +
-          '<span style="font-size:11px;font-weight:700;color:' + accent + ';min-width:42px;text-align:right">' +
-            escHtml(String(pct)) +
-            "%</span>" +
-        "</div>" +
-        '<div style="display:flex;flex-wrap:wrap;gap:10px;font-size:10px;color:rgba(255,253,245,0.65);margin-bottom:6px">' +
-          '<span>진행 ' + escHtml(String(progress.done || 0)) + '/' + escHtml(String(progress.total || 0)) + "</span>" +
-          '<span>완료 ' + escHtml(String(stats.success || 0)) + "</span>" +
-          '<span>부분 ' + escHtml(String(stats.partial || 0)) + "</span>" +
-          '<span>실패 ' + escHtml(String(stats.failed || 0)) + "</span>" +
-        "</div>" +
-        '<div style="font-size:10px;color:rgba(255,253,245,0.58);line-height:1.5">' +
-          decisionHtml +
-          (site ? '<div style="margin-top:4px;color:rgba(255,253,245,0.74)">현재 사이트 · ' + escHtml(site.replace("https://", "").replace("http://", "")) + "</div>" : "") +
-          (status.fileName ? '<div style="margin-top:4px;color:' + accent + '">' + escHtml(status.fileName) + "</div>" : "") +
-          (status.error && status.error.message ? '<div style="margin-top:6px;color:' + C.red + '">' + escHtml(status.error.message) + "</div>" : "") +
+          '<div style="font-size:12px;line-height:1.6;color:var(--sadv-text-secondary,#ffe9a8);margin-bottom:10px">' +
+            escHtml(detail || "진행 상태를 준비하고 있어요.") +
+          "</div>" +
+          '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">' +
+            '<div style="flex:1;height:10px;border-radius:999px;background:rgba(255,255,255,0.06);overflow:hidden;border:1px solid rgba(255,255,255,0.06)">' +
+              '<div style="width:' + pct + '%;height:100%;background:' + accent + ';box-shadow:0 0 18px ' + accent + '66"></div>' +
+            "</div>" +
+            '<span style="font-size:12px;font-weight:800;color:' + accent + ';min-width:48px;text-align:right">' +
+              escHtml(String(pct)) +
+              "%</span>" +
+          "</div>" +
+          '<div style="display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:rgba(255,253,245,0.70);margin-bottom:8px">' +
+            '<span>진행 ' + escHtml(String(progress.done || 0)) + '/' + escHtml(String(progress.total || 0)) + "</span>" +
+            '<span>완료 ' + escHtml(String(stats.success || 0)) + "</span>" +
+            '<span>부분 ' + escHtml(String(stats.partial || 0)) + "</span>" +
+            '<span>실패 ' + escHtml(String(stats.failed || 0)) + "</span>" +
+          "</div>" +
+          '<div style="font-size:11px;color:rgba(255,253,245,0.62);line-height:1.6">' +
+            decisionHtml +
+            (site ? '<div style="margin-top:4px;color:rgba(255,253,245,0.78)">현재 사이트 · ' + escHtml(site.replace("https://", "").replace("http://", "")) + "</div>" : "") +
+            (status.fileName ? '<div style="margin-top:4px;color:' + accent + '">' + escHtml(status.fileName) + "</div>" : "") +
+            (status.error && status.error.message ? '<div style="margin-top:8px;color:' + C.red + ';font-weight:700">' + escHtml(status.error.message) + "</div>" : "") +
+            '<div style="margin-top:8px;color:rgba(255,253,245,0.50)">외부 드라이버용 상태: ' + escHtml(runtimeTypeLabel) + ' · ' + escHtml(String(status.state || "idle")) + "</div>" +
+          "</div>" +
         "</div>" +
       "</div>" +
     "</div>"
@@ -181,6 +228,12 @@ function renderSnapshotSaveOverlay(status) {
 }
 
 function pushSnapshotSaveStatus(patch) {
+  if (!patch || typeof patch !== "object") {
+    patch = {};
+  }
+  if (!patch.runtimeType) {
+    patch.runtimeType = getSnapshotSaveRuntimeType();
+  }
   const next =
     typeof setRuntimeSaveStatus === "function"
       ? setRuntimeSaveStatus(patch)
@@ -1932,7 +1985,23 @@ function buildSnapshotSerializedHelperSection() {
             };
       },
       getSaveStatus: function () {
-        return createIdleDirectSaveStatus();
+        return {
+          active: false,
+          state: "idle",
+          phase: null,
+          runtimeType: "saved",
+          stageLabel: "",
+          detail: "",
+          startedAt: null,
+          updatedAt: Date.now(),
+          completedAt: null,
+          progress: { done: 0, total: 0, ratio: 0, percent: 0 },
+          stats: { success: 0, partial: 0, failed: 0, errors: [] },
+          cacheDecision: { neededRefresh: false, reason: null, missingSites: 0, expiredSites: 0 },
+          fileName: null,
+          site: null,
+          error: null,
+        };
       },
       isReady: function () {
         return snapshotUiReady;
@@ -2284,7 +2353,7 @@ function buildSnapshotSerializedHelperSection() {
 
   function buildSnapshotApiCompatNoopActionLines() {
     return [
-      '    getSaveStatus: function () { return ' + JSON.stringify(createIdleDirectSaveStatus()) + '; },',
+      '    getSaveStatus: function () { return ' + JSON.stringify({ ...createIdleDirectSaveStatus(), runtimeType: "saved" }) + '; },',
       '    subscribeSaveStatus: function () { return function () {}; },',
       '    refresh: function () { return false; },',
       '    download: function () { return false; },',
