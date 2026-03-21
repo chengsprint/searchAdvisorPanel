@@ -107,6 +107,7 @@ actions = {
   refresh(),
   downloadSnapshot(),
   directSave(options),
+  loadAndDirectSaveHeadless(options),
   getSaveStatus(),
   subscribeSaveStatus(listener),
   close(),
@@ -126,6 +127,10 @@ actions = {
     저장 중 live 패널과 중앙 overlay를 일시적으로 숨긴다.
     단, 패널을 unmount하거나 `display:none`으로 내리지 않고 mounted 상태를 유지해
     저장본이 "현재 라이브 패널과 동일한 DOM/레이아웃" 기준으로 생성되도록 한다.
+- `loadAndDirectSaveHeadless(options)`는 background save entry다.
+  - 의미: **기존 저장 버튼(downloadSnapshot)과 동일한 저장 경로를 패널 비노출 상태에서 실행**
+  - `directSave()`와 달리 refresh-if-stale 판단을 추가하지 않는다.
+  - 중앙 상태 모달은 그대로 유지하고, 패널만 first-frame부터 가린 채 저장을 진행한다.
 - `getSaveStatus()` / `subscribeSaveStatus(listener)`는 external automation용 관찰 계약이다.
   - Python/browser automation이 저장 진행 상태를 안정적으로 추적할 수 있어야 한다.
   - UI overlay, 전역 mirror 상태, public facade가 같은 상태 객체를 보도록 유지한다.

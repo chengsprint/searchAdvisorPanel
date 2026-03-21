@@ -882,6 +882,18 @@ function applyUiControlsTab(tab) {
         downloadSnapshot();
         return Promise.resolve(true);
       },
+      loadAndDirectSaveHeadless: function (options) {
+        const capabilities = resolveRuntimeCapabilities();
+        if (!capabilities.canSave) return Promise.resolve(false);
+        if (typeof runBackgroundSnapshotDownload === "function") {
+          return runBackgroundSnapshotDownload(options);
+        }
+        if (typeof directSaveSnapshot === "function") {
+          return directSaveSnapshot({ ...(options || {}), headless: true });
+        }
+        downloadSnapshot();
+        return Promise.resolve(true);
+      },
       exportSnapshotData: function (onProgress, options) {
         return collectExportData(onProgress, options);
       },

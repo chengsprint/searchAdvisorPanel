@@ -179,7 +179,7 @@ function createStaticServer(rootDir, port) {
 }
 
 async function waitForPanelReady(page) {
-  await page.waitForSelector('#sadv-p', { timeout: 15000 });
+  await page.waitForSelector('#sadv-p', { timeout: 15000, state: 'attached' });
   await page.waitForFunction(() => !!window.__sadvApi && typeof window.__sadvApi.directSave === 'function', null, {
     timeout: 15000,
   });
@@ -309,10 +309,14 @@ async function runScenario(browser, scenario, dataset) {
     if (seed.initMergedData) {
       window.__sadvMergedData = seed.initMergedData;
     }
+    if (seed.bootRequest) {
+      window.__SEARCHADVISOR_BOOT_REQUEST__ = seed.bootRequest;
+    }
   }, {
     initData:
       scenario.initData || { sites: Object.fromEntries(DEMO_SITES.map((site) => [site, null])) },
     initMergedData: scenario.initMergedData || null,
+    bootRequest: scenario.bootRequest || null,
   });
 
   await page.goto(`${HOST}/__runner__.html`, { waitUntil: 'domcontentloaded' });
@@ -328,7 +332,9 @@ async function runScenario(browser, scenario, dataset) {
     await scenario.beforeStart(page, dataset);
   }
 
-  await startDirectSave(page, scenario.directSaveOptions || null);
+  if (!scenario.autoStart) {
+    await startDirectSave(page, scenario.directSaveOptions || null);
+  }
 
   if (scenario.captureState) {
     await waitForSaveState(page, scenario.captureState, scenario.captureTimeoutMs || 30000);
@@ -392,7 +398,7 @@ async function runSavedVerification(browser, savedHtmlPath) {
   await page.waitForSelector('#sadv-p', { timeout: 15000 });
   await page.waitForFunction(() => !!window.__sadvApi, null, { timeout: 15000 });
   await page.screenshot({
-    path: path.join(SCREENSHOT_DIR, '07-saved-runtime-opened.png'),
+    path: path.join(SCREENSHOT_DIR, '08-saved-runtime-opened.png'),
     fullPage: true,
   });
   const result = await page.evaluate(() => ({
@@ -404,9 +410,9 @@ async function runSavedVerification(browser, savedHtmlPath) {
   await page.close();
   await context.close();
   return {
-    name: '07-saved-runtime-opened',
+    name: '08-saved-runtime-opened',
     description: '저장된 HTML을 다시 열었을 때 saveStatus.runtimeType이 saved로 보이는지 확인',
-    screenshot: '07-saved-runtime-opened.png',
+    screenshot: '08-saved-runtime-opened.png',
     result,
     consoleMessages,
     pageErrors,
@@ -567,6 +573,20 @@ async function main() {
         await page.waitForTimeout(300);
       },
     },
+    {
+      name: '07-background-download-boot-hidden',
+      description: '부트 순간부터 패널을 숨긴 채 기존 저장 버튼 경로(downloadSnapshot)로 저장되는지 확인',
+      screenshot: '07-background-download-boot-hidden.png',
+      autoStart: true,
+      bootRequest: { action: 'background-download', cleanupDelayMs: 1800 },
+      preloadCache: async (page, dataset) => {
+        await seedCache(page, dataset, freshTimestamp);
+      },
+      captureProbe: true,
+      beforeCapture: async (page) => {
+        await page.waitForTimeout(250);
+      },
+    },
   ];
 
   const results = [];
@@ -599,6 +619,7 @@ async function main() {
     '- 일부 요청 실패 후 `completed-with-issues`',
     '- 다운로드 채널 차단 후 `failed`',
     '- headless directSave',
+    '- boot-hidden background download',
     '',
   ];
 
