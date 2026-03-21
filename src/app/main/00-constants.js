@@ -252,6 +252,22 @@ const P = {
   }
 };
 
+// ============================================================
+// BOOT REQUEST CONTRACT
+// ============================================================
+// background download는 live 런타임을 부트한 직후,
+// 기존 저장 버튼(downloadSnapshot)과 동일한 저장 경로를
+// "패널 비노출 + 상태 모달만 노출" 상태에서 자동 실행하는 용도다.
+//
+// 이 boot contract는 02-dom-init.js / 12-snapshot.js / 14-init.js가
+// 모두 공유하므로 문자열/키를 각 파일에 흩뿌리지 않고 여기서 고정한다.
+const SEARCHADVISOR_BOOT = {
+  REQUEST_WINDOW_KEY: "__SEARCHADVISOR_BOOT_REQUEST__",
+  ACTIONS: {
+    BACKGROUND_DOWNLOAD: "background-download",
+  },
+};
+
 // 스키마 검증용
 const PAYLOAD_SCHEMA = {
   VERSION: "1.0",

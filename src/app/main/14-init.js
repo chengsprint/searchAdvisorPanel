@@ -107,14 +107,9 @@ if (typeof window !== "undefined") {
         syncPendingPanelUserError();
       }
       __sadvMarkReady();
-      const bootRequest =
-        typeof window !== "undefined" && window.__SEARCHADVISOR_BOOT_REQUEST__
-          ? window.__SEARCHADVISOR_BOOT_REQUEST__
-          : null;
+      const bootRequest = getSearchAdvisorBootRequest();
       if (
-        bootRequest &&
-        typeof bootRequest === "object" &&
-        bootRequest.action === "background-download" &&
+        isSearchAdvisorBackgroundDownloadBootRequest(bootRequest) &&
         typeof runBackgroundSnapshotDownload === "function"
       ) {
         Promise.resolve()
