@@ -20,8 +20,7 @@
  * - src/app/main/SNAPSHOT_IMPLEMENTATION_GUIDE.md
  */
 let snapshotSaveInFlightPromise = null;
-let directSaveInFlightPromise = null;
-let backgroundSnapshotSaveInFlightPromise = null;
+let snapshotSaveRequestInFlightPromise = null;
 let snapshotSaveOverlayCleanupTimer = null;
 let snapshotSaveOverlaySuppressed = false;
 let snapshotBackgroundCleanupTimer = null;
@@ -366,7 +365,6 @@ function pushSnapshotSaveStatus(patch) {
 function buildDirectSaveRefreshDecision() {
   const runtimeSites =
     typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
-  const memCache = typeof getMemCache === "function" ? getMemCache() : null;
   const bootstrapStatus =
     typeof getBootstrapFullRefreshStatus === "function"
       ? getBootstrapFullRefreshStatus()
@@ -388,7 +386,7 @@ function buildDirectSaveRefreshDecision() {
     siteCount: Array.isArray(runtimeSites) ? runtimeSites.length : 0,
     siteListMissing: !!bootstrapStatus.siteListMissing,
     siteListExpired: !!bootstrapStatus.siteListExpired,
-    missingSites: 0,
+    missingSites: bootstrapStatus.missingSites || 0,
     expiredSites: bootstrapStatus.expiredSites || 0,
   };
   if (!runtimeSites.length) {
@@ -397,25 +395,6 @@ function buildDirectSaveRefreshDecision() {
     decision.siteListMissing = true;
     return decision;
   }
-  runtimeSites.forEach(function (site) {
-    const siteData =
-      (memCache && memCache[site]) ||
-      (typeof window !== "undefined" && window.__sadvInitData && window.__sadvInitData.sites
-        ? window.__sadvInitData.sites[site]
-        : null) ||
-      (typeof window !== "undefined" && window.__sadvMergedData && window.__sadvMergedData.sites
-        ? window.__sadvMergedData.sites[site]
-        : null) ||
-      (typeof window !== "undefined" &&
-      window.__SEARCHADVISOR_EXPORT_PAYLOAD__ &&
-      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.siteData
-        ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__.siteData[site]
-        : null) ||
-      null;
-    const hasCompleteData =
-      !!siteData && siteData.expose != null && siteData.detailLoaded === true;
-    if (!hasCompleteData) decision.missingSites += 1;
-  });
   if (decision.missingSites > 0) {
     decision.neededRefresh = true;
     if (!decision.reason) decision.reason = "site-data-missing";
@@ -424,6 +403,166 @@ function buildDirectSaveRefreshDecision() {
     decision.reason = "site-data-expired";
   }
   return decision;
+}
+
+function resolveSnapshotSaveRequestContext(options) {
+  const runtimeSites =
+    typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
+  return {
+    options: options || {},
+    runtimeSites: runtimeSites,
+    startedAt:
+      options && typeof options.startedAt === "number" ? options.startedAt : Date.now(),
+    headlessMode: getDirectSaveHeadlessMode(options),
+    selectionSnapshot:
+      options && options.selectionSnapshot
+        ? options.selectionSnapshot
+        : buildSnapshotSaveSelectionSnapshot(runtimeSites),
+    capabilities:
+      typeof getRuntimeCapabilities === "function" ? getRuntimeCapabilities() : null,
+  };
+}
+
+function resolveSnapshotSaveRefreshLease(decision, options) {
+  if (options && options.payload) {
+    return {
+      reusable: false,
+      shouldStart: false,
+      bootstrapStatus: null,
+      promise: null,
+    };
+  }
+  if (typeof resolveFullRefreshLeaseForSave === "function") {
+    return resolveFullRefreshLeaseForSave();
+  }
+  const reusableHandle =
+    typeof getSnapshotReusableRefreshStatusForSave === "function"
+      ? getSnapshotReusableRefreshStatusForSave()
+      : { reusable: false, promise: null };
+  return {
+    reusable: !!reusableHandle.reusable,
+    shouldStart: !reusableHandle.reusable && !!(decision && decision.neededRefresh),
+    bootstrapStatus: null,
+    promise: reusableHandle.promise || null,
+  };
+}
+
+async function collectSnapshotSavePayloadCacheFirst(requestContext, decision, btn) {
+  const runtimeSites = requestContext.runtimeSites || [];
+  recordRuntimeEvent("collect-export-start", {
+    source: "download-snapshot",
+    refreshMode: "cache-first",
+    siteCount: runtimeSites.length,
+  });
+  const payload = await collectExportData(
+    function (done, total, site, stats) {
+      const safeTotal = Math.max(1, total);
+      setSnapshotSaveButtonBusy(btn, done + "/" + safeTotal);
+      pushSnapshotSaveStatus({
+        active: true,
+        state: "collecting",
+        phase: "download",
+        uiHidden: requestContext.headlessMode,
+        stageLabel: "저장 데이터 수집 중",
+        detail:
+          done +
+          " / " +
+          safeTotal +
+          " 사이트 처리 중" +
+          (site ? " · " + site.replace("https://", "").replace("http://", "") : ""),
+        progress: {
+          done: done,
+          total: safeTotal,
+          ratio: safeTotal > 0 ? done / safeTotal : 0,
+          percent: safeTotal > 0 ? Math.round((done / safeTotal) * 100) : 0,
+        },
+        stats: stats || { success: 0, partial: 0, failed: 0, errors: [] },
+        site: site || null,
+        cacheDecision: decision,
+      });
+    },
+    { refreshMode: "cache-first" },
+  );
+  recordRuntimeEvent("collect-export-complete", {
+    source: "download-snapshot",
+    refreshMode: "cache-first",
+    siteCount:
+      payload && payload.summaryRows ? payload.summaryRows.length : runtimeSites.length,
+    stats: payload && payload.stats ? payload.stats : null,
+  });
+  return payload;
+}
+
+async function acquireSnapshotSavePayloadForExecution(requestContext, decision, refreshLease, btn) {
+  let payload =
+    requestContext.options && requestContext.options.payload
+      ? requestContext.options.payload
+      : null;
+  if (payload) return payload;
+  if (refreshLease && refreshLease.reusable) {
+    pushSnapshotSaveStatus({
+      active: true,
+      state: "waiting-refresh",
+      phase: "refresh",
+      uiHidden: requestContext.headlessMode,
+      stageLabel: "자동 갱신 결과 대기 중",
+      detail: buildSnapshotWaitingRefreshDetail(),
+      cacheDecision: decision,
+    });
+    if (typeof acquireFullRefreshPayloadForSave === "function") {
+      return await acquireFullRefreshPayloadForSave(refreshLease);
+    }
+    if (typeof awaitReusableFullRefreshPayloadForSave === "function") {
+      return await awaitReusableFullRefreshPayloadForSave(refreshLease);
+    }
+  }
+  if (refreshLease && refreshLease.shouldStart) {
+    pushSnapshotSaveStatus({
+      active: true,
+      state: "starting-refresh",
+      phase: "refresh",
+      uiHidden: requestContext.headlessMode,
+      stageLabel: "최신 데이터 갱신 시작 중",
+      detail: buildDirectSaveDecisionDetail(decision),
+      cacheDecision: decision,
+    });
+    if (typeof acquireFullRefreshPayloadForSave === "function") {
+      return await acquireFullRefreshPayloadForSave(refreshLease, {
+        onProgress: function (done, total, site, stats) {
+          const safeTotal = Math.max(1, total);
+          pushSnapshotSaveStatus({
+            active: true,
+            state: "refreshing",
+            phase: "refresh",
+            uiHidden: requestContext.headlessMode,
+            stageLabel: "최신 데이터 갱신 중",
+            detail:
+              done +
+              " / " +
+              safeTotal +
+              " 사이트를 최신 상태로 갱신 중" +
+              (site ? " · " + site.replace("https://", "").replace("http://", "") : ""),
+            progress: {
+              done: done,
+              total: safeTotal,
+              ratio: safeTotal > 0 ? done / safeTotal : 0,
+              percent: safeTotal > 0 ? Math.round((done / safeTotal) * 100) : 0,
+            },
+            stats: stats || { success: 0, partial: 0, failed: 0, errors: [] },
+            site: site || null,
+            cacheDecision: decision,
+          });
+        },
+      });
+    }
+    if (typeof runFullRefreshPipeline === "function") {
+      return await runFullRefreshPipeline({
+        trigger: "manual",
+        renderProgress: false,
+      });
+    }
+  }
+  return await collectSnapshotSavePayloadCacheFirst(requestContext, decision, btn);
 }
 
 function buildSnapshotSaveSelectionSnapshot(runtimeSites) {
@@ -912,7 +1051,7 @@ function restoreSnapshotSaveButton(btn, originalText) {
         bdEl.innerHTML = createInlineError(
           ERROR_MESSAGES.HTML_SAVE_ERROR,
           function () {
-            downloadSnapshot();
+            runSnapshotSaveExecution();
           },
           '다시 시도'
         ).outerHTML;
@@ -925,6 +1064,73 @@ function restoreSnapshotSaveButton(btn, originalText) {
       return await snapshotSaveInFlightPromise;
     } finally {
       snapshotSaveInFlightPromise = null;
+    }
+  }
+
+  async function runSnapshotSaveExecution(options) {
+    if (snapshotSaveRequestInFlightPromise) return snapshotSaveRequestInFlightPromise;
+    const requestContext = resolveSnapshotSaveRequestContext(options);
+    if (requestContext.capabilities && !requestContext.capabilities.canSave) return false;
+    snapshotSaveRequestInFlightPromise = (async function () {
+      const restoreHeadlessUi = requestContext.headlessMode
+        ? createSnapshotHeadlessUiRestore()
+        : null;
+      const decision =
+        requestContext.options &&
+        requestContext.options.cacheDecision &&
+        typeof requestContext.options.cacheDecision === "object"
+          ? requestContext.options.cacheDecision
+          : buildDirectSaveRefreshDecision();
+      const refreshLease = resolveSnapshotSaveRefreshLease(decision, requestContext.options);
+      const btn = document.getElementById("sadv-save-btn");
+      try {
+        setSnapshotSaveOverlaySuppressed(requestContext.headlessMode);
+        pushSnapshotSaveStatus({
+          __replace: true,
+          active: true,
+          state: "checking-cache",
+          phase: "prepare",
+          uiHidden: requestContext.headlessMode,
+          stageLabel: "저장 준비 중",
+          detail: buildDirectSaveDecisionDetail(decision),
+          startedAt: requestContext.startedAt,
+          completedAt: null,
+          progress: {
+            done: 0,
+            total: requestContext.runtimeSites.length,
+            ratio: 0,
+            percent: 0,
+          },
+          stats: { success: 0, partial: 0, failed: 0, errors: [] },
+          cacheDecision: decision,
+          fileName: null,
+          site: null,
+          error: null,
+        });
+        const payload = await acquireSnapshotSavePayloadForExecution(
+          requestContext,
+          decision,
+          refreshLease,
+          btn,
+        );
+        return await downloadSnapshot({
+          payload: payload,
+          refreshMode: decision.neededRefresh ? "refresh" : "cache-first",
+          startedAt: requestContext.startedAt,
+          cacheDecision: decision,
+          selectionSnapshot: requestContext.selectionSnapshot,
+        });
+      } finally {
+        setSnapshotSaveOverlaySuppressed(false);
+        if (typeof restoreHeadlessUi === "function") {
+          restoreHeadlessUi();
+        }
+      }
+    })();
+    try {
+      return await snapshotSaveRequestInFlightPromise;
+    } finally {
+      snapshotSaveRequestInFlightPromise = null;
     }
   }
 
@@ -944,118 +1150,7 @@ function restoreSnapshotSaveButton(btn, originalText) {
  * @returns {Promise<Object|false>} live에서는 저장 결과 객체, read-only에서는 false
  */
   async function directSaveSnapshot(options) {
-    if (directSaveInFlightPromise) return directSaveInFlightPromise;
-    const capabilities =
-      typeof getRuntimeCapabilities === "function" ? getRuntimeCapabilities() : null;
-    if (capabilities && !capabilities.canSave) return false;
-    const headlessMode = getDirectSaveHeadlessMode(options);
-    directSaveInFlightPromise = (async function () {
-      const restoreHeadlessUi = headlessMode ? createSnapshotHeadlessUiRestore() : null;
-      setSnapshotSaveOverlaySuppressed(headlessMode);
-      const startedAt = Date.now();
-      const runtimeSites =
-        typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
-      const selectionSnapshot = buildSnapshotSaveSelectionSnapshot(runtimeSites);
-      try {
-        const decision = buildDirectSaveRefreshDecision();
-        const reusableRefreshHandle = getSnapshotReusableRefreshStatusForSave();
-        pushSnapshotSaveStatus({
-          __replace: true,
-          active: true,
-          state: "checking-cache",
-          phase: "prepare",
-          uiHidden: headlessMode,
-          stageLabel: "저장 준비 중",
-          detail: buildDirectSaveDecisionDetail(decision),
-          startedAt: startedAt,
-          completedAt: null,
-          progress: {
-            done: 0,
-            total:
-              typeof getRuntimeAllSites === "function"
-                ? getRuntimeAllSites().length
-                : allSites.length,
-            ratio: 0,
-            percent: 0,
-          },
-          stats: { success: 0, partial: 0, failed: 0, errors: [] },
-          cacheDecision: decision,
-          fileName: null,
-          site: null,
-          error: null,
-        });
-        let payload = options && options.payload ? options.payload : null;
-        if (!payload && reusableRefreshHandle.reusable) {
-          pushSnapshotSaveStatus({
-            active: true,
-            state: "waiting-refresh",
-            phase: "refresh",
-            uiHidden: headlessMode,
-            stageLabel: "자동 갱신 결과 대기 중",
-            detail: buildSnapshotWaitingRefreshDetail(),
-            cacheDecision: decision,
-          });
-          payload = await awaitReusableFullRefreshPayloadForSave(reusableRefreshHandle);
-        }
-        if (!payload && decision.neededRefresh) {
-          pushSnapshotSaveStatus({
-            active: true,
-            state: "refreshing",
-            phase: "refresh",
-            uiHidden: headlessMode,
-            stageLabel: "최신 데이터 갱신 중",
-            detail: buildDirectSaveDecisionDetail(decision),
-            cacheDecision: decision,
-          });
-          payload = await runFullRefreshPipeline({
-            trigger: "manual",
-            renderProgress: false,
-            onProgress: function (done, total, site, stats) {
-              const safeTotal = Math.max(1, total);
-              pushSnapshotSaveStatus({
-                active: true,
-                state: "refreshing",
-                phase: "refresh",
-                uiHidden: headlessMode,
-                stageLabel: "최신 데이터 갱신 중",
-                detail:
-                  done +
-                  " / " +
-                  safeTotal +
-                  " 사이트를 최신 상태로 갱신 중" +
-                  (site ? " · " + site.replace("https://", "").replace("http://", "") : ""),
-                progress: {
-                  done: done,
-                  total: safeTotal,
-                  ratio: safeTotal > 0 ? done / safeTotal : 0,
-                  percent: safeTotal > 0 ? Math.round((done / safeTotal) * 100) : 0,
-                },
-                stats: stats || { success: 0, partial: 0, failed: 0, errors: [] },
-                site: site || null,
-                cacheDecision: decision,
-              });
-            },
-          });
-        }
-        return downloadSnapshot({
-          payload: payload,
-          refreshMode: decision.neededRefresh ? "refresh" : "cache-first",
-          startedAt: startedAt,
-          cacheDecision: decision,
-          selectionSnapshot: selectionSnapshot,
-        });
-      } finally {
-        setSnapshotSaveOverlaySuppressed(false);
-        if (typeof restoreHeadlessUi === "function") {
-          restoreHeadlessUi();
-        }
-      }
-    })();
-    try {
-      return await directSaveInFlightPromise;
-    } finally {
-      directSaveInFlightPromise = null;
-    }
+    return await runSnapshotSaveExecution(options);
   }
 
 /**
@@ -1071,29 +1166,23 @@ function restoreSnapshotSaveButton(btn, originalText) {
  * "현재 저장 버튼을 백그라운드처럼 실행"하는 orchestrator다.
  */
   async function runBackgroundSnapshotDownload(options) {
-    if (backgroundSnapshotSaveInFlightPromise) return backgroundSnapshotSaveInFlightPromise;
     const capabilities =
       typeof getRuntimeCapabilities === "function" ? getRuntimeCapabilities() : null;
     if (capabilities && !capabilities.canSave) return false;
     const cleanupDelay =
       options && typeof options.cleanupDelayMs === "number" ? options.cleanupDelayMs : 1800;
-    const runtimeSites =
-      typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
-    const selectionSnapshot = buildSnapshotSaveSelectionSnapshot(runtimeSites);
     applySnapshotBackgroundSaveUiHidden();
-    backgroundSnapshotSaveInFlightPromise = (async function () {
-      clearSearchAdvisorBootRequest();
-      return await downloadSnapshot({ selectionSnapshot: selectionSnapshot });
-    })();
     try {
-      const result = await backgroundSnapshotSaveInFlightPromise;
+      clearSearchAdvisorBootRequest();
+      const result = await runSnapshotSaveExecution({
+        ...(options || {}),
+        headless: true,
+      });
       scheduleSnapshotBackgroundRuntimeCleanup(cleanupDelay);
       return result;
     } catch (error) {
       scheduleSnapshotBackgroundRuntimeCleanup(cleanupDelay);
       throw error;
-    } finally {
-      backgroundSnapshotSaveInFlightPromise = null;
     }
   }
   /**
