@@ -108,6 +108,7 @@ function createDefaultRuntimeSaveStatus() {
       ratio: 0,
       percent: 0,
     },
+    mirroredProgress: null,
     stats: {
       success: 0,
       partial: 0,
@@ -131,6 +132,10 @@ function cloneRuntimeSaveStatus(status) {
   const source = status && typeof status === "object" ? status : {};
   const sourceProgress =
     source.progress && typeof source.progress === "object" ? source.progress : {};
+  const sourceMirroredProgress =
+    source.mirroredProgress && typeof source.mirroredProgress === "object"
+      ? source.mirroredProgress
+      : null;
   const sourceStats = source.stats && typeof source.stats === "object" ? source.stats : {};
   const sourceCacheDecision =
     source.cacheDecision && typeof source.cacheDecision === "object"
@@ -144,6 +149,54 @@ function cloneRuntimeSaveStatus(status) {
       ...base.progress,
       ...sourceProgress,
     },
+    mirroredProgress: sourceMirroredProgress
+      ? {
+          owner:
+            typeof sourceMirroredProgress.owner === "string"
+              ? sourceMirroredProgress.owner
+              : null,
+          kind:
+            typeof sourceMirroredProgress.kind === "string"
+              ? sourceMirroredProgress.kind
+              : null,
+          state:
+            typeof sourceMirroredProgress.state === "string"
+              ? sourceMirroredProgress.state
+              : null,
+          progressKind:
+            typeof sourceMirroredProgress.progressKind === "string"
+              ? sourceMirroredProgress.progressKind
+              : null,
+          done:
+            typeof sourceMirroredProgress.done === "number"
+              ? sourceMirroredProgress.done
+              : 0,
+          total:
+            typeof sourceMirroredProgress.total === "number"
+              ? sourceMirroredProgress.total
+              : 0,
+          ratio:
+            typeof sourceMirroredProgress.ratio === "number"
+              ? sourceMirroredProgress.ratio
+              : 0,
+          percent:
+            typeof sourceMirroredProgress.percent === "number"
+              ? sourceMirroredProgress.percent
+              : 0,
+          label:
+            typeof sourceMirroredProgress.label === "string"
+              ? sourceMirroredProgress.label
+              : "",
+          detail:
+            typeof sourceMirroredProgress.detail === "string"
+              ? sourceMirroredProgress.detail
+              : "",
+          updatedAt:
+            typeof sourceMirroredProgress.updatedAt === "number"
+              ? sourceMirroredProgress.updatedAt
+              : null,
+        }
+      : null,
     stats: {
       ...base.stats,
       ...sourceStats,

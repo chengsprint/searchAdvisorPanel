@@ -270,6 +270,16 @@ function resolveFullRefreshLeaseForSave() {
     context: reusableStatus.context,
     promise: reusableStatus.promise,
     bootstrapStatus: bootstrapStatus,
+    getProgress:
+      reusableStatus.reusable && fullRefreshInFlightMeta
+        ? function () {
+            const progress =
+              fullRefreshInFlightMeta && fullRefreshInFlightMeta.progress
+                ? fullRefreshInFlightMeta.progress
+                : null;
+            return progress ? { ...progress } : null;
+          }
+        : null,
   };
 }
 
@@ -356,6 +366,22 @@ async function runFullRefreshPipeline(options = {}) {
     trigger: trigger,
     startedAt: Date.now(),
     context: buildFullRefreshSaveReuseContext(),
+    progress: {
+      owner: "full-refresh",
+      kind: "full-refresh",
+      state: "starting",
+      progressKind: "determinate",
+      done: 0,
+      total: allSites.length,
+      ratio: 0,
+      percent: 0,
+      label: "원본 자동 갱신 진행상태와 동기화 중",
+      detail:
+        trigger === "cache-expiry"
+          ? "원본 패널의 자동 갱신이 진행 중입니다. 같은 결과를 재사용합니다."
+          : "전체 데이터 갱신이 진행 중입니다. 같은 결과를 재사용합니다.",
+      updatedAt: Date.now(),
+    },
   };
   fullRefreshInFlightPromise = (async function () {
   const shouldRenderProgress = !(options && options.renderProgress === false);
@@ -397,6 +423,20 @@ async function runFullRefreshPipeline(options = {}) {
         (shortSite ? " · " + shortSite : "");
       if (shouldRenderProgress) {
         renderFullRefreshProgress(triggerLabel, detail, done / safeTotal, stats);
+      }
+      if (fullRefreshInFlightMeta && fullRefreshInFlightMeta.progress) {
+        fullRefreshInFlightMeta.progress = {
+          ...fullRefreshInFlightMeta.progress,
+          state: "refreshing",
+          progressKind: "determinate",
+          done: done,
+          total: safeTotal,
+          ratio: safeTotal > 0 ? done / safeTotal : 0,
+          percent: safeTotal > 0 ? Math.round((done / safeTotal) * 100) : 0,
+          label: "원본 자동 갱신 진행상태와 동기화 중",
+          detail: detail,
+          updatedAt: Date.now(),
+        };
       }
       if (btn) btn.textContent = done + "/" + safeTotal;
       if (options && typeof options.onProgress === "function") {

@@ -33,6 +33,16 @@
           ? siteViewLoadInFlightMeta.startedAt
           : null,
       promise: reusable ? siteViewLoadInFlightPromise : null,
+      getProgress:
+        reusable && siteViewLoadInFlightMeta
+          ? function () {
+              const progress =
+                siteViewLoadInFlightMeta && siteViewLoadInFlightMeta.progress
+                  ? siteViewLoadInFlightMeta.progress
+                  : null;
+              return progress ? { ...progress } : null;
+            }
+          : null,
     };
   }
 
@@ -49,6 +59,27 @@
     }
     const requestId = ++siteViewReqId;
     const requestStartedAt = Date.now();
+    const requestMeta = {
+      requestId: requestId,
+      site: site,
+      startedAt: requestStartedAt,
+      progress: {
+        owner: "runtime-bootstrap",
+        kind: "site-view-load",
+        state: "loading",
+        progressKind: "indeterminate",
+        done: 0,
+        total: 0,
+        ratio: 0,
+        percent: 0,
+        label: "원본 패널 진행상태와 동기화 중",
+        detail:
+          getSiteLabel(site) +
+          " 사이트 상세 데이터를 불러오는 중입니다. 새로운 수집을 다시 시작하지 않습니다.",
+        updatedAt: requestStartedAt,
+      },
+    };
+    siteViewLoadInFlightMeta = requestMeta;
     const requestPromise = (async function () {
 
     // Get account label from siteOwnership for display
@@ -120,11 +151,6 @@
     if (typeof notifySnapshotShellState === "function") notifySnapshotShellState();
     })();
     siteViewLoadInFlightPromise = requestPromise;
-    siteViewLoadInFlightMeta = {
-      requestId: requestId,
-      site: site,
-      startedAt: requestStartedAt,
-    };
     try {
       return await requestPromise;
     } finally {

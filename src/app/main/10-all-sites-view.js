@@ -42,6 +42,16 @@ function getAllSitesRenderLeaseForSave() {
         ? allSitesRenderInFlightMeta.siteCount
         : 0,
     promise: reusable ? allSitesRenderInFlightPromise : null,
+    getProgress:
+      reusable && allSitesRenderInFlightMeta
+        ? function () {
+            const progress =
+              allSitesRenderInFlightMeta && allSitesRenderInFlightMeta.progress
+                ? allSitesRenderInFlightMeta.progress
+                : null;
+            return progress ? { ...progress } : null;
+          }
+        : null,
   };
 }
 
@@ -452,6 +462,25 @@ async function renderAllSites() {
   const runtimeSites =
     typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
   const requestStartedAt = Date.now();
+  const requestMeta = {
+    requestId: requestId,
+    startedAt: requestStartedAt,
+    siteCount: runtimeSites.length,
+    progress: {
+      owner: "runtime-bootstrap",
+      kind: "all-sites-render",
+      state: "loading",
+      progressKind: "determinate",
+      done: 0,
+      total: runtimeSites.length,
+      ratio: 0,
+      percent: 0,
+      label: "원본 패널 진행상태와 동기화 중",
+      detail: "원본 패널이 전체현황 기본 데이터를 불러오는 중입니다.",
+      updatedAt: requestStartedAt,
+    },
+  };
+  allSitesRenderInFlightMeta = requestMeta;
   const requestPromise = (async function () {
   setAllSitesLabel();
   const loading = document.createElement("div");
@@ -515,6 +544,23 @@ async function renderAllSites() {
       loadingPercent.style.color = percent >= 100 ? C.green : C.blue;
     }
     if (loadingMeta && note) loadingMeta.textContent = note;
+    if (requestMeta.progress) {
+      requestMeta.progress = {
+        ...requestMeta.progress,
+        state: "loading",
+        progressKind: "determinate",
+        done: Math.max(
+          0,
+          Math.min(runtimeSites.length, Math.round(runtimeSites.length * Math.max(0, Math.min(1, ratio)))),
+        ),
+        total: runtimeSites.length,
+        ratio: Math.max(0, Math.min(1, ratio)),
+        percent: Math.max(0, Math.min(100, Math.round(ratio * 100))),
+        label: "원본 패널 진행상태와 동기화 중",
+        detail: label + (note ? " · " + note : ""),
+        updatedAt: Date.now(),
+      };
+    }
 
     // 경과 시간 및 남은 시간 표시
     if (loadingMeta && ratio < 1) {
@@ -619,11 +665,6 @@ async function renderAllSites() {
   renderAllSitesFromCanonicalRows();
   })();
   allSitesRenderInFlightPromise = requestPromise;
-  allSitesRenderInFlightMeta = {
-    requestId: requestId,
-    startedAt: requestStartedAt,
-    siteCount: runtimeSites.length,
-  };
   try {
     return await requestPromise;
   } finally {

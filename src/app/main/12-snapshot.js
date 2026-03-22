@@ -39,6 +39,7 @@ function createIdleDirectSaveStatus() {
     updatedAt: Date.now(),
     completedAt: null,
     progress: { done: 0, total: 0, ratio: 0, percent: 0 },
+    mirroredProgress: null,
     stats: { success: 0, partial: 0, failed: 0, errors: [] },
     cacheDecision: { neededRefresh: false, reason: null, missingSites: 0, expiredSites: 0 },
     fileName: null,
@@ -242,6 +243,46 @@ function buildSnapshotSaveOverlayAccent(status) {
   return C.amber;
 }
 
+function cloneSnapshotMirroredProgress(progress) {
+  if (!progress || typeof progress !== "object") return null;
+  return {
+    owner: typeof progress.owner === "string" ? progress.owner : null,
+    kind: typeof progress.kind === "string" ? progress.kind : null,
+    state: typeof progress.state === "string" ? progress.state : null,
+    progressKind:
+      typeof progress.progressKind === "string" ? progress.progressKind : "determinate",
+    done: typeof progress.done === "number" ? progress.done : 0,
+    total: typeof progress.total === "number" ? progress.total : 0,
+    ratio: typeof progress.ratio === "number" ? progress.ratio : 0,
+    percent: typeof progress.percent === "number" ? progress.percent : 0,
+    label: typeof progress.label === "string" ? progress.label : "",
+    detail: typeof progress.detail === "string" ? progress.detail : "",
+    updatedAt: typeof progress.updatedAt === "number" ? progress.updatedAt : null,
+  };
+}
+
+function readSnapshotSaveLeaseMirroredProgress(lease) {
+  if (!lease || typeof lease.getProgress !== "function") return null;
+  try {
+    return cloneSnapshotMirroredProgress(lease.getProgress());
+  } catch (e) {
+    console.error("[snapshot-save] failed to read mirrored progress:", e);
+    return null;
+  }
+}
+
+function startSnapshotSaveLeaseMirror(lease, publish) {
+  if (!lease || typeof publish !== "function") return function () {};
+  const tick = function () {
+    publish(readSnapshotSaveLeaseMirroredProgress(lease));
+  };
+  tick();
+  const timer = setInterval(tick, 180);
+  return function stopSnapshotSaveLeaseMirror() {
+    clearInterval(timer);
+  };
+}
+
 function renderSnapshotSaveOverlay(status) {
   if (snapshotSaveOverlaySuppressed) {
     removeSnapshotSaveOverlay();
@@ -256,9 +297,16 @@ function renderSnapshotSaveOverlay(status) {
   const title = buildSnapshotSaveOverlayTitle(status);
   const accent = buildSnapshotSaveOverlayAccent(status);
   const progress = status.progress && typeof status.progress === "object" ? status.progress : {};
+  const mirroredProgress = cloneSnapshotMirroredProgress(status.mirroredProgress);
   const stats = status.stats && typeof status.stats === "object" ? status.stats : {};
-  const pct =
-    typeof progress.percent === "number"
+  const canMirrorProgress =
+    !!mirroredProgress &&
+    (status.state === "waiting-runtime" || status.state === "waiting-refresh");
+  const mirroredDeterminate =
+    canMirrorProgress && mirroredProgress.progressKind === "determinate";
+  const pct = mirroredDeterminate
+    ? Math.max(0, Math.min(100, Math.round(mirroredProgress.percent || 0)))
+    : typeof progress.percent === "number"
       ? Math.max(0, Math.min(100, Math.round(progress.percent)))
       : 0;
   const detail = typeof status.detail === "string" ? status.detail : "";
@@ -289,10 +337,57 @@ function renderSnapshotSaveOverlay(status) {
   overlay.dataset.uiHidden = status.uiHidden ? "true" : "false";
   overlay.dataset.active = status.active ? "true" : "false";
   overlay.dataset.current =
-    typeof progress.done === "number" ? String(progress.done) : "0";
+    canMirrorProgress && typeof mirroredProgress.done === "number"
+      ? String(mirroredProgress.done)
+      : typeof progress.done === "number"
+        ? String(progress.done)
+        : "0";
   overlay.dataset.total =
-    typeof progress.total === "number" ? String(progress.total) : "0";
+    canMirrorProgress && typeof mirroredProgress.total === "number"
+      ? String(mirroredProgress.total)
+      : typeof progress.total === "number"
+        ? String(progress.total)
+        : "0";
   overlay.dataset.percent = String(pct);
+  overlay.dataset.mirroredOwner =
+    canMirrorProgress && typeof mirroredProgress.owner === "string"
+      ? mirroredProgress.owner
+      : "";
+  overlay.dataset.progressKind =
+    canMirrorProgress && typeof mirroredProgress.progressKind === "string"
+      ? mirroredProgress.progressKind
+      : "determinate";
+  overlay.dataset.mirroredPercent =
+    canMirrorProgress && typeof mirroredProgress.percent === "number"
+      ? String(Math.max(0, Math.min(100, Math.round(mirroredProgress.percent))))
+      : "";
+  const progressValueHtml = mirroredDeterminate
+    ? escHtml(String(pct)) + "%"
+    : canMirrorProgress
+      ? "연동 중"
+      : escHtml(String(pct)) + "%";
+  const progressBarStyle =
+    canMirrorProgress && mirroredProgress.progressKind === "indeterminate"
+      ? "width:100%;height:100%;background:repeating-linear-gradient(90deg,rgba(77,209,255,0.18) 0 12px,rgba(77,209,255,0.42) 12px 24px);box-shadow:none"
+      : "width:" + pct + "%;height:100%;background:" + accent + ";box-shadow:0 0 18px " + accent + "66";
+  const progressMetaHtml = canMirrorProgress
+    ? mirroredDeterminate
+      ? '<span>원본 진행 ' +
+        escHtml(String(mirroredProgress.done || 0)) +
+        '/' +
+        escHtml(String(mirroredProgress.total || 0)) +
+        "</span>"
+      : '<span>원본 진행 상태와 동기화 중</span>'
+    : '<span>진행 ' + escHtml(String(progress.done || 0)) + '/' + escHtml(String(progress.total || 0)) + "</span>";
+  const mirroredDetailHtml =
+    canMirrorProgress && (mirroredProgress.label || mirroredProgress.detail)
+      ? '<div style="margin-top:8px;color:rgba(255,253,245,0.58)">' +
+        (mirroredProgress.label ? escHtml(mirroredProgress.label) : "") +
+        (mirroredProgress.detail
+          ? '<div style="margin-top:4px">' + escHtml(mirroredProgress.detail) + "</div>"
+          : "") +
+        "</div>"
+      : "";
   overlay.dataset.stopped =
     !status.active &&
     (status.state === "completed" ||
@@ -317,20 +412,21 @@ function renderSnapshotSaveOverlay(status) {
           "</div>" +
           '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">' +
             '<div style="flex:1;height:10px;border-radius:999px;background:rgba(255,255,255,0.06);overflow:hidden;border:1px solid rgba(255,255,255,0.06)">' +
-              '<div style="width:' + pct + '%;height:100%;background:' + accent + ';box-shadow:0 0 18px ' + accent + '66"></div>' +
+              '<div style="' + progressBarStyle + '"></div>' +
             "</div>" +
             '<span style="font-size:12px;font-weight:800;color:' + accent + ';min-width:48px;text-align:right">' +
-              escHtml(String(pct)) +
-              "%</span>" +
+              progressValueHtml +
+            "</span>" +
           "</div>" +
           '<div style="display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:rgba(255,253,245,0.70);margin-bottom:8px">' +
-            '<span>진행 ' + escHtml(String(progress.done || 0)) + '/' + escHtml(String(progress.total || 0)) + "</span>" +
+            progressMetaHtml +
             '<span>완료 ' + escHtml(String(stats.success || 0)) + "</span>" +
             '<span>부분 ' + escHtml(String(stats.partial || 0)) + "</span>" +
             '<span>실패 ' + escHtml(String(stats.failed || 0)) + "</span>" +
           "</div>" +
           '<div style="font-size:11px;color:rgba(255,253,245,0.62);line-height:1.6">' +
             decisionHtml +
+            mirroredDetailHtml +
             (site ? '<div style="margin-top:4px;color:rgba(255,253,245,0.78)">현재 사이트 · ' + escHtml(site.replace("https://", "").replace("http://", "")) + "</div>" : "") +
             (status.fileName ? '<div style="margin-top:4px;color:' + accent + '">' + escHtml(status.fileName) + "</div>" : "") +
             (status.error && status.error.message ? '<div style="margin-top:8px;color:' + C.red + ';font-weight:700">' + escHtml(status.error.message) + "</div>" : "") +
@@ -364,6 +460,19 @@ function pushSnapshotSaveStatus(patch) {
       : (typeof cloneRuntimeSaveStatus === "function" ? cloneRuntimeSaveStatus(patch) : patch);
   renderSnapshotSaveOverlay(next);
   return next;
+}
+
+function buildSnapshotWaitingStatePatch(requestContext, decision, state, title, detail, mirroredProgress) {
+  return {
+    active: true,
+    state: state,
+    phase: state === "waiting-refresh" ? "refresh" : "prepare",
+    uiHidden: requestContext.headlessMode,
+    stageLabel: title,
+    detail: detail,
+    cacheDecision: decision,
+    mirroredProgress: cloneSnapshotMirroredProgress(mirroredProgress),
+  };
 }
 
 function buildDirectSaveRefreshDecision() {
@@ -522,6 +631,7 @@ async function collectSnapshotSavePayloadCacheFirst(requestContext, decision, bt
           ratio: safeTotal > 0 ? done / safeTotal : 0,
           percent: safeTotal > 0 ? Math.round((done / safeTotal) * 100) : 0,
         },
+        mirroredProgress: null,
         stats: stats || { success: 0, partial: 0, failed: 0, errors: [] },
         site: site || null,
         cacheDecision: decision,
@@ -554,21 +664,33 @@ async function acquireSnapshotSavePayloadForExecution(requestContext, decision, 
       : null;
   if (payload) return payload;
   if (refreshLease && refreshLease.reusable) {
-    pushSnapshotSaveStatus({
-      active: true,
-      state: "waiting-refresh",
-      phase: "refresh",
-      uiHidden: requestContext.headlessMode,
-      stageLabel: "자동 갱신 결과 대기 중",
-      detail: buildSnapshotWaitingRefreshDetail(),
-      cacheDecision: decision,
+    const stopMirror = startSnapshotSaveLeaseMirror(refreshLease, function (mirroredProgress) {
+      pushSnapshotSaveStatus(
+        buildSnapshotWaitingStatePatch(
+          requestContext,
+          decision,
+          "waiting-refresh",
+          "자동 갱신 결과 대기 중",
+          buildSnapshotWaitingRefreshDetail(),
+          mirroredProgress,
+        ),
+      );
     });
     if (typeof acquireFullRefreshPayloadForSave === "function") {
-      return await acquireFullRefreshPayloadForSave(refreshLease);
+      try {
+        return await acquireFullRefreshPayloadForSave(refreshLease);
+      } finally {
+        stopMirror();
+      }
     }
     if (typeof awaitReusableFullRefreshPayloadForSave === "function") {
-      return await awaitReusableFullRefreshPayloadForSave(refreshLease);
+      try {
+        return await awaitReusableFullRefreshPayloadForSave(refreshLease);
+      } finally {
+        stopMirror();
+      }
     }
+    stopMirror();
   }
   if (refreshLease && refreshLease.shouldStart) {
     pushSnapshotSaveStatus({
@@ -579,6 +701,7 @@ async function acquireSnapshotSavePayloadForExecution(requestContext, decision, 
       stageLabel: "최신 데이터 갱신 시작 중",
       detail: buildDirectSaveDecisionDetail(decision),
       cacheDecision: decision,
+      mirroredProgress: null,
     });
     if (typeof acquireFullRefreshPayloadForSave === "function") {
       return await acquireFullRefreshPayloadForSave(refreshLease, {
@@ -602,6 +725,7 @@ async function acquireSnapshotSavePayloadForExecution(requestContext, decision, 
               ratio: safeTotal > 0 ? done / safeTotal : 0,
               percent: safeTotal > 0 ? Math.round((done / safeTotal) * 100) : 0,
             },
+            mirroredProgress: null,
             stats: stats || { success: 0, partial: 0, failed: 0, errors: [] },
             site: site || null,
             cacheDecision: decision,
@@ -1175,6 +1299,7 @@ async function runSnapshotSaveExecution(options) {
             ratio: 0,
             percent: 0,
           },
+          mirroredProgress: null,
           stats: { success: 0, partial: 0, failed: 0, errors: [] },
           cacheDecision: decision,
           fileName: null,
@@ -1183,16 +1308,26 @@ async function runSnapshotSaveExecution(options) {
         });
         const runtimeBootstrapLease = resolveSnapshotRuntimeBootstrapLeaseForSave(requestContext);
         if (runtimeBootstrapLease && runtimeBootstrapLease.reusable && runtimeBootstrapLease.promise) {
-          pushSnapshotSaveStatus({
-            active: true,
-            state: "waiting-runtime",
-            phase: "prepare",
-            uiHidden: requestContext.headlessMode,
-            stageLabel: "현재 화면 데이터 대기 중",
-            detail: buildSnapshotWaitingRuntimeDetail(runtimeBootstrapLease),
-            cacheDecision: decision,
-          });
-          await runtimeBootstrapLease.promise;
+          const stopMirror = startSnapshotSaveLeaseMirror(
+            runtimeBootstrapLease,
+            function (mirroredProgress) {
+              pushSnapshotSaveStatus(
+                buildSnapshotWaitingStatePatch(
+                  requestContext,
+                  decision,
+                  "waiting-runtime",
+                  "현재 화면 데이터 대기 중",
+                  buildSnapshotWaitingRuntimeDetail(runtimeBootstrapLease),
+                  mirroredProgress,
+                ),
+              );
+            },
+          );
+          try {
+            await runtimeBootstrapLease.promise;
+          } finally {
+            stopMirror();
+          }
           decision = explicitDecision || buildDirectSaveRefreshDecision();
           pushSnapshotSaveStatus({
             active: true,
@@ -1202,6 +1337,7 @@ async function runSnapshotSaveExecution(options) {
             stageLabel: "저장 준비 중",
             detail: buildDirectSaveDecisionDetail(decision),
             cacheDecision: decision,
+            mirroredProgress: null,
           });
         }
         const refreshLease = resolveSnapshotSaveRefreshLease(decision, requestContext.options);
