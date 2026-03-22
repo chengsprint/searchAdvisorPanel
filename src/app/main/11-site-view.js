@@ -12,6 +12,9 @@
     // site mode에서 패널이 이미 fetchSiteData(site)로 상세 데이터를 준비 중이면,
     // save가 같은 사이트 상세 데이터를 다시 따로 요청하지 않도록 in-flight load를
     // 재사용 가능한 lease로 노출한다.
+    // 중요:
+    // - 이 seam은 same-site reuse만 허용하는 좁은 lease다.
+    // - 여기서의 site 일치는 live current UI 표시보다 save request selection snapshot과 같은 의미를 유지해야 한다.
     const selectionState =
       typeof getRuntimeSelectionState === "function"
         ? getRuntimeSelectionState()

@@ -260,6 +260,8 @@ function resolveFullRefreshLeaseForSave() {
   // - reusable: 이미 진행 중인 refresh owner lease에 join 가능
   // - shouldStart: join 가능한 lease는 없지만 bootstrap 상태상 새 refresh 시작이 필요
   // save orchestration(12-snapshot)과 refresh ownership(13-refresh)의 경계를 유지하기 위한 함수다.
+  // site list만 살아 있다고 바로 cache-first 저장으로 떨어지면 안 되며,
+  // save는 refresh owner가 아니라 이 lease를 소비하는 consumer라는 점을 계속 유지해야 한다.
   const reusableStatus = getReusableFullRefreshStatusForSave();
   const bootstrapStatus = getBootstrapFullRefreshStatus();
   return {
@@ -300,6 +302,7 @@ async function acquireFullRefreshPayloadForSave(refreshLease, options = {}) {
   // save가 refresh를 "직접" 구현하지 않고, 여기서 reusable promise를 기다리거나
   // 필요한 경우에만 refresh pipeline 하나를 시작한다.
   // save 쪽에서 또 다른 collect/fallback을 만들면 경쟁 버그가 재발한다.
+  // 특히 refresh 실패 후 save가 조용히 cache-first fallback 하는 경로를 다시 만들면 안 된다.
   const lease = refreshLease || resolveFullRefreshLeaseForSave();
   if (lease.reusable && lease.promise && typeof lease.promise.then === "function") {
     return await lease.promise;

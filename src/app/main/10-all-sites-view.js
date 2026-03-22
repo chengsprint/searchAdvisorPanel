@@ -23,6 +23,9 @@ function getAllSitesRenderLeaseForSave() {
   // save가 바로 collectExportData()를 시작하면 expose 요청이 중복될 수 있다.
   // 따라서 save는 "이미 진행 중인 all-sites 초기 로딩"을 join 가능한 lease로 보고
   // 먼저 기다린 뒤 refresh/cache-first 판단을 다시 내려야 한다.
+  // 중요:
+  // - 이 lease는 "현재 UI에 뭐가 보이는가"가 아니라 "현재 진행 중인 all-sites bootstrap work"만 대표한다.
+  // - save modal이 미러링하는 progress도 save 자체 진행률이 아니라 owner snapshot의 보조 projection이다.
   const selectionState = getAllSitesSelectionState();
   const reusable = !!(
     allSitesRenderInFlightPromise &&

@@ -759,6 +759,9 @@ function applyUiControlsTab(tab) {
           runSnapshotSaveExecution({ entryPoint: "button" });
           return;
         }
+        // Compat safety net only:
+        // 정상 번들에서는 runSnapshotSaveExecution()이 canonical owner다.
+        // 이 fallback이 "정상 경로"처럼 다시 확장되면 save policy ownership이 entrypoint마다 drift 한다.
         downloadSnapshot();
       });
     }
@@ -894,6 +897,9 @@ function applyUiControlsTab(tab) {
         if (typeof runSnapshotSaveExecution === "function") {
           return runSnapshotSaveExecution({ ...(options || {}), entryPoint: "direct-save" });
         }
+        // Compat safety net only:
+        // directSaveSnapshot()/downloadSnapshot() 직접 호출은 legacy 호환 경로일 뿐,
+        // save policy/lease/blocked 판단의 정본으로 취급하면 안 된다.
         if (typeof directSaveSnapshot === "function") {
           return directSaveSnapshot(options);
         }
@@ -912,6 +918,8 @@ function applyUiControlsTab(tab) {
         // 완전히 깨지지 않도록 남겨둔 안전망이다.
         // 즉 의미상 정본은 "패널 first-frame 비노출 + 공통 save execution contract"이고,
         // 아래 directSaveSnapshot({ headless:true })는 그 정본 경로가 없을 때만 허용되는 compat 경로다.
+        // 다시 말해 09-ui-controls.js는 save policy owner가 아니라 entry router다.
+        // 여기서 background/save 정책을 직접 늘리기 시작하면 canonical contract가 다시 분기된다.
         if (typeof directSaveSnapshot === "function") {
           return directSaveSnapshot({ ...(options || {}), headless: true });
         }

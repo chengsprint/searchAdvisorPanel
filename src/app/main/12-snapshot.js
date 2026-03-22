@@ -361,6 +361,9 @@ function renderSnapshotSaveOverlay(status) {
     canMirrorProgress && typeof mirroredProgress.percent === "number"
       ? String(Math.max(0, Math.min(100, Math.round(mirroredProgress.percent))))
       : "";
+  // 외부 드라이버 주의:
+  // waiting-* 동안 overlay dataset percent/current/total은 save canonical progress가 아니라
+  // mirrored owner progress일 수 있다. 정본 save 진행 여부는 getSaveStatus().state/active가 우선이다.
   const progressValueHtml = mirroredDeterminate
     ? escHtml(String(pct)) + "%"
     : canMirrorProgress
@@ -1266,6 +1269,10 @@ async function runSnapshotSaveExecution(options) {
   // 3) resolveSnapshotSaveRefreshLease() 로 refresh owner lease 재사용/시작 여부 판단
   // 4) acquireSnapshotSavePayloadForExecution() 으로 payload 획득
   // 5) downloadSnapshot() 으로 최종 blocked 검사 + HTML commit/downloader 실행
+  //
+  // 중요:
+  // - decision recompute는 runtime bootstrap wait 이후 1회만 허용한다.
+  // - 그 이후에는 캡처한 lease/payload만 소비해야 하며, entrypoint별 별도 save policy를 다시 만들면 안 된다.
   if (snapshotSaveRequestInFlightPromise) return snapshotSaveRequestInFlightPromise;
   const requestContext = resolveSnapshotSaveRequestContext(options);
     if (requestContext.capabilities && !requestContext.capabilities.canSave) return false;

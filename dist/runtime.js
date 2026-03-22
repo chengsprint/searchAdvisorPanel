@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-22T18:53:20Z";
-var __SADV_GIT_HEAD__="f7fe1ea";
+var __SADV_BUILD_STAMP__="2026-03-22T19:03:08Z";
+var __SADV_GIT_HEAD__="748a79f";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -10693,6 +10693,9 @@ function applyUiControlsTab(tab) {
           runSnapshotSaveExecution({ entryPoint: "button" });
           return;
         }
+        // Compat safety net only:
+        // 정상 번들에서는 runSnapshotSaveExecution()이 canonical owner다.
+        // 이 fallback이 "정상 경로"처럼 다시 확장되면 save policy ownership이 entrypoint마다 drift 한다.
         downloadSnapshot();
       });
     }
@@ -10828,6 +10831,9 @@ function applyUiControlsTab(tab) {
         if (typeof runSnapshotSaveExecution === "function") {
           return runSnapshotSaveExecution({ ...(options || {}), entryPoint: "direct-save" });
         }
+        // Compat safety net only:
+        // directSaveSnapshot()/downloadSnapshot() 직접 호출은 legacy 호환 경로일 뿐,
+        // save policy/lease/blocked 판단의 정본으로 취급하면 안 된다.
         if (typeof directSaveSnapshot === "function") {
           return directSaveSnapshot(options);
         }
@@ -10846,6 +10852,8 @@ function applyUiControlsTab(tab) {
         // 완전히 깨지지 않도록 남겨둔 안전망이다.
         // 즉 의미상 정본은 "패널 first-frame 비노출 + 공통 save execution contract"이고,
         // 아래 directSaveSnapshot({ headless:true })는 그 정본 경로가 없을 때만 허용되는 compat 경로다.
+        // 다시 말해 09-ui-controls.js는 save policy owner가 아니라 entry router다.
+        // 여기서 background/save 정책을 직접 늘리기 시작하면 canonical contract가 다시 분기된다.
         if (typeof directSaveSnapshot === "function") {
           return directSaveSnapshot({ ...(options || {}), headless: true });
         }
@@ -10902,6 +10910,9 @@ function getAllSitesRenderLeaseForSave() {
   // save가 바로 collectExportData()를 시작하면 expose 요청이 중복될 수 있다.
   // 따라서 save는 "이미 진행 중인 all-sites 초기 로딩"을 join 가능한 lease로 보고
   // 먼저 기다린 뒤 refresh/cache-first 판단을 다시 내려야 한다.
+  // 중요:
+  // - 이 lease는 "현재 UI에 뭐가 보이는가"가 아니라 "현재 진행 중인 all-sites bootstrap work"만 대표한다.
+  // - save modal이 미러링하는 progress도 save 자체 진행률이 아니라 owner snapshot의 보조 projection이다.
   const selectionState = getAllSitesSelectionState();
   const reusable = !!(
     allSitesRenderInFlightPromise &&
@@ -12067,6 +12078,9 @@ function renderSnapshotSaveOverlay(status) {
     canMirrorProgress && typeof mirroredProgress.percent === "number"
       ? String(Math.max(0, Math.min(100, Math.round(mirroredProgress.percent))))
       : "";
+  // 외부 드라이버 주의:
+  // waiting-* 동안 overlay dataset percent/current/total은 save canonical progress가 아니라
+  // mirrored owner progress일 수 있다. 정본 save 진행 여부는 getSaveStatus().state/active가 우선이다.
   const progressValueHtml = mirroredDeterminate
     ? escHtml(String(pct)) + "%"
     : canMirrorProgress
@@ -12972,6 +12986,10 @@ async function runSnapshotSaveExecution(options) {
   // 3) resolveSnapshotSaveRefreshLease() 로 refresh owner lease 재사용/시작 여부 판단
   // 4) acquireSnapshotSavePayloadForExecution() 으로 payload 획득
   // 5) downloadSnapshot() 으로 최종 blocked 검사 + HTML commit/downloader 실행
+  //
+  // 중요:
+  // - decision recompute는 runtime bootstrap wait 이후 1회만 허용한다.
+  // - 그 이후에는 캡처한 lease/payload만 소비해야 하며, entrypoint별 별도 save policy를 다시 만들면 안 된다.
   if (snapshotSaveRequestInFlightPromise) return snapshotSaveRequestInFlightPromise;
   const requestContext = resolveSnapshotSaveRequestContext(options);
     if (requestContext.capabilities && !requestContext.capabilities.canSave) return false;
@@ -15027,6 +15045,9 @@ function buildSnapshotSerializedHelperSection() {
     // site mode에서 패널이 이미 fetchSiteData(site)로 상세 데이터를 준비 중이면,
     // save가 같은 사이트 상세 데이터를 다시 따로 요청하지 않도록 in-flight load를
     // 재사용 가능한 lease로 노출한다.
+    // 중요:
+    // - 이 seam은 same-site reuse만 허용하는 좁은 lease다.
+    // - 여기서의 site 일치는 live current UI 표시보다 save request selection snapshot과 같은 의미를 유지해야 한다.
     const selectionState =
       typeof getRuntimeSelectionState === "function"
         ? getRuntimeSelectionState()
@@ -15558,6 +15579,8 @@ function resolveFullRefreshLeaseForSave() {
   // - reusable: 이미 진행 중인 refresh owner lease에 join 가능
   // - shouldStart: join 가능한 lease는 없지만 bootstrap 상태상 새 refresh 시작이 필요
   // save orchestration(12-snapshot)과 refresh ownership(13-refresh)의 경계를 유지하기 위한 함수다.
+  // site list만 살아 있다고 바로 cache-first 저장으로 떨어지면 안 되며,
+  // save는 refresh owner가 아니라 이 lease를 소비하는 consumer라는 점을 계속 유지해야 한다.
   const reusableStatus = getReusableFullRefreshStatusForSave();
   const bootstrapStatus = getBootstrapFullRefreshStatus();
   return {
@@ -15598,6 +15621,7 @@ async function acquireFullRefreshPayloadForSave(refreshLease, options = {}) {
   // save가 refresh를 "직접" 구현하지 않고, 여기서 reusable promise를 기다리거나
   // 필요한 경우에만 refresh pipeline 하나를 시작한다.
   // save 쪽에서 또 다른 collect/fallback을 만들면 경쟁 버그가 재발한다.
+  // 특히 refresh 실패 후 save가 조용히 cache-first fallback 하는 경로를 다시 만들면 안 된다.
   const lease = refreshLease || resolveFullRefreshLeaseForSave();
   if (lease.reusable && lease.promise && typeof lease.promise.then === "function") {
     return await lease.promise;
