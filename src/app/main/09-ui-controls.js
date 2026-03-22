@@ -751,6 +751,10 @@ function applyUiControlsTab(tab) {
         const saveStatus =
           typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null;
         if (saveStatus && saveStatus.active) return;
+        if (typeof runSnapshotSaveExecution === "function") {
+          runSnapshotSaveExecution({ entryPoint: "button" });
+          return;
+        }
         downloadSnapshot();
       });
     }
@@ -870,12 +874,19 @@ function applyUiControlsTab(tab) {
         const saveStatus =
           typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null;
         if (saveStatus && saveStatus.active) return false;
+        if (typeof runSnapshotSaveExecution === "function") {
+          runSnapshotSaveExecution({ entryPoint: "download-api" });
+          return true;
+        }
         downloadSnapshot();
         return true;
       },
       directSave: function (options) {
         const capabilities = resolveRuntimeCapabilities();
         if (!capabilities.canSave) return Promise.resolve(false);
+        if (typeof runSnapshotSaveExecution === "function") {
+          return runSnapshotSaveExecution({ ...(options || {}), entryPoint: "direct-save" });
+        }
         if (typeof directSaveSnapshot === "function") {
           return directSaveSnapshot(options);
         }

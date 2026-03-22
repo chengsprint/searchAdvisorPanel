@@ -77,6 +77,7 @@ function getBootstrapFullRefreshStatus() {
       siteCount: 0,
       siteListMissing: false,
       siteListExpired: false,
+      missingSites: 0,
       expiredSites: 0,
     };
   }
@@ -92,6 +93,7 @@ function getBootstrapFullRefreshStatus() {
     siteCount: Array.isArray(allSites) ? allSites.length : 0,
     siteListMissing: false,
     siteListExpired: false,
+    missingSites: 0,
     expiredSites: 0,
   };
   if (!(typeof siteListTs === "number")) {
@@ -123,6 +125,13 @@ function getBootstrapFullRefreshStatus() {
       (typeof window !== "undefined" && window.__SEARCHADVISOR_EXPORT_PAYLOAD__ && window.__SEARCHADVISOR_EXPORT_PAYLOAD__.siteData
         ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__.siteData[site]
         : null);
+    const siteData = memData || initData || null;
+    const hasCompleteData =
+      !!siteData && siteData.expose != null && siteData.detailLoaded === true;
+    if (!hasCompleteData) {
+      status.missingSites += 1;
+      return;
+    }
     const liveTs =
       (memData && typeof memData.__cacheSavedAt === "number" && memData.__cacheSavedAt) ||
       (initData && typeof initData.__cacheSavedAt === "number" && initData.__cacheSavedAt) ||
@@ -135,6 +144,10 @@ function getBootstrapFullRefreshStatus() {
   if (status.expiredSites > 0) {
     status.shouldRefresh = true;
     if (!status.reason) status.reason = "site-data-expired";
+  }
+  if (status.missingSites > 0) {
+    status.shouldRefresh = true;
+    if (!status.reason) status.reason = "site-data-missing";
   }
   return status;
 }
@@ -234,6 +247,20 @@ function getReusableFullRefreshStatusForSave() {
   };
 }
 
+function resolveFullRefreshLeaseForSave() {
+  const reusableStatus = getReusableFullRefreshStatusForSave();
+  const bootstrapStatus = getBootstrapFullRefreshStatus();
+  return {
+    reusable: !!reusableStatus.reusable,
+    shouldStart: !reusableStatus.reusable && !!bootstrapStatus.shouldRefresh,
+    trigger: reusableStatus.trigger,
+    startedAt: reusableStatus.startedAt,
+    context: reusableStatus.context,
+    promise: reusableStatus.promise,
+    bootstrapStatus: bootstrapStatus,
+  };
+}
+
 async function awaitReusableFullRefreshPayloadForSave(reusableHandle) {
   const handle =
     reusableHandle &&
@@ -244,6 +271,20 @@ async function awaitReusableFullRefreshPayloadForSave(reusableHandle) {
       : null;
   if (!handle.reusable || !handle.promise) return null;
   return await handle.promise;
+}
+
+async function acquireFullRefreshPayloadForSave(refreshLease, options = {}) {
+  const lease = refreshLease || resolveFullRefreshLeaseForSave();
+  if (lease.reusable && lease.promise && typeof lease.promise.then === "function") {
+    return await lease.promise;
+  }
+  if (!lease.shouldStart) return null;
+  return await runFullRefreshPipeline({
+    trigger: "manual",
+    renderProgress: false,
+    onProgress:
+      options && typeof options.onProgress === "function" ? options.onProgress : undefined,
+  });
 }
 
 function stopCacheExpiryMonitor() {

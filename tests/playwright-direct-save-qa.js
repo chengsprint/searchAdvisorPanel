@@ -192,6 +192,10 @@ async function waitForPanelReady(page, readyDelayMs = 500) {
   }
 }
 
+async function waitForSaveButtonAttached(page) {
+  await page.waitForSelector('#sadv-save-btn', { timeout: 15000, state: 'attached' });
+}
+
 async function seedCache(page, dataset, timestamp) {
   await page.evaluate(({ dataset, timestamp }) => {
     localStorage.setItem('sadv_sites_v1_demo', JSON.stringify({
@@ -345,6 +349,20 @@ async function getScenarioResult(page, downloadTriggered) {
         collectingAfterWaiting,
       };
     })(),
+    collectProbe: (() => {
+      const collectEvents = Array.isArray(window.__SADV_TEST_EVENTS)
+        ? window.__SADV_TEST_EVENTS.filter((entry) => entry && entry.type === 'collect-export-start')
+        : [];
+      const bySource = collectEvents.reduce((acc, entry) => {
+        const source = entry?.detail?.source || '(unknown)';
+        acc[source] = (acc[source] || 0) + 1;
+        return acc;
+      }, {});
+      return {
+        totalCollectStarts: collectEvents.length,
+        bySource,
+      };
+    })(),
     saveStatus: window.__sadvApi.getSaveStatus(),
     directSaveResult: window.__SADV_DIRECTSAVE_RESULT__,
     directSaveError: window.__SADV_DIRECTSAVE_ERROR__,
@@ -454,6 +472,7 @@ async function runScenario(browser, scenario, dataset) {
   });
   await page.addInitScript(() => {
     window.__SADV_REQUEST_EVENTS = [];
+    window.__SADV_TEST_EVENTS = [];
     window.__SADV_SAVE_TRIGGER_AT__ = null;
     const originalFetch = window.fetch.bind(window);
     function buildReportKey(rawUrl, method) {
@@ -504,9 +523,14 @@ async function runScenario(browser, scenario, dataset) {
   }
 
   await page.addScriptTag({ url: `${HOST}/runtime.js?ts=${Date.now()}` });
-  await waitForPanelReady(page, scenario.readyDelayMs == null ? 500 : scenario.readyDelayMs);
-  await installStatusProbe(page);
-  await installRequestProbe(page);
+
+  if (scenario.startBeforeReady) {
+    await waitForSaveButtonAttached(page);
+  } else {
+    await waitForPanelReady(page, scenario.readyDelayMs == null ? 500 : scenario.readyDelayMs);
+    await installStatusProbe(page);
+    await installRequestProbe(page);
+  }
 
   if (scenario.beforeStart) {
     await scenario.beforeStart(page, dataset);
@@ -516,6 +540,12 @@ async function runScenario(browser, scenario, dataset) {
     await scenario.start(page, dataset);
   } else if (!scenario.autoStart) {
     await startDirectSave(page, scenario.directSaveOptions || null);
+  }
+
+  if (scenario.startBeforeReady) {
+    await waitForPanelReady(page, scenario.readyDelayMs == null ? 0 : scenario.readyDelayMs);
+    await installStatusProbe(page);
+    await installRequestProbe(page);
   }
 
   if (scenario.captureState) {
@@ -954,6 +984,44 @@ async function main() {
       captureProbe: true,
       beforeCapture: async (page) => {
         await page.waitForTimeout(300);
+      },
+    },
+    {
+      name: '13-save-button-immediate-after-cache-clear',
+      description: '캐시를 비운 직후 런타임 로드 후 save 버튼을 즉시 클릭해도 auto refresh와 save collect가 중복되지 않는지 확인',
+      screenshot: '13-save-button-immediate-after-cache-clear.png',
+      readyDelayMs: 0,
+      startBeforeReady: true,
+      expectNoCollectingAfterWaitingRefresh: true,
+      expectNoDuplicateReportKeys: true,
+      expectNoDuplicateReportKeysAfterSave: true,
+      expectedCollectStartsBySource: {
+        'full-refresh': 1,
+        'download-snapshot': 0,
+      },
+      beforeLoad: async (page) => {
+        await page.addInitScript(() => {
+          const originalFetch = window.fetch.bind(window);
+          window.fetch = async function (input, init) {
+            const url =
+              typeof input === 'string'
+                ? input
+                : input && typeof input.url === 'string'
+                  ? input.url
+                  : String(input);
+            if (url.includes('searchadvisor.naver.com/api-console/report/')) {
+              await new Promise((resolve) => setTimeout(resolve, 250));
+            }
+            return originalFetch(input, init);
+          };
+        });
+      },
+      start: async (page) => {
+        await startSaveButtonDownload(page);
+      },
+      settleTimeoutMs: 45000,
+      beforeCapture: async (page) => {
+        await page.waitForTimeout(400);
       },
     },
   ];
