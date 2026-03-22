@@ -8,6 +8,10 @@
  * @see {buildRenderers}
  */
   function getSiteViewLoadLeaseForSave() {
+    // 저장 실행 contract seam:
+    // site mode에서 패널이 이미 fetchSiteData(site)로 상세 데이터를 준비 중이면,
+    // save가 같은 사이트 상세 데이터를 다시 따로 요청하지 않도록 in-flight load를
+    // 재사용 가능한 lease로 노출한다.
     const selectionState =
       typeof getRuntimeSelectionState === "function"
         ? getRuntimeSelectionState()

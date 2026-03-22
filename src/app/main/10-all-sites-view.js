@@ -18,6 +18,11 @@ function getAllSitesSelectionState() {
 }
 
 function getAllSitesRenderLeaseForSave() {
+  // 저장 실행 contract seam:
+  // 캐시 비움 직후 전체현황이 expose/diagnosis 메타를 배치로 불러오는 동안
+  // save가 바로 collectExportData()를 시작하면 expose 요청이 중복될 수 있다.
+  // 따라서 save는 "이미 진행 중인 all-sites 초기 로딩"을 join 가능한 lease로 보고
+  // 먼저 기다린 뒤 refresh/cache-first 판단을 다시 내려야 한다.
   const selectionState = getAllSitesSelectionState();
   const reusable = !!(
     allSitesRenderInFlightPromise &&

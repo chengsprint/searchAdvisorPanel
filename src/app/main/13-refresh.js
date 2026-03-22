@@ -69,6 +69,13 @@ function renderFullRefreshProgress(label, detail, progress, stats) {
  * }
  */
 function getBootstrapFullRefreshStatus() {
+  // site list만 살아 있다고 bootstrap refresh가 불필요한 것은 아니다.
+  // 실사이트에서는 site list cache만 복구된 직후에도 각 사이트의 expose/detail/meta가 비어 있을 수 있고,
+  // save나 panel bootstrap load는 이 데이터를 곧바로 요구한다.
+  // 따라서 bootstrap refresh 판정은
+  // - site list 유무/만료
+  // - siteData expose/detailLoaded/cache stamp
+  // 를 같이 봐야 한다.
   if (!allSites.length) {
     return {
       shouldRefresh: false,
@@ -248,6 +255,11 @@ function getReusableFullRefreshStatusForSave() {
 }
 
 function resolveFullRefreshLeaseForSave() {
+  // save는 fullRefreshInFlightPromise를 직접 만지지 않고 반드시 이 seam을 통해 lease를 받아야 한다.
+  // 의미:
+  // - reusable: 이미 진행 중인 refresh owner lease에 join 가능
+  // - shouldStart: join 가능한 lease는 없지만 bootstrap 상태상 새 refresh 시작이 필요
+  // save orchestration(12-snapshot)과 refresh ownership(13-refresh)의 경계를 유지하기 위한 함수다.
   const reusableStatus = getReusableFullRefreshStatusForSave();
   const bootstrapStatus = getBootstrapFullRefreshStatus();
   return {
@@ -274,6 +286,10 @@ async function awaitReusableFullRefreshPayloadForSave(reusableHandle) {
 }
 
 async function acquireFullRefreshPayloadForSave(refreshLease, options = {}) {
+  // refresh owner seam:
+  // save가 refresh를 "직접" 구현하지 않고, 여기서 reusable promise를 기다리거나
+  // 필요한 경우에만 refresh pipeline 하나를 시작한다.
+  // save 쪽에서 또 다른 collect/fallback을 만들면 경쟁 버그가 재발한다.
   const lease = refreshLease || resolveFullRefreshLeaseForSave();
   if (lease.reusable && lease.promise && typeof lease.promise.then === "function") {
     return await lease.promise;

@@ -748,6 +748,10 @@ function applyUiControlsTab(tab) {
       sadvSaveBtnEl.setAttribute("aria-hidden", "true");
     } else {
       sadvSaveBtnEl.addEventListener("click", function () {
+        // Canonical save entry:
+        // 저장 버튼도 directSave/background save와 같은 save execution contract를 타야 한다.
+        // 여기서 downloadSnapshot()로 바로 내려가면 runtime bootstrap lease / refresh lease /
+        // blocked 정책 / selection snapshot 계약이 다시 entrypoint마다 drift 하게 된다.
         const saveStatus =
           typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null;
         if (saveStatus && saveStatus.active) return;
@@ -874,6 +878,9 @@ function applyUiControlsTab(tab) {
         const saveStatus =
           typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null;
         if (saveStatus && saveStatus.active) return false;
+        // Canonical public save path:
+        // download()/directSave()/loadAndDirectSaveHeadless()는 모두 runSnapshotSaveExecution()
+        // 기준으로 같은 contract를 공유해야 한다. fallback은 compat 안전망일 뿐 정본이 아니다.
         if (typeof runSnapshotSaveExecution === "function") {
           runSnapshotSaveExecution({ entryPoint: "download-api" });
           return true;
@@ -903,6 +910,8 @@ function applyUiControlsTab(tab) {
         // 정상 번들에서는 background-download boot path가 존재해야 한다.
         // 이 분기는 helper가 빠진 부분 빌드/이전 런타임에서도 public facade가
         // 완전히 깨지지 않도록 남겨둔 안전망이다.
+        // 즉 의미상 정본은 "패널 first-frame 비노출 + 공통 save execution contract"이고,
+        // 아래 directSaveSnapshot({ headless:true })는 그 정본 경로가 없을 때만 허용되는 compat 경로다.
         if (typeof directSaveSnapshot === "function") {
           return directSaveSnapshot({ ...(options || {}), headless: true });
         }

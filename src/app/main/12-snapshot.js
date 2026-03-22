@@ -410,6 +410,14 @@ function buildDirectSaveRefreshDecision() {
 }
 
 function resolveSnapshotSaveRequestContext(options) {
+  // save request context는 entrypoint별 옵션 merge helper가 아니다.
+  // 이 함수의 목적은 저장 요청 "한 번"에 대한 canonical 실행 문맥을 고정하는 것이다.
+  // - entrypoint/options
+  // - runtimeSites
+  // - headless/background visibility semantics
+  // - selection snapshot
+  // - runtime capabilities
+  // 저장 중 사용자 상호작용이나 later fallback이 생겨도 이 문맥이 변하면 안 된다.
   const runtimeSites =
     typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
   return {
@@ -428,6 +436,11 @@ function resolveSnapshotSaveRequestContext(options) {
 }
 
 function resolveSnapshotSaveRefreshLease(decision, options) {
+  // 중요:
+  // save orchestration은 refresh owner가 아니다.
+  // 여기서는 "재사용 가능한 refresh lease가 있는지" / "새 refresh가 필요한지"만 해석하고,
+  // 실제 inflight/pending/start lifecycle은 13-refresh.js seam이 소유한다.
+  // 또한 caller가 payload를 이미 넘겼다면 save는 refresh 판단을 건너뛰고 곧바로 commit 단계로 간다.
   if (options && options.payload) {
     return {
       reusable: false,
@@ -452,6 +465,10 @@ function resolveSnapshotSaveRefreshLease(decision, options) {
 }
 
 function resolveSnapshotRuntimeBootstrapLeaseForSave(requestContext) {
+  // 중요:
+  // save의 경쟁 상대는 cache-expiry full refresh만이 아니다.
+  // 실사용에서는 패널 초기 로딩(renderAllSites/loadSiteView)도 같은 report 요청을
+  // 먼저 시작할 수 있으므로, save는 이 in-flight bootstrap work도 먼저 존중해야 한다.
   if (!requestContext || (requestContext.options && requestContext.options.payload)) {
     return { reusable: false, kind: null, promise: null };
   }
@@ -523,6 +540,14 @@ async function collectSnapshotSavePayloadCacheFirst(requestContext, decision, bt
 }
 
 async function acquireSnapshotSavePayloadForExecution(requestContext, decision, refreshLease, btn) {
+  // save payload 획득 우선순위:
+  // 1) caller가 이미 payload를 제공하면 그대로 사용
+  // 2) join 가능한 refresh lease가 있으면 그 결과를 재사용
+  // 3) refresh가 필요하면 refresh subsystem에 시작을 위임하고 그 결과를 사용
+  // 4) 그 외에만 cache-first collect 수행
+  //
+  // 여기서 임의 fallback(예: refresh 실패 후 조용히 cache-first 저장)이나
+  // entrypoint별 예외 분기를 넣으면 contract가 다시 drift 한다.
   let payload =
     requestContext.options && requestContext.options.payload
       ? requestContext.options.payload
@@ -834,6 +859,13 @@ function restoreSnapshotSaveButton(btn, originalText) {
  * await downloadSnapshot({ payload }); // 이미 refresh한 payload를 재사용해 즉시 저장
  */
   async function downloadSnapshot(options) {
+    // downloadSnapshot()의 현재 책임:
+    // - 최종 payload를 받아 blocked 검사/상태 게시/HTML 생성/다운로드를 commit
+    // - selection snapshot을 payload/ui에 반영해 저장본 parity를 마감
+    //
+    // 여기서는 save execution policy(어떤 lease를 기다릴지, refresh를 새로 시작할지,
+    // 어느 entrypoint에서 왔는지)를 새로 결정하면 안 된다.
+    // 그런 orchestration은 runSnapshotSaveExecution()과 refresh seams가 맡는다.
     if (snapshotSaveInFlightPromise) return snapshotSaveInFlightPromise;
     snapshotSaveInFlightPromise = (async function () {
       const capabilities =
@@ -1096,9 +1128,22 @@ function restoreSnapshotSaveButton(btn, originalText) {
     }
   }
 
-  async function runSnapshotSaveExecution(options) {
-    if (snapshotSaveRequestInFlightPromise) return snapshotSaveRequestInFlightPromise;
-    const requestContext = resolveSnapshotSaveRequestContext(options);
+async function runSnapshotSaveExecution(options) {
+  // 공통 save execution contract:
+  // - 저장 버튼
+  // - directSave()
+  // - background save
+  // 세 entry가 모두 같은 알고리즘/상태 모델/차단 정책을 공유하도록
+  // 정책 판단과 payload 획득을 이 함수로 수렴시킨다.
+  //
+  // 실행 순서(정본):
+  // 1) resolveSnapshotSaveRequestContext() 로 request context/selection snapshot 고정
+  // 2) resolveSnapshotRuntimeBootstrapLeaseForSave() 로 현재 화면 초기 로딩(all-sites/site-view) 재사용 여부 판단
+  // 3) resolveSnapshotSaveRefreshLease() 로 refresh owner lease 재사용/시작 여부 판단
+  // 4) acquireSnapshotSavePayloadForExecution() 으로 payload 획득
+  // 5) downloadSnapshot() 으로 최종 blocked 검사 + HTML commit/downloader 실행
+  if (snapshotSaveRequestInFlightPromise) return snapshotSaveRequestInFlightPromise;
+  const requestContext = resolveSnapshotSaveRequestContext(options);
     if (requestContext.capabilities && !requestContext.capabilities.canSave) return false;
     snapshotSaveRequestInFlightPromise = (async function () {
       const restoreHeadlessUi = requestContext.headlessMode
@@ -1210,13 +1255,15 @@ function restoreSnapshotSaveButton(btn, originalText) {
  * Background download mode
  *
  * 요구사항:
- * - 기존 저장 버튼(downloadSnapshot)과 동일한 저장 경로를 써야 한다.
  * - 패널은 first-frame부터 사용자에게 보이지 않아야 한다.
  * - 대신 중앙 상태 모달은 유지해 외부 드라이버/사용자가 진행 상태를 본다.
  * - 성공/실패 후 1~2초 뒤 런타임을 정리해 화면을 원상태로 둔다.
  *
- * 즉 directSave처럼 refresh 판단을 추가하지 않고,
- * "현재 저장 버튼을 백그라운드처럼 실행"하는 orchestrator다.
+ * 현재 의미:
+ * - background save도 저장 버튼/directSave와 같은 save execution contract를 사용한다.
+ * - 즉 blocked 정책, waiting-runtime, starting-refresh, waiting-refresh semantics를
+ *   모두 공유한다.
+ * - 차이는 "패널을 처음부터 비가시 상태로 두고 실행한다"는 점뿐이다.
  */
   async function runBackgroundSnapshotDownload(options) {
     const capabilities =
