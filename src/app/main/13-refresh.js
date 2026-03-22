@@ -144,7 +144,83 @@ function shouldBootstrapFullRefresh() {
 }
 
 let fullRefreshInFlightPromise = null;
+let fullRefreshInFlightMeta = null;
 let cacheExpiryMonitorId = null;
+
+function buildFullRefreshSaveReuseContext() {
+  const runtimeKind =
+    typeof window !== "undefined" && window.__SEARCHADVISOR_RUNTIME_KIND__
+      ? window.__SEARCHADVISOR_RUNTIME_KIND__
+      : "live";
+  const accountInfo =
+    typeof ACCOUNT_UTILS !== "undefined" &&
+    ACCOUNT_UTILS &&
+    typeof ACCOUNT_UTILS.getAccountInfo === "function"
+      ? ACCOUNT_UTILS.getAccountInfo()
+      : {
+          accountLabel: typeof accountLabel === "string" ? accountLabel : "",
+          encId: typeof encId === "string" ? encId : "",
+        };
+  const isMultiAccount =
+    typeof ACCOUNT_UTILS !== "undefined" &&
+    ACCOUNT_UTILS &&
+    typeof ACCOUNT_UTILS.isMultiAccount === "function"
+      ? !!ACCOUNT_UTILS.isMultiAccount()
+      : !!(
+          typeof window !== "undefined" &&
+          window.__sadvAccountState &&
+          window.__sadvAccountState.isMultiAccount
+        );
+  return {
+    runtimeKind: runtimeKind,
+    accountEncId: accountInfo && typeof accountInfo.encId === "string" ? accountInfo.encId : "",
+    accountLabel:
+      accountInfo && typeof accountInfo.accountLabel === "string"
+        ? accountInfo.accountLabel
+        : "",
+    isMultiAccount: !!isMultiAccount,
+    siteCount: Array.isArray(allSites) ? allSites.length : 0,
+  };
+}
+
+function isReusableFullRefreshContextForSave(requestContext, inflightMeta) {
+  if (!requestContext || !inflightMeta || !inflightMeta.context) return false;
+  const inflightContext = inflightMeta.context;
+  return !!(
+    inflightMeta.trigger === "cache-expiry" &&
+    inflightContext.runtimeKind === requestContext.runtimeKind &&
+    inflightContext.accountEncId === requestContext.accountEncId &&
+    inflightContext.accountLabel === requestContext.accountLabel &&
+    inflightContext.isMultiAccount === requestContext.isMultiAccount &&
+    inflightContext.siteCount === requestContext.siteCount
+  );
+}
+
+function getReusableFullRefreshStatusForSave() {
+  const requestContext = buildFullRefreshSaveReuseContext();
+  const reusable = !!(
+    fullRefreshInFlightPromise &&
+    isReusableFullRefreshContextForSave(requestContext, fullRefreshInFlightMeta)
+  );
+  return {
+    reusable: reusable,
+    trigger:
+      fullRefreshInFlightMeta && typeof fullRefreshInFlightMeta.trigger === "string"
+        ? fullRefreshInFlightMeta.trigger
+        : null,
+    startedAt:
+      fullRefreshInFlightMeta && typeof fullRefreshInFlightMeta.startedAt === "number"
+        ? fullRefreshInFlightMeta.startedAt
+        : null,
+    context: requestContext,
+  };
+}
+
+async function awaitReusableFullRefreshPayloadForSave() {
+  const status = getReusableFullRefreshStatusForSave();
+  if (!status.reusable || !fullRefreshInFlightPromise) return null;
+  return await fullRefreshInFlightPromise;
+}
 
 function stopCacheExpiryMonitor() {
   if (cacheExpiryMonitorId) {
@@ -194,8 +270,13 @@ function startCacheExpiryMonitor() {
  */
 async function runFullRefreshPipeline(options = {}) {
   if (fullRefreshInFlightPromise) return fullRefreshInFlightPromise;
-  fullRefreshInFlightPromise = (async function () {
   const trigger = options && options.trigger ? options.trigger : "manual";
+  fullRefreshInFlightMeta = {
+    trigger: trigger,
+    startedAt: Date.now(),
+    context: buildFullRefreshSaveReuseContext(),
+  };
+  fullRefreshInFlightPromise = (async function () {
   const shouldRenderProgress = !(options && options.renderProgress === false);
   const triggerLabel =
     trigger === "cache-expiry"
@@ -269,6 +350,7 @@ async function runFullRefreshPipeline(options = {}) {
     throw e;
   } finally {
     fullRefreshInFlightPromise = null;
+    fullRefreshInFlightMeta = null;
   }
 }
 
