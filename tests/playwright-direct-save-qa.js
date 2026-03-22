@@ -178,12 +178,14 @@ function createStaticServer(rootDir, port) {
   });
 }
 
-async function waitForPanelReady(page) {
+async function waitForPanelReady(page, readyDelayMs = 500) {
   await page.waitForSelector('#sadv-p', { timeout: 15000, state: 'attached' });
   await page.waitForFunction(() => !!window.__sadvApi && typeof window.__sadvApi.directSave === 'function', null, {
     timeout: 15000,
   });
-  await page.waitForTimeout(500);
+  if (readyDelayMs > 0) {
+    await page.waitForTimeout(readyDelayMs);
+  }
 }
 
 async function seedCache(page, dataset, timestamp) {
@@ -223,6 +225,28 @@ async function startDirectSave(page, options) {
     window.__SADV_DIRECTSAVE_RESULT__ = null;
     window.__SADV_DIRECTSAVE_ERROR__ = null;
     window.__SADV_DIRECTSAVE_PROMISE__ = window.__sadvApi.directSave(directSaveOptions)
+      .then((result) => {
+        window.__SADV_DIRECTSAVE_RESULT__ = result;
+        return result;
+      })
+      .catch((error) => {
+        window.__SADV_DIRECTSAVE_ERROR__ = error ? String(error.message || error) : 'unknown-error';
+        throw error;
+      });
+    return true;
+  }, options || null);
+}
+
+async function startSaveButtonDownload(page) {
+  await page.click('#sadv-save-btn');
+  return true;
+}
+
+async function startBackgroundHeadlessSave(page, options) {
+  return page.evaluate((backgroundOptions) => {
+    window.__SADV_DIRECTSAVE_RESULT__ = null;
+    window.__SADV_DIRECTSAVE_ERROR__ = null;
+    window.__SADV_DIRECTSAVE_PROMISE__ = window.__sadvApi.loadAndDirectSaveHeadless(backgroundOptions)
       .then((result) => {
         window.__SADV_DIRECTSAVE_RESULT__ = result;
         return result;
@@ -324,16 +348,21 @@ async function runScenario(browser, scenario, dataset) {
   if (scenario.preloadCache) {
     await scenario.preloadCache(page, dataset);
   }
+  if (scenario.beforeLoad) {
+    await scenario.beforeLoad(page, dataset);
+  }
 
   await page.addScriptTag({ url: `${HOST}/runtime.js?ts=${Date.now()}` });
-  await waitForPanelReady(page);
+  await waitForPanelReady(page, scenario.readyDelayMs == null ? 500 : scenario.readyDelayMs);
   await installStatusProbe(page);
 
   if (scenario.beforeStart) {
     await scenario.beforeStart(page, dataset);
   }
 
-  if (!scenario.autoStart) {
+  if (typeof scenario.start === 'function') {
+    await scenario.start(page, dataset);
+  } else if (!scenario.autoStart) {
     await startDirectSave(page, scenario.directSaveOptions || null);
   }
 
@@ -481,6 +510,7 @@ async function main() {
   const browser = await chromium.launch({ headless: true });
   const freshDataset = buildDataset('fresh');
   const freshTimestamp = Date.now();
+  const expiredTimestamp = Date.now() - 14 * 24 * 60 * 60 * 1000;
 
   const scenarios = [
     {
@@ -650,6 +680,96 @@ async function main() {
         await page.waitForTimeout(400);
       },
     },
+    {
+      name: '10-save-button-waits-auto-refresh',
+      description: 'cache-expiry auto refresh가 이미 진행 중이면 저장 버튼이 waiting-refresh 상태로 합류하는지 확인',
+      screenshot: '10-save-button-waits-auto-refresh.png',
+      readyDelayMs: 0,
+      preloadCache: async (page, dataset) => {
+        await seedCache(page, dataset, expiredTimestamp);
+      },
+      beforeLoad: async (page) => {
+        await page.addInitScript(() => {
+          const originalFetch = window.fetch.bind(window);
+          window.fetch = async function (input, init) {
+            const url = String(input);
+            const isReportRequest =
+              url.includes('searchadvisor.naver.com/api-console/report/');
+            if (isReportRequest) {
+              await new Promise((resolve) => setTimeout(resolve, 250));
+            }
+            return originalFetch(input, init);
+          };
+        });
+      },
+      start: async (page) => {
+        await startSaveButtonDownload(page);
+      },
+      captureState: 'waiting-refresh',
+      captureTimeoutMs: 20000,
+      beforeCapture: async (page) => {
+        await page.waitForTimeout(300);
+      },
+    },
+    {
+      name: '11-direct-save-waits-auto-refresh',
+      description: 'cache-expiry auto refresh가 이미 진행 중이면 directSave가 waiting-refresh 상태로 합류하는지 확인',
+      screenshot: '11-direct-save-waits-auto-refresh.png',
+      readyDelayMs: 0,
+      preloadCache: async (page, dataset) => {
+        await seedCache(page, dataset, expiredTimestamp);
+      },
+      beforeLoad: async (page) => {
+        await page.addInitScript(() => {
+          const originalFetch = window.fetch.bind(window);
+          window.fetch = async function (input, init) {
+            const url = String(input);
+            const isReportRequest =
+              url.includes('searchadvisor.naver.com/api-console/report/');
+            if (isReportRequest) {
+              await new Promise((resolve) => setTimeout(resolve, 250));
+            }
+            return originalFetch(input, init);
+          };
+        });
+      },
+      captureState: 'waiting-refresh',
+      captureTimeoutMs: 20000,
+      beforeCapture: async (page) => {
+        await page.waitForTimeout(300);
+      },
+    },
+    {
+      name: '12-background-download-waits-auto-refresh',
+      description: 'cache-expiry auto refresh가 이미 진행 중이면 boot-hidden background download도 waiting-refresh로 합류하는지 확인',
+      screenshot: '12-background-download-waits-auto-refresh.png',
+      readyDelayMs: 0,
+      autoStart: true,
+      bootRequest: { action: 'background-download', cleanupDelayMs: 1800 },
+      preloadCache: async (page, dataset) => {
+        await seedCache(page, dataset, expiredTimestamp);
+      },
+      beforeLoad: async (page) => {
+        await page.addInitScript(() => {
+          const originalFetch = window.fetch.bind(window);
+          window.fetch = async function (input, init) {
+            const url = String(input);
+            const isReportRequest =
+              url.includes('searchadvisor.naver.com/api-console/report/');
+            if (isReportRequest) {
+              await new Promise((resolve) => setTimeout(resolve, 250));
+            }
+            return originalFetch(input, init);
+          };
+        });
+      },
+      captureState: 'waiting-refresh',
+      captureTimeoutMs: 20000,
+      captureProbe: true,
+      beforeCapture: async (page) => {
+        await page.waitForTimeout(300);
+      },
+    },
   ];
 
   const results = [];
@@ -685,6 +805,7 @@ async function main() {
     '- 다운로드 채널 차단 후 `failed`',
     '- headless directSave',
     '- boot-hidden background download',
+    '- auto refresh in-flight save reuse (`waiting-refresh`)',
     '',
   ];
 

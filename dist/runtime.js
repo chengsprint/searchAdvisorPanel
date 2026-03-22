@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-21T17:08:48Z";
-var __SADV_GIT_HEAD__="3cefb5d";
+var __SADV_BUILD_STAMP__="2026-03-22T16:51:58Z";
+var __SADV_GIT_HEAD__="01549c4";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -11757,6 +11757,7 @@ function buildSnapshotSaveOverlayTitle(status) {
   const state = status && typeof status.state === "string" ? status.state : "idle";
   if (status && status.stageLabel) return status.stageLabel;
   if (state === "checking-cache") return "저장 준비 중";
+  if (state === "waiting-refresh") return "기존 갱신 대기 중";
   if (state === "refreshing") return "최신 데이터 갱신 중";
   if (state === "collecting") return "저장 데이터 수집 중";
   if (state === "building-html") return "HTML 저장본 생성 중";
@@ -11774,6 +11775,7 @@ function buildSnapshotSaveOverlayAccent(status) {
   if (state === "completed") return C.green;
   if (state === "blocked") return C.red;
   if (state === "failed") return C.red;
+  if (state === "waiting-refresh") return C.blue;
   if (state === "refreshing") return C.blue;
   if (state === "checking-cache") return C.amber;
   if (state === "triggering-download") return C.teal;
@@ -11967,6 +11969,69 @@ function buildDirectSaveRefreshDecision() {
   return decision;
 }
 
+function buildSnapshotSaveSelectionSnapshot(runtimeSites) {
+  const selectionState =
+    typeof getRuntimeSelectionState === "function"
+      ? getRuntimeSelectionState()
+      : { curMode: curMode, curSite: curSite, curTab: curTab };
+  const safeSites = Array.isArray(runtimeSites) ? runtimeSites : [];
+  const rawMode =
+    selectionState && selectionState.curMode === "site" ? "site" : "all";
+  const rawSite =
+    selectionState && typeof selectionState.curSite === "string"
+      ? selectionState.curSite
+      : null;
+  const safeSite =
+    rawSite && safeSites.indexOf(rawSite) !== -1
+      ? rawSite
+      : safeSites[0] || null;
+  const rawTab =
+    selectionState && typeof selectionState.curTab === "string"
+      ? selectionState.curTab
+      : "overview";
+  return {
+    curMode: rawMode === "site" && safeSite ? "site" : "all",
+    curSite: safeSite,
+    curTab: TABS.some(function (tab) {
+      return tab.id === rawTab;
+    })
+      ? rawTab
+      : "overview",
+    allSitesPeriodDays:
+      typeof getRuntimeAllSitesPeriodDays === "function"
+        ? normalizeAllSitesPeriodDays(getRuntimeAllSitesPeriodDays())
+        : normalizeAllSitesPeriodDays(
+            typeof allSitesPeriodDays !== "undefined" ? allSitesPeriodDays : 90,
+          ),
+  };
+}
+
+function applySnapshotSaveSelectionSnapshotToPayload(payload, selectionSnapshot) {
+  if (!payload || !selectionSnapshot) return payload;
+  const nextPayload = Object.assign({}, payload);
+  nextPayload.ui = Object.assign({}, payload.ui || {}, {
+    curMode: selectionSnapshot.curMode,
+    curSite: selectionSnapshot.curSite,
+    curTab: selectionSnapshot.curTab,
+    allSitesPeriodDays: normalizeAllSitesPeriodDays(selectionSnapshot.allSitesPeriodDays),
+  });
+  nextPayload.curMode = selectionSnapshot.curMode;
+  nextPayload.curSite = selectionSnapshot.curSite;
+  nextPayload.curTab = selectionSnapshot.curTab;
+  nextPayload.allSitesPeriodDays = normalizeAllSitesPeriodDays(selectionSnapshot.allSitesPeriodDays);
+  return nextPayload;
+}
+
+function getSnapshotReusableRefreshStatusForSave() {
+  return typeof getReusableFullRefreshStatusForSave === "function"
+    ? getReusableFullRefreshStatusForSave()
+    : { reusable: false, trigger: null, startedAt: null, context: null };
+}
+
+function buildSnapshotWaitingRefreshDetail() {
+  return "기존 캐시 갱신 작업이 진행 중이라 완료 후 저장합니다. 현재 자동 갱신 결과를 재사용해 중복 요청 없이 저장합니다.";
+}
+
 function getSnapshotPayloadSiteCount(payload, fallbackCount) {
   if (payload && payload.__meta && payload.accounts && typeof payload.accounts === "object") {
     const accountKeys = Object.keys(payload.accounts);
@@ -12137,6 +12202,7 @@ function restoreSnapshotSaveButton(btn, originalText) {
  * @param {string} [options.refreshMode] - 'cache-first' | 'refresh'
  * @param {number} [options.startedAt] - direct save orchestrator가 넘기는 시작 시각
  * @param {Object|null} [options.cacheDecision] - direct save의 refresh 판단 결과
+ * @param {Object|null} [options.selectionSnapshot] - 저장 요청 시점의 canonical UI selection snapshot
  * @returns {Promise<Object>} { ok, fileName, payload }
  * @example
  * await downloadSnapshot(); // cache-first 저장
@@ -12156,6 +12222,10 @@ function restoreSnapshotSaveButton(btn, originalText) {
         options && options.refreshMode === "refresh" ? "refresh" : "cache-first";
       const startedAt =
         options && typeof options.startedAt === "number" ? options.startedAt : Date.now();
+      const selectionSnapshot =
+        options && options.selectionSnapshot
+          ? options.selectionSnapshot
+          : buildSnapshotSaveSelectionSnapshot(runtimeSites);
       const cacheDecision =
         options && options.cacheDecision && typeof options.cacheDecision === "object"
           ? options.cacheDecision
@@ -12168,21 +12238,39 @@ function restoreSnapshotSaveButton(btn, originalText) {
       const btn = document.getElementById("sadv-save-btn");
       const originalText = btn ? btn.textContent : "저장";
       setSnapshotSaveButtonBusy(btn, "0/" + runtimeSites.length);
+      const reusableRefreshStatus =
+        !options || !options.payload ? getSnapshotReusableRefreshStatusForSave() : { reusable: false };
       pushSnapshotSaveStatus({
         __replace: true,
         active: true,
-        state: options && options.payload ? "building-html" : "collecting",
-        phase: "download",
+        state:
+          options && options.payload
+            ? "building-html"
+            : reusableRefreshStatus.reusable
+              ? "waiting-refresh"
+              : "collecting",
+        phase: reusableRefreshStatus.reusable ? "refresh" : "download",
         stageLabel:
-          options && options.payload ? "HTML 저장본 생성 중" : "저장 데이터 수집 중",
+          options && options.payload
+            ? "HTML 저장본 생성 중"
+            : reusableRefreshStatus.reusable
+              ? "기존 갱신 대기 중"
+              : "저장 데이터 수집 중",
         detail:
           options && options.payload
             ? "최신 데이터 수집은 이미 끝났고, 오프라인 HTML 저장본을 조립하고 있어요."
-            : "저장본에 들어갈 사이트 데이터를 순서대로 수집하고 있어요.",
+            : reusableRefreshStatus.reusable
+              ? buildSnapshotWaitingRefreshDetail()
+              : "저장본에 들어갈 사이트 데이터를 순서대로 수집하고 있어요.",
         startedAt: startedAt,
         completedAt: null,
         progress: {
-          done: options && options.payload ? runtimeSites.length : 0,
+          done:
+            options && options.payload
+              ? runtimeSites.length
+              : reusableRefreshStatus.reusable
+                ? 0
+                : 0,
           total: runtimeSites.length,
           ratio: options && options.payload ? 1 : 0,
           percent: options && options.payload ? 100 : 0,
@@ -12198,37 +12286,44 @@ function restoreSnapshotSaveButton(btn, originalText) {
       });
       try {
         const savedAt = new Date();
-        const payload =
+        let payload =
           options && options.payload
             ? options.payload
-            : await collectExportData(
-                function (done, total, site, stats) {
-                  const safeTotal = Math.max(1, total);
-                  setSnapshotSaveButtonBusy(btn, done + "/" + safeTotal);
-                  pushSnapshotSaveStatus({
-                    active: true,
-                    state: "collecting",
-                    phase: "download",
-                    stageLabel: "저장 데이터 수집 중",
-                    detail:
-                      done +
-                      " / " +
-                      safeTotal +
-                      " 사이트 처리 중" +
-                      (site ? " · " + site.replace("https://", "").replace("http://", "") : ""),
-                    progress: {
-                      done: done,
-                      total: safeTotal,
-                      ratio: safeTotal > 0 ? done / safeTotal : 0,
-                      percent: safeTotal > 0 ? Math.round((done / safeTotal) * 100) : 0,
-                    },
-                    stats: stats || { success: 0, partial: 0, failed: 0, errors: [] },
-                    site: site || null,
-                    cacheDecision: cacheDecision,
-                  });
+            : null;
+        if (!payload && reusableRefreshStatus.reusable) {
+          payload = await awaitReusableFullRefreshPayloadForSave();
+        }
+        if (!payload) {
+          payload = await collectExportData(
+            function (done, total, site, stats) {
+              const safeTotal = Math.max(1, total);
+              setSnapshotSaveButtonBusy(btn, done + "/" + safeTotal);
+              pushSnapshotSaveStatus({
+                active: true,
+                state: "collecting",
+                phase: "download",
+                stageLabel: "저장 데이터 수집 중",
+                detail:
+                  done +
+                  " / " +
+                  safeTotal +
+                  " 사이트 처리 중" +
+                  (site ? " · " + site.replace("https://", "").replace("http://", "") : ""),
+                progress: {
+                  done: done,
+                  total: safeTotal,
+                  ratio: safeTotal > 0 ? done / safeTotal : 0,
+                  percent: safeTotal > 0 ? Math.round((done / safeTotal) * 100) : 0,
                 },
-                { refreshMode: refreshMode },
-              );
+                stats: stats || { success: 0, partial: 0, failed: 0, errors: [] },
+                site: site || null,
+                cacheDecision: cacheDecision,
+              });
+            },
+            { refreshMode: refreshMode },
+          );
+        }
+        payload = applySnapshotSaveSelectionSnapshotToPayload(payload, selectionSnapshot);
         pushSnapshotSaveStatus({
           active: true,
           state: "building-html",
@@ -12389,8 +12484,12 @@ function restoreSnapshotSaveButton(btn, originalText) {
       const restoreHeadlessUi = headlessMode ? createSnapshotHeadlessUiRestore() : null;
       setSnapshotSaveOverlaySuppressed(headlessMode);
       const startedAt = Date.now();
+      const runtimeSites =
+        typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
+      const selectionSnapshot = buildSnapshotSaveSelectionSnapshot(runtimeSites);
       try {
         const decision = buildDirectSaveRefreshDecision();
+        const reusableRefreshStatus = getSnapshotReusableRefreshStatusForSave();
         pushSnapshotSaveStatus({
           __replace: true,
           active: true,
@@ -12417,6 +12516,18 @@ function restoreSnapshotSaveButton(btn, originalText) {
           error: null,
         });
         let payload = options && options.payload ? options.payload : null;
+        if (!payload && reusableRefreshStatus.reusable) {
+          pushSnapshotSaveStatus({
+            active: true,
+            state: "waiting-refresh",
+            phase: "refresh",
+            uiHidden: headlessMode,
+            stageLabel: "기존 갱신 대기 중",
+            detail: buildSnapshotWaitingRefreshDetail(),
+            cacheDecision: decision,
+          });
+          payload = await awaitReusableFullRefreshPayloadForSave();
+        }
         if (!payload && decision.neededRefresh) {
           pushSnapshotSaveStatus({
             active: true,
@@ -12462,6 +12573,7 @@ function restoreSnapshotSaveButton(btn, originalText) {
           refreshMode: decision.neededRefresh ? "refresh" : "cache-first",
           startedAt: startedAt,
           cacheDecision: decision,
+          selectionSnapshot: selectionSnapshot,
         });
       } finally {
         setSnapshotSaveOverlaySuppressed(false);
@@ -12496,10 +12608,13 @@ function restoreSnapshotSaveButton(btn, originalText) {
     if (capabilities && !capabilities.canSave) return false;
     const cleanupDelay =
       options && typeof options.cleanupDelayMs === "number" ? options.cleanupDelayMs : 1800;
+    const runtimeSites =
+      typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
+    const selectionSnapshot = buildSnapshotSaveSelectionSnapshot(runtimeSites);
     applySnapshotBackgroundSaveUiHidden();
     backgroundSnapshotSaveInFlightPromise = (async function () {
       clearSearchAdvisorBootRequest();
-      return await downloadSnapshot();
+      return await downloadSnapshot({ selectionSnapshot: selectionSnapshot });
     })();
     try {
       const result = await backgroundSnapshotSaveInFlightPromise;
@@ -12571,7 +12686,10 @@ function restoreSnapshotSaveButton(btn, originalText) {
         mergedMeta: Object.prototype.hasOwnProperty.call(sourcePayload, "mergedMeta")
           ? sourcePayload.mergedMeta
           : null,
-        curMode: SNAPSHOT_OFFLINE_DEFAULT_MODE,
+        curMode:
+          sourcePayload.ui && sourcePayload.ui.curMode === "site"
+            ? "site"
+            : SNAPSHOT_OFFLINE_DEFAULT_MODE,
         curSite:
           sourcePayload.ui && typeof sourcePayload.ui.curSite === "string"
             ? sourcePayload.ui.curSite
@@ -12580,7 +12698,10 @@ function restoreSnapshotSaveButton(btn, originalText) {
           sourcePayload.ui && typeof sourcePayload.ui.allSitesPeriodDays !== "undefined"
             ? sourcePayload.ui.allSitesPeriodDays
             : 90,
-        curTab: SNAPSHOT_OFFLINE_DEFAULT_TAB,
+        curTab:
+          sourcePayload.ui && SNAPSHOT_TAB_IDS.indexOf(sourcePayload.ui.curTab) !== -1
+            ? sourcePayload.ui.curTab
+            : SNAPSHOT_OFFLINE_DEFAULT_TAB,
       };
     }
 
@@ -12647,9 +12768,9 @@ function restoreSnapshotSaveButton(btn, originalText) {
       siteMeta: sourceState.siteMeta,
       mergedMeta: sourceState.mergedMeta,
       allSitesPeriodDays: normalizeAllSitesPeriodDays(sourceState.allSitesPeriodDays),
-      curMode: SNAPSHOT_OFFLINE_DEFAULT_MODE,
+      curMode: sourceState.curMode,
       curSite: sourceState.curSite,
-      curTab: SNAPSHOT_OFFLINE_DEFAULT_TAB,
+      curTab: sourceState.curTab,
     });
   }
 
@@ -12672,9 +12793,9 @@ function restoreSnapshotSaveButton(btn, originalText) {
       summaryRows = payload.summaryRows || [];
       siteMeta = firstAccount?.siteMeta || {};
       savedAt = payload.__meta.savedAt;
-      curMode = "all";
+      curMode = payload.ui?.curMode === "site" ? "site" : "all";
       curSite = payload.ui?.curSite || null;
-      curTab = "overview";
+      curTab = payload.ui?.curTab || "overview";
       allSitesPeriodDays = payload.ui?.allSitesPeriodDays;
     } else {
       // V2 포맷이 아닌 경우 빈 값 반환
@@ -12990,9 +13111,9 @@ function buildSnapshotSerializedHelperSection() {
     let curMode, curSite, curTab, allSites, allSitesPeriodDays;
     if (payload.__meta && payload.accounts) {
       // V2 format
-      curMode = "all";
+      curMode = payload.ui?.curMode === "site" ? "site" : "all";
       curSite = payload.ui?.curSite || null;
-      curTab = "overview";
+      curTab = payload.ui?.curTab || "overview";
       allSitesPeriodDays = normalizeAllSitesPeriodDays(payload.ui?.allSitesPeriodDays);
       const accountKeys = Object.keys(payload.accounts);
       allSites = accountKeys.length > 0 ? (payload.accounts[accountKeys[0]]?.sites || []) : [];
@@ -13482,7 +13603,7 @@ function buildSnapshotSerializedHelperSection() {
       });
     }
     let allSites = EXPORT_PAYLOAD.allSites || [];
-    const INITIAL_MODE = "all";
+    const INITIAL_MODE = EXPORT_PAYLOAD.curMode === "site" ? "site" : "all";
     let curMode = null;  // Initialize to null so switchMode() triggers on first call
     let curSite = EXPORT_PAYLOAD.curSite || (allSites[0] || null);
     let curTab = EXPORT_PAYLOAD.curTab || "overview";
@@ -14749,7 +14870,83 @@ function shouldBootstrapFullRefresh() {
 }
 
 let fullRefreshInFlightPromise = null;
+let fullRefreshInFlightMeta = null;
 let cacheExpiryMonitorId = null;
+
+function buildFullRefreshSaveReuseContext() {
+  const runtimeKind =
+    typeof window !== "undefined" && window.__SEARCHADVISOR_RUNTIME_KIND__
+      ? window.__SEARCHADVISOR_RUNTIME_KIND__
+      : "live";
+  const accountInfo =
+    typeof ACCOUNT_UTILS !== "undefined" &&
+    ACCOUNT_UTILS &&
+    typeof ACCOUNT_UTILS.getAccountInfo === "function"
+      ? ACCOUNT_UTILS.getAccountInfo()
+      : {
+          accountLabel: typeof accountLabel === "string" ? accountLabel : "",
+          encId: typeof encId === "string" ? encId : "",
+        };
+  const isMultiAccount =
+    typeof ACCOUNT_UTILS !== "undefined" &&
+    ACCOUNT_UTILS &&
+    typeof ACCOUNT_UTILS.isMultiAccount === "function"
+      ? !!ACCOUNT_UTILS.isMultiAccount()
+      : !!(
+          typeof window !== "undefined" &&
+          window.__sadvAccountState &&
+          window.__sadvAccountState.isMultiAccount
+        );
+  return {
+    runtimeKind: runtimeKind,
+    accountEncId: accountInfo && typeof accountInfo.encId === "string" ? accountInfo.encId : "",
+    accountLabel:
+      accountInfo && typeof accountInfo.accountLabel === "string"
+        ? accountInfo.accountLabel
+        : "",
+    isMultiAccount: !!isMultiAccount,
+    siteCount: Array.isArray(allSites) ? allSites.length : 0,
+  };
+}
+
+function isReusableFullRefreshContextForSave(requestContext, inflightMeta) {
+  if (!requestContext || !inflightMeta || !inflightMeta.context) return false;
+  const inflightContext = inflightMeta.context;
+  return !!(
+    inflightMeta.trigger === "cache-expiry" &&
+    inflightContext.runtimeKind === requestContext.runtimeKind &&
+    inflightContext.accountEncId === requestContext.accountEncId &&
+    inflightContext.accountLabel === requestContext.accountLabel &&
+    inflightContext.isMultiAccount === requestContext.isMultiAccount &&
+    inflightContext.siteCount === requestContext.siteCount
+  );
+}
+
+function getReusableFullRefreshStatusForSave() {
+  const requestContext = buildFullRefreshSaveReuseContext();
+  const reusable = !!(
+    fullRefreshInFlightPromise &&
+    isReusableFullRefreshContextForSave(requestContext, fullRefreshInFlightMeta)
+  );
+  return {
+    reusable: reusable,
+    trigger:
+      fullRefreshInFlightMeta && typeof fullRefreshInFlightMeta.trigger === "string"
+        ? fullRefreshInFlightMeta.trigger
+        : null,
+    startedAt:
+      fullRefreshInFlightMeta && typeof fullRefreshInFlightMeta.startedAt === "number"
+        ? fullRefreshInFlightMeta.startedAt
+        : null,
+    context: requestContext,
+  };
+}
+
+async function awaitReusableFullRefreshPayloadForSave() {
+  const status = getReusableFullRefreshStatusForSave();
+  if (!status.reusable || !fullRefreshInFlightPromise) return null;
+  return await fullRefreshInFlightPromise;
+}
 
 function stopCacheExpiryMonitor() {
   if (cacheExpiryMonitorId) {
@@ -14799,8 +14996,13 @@ function startCacheExpiryMonitor() {
  */
 async function runFullRefreshPipeline(options = {}) {
   if (fullRefreshInFlightPromise) return fullRefreshInFlightPromise;
-  fullRefreshInFlightPromise = (async function () {
   const trigger = options && options.trigger ? options.trigger : "manual";
+  fullRefreshInFlightMeta = {
+    trigger: trigger,
+    startedAt: Date.now(),
+    context: buildFullRefreshSaveReuseContext(),
+  };
+  fullRefreshInFlightPromise = (async function () {
   const shouldRenderProgress = !(options && options.renderProgress === false);
   const triggerLabel =
     trigger === "cache-expiry"
@@ -14874,6 +15076,7 @@ async function runFullRefreshPipeline(options = {}) {
     throw e;
   } finally {
     fullRefreshInFlightPromise = null;
+    fullRefreshInFlightMeta = null;
   }
 }
 

@@ -279,6 +279,12 @@
   - 차단 시 다운로드는 발생하지 않고, save status는 `blocked`가 된다.
   - `completed-with-issues`는 저장이 허용된 경미/부분 이슈,
     `blocked`는 정책상 다운로드를 멈춘 상태라는 의미로 구분한다.
+- auto refresh와 save가 경쟁할 때는 save가 별도 `collectExportData()`를 또 시작하지 않도록 주의한다.
+  - 이미 진행 중인 `cache-expiry` refresh만 save가 재사용할 수 있다.
+  - 이때 save status는 `waiting-refresh`를 먼저 거친다.
+  - 저장 시작 시점의 `curMode/curSite/curTab/allSitesPeriodDays`를 canonical selection snapshot으로 고정하고,
+    재사용한 refresh payload의 `ui`에도 그 snapshot을 덮어써야 한다.
+  - 즉 “최신 payload 재사용”과 “save 요청 시점 selection 고정”을 같이 유지해야 parity가 안 깨진다.
 - background download boot contract는
   - `SEARCHADVISOR_BOOT.REQUEST_WINDOW_KEY`
   - `SEARCHADVISOR_BOOT.ACTIONS.BACKGROUND_DOWNLOAD`

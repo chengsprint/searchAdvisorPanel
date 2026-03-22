@@ -146,6 +146,9 @@ actions = {
   - UI overlay, 전역 mirror 상태, public facade가 같은 상태 객체를 보도록 유지한다.
   - 상태 객체는 `runtimeType` 외에도 `uiHidden` 플래그를 노출해,
     headless directSave 여부를 DOM 없이도 판별할 수 있어야 한다.
+  - 상태 객체는 `waiting-refresh`를 별도 상태로 구분해,
+    “저장 요청은 접수됐지만 기존 cache-expiry refresh를 재사용하기 위해 대기 중”이라는 의미를
+    외부 드라이버와 사용자에게 같이 전달해야 한다.
   - 상태 객체의 `state`는 `completed` / `completed-with-issues` / `failed` 외에도
     정책상 다운로드를 중단한 `blocked`를 구분해야 한다.
     즉 "예외 실패"와 "정책 차단"은 외부 드라이버가 다르게 해석할 수 있어야 한다.
@@ -163,6 +166,16 @@ actions = {
   - 다운로드는 발생하지 않는다.
   - 저장 상태는 `blocked`로 게시된다.
   - 기존 에러 팝업/모달 톤으로 이유를 보여주고 자동으로 정리한다.
+
+### in-flight cache-expiry refresh 재사용 원칙
+
+- 저장 버튼/download/directSave/background save는 **이미 진행 중인 `cache-expiry` refresh만** 재사용할 수 있다.
+- 저장이 refresh를 새로 시작하는 것이 아니라,
+  **이미 돌고 있는 auto refresh가 있을 때만** 그 payload를 받아 저장에 재사용한다.
+- 이때 save 시작 시점의 `curMode/curSite/curTab/allSitesPeriodDays`는
+  canonical selection snapshot으로 고정한다.
+- 합류한 refresh가 `failed`/`blocked`면 save도 그대로 실패/차단으로 끝나야 하며,
+  조용히 cache-first 저장으로 fallback 하면 안 된다.
 
 ### public facade 게시 규칙
 
