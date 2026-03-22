@@ -1,199 +1,267 @@
-# SearchAdvisor Panel 10-Pass Codebase Review
+# SearchAdvisor Runtime 10-Pass Codebase Review
 
-작성일: 2026-03-22  
-대상 범위: `src/app/main/*`, `tests/playwright-direct-save-qa.js`, 관련 설계 문서  
-검토 관점: Live / Saved / Merge / save 경쟁 처리 / public facade / QA 커버리지
+Date: 2026-03-22  
+Scope: live / saved / merge / save-direct / background-save / auto-refresh competition  
+Primary files reviewed:
 
-## 목적
+- `src/app/main/09-ui-controls.js`
+- `src/app/main/12-snapshot.js`
+- `src/app/main/13-refresh.js`
+- `src/app/main/14-init.js`
+- `src/app/main/PROVIDER_ACTION_CONTRACT.md`
+- `src/app/main/SNAPSHOT_IMPLEMENTATION_GUIDE.md`
 
-이 문서는 현재 코드베이스를 다시 순회하면서, 아래 질문에 답하기 위해 작성한다.
+---
 
-- 지금 구조를 운영 기준으로 믿어도 되는가?
-- Live / Saved / Merge가 같은 계약 위에서 움직이고 있는가?
-- save / directSave / background save는 동일한 알고리즘과 정책을 따르는가?
-- QA는 어디까지 커버하고 있고, 어디가 아직 핫스팟인가?
+## Executive Summary
 
-## 검토 방법
+현재 코드베이스는 **운영 가능한 수준으로 안정적**이다. 특히:
 
-- 핵심 파일 직접 재순회
-  - `07-data-provider.js`
-  - `09-ui-controls.js`
-  - `12-snapshot.js`
-  - `13-refresh.js`
-  - `14-init.js`
-- 저장 경쟁 시나리오 QA 결과 재검토
-- 다관점 에이전트 검토 결과 반영
+- 저장 버튼 / `directSave()` / background save의 역할 구분이 문서와 코드에서 비교적 명확하다.
+- `blocked` / `failed` / `waiting-refresh` 정책이 정리되어 있다.
+- `cache-expiry` auto refresh와 save 경쟁 처리도 **단일 알고리즘**으로 수렴 중이다.
 
-## 10-pass 반복 점검 결과
+다만 여전히 가장 큰 hotspot은:
 
-### 1. Runtime public facade / provider seam
+1. `12-snapshot.js`의 높은 역할 밀도
+2. live DOM clone + saved shell/API bootstrap의 이중 정본 구조
+3. auto refresh progress UI와 save status overlay의 체감상 중복 인지 가능성
 
-현재 `window.__sadvApi`는 live/saved 공통 public facade 이름으로 유지되고,  
-saved richer API는 `window.__SEARCHADVISOR_SNAPSHOT_API__`로 별도 유지된다.
+즉 **기능은 안정적이지만 구조는 여전히 조심해서 다뤄야 하는 상태**다.
 
-판단:
-- 좋음: facade 이름이 공통이고 책임이 문서화되어 있음
-- 남은 주의점: `09-ui-controls.js`가 save/direction orchestration 쪽 public entry를 계속 쥐고 있으므로, 이후 기능 추가 시 의미 drift에 주의해야 함
+---
 
-### 2. Saved helper packaging / snapshot assembly
+## Review Pass 1 — Public Entry Semantics
 
-`12-snapshot.js`는 여전히 크지만, helper pack / shell injection / boot helper / public API publish helper 단위로 상당히 분해돼 있다.
+현재 public facade는 다음처럼 역할이 나뉜다.
 
-판단:
-- 좋음: 예전의 saved helper allowlist 누락 회귀는 많이 줄어든 상태
-- 핫스팟: 여전히 `12-snapshot.js`가 가장 큰 fan-in/fan-out 파일이다
+- `download()` = 기존 저장 버튼과 같은 cache-first 저장
+- `directSave()` = stale/missing cache를 점검하고 필요 시 refresh 후 저장
+- `loadAndDirectSaveHeadless()` = 기존 저장 버튼 경로를 패널 비노출 상태로 실행
 
-### 3. Shell / API / DOM parity
+평가:
 
-saved reopen QA와 fresh saved audit 체계 덕분에 shell/API/DOM parity를 지속적으로 보고 있다.
+- 의미 구분은 명확하다.
+- 특히 `loadAndDirectSaveHeadless()`가 “smart save”가 아니라 **기존 저장 버튼의 background 실행**이라는 점이 문서와 코드에서 일치한다.
 
-판단:
-- 좋음: 현재 saved reopen 기준으로 public API / snapshot API / read-only / mode/tab/site parity가 안정적임
-- 핫스팟: non-default selection 상태에서의 parity는 앞으로도 saved regressions의 1순위 리스크다
+잔여 위험:
 
-### 4. Save 정책(`completed` / `completed-with-issues` / `blocked` / `failed`)
+- 외부 호출자가 `download()`와 `directSave()`를 같은 의미로 오해할 여지는 남아 있다.
+- public entry 이름은 명확하지만, 실제 운영 가이드는 계속 이 차이를 강조해야 한다.
 
-저장 차단 기준은 이제 세 경로 공통으로 적용된다.
+---
 
-- 치명적 패널 사용자 오류 → `blocked`
-- 실패율 20% 초과 → `blocked`
-- 예외 실패 → `failed`
+## Review Pass 2 — Save Policy Consistency
 
-판단:
-- 좋음: “문제가 있어도 저장본 생성”에서 “정책상 unsafe면 차단”으로 기준이 선명해짐
-- 핫스팟: 사람 눈에는 `blocked`와 `failed`가 비슷하게 느껴질 수 있어 문구 일관성을 계속 유지해야 함
+세 저장 경로는 아래 정책을 공통으로 공유한다.
 
-### 5. Save 버튼 / directSave / background save의 동일성
+- 치명적 패널 오류 배너가 살아 있으면 `blocked`
+- `payload.stats.failed / totalSites > 20%` 이면 `blocked`
+- 나머지는 저장 허용
 
-핵심 원칙은 다음과 같다.
+평가:
 
-- 저장 버튼
-- `directSave()`
-- `loadAndDirectSaveHeadless()`
+- 저장 정책이 버튼/스크립트/background로 갈라지지 않고 공통화된 점은 좋다.
+- 운영 관점에서 일관성이 있다.
 
-이 3경로는 저장 정책, 상태 모델, 경쟁 처리 원칙을 같이 따라야 한다.
+잔여 위험:
 
-판단:
-- 좋음: 현재 설계/문서 기준으로는 같은 알고리즘을 따른다
-- 핫스팟: 한 경로만 예외 처리하면 바로 drift가 생기므로 이후 수정은 반드시 3경로 같이 봐야 함
+- `partial`은 저장 허용으로 남아 있으므로, “경미한 이슈 허용” 정책이 계속 맞는지 운영 중 재평가가 필요할 수 있다.
 
-### 6. Auto refresh in-flight save reuse 경쟁 처리
+---
 
-이번 라운드에서 가장 중요한 수정 포인트였다.
+## Review Pass 3 — Auto Refresh Competition Handling
 
-현재 원칙:
-- 이미 진행 중인 `cache-expiry` refresh만 save가 재사용 가능
-- `reusable` 판정 순간의 in-flight promise를 직접 캡처
-- 이후 재판정하지 않고 그 promise를 await
-- save 요청 시점 selection snapshot 유지
+현재 핵심 원칙:
 
-판단:
-- 좋음: “`waiting-refresh`는 찍히는데 실제론 다시 collect” race를 잡는 방향으로 정리됨
-- 핫스팟: 이 경쟁 처리의 진실은 상태만이 아니라 네트워크 요청 수로 검증해야 함
+- save는 이미 진행 중인 `cache-expiry` refresh만 재사용한다.
+- save가 재사용 가능하다고 판단한 **그 순간의 in-flight promise를 직접 캡처**한다.
+- 나중에 다시 재판정해서 fallback collect로 내려가면 안 된다.
 
-### 7. Merge / export parity
+평가:
 
-merge/export selection facade 정리는 이미 들어가 있고, merge 테스트도 계속 통과 중이다.
+- 이전 race(상태는 `waiting-refresh`인데 실제로는 새 collect로 내려가는 문제)를 잡는 방향으로 적절하다.
+- `selection snapshot` 유지와 결합되어 있어서 save 결과 일관성도 좋아졌다.
 
-판단:
-- 좋음: merge는 저장 경쟁 처리와 직접 충돌하지 않고, selection facade도 정리된 상태
-- 핫스팟: merge는 문제를 일으키는 축이라기보다, 변경 시 무심코 깨뜨리기 쉬운 축이므로 regression guard 성격으로 계속 봐야 한다
+잔여 위험:
 
-### 8. QA 커버리지
+- `13-refresh.js`의 reuse context는 `siteSignature`까지 포함해 개선됐지만, 여전히 “같은 site signature / 다른 의미 상태” 같은 edge case가 완전히 0은 아니다.
+- 다만 현재 수준에서는 과도한 복잡도 없이 균형이 맞는 편이다.
 
-현재 QA는 세 층으로 나뉜다.
+---
 
-- 빌드/정적 검증
-  - `npm run build`
-  - `npm run check`
-- 데이터/머지 검증
-  - `merge-test.js`
-  - `phase1-verify-runtime.js`
-- 브라우저 저장 흐름 검증
-  - `playwright-direct-save-qa.js`
+## Review Pass 4 — Save State Model
 
-특히 direct save QA는 현재 다음을 본다.
+현재 save 상태 모델:
 
-- 정상 저장
-- 캐시 미스 후 자동 갱신
-- partial issue
-- hard failure
-- merge runtime
-- headless directSave
-- boot-hidden background download
-- blocked on failure ratio
-- blocked on panel error
-- auto refresh in-flight 경쟁 시나리오 10/11/12
+- `checking-cache`
+- `waiting-refresh`
+- `refreshing`
+- `collecting`
+- `building-html`
+- `triggering-download`
+- `completed`
+- `completed-with-issues`
+- `blocked`
+- `failed`
 
-판단:
-- 좋음: save 경쟁 처리와 blocked 정책까지 자동 검증됨
-- 핫스팟: 전체 Playwright long suite는 가끔 flaky할 수 있으므로, 핵심 시나리오 필터 실행도 운영적으로 유용함
+평가:
 
-### 9. 네트워크 중복 검증 수준
+- 외부 드라이버와 사용자 UI가 같은 상태 모델을 공유한다는 점이 좋다.
+- `blocked`와 `failed`를 분리한 것은 운영/자동화 모두에 유리하다.
 
-이번 리뷰에서 중요한 결론은 “상태만 보면 안 된다”였다.
+잔여 위험:
 
-현재 핵심 검증:
+- 실제 사용자는 `blocked`와 `failed`를 둘 다 “실패”로 느낄 수 있다.
+- 따라서 모달 문구가 정책상 차단인지, 진짜 예외 실패인지 계속 분명해야 한다.
+
+---
+
+## Review Pass 5 — UX Clarity During In-Flight Refresh
+
+현재 save가 auto refresh에 합류하면:
+
+- 패널 본문에는 auto refresh progress
+- 중앙 overlay에는 `waiting-refresh`
+
+가 동시에 보일 수 있다.
+
+평가:
+
+- 내부적으로는 올바른 구조여도, 사용자 체감은 “두 개가 동시에 도는 것 같다”로 느껴질 수 있다.
+- 이번 라운드에서 `waiting-refresh` 문구가
+  “이미 진행 중인 자동 갱신 결과를 재사용한다” 쪽으로 개선된 것은 맞는 방향이다.
+
+잔여 위험:
+
+- 패널 내부 progress UI와 save overlay가 동시에 존재하는 한, 시각적 혼동은 완전히 0이 되지 않는다.
+- 이는 기능 버그라기보다 UX 레벨의 구조적 한계에 가깝다.
+
+---
+
+## Review Pass 6 — Snapshot Export Integrity
+
+`12-snapshot.js`는 save/export/shell/bootstrap을 여전히 많이 쥐고 있다.
+
+평가:
+
+- helper pack, public facade, bootstrap helper, background boot contract는 이전보다 훨씬 명확해졌다.
+- 저장 직전 selection snapshot을 payload에 덮어쓰는 구조도 parity 유지에 유리하다.
+
+잔여 위험:
+
+- live DOM clone + saved shell/API bootstrap이 동시에 존재하는 구조는 여전히 이중 정본 위험을 남긴다.
+- 따라서 saved parity는 계속 QA 게이트로 감시해야 한다.
+
+---
+
+## Review Pass 7 — Refresh / Save Boundary
+
+현재 경계는 대체로 합리적이다.
+
+- `13-refresh.js`는 full refresh owner
+- `12-snapshot.js`는 save/export owner
+- save는 refresh internals 전체를 아는 대신, reusable handle을 소비하는 쪽으로 유지
+
+평가:
+
+- 결합도가 과도하게 높아지는 방향은 어느 정도 막고 있다.
+
+잔여 위험:
+
+- `12-snapshot.js`가 여전히 너무 커서, 작은 수정도 save/export/bootstrap 전반에 영향 줄 수 있다.
+- 장기적으로는 이것이 가장 큰 maintenance hotspot이다.
+
+---
+
+## Review Pass 8 — QA Coverage Quality
+
+현재 좋은 점:
+
+- build/check
+- merge test
+- runtime verify
+- direct save / blocked / background save / saved reopen
+- auto refresh in-flight 경쟁 시나리오
+
+가 존재한다.
+
+이번 라운드에서 특히 강화된 것:
+
 - `waiting-refresh -> collecting` 금지
 - `/api-console/report/` 요청 key 중복 금지
-- `collect-export-start` source 기대값 확인
-  - `full-refresh`: 1
-  - `download-snapshot`: 0
+- `collect-export-start` source expectation
 
-판단:
-- 좋음: 사용자가 실제로 본 “중복 수집되는 것 같다” 현상을 코드/요청 기준으로 잡아낼 수 있게 됨
-- 핫스팟: request key 정규화 규칙을 너무 넓히거나 좁히면 false positive/false negative가 생길 수 있으므로 유지보수 시 주의
+평가:
 
-### 10. 현재 전체 판단
+- 이제 “의도한 상태가 찍혔는지”뿐 아니라, **실제 중복 요청이 없는지**까지 검증하는 방향으로 한 단계 올라갔다.
 
-운영 관점 결론은 다음과 같다.
+잔여 위험:
 
-- Live: 안정적
-- Saved: parity/contract/reopen 기준 안정적
-- Merge: regression guard 기준 안정적
-- save 경쟁 처리: 이번 라운드 핵심 수정으로 구조적으로 더 안전해짐
+- Playwright 전체 스위트는 환경/포트 이슈로 가끔 flaky할 수 있다.
+- 그래서 핵심 경쟁 시나리오(10/11/12)처럼 **좁고 강한 시나리오를 따로 돌릴 수 있는 운영 습관**이 중요하다.
 
-즉 현재 planned scope 기준으로는:
-- 기능 안정성: 충분
-- 구조적 명확성: 상당히 확보
-- 남은 것은 필수 작업이라기보다, 장기 순화/가독성 개선 쪽이다
+---
 
-## 현재 강점
+## Review Pass 9 — Live / Saved / Merge Parity
 
-1. Live / Saved / Merge를 같은 계약으로 보는 습관이 코드/문서/QA에 모두 반영됨
-2. saved helper packaging / public facade 분리가 많이 안정화됨
-3. `blocked` 정책 도입으로 unsafe saved HTML 생성을 막을 수 있음
-4. save 경쟁 처리에 대한 QA가 이제 상태 + 네트워크 둘 다 보기 시작함
+평가:
 
-## 현재 핫스팟
+- Live: save 경쟁 처리와 blocked 정책이 안정적으로 들어간 상태
+- Saved: selection snapshot과 saved reopen QA 기준으로 parity 유지 중
+- Merge: `runtimeType` / merge save path / merge tests 모두 유지
 
-1. `12-snapshot.js`
-   - 여전히 가장 큰 구조적 hotspot
-2. 저장 관련 UX 문구
-   - `waiting-refresh`, `blocked`, `failed` 문구는 계속 일관되게 유지해야 함
-3. Playwright long suite flaky 가능성
-   - 핵심 시나리오 선택 실행 흐름을 유지하는 것이 유용함
+잔여 위험:
 
-## 지금 기준에서 손대면 안 되는 것
+- Saved는 여전히 bootstrap/clone parity 문제를 가장 잘 드러내는 경로다.
+- Merge는 직접 저장 경쟁보다 metadata/capability 표면 drift를 더 경계해야 한다.
 
-- hidden/background save만 따로 예외 처리하는 패치
-- save 버튼 / directSave / background save 중 한 경로만 먼저 수정하는 접근
-- `waiting-refresh`를 sleep/retry로 덮는 임시봉합
-- saved parity 문제를 DOM class 읽기 임시복구로 해결하려는 시도
+---
 
-## 지금 기준에서 손대도 되는 것
+## Review Pass 10 — Current Recommendation
 
-- QA 리포트 개선
-- 상태 문구/운영 문구 미세 조정
-- `12-snapshot.js` 추가 분해
-- refresh/save seam 가독성 향상
+현재 상태에 대한 최종 판단:
 
-## 최종 결론
+### 당장 해도 되는 것
 
-현재 코드베이스는 **운영 가능한 수준으로 충분히 안정적**이다.  
-특히 save / directSave / background save / blocked 정책 / saved reopen parity까지  
-같은 계약으로 묶여 있다는 점이 중요하다.
+- 운영 사용
+- 사용자 재테스트
+- 정상 저장 / direct save / background save 비교 테스트
 
-다만 가장 큰 hotspot은 여전히 `12-snapshot.js`이며,  
-추가 작업이 필요하다면 그것은 “필수 버그 수정”보다는  
-장기적인 구조 순화와 가독성 개선에 가까운 성격이다.
+### 지금은 건드리지 않는 게 더 좋은 것
+
+- `12-snapshot.js` 대공사
+- save/export/bootstrap을 한 번에 다시 뒤엎는 리팩토링
+- live/saved parity를 건드리는 DOM 구조 변경
+
+### 다음에 의미 있는 후속
+
+1. 필요 시 `waiting-refresh` UX를 더 명확히 다듬기
+2. 경쟁 시나리오 QA를 CI/release gate 쪽으로 더 올리기
+3. `12-snapshot.js` 장기 분해는 별도 Phase 4급 작업으로 다루기
+
+---
+
+## Final Assessment
+
+### Overall
+
+- **기능 안정성**: 높음
+- **정책 일관성**: 높음
+- **save 경쟁 처리**: 이전보다 명확하고 안전해짐
+- **테스트 신뢰도**: 핵심 시나리오 기준으로 유의미하게 강화됨
+
+### Main Hotspots
+
+1. `12-snapshot.js`의 높은 복합도
+2. saved parity가 DOM clone + bootstrap 이중 구조에 기대는 점
+3. UI상 auto refresh + save overlay 동시 표시에 따른 체감 혼동
+
+### Final Conclusion
+
+현재 코드는 **운영 가능한 상태**이며,  
+이번 라운드 기준 save/directSave/background save/auto refresh 경쟁 처리까지 포함해  
+**충분히 통제 가능한 구조**로 보고 운영해도 된다.
+
+다만 구조적으로 가장 위험한 축은 여전히 `12-snapshot.js`이고,  
+그 이상의 대규모 순화는 **지금 당장 필수 작업이 아니라 별도 장기 리팩토링 트랙**으로 보는 것이 맞다.
