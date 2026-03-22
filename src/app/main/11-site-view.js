@@ -7,6 +7,31 @@
  * await loadSiteView('https://example.com');
  * @see {buildRenderers}
  */
+  function getSiteViewLoadLeaseForSave() {
+    const selectionState =
+      typeof getRuntimeSelectionState === "function"
+        ? getRuntimeSelectionState()
+        : { curMode, curSite, curTab };
+    const reusable = !!(
+      siteViewLoadInFlightPromise &&
+      siteViewLoadInFlightMeta &&
+      siteViewLoadInFlightMeta.requestId === siteViewReqId &&
+      selectionState.curMode === CONFIG.MODE.SITE &&
+      typeof selectionState.curSite === "string" &&
+      selectionState.curSite === siteViewLoadInFlightMeta.site
+    );
+    return {
+      reusable: reusable,
+      kind: "site-view-load",
+      site: reusable ? siteViewLoadInFlightMeta.site : null,
+      startedAt:
+        reusable && typeof siteViewLoadInFlightMeta.startedAt === "number"
+          ? siteViewLoadInFlightMeta.startedAt
+          : null,
+      promise: reusable ? siteViewLoadInFlightPromise : null,
+    };
+  }
+
   async function loadSiteView(site) {
     // 사이트별 상세는 live/snapshot이 최대한 같은 renderer 경로를 타야 하는 핵심 영역이다.
     // 목표는 snapshot 전용 site UI가 아니라, 같은 site UI를 다른 provider에서 그리는 것이다.
@@ -19,6 +44,8 @@
       return;
     }
     const requestId = ++siteViewReqId;
+    const requestStartedAt = Date.now();
+    const requestPromise = (async function () {
 
     // Get account label from siteOwnership for display
     let accountLabel = null;
@@ -87,6 +114,21 @@
     window.__sadvR = R;
     renderTab(R);
     if (typeof notifySnapshotShellState === "function") notifySnapshotShellState();
+    })();
+    siteViewLoadInFlightPromise = requestPromise;
+    siteViewLoadInFlightMeta = {
+      requestId: requestId,
+      site: site,
+      startedAt: requestStartedAt,
+    };
+    try {
+      return await requestPromise;
+    } finally {
+      if (siteViewLoadInFlightPromise === requestPromise) {
+        siteViewLoadInFlightPromise = null;
+        siteViewLoadInFlightMeta = null;
+      }
+    }
   }
 
   /**

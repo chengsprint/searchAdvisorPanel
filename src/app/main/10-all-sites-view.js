@@ -17,6 +17,29 @@ function getAllSitesSelectionState() {
     : { curMode, curSite, curTab };
 }
 
+function getAllSitesRenderLeaseForSave() {
+  const selectionState = getAllSitesSelectionState();
+  const reusable = !!(
+    allSitesRenderInFlightPromise &&
+    allSitesRenderInFlightMeta &&
+    allSitesRenderInFlightMeta.requestId === allViewReqId &&
+    selectionState.curMode === CONFIG.MODE.ALL
+  );
+  return {
+    reusable: reusable,
+    kind: "all-sites-render",
+    startedAt:
+      reusable && typeof allSitesRenderInFlightMeta.startedAt === "number"
+        ? allSitesRenderInFlightMeta.startedAt
+        : null,
+    siteCount:
+      reusable && typeof allSitesRenderInFlightMeta.siteCount === "number"
+        ? allSitesRenderInFlightMeta.siteCount
+        : 0,
+    promise: reusable ? allSitesRenderInFlightPromise : null,
+  };
+}
+
 function getAllSitesCanonicalRows() {
   return typeof getRuntimeRows === "function"
     ? getRuntimeRows()
@@ -423,6 +446,8 @@ async function renderAllSites() {
   const requestId = ++allViewReqId;
   const runtimeSites =
     typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
+  const requestStartedAt = Date.now();
+  const requestPromise = (async function () {
   setAllSitesLabel();
   const loading = document.createElement("div");
   loading.style.cssText =
@@ -587,6 +612,21 @@ async function renderAllSites() {
     if (requestId !== allViewReqId || currentSelectionState.curMode !== CONFIG.MODE.ALL) return;
   }
   renderAllSitesFromCanonicalRows();
+  })();
+  allSitesRenderInFlightPromise = requestPromise;
+  allSitesRenderInFlightMeta = {
+    requestId: requestId,
+    startedAt: requestStartedAt,
+    siteCount: runtimeSites.length,
+  };
+  try {
+    return await requestPromise;
+  } finally {
+    if (allSitesRenderInFlightPromise === requestPromise) {
+      allSitesRenderInFlightPromise = null;
+      allSitesRenderInFlightMeta = null;
+    }
+  }
 }
 
 /**
