@@ -12,6 +12,10 @@ const DOWNLOAD_DIR = path.join(ARTIFACT_ROOT, 'downloads');
 const REPORT_PATH = path.join(ARTIFACT_ROOT, 'direct-save-qa-report.md');
 const PORT = 8092;
 const HOST = `http://127.0.0.1:${PORT}`;
+const SCENARIO_FILTER = (process.env.SADV_SCENARIO_FILTER || '')
+  .split(',')
+  .map((entry) => entry.trim())
+  .filter(Boolean);
 const DEMO_SITES = [
   'https://example-shop.com',
   'https://tech-blog.kr',
@@ -220,8 +224,24 @@ async function installStatusProbe(page) {
   });
 }
 
+async function installRequestProbe(page) {
+  await page.evaluate(() => {
+    window.__SADV_REQUEST_EVENTS = Array.isArray(window.__SADV_REQUEST_EVENTS)
+      ? window.__SADV_REQUEST_EVENTS
+      : [];
+    window.__SADV_TEST_EVENTS = Array.isArray(window.__SADV_TEST_EVENTS)
+      ? window.__SADV_TEST_EVENTS
+      : [];
+    window.__SADV_SAVE_TRIGGER_AT__ =
+      typeof window.__SADV_SAVE_TRIGGER_AT__ === 'number'
+        ? window.__SADV_SAVE_TRIGGER_AT__
+        : null;
+  });
+}
+
 async function startDirectSave(page, options) {
   return page.evaluate((directSaveOptions) => {
+    window.__SADV_SAVE_TRIGGER_AT__ = Date.now();
     window.__SADV_DIRECTSAVE_RESULT__ = null;
     window.__SADV_DIRECTSAVE_ERROR__ = null;
     window.__SADV_DIRECTSAVE_PROMISE__ = window.__sadvApi.directSave(directSaveOptions)
@@ -238,12 +258,16 @@ async function startDirectSave(page, options) {
 }
 
 async function startSaveButtonDownload(page) {
+  await page.evaluate(() => {
+    window.__SADV_SAVE_TRIGGER_AT__ = Date.now();
+  });
   await page.click('#sadv-save-btn');
   return true;
 }
 
 async function startBackgroundHeadlessSave(page, options) {
   return page.evaluate((backgroundOptions) => {
+    window.__SADV_SAVE_TRIGGER_AT__ = Date.now();
     window.__SADV_DIRECTSAVE_RESULT__ = null;
     window.__SADV_DIRECTSAVE_ERROR__ = null;
     window.__SADV_DIRECTSAVE_PROMISE__ = window.__sadvApi.loadAndDirectSaveHeadless(backgroundOptions)
@@ -282,6 +306,45 @@ async function waitForSaveSettle(page, timeoutMs = 40000) {
 
 async function getScenarioResult(page, downloadTriggered) {
   return page.evaluate((downloadTriggeredValue) => ({
+    requestProbe: (() => {
+      const requestEvents = Array.isArray(window.__SADV_REQUEST_EVENTS)
+        ? window.__SADV_REQUEST_EVENTS
+        : [];
+      const saveTriggeredAt =
+        typeof window.__SADV_SAVE_TRIGGER_AT__ === 'number' ? window.__SADV_SAVE_TRIGGER_AT__ : null;
+      const reportEvents = requestEvents.filter((entry) => !!entry && typeof entry.reportKey === 'string' && entry.reportKey);
+      const reportCounts = new Map();
+      const reportCountsAfterSave = new Map();
+      const reportKeysBeforeSave = new Set();
+      reportEvents.forEach((entry) => {
+        reportCounts.set(entry.reportKey, (reportCounts.get(entry.reportKey) || 0) + 1);
+        if (typeof saveTriggeredAt === 'number' && entry.at < saveTriggeredAt) {
+          reportKeysBeforeSave.add(entry.reportKey);
+        }
+        if (typeof saveTriggeredAt === 'number' && entry.at >= saveTriggeredAt) {
+          reportCountsAfterSave.set(entry.reportKey, (reportCountsAfterSave.get(entry.reportKey) || 0) + 1);
+        }
+      });
+      const duplicateReportKeys = Array.from(reportCounts.entries())
+        .filter(([, count]) => count > 1)
+        .map(([key]) => key);
+      const duplicateReportKeysAfterSave = Array.from(reportCountsAfterSave.entries())
+        .filter(([key, count]) => count > 1 || reportKeysBeforeSave.has(key))
+        .map(([key]) => key);
+      const saveEvents = Array.isArray(window.__SADV_SAVE_EVENTS) ? window.__SADV_SAVE_EVENTS : [];
+      const waitingIndex = saveEvents.findIndex((entry) => entry && entry.state === 'waiting-refresh');
+      const collectingAfterWaiting =
+        waitingIndex >= 0 &&
+        saveEvents.slice(waitingIndex + 1).some((entry) => entry && entry.state === 'collecting');
+      return {
+        saveTriggeredAt,
+        totalRequestEvents: requestEvents.length,
+        totalReportRequests: reportEvents.length,
+        duplicateReportKeys,
+        duplicateReportKeysAfterSave,
+        collectingAfterWaiting,
+      };
+    })(),
     saveStatus: window.__sadvApi.getSaveStatus(),
     directSaveResult: window.__SADV_DIRECTSAVE_RESULT__,
     directSaveError: window.__SADV_DIRECTSAVE_ERROR__,
@@ -296,6 +359,33 @@ async function getScenarioResult(page, downloadTriggered) {
     failureSummaryText: document.getElementById('sadv-refresh-failure-summary')?.innerText || '',
     downloadTriggered: downloadTriggeredValue,
   }), downloadTriggered);
+}
+
+function validateScenarioResult(scenario, scenarioResult) {
+  const requestProbe = scenarioResult.result.requestProbe || {};
+  if (scenario.expectNoCollectingAfterWaitingRefresh && requestProbe.collectingAfterWaiting) {
+    throw new Error(
+      `[${scenario.name}] waiting-refresh 이후 collecting 상태가 다시 발생했습니다.`
+    );
+  }
+  if (
+    scenario.expectNoDuplicateReportKeys &&
+    Array.isArray(requestProbe.duplicateReportKeys) &&
+    requestProbe.duplicateReportKeys.length > 0
+  ) {
+    throw new Error(
+      `[${scenario.name}] report 요청 중복이 감지됐습니다: ${requestProbe.duplicateReportKeys.join(', ')}`
+    );
+  }
+  if (
+    scenario.expectNoDuplicateReportKeysAfterSave &&
+    Array.isArray(requestProbe.duplicateReportKeysAfterSave) &&
+    requestProbe.duplicateReportKeysAfterSave.length > 0
+  ) {
+    throw new Error(
+      `[${scenario.name}] save 시작 이후 중복 report 요청이 감지됐습니다: ${requestProbe.duplicateReportKeysAfterSave.join(', ')}`
+    );
+  }
 }
 
 async function runScenario(browser, scenario, dataset) {
@@ -343,6 +433,48 @@ async function runScenario(browser, scenario, dataset) {
     initMergedData: scenario.initMergedData || null,
     bootRequest: scenario.bootRequest || null,
   });
+  await page.addInitScript(() => {
+    window.__SADV_REQUEST_EVENTS = [];
+    window.__SADV_SAVE_TRIGGER_AT__ = null;
+    const originalFetch = window.fetch.bind(window);
+    function buildReportKey(rawUrl, method) {
+      try {
+        const parsed = new URL(rawUrl, window.location.href);
+        if (
+          method !== 'GET' ||
+          parsed.host !== 'searchadvisor.naver.com' ||
+          parsed.pathname.indexOf('/api-console/report/') === -1
+        ) {
+          return null;
+        }
+        const field = parsed.searchParams.get('field') || '';
+        const site = parsed.searchParams.get('site') || '';
+        return `${parsed.pathname}|field=${field}|site=${site}`;
+      } catch (e) {
+        return null;
+      }
+    }
+    window.fetch = function (input, init) {
+      const requestUrl =
+        typeof input === 'string'
+          ? input
+          : input && typeof input.url === 'string'
+            ? input.url
+            : String(input);
+      const method =
+        (init && init.method) ||
+        (input && input.method) ||
+        'GET';
+      const normalizedMethod = String(method).toUpperCase();
+      window.__SADV_REQUEST_EVENTS.push({
+        at: Date.now(),
+        method: normalizedMethod,
+        url: requestUrl,
+        reportKey: buildReportKey(requestUrl, normalizedMethod),
+      });
+      return originalFetch(input, init);
+    };
+  });
 
   await page.goto(`${HOST}/__runner__.html`, { waitUntil: 'domcontentloaded' });
   if (scenario.preloadCache) {
@@ -355,6 +487,7 @@ async function runScenario(browser, scenario, dataset) {
   await page.addScriptTag({ url: `${HOST}/runtime.js?ts=${Date.now()}` });
   await waitForPanelReady(page, scenario.readyDelayMs == null ? 500 : scenario.readyDelayMs);
   await installStatusProbe(page);
+  await installRequestProbe(page);
 
   if (scenario.beforeStart) {
     await scenario.beforeStart(page, dataset);
@@ -396,9 +529,7 @@ async function runScenario(browser, scenario, dataset) {
   await page.waitForTimeout(200);
 
   const result = await getScenarioResult(page, downloadTriggered);
-  await page.close();
-  await context.close();
-  return {
+  const scenarioResult = {
     name: scenario.name,
     description: scenario.description,
     screenshot: scenario.screenshot,
@@ -407,6 +538,10 @@ async function runScenario(browser, scenario, dataset) {
     consoleMessages,
     pageErrors,
   };
+  validateScenarioResult(scenario, scenarioResult);
+  await page.close();
+  await context.close();
+  return scenarioResult;
 }
 
 async function runSavedVerification(browser, savedHtmlPath) {
@@ -493,6 +628,16 @@ function renderScenarioSection(lines, scenarioResult) {
   }
   if (scenarioResult.result.failureSummaryText) {
     lines.push(`- 실패 요약 UI: ${scenarioResult.result.failureSummaryText.replace(/\s+/g, ' ').trim()}`);
+  }
+  if (scenarioResult.result.requestProbe) {
+    lines.push(`- report 요청 수: ${scenarioResult.result.requestProbe.totalReportRequests || 0}`);
+    if (scenarioResult.result.requestProbe.duplicateReportKeys?.length) {
+      lines.push(`- duplicate report keys: ${scenarioResult.result.requestProbe.duplicateReportKeys.join(', ')}`);
+    }
+    if (scenarioResult.result.requestProbe.duplicateReportKeysAfterSave?.length) {
+      lines.push(`- duplicate report keys after save: ${scenarioResult.result.requestProbe.duplicateReportKeysAfterSave.join(', ')}`);
+    }
+    lines.push(`- collecting after waiting-refresh: ${scenarioResult.result.requestProbe.collectingAfterWaiting ? 'true' : 'false'}`);
   }
   if (scenarioResult.pageErrors.length) {
     lines.push(`- pageErrors: ${scenarioResult.pageErrors.join(' | ')}`);
@@ -618,6 +763,7 @@ async function main() {
       name: '07-background-download-boot-hidden',
       description: '부트 순간부터 패널을 숨긴 채 기존 저장 버튼 경로(downloadSnapshot)로 저장되는지 확인',
       screenshot: '07-background-download-boot-hidden.png',
+      readyDelayMs: 0,
       autoStart: true,
       bootRequest: { action: 'background-download', cleanupDelayMs: 1800 },
       preloadCache: async (page, dataset) => {
@@ -684,6 +830,8 @@ async function main() {
       name: '10-save-button-waits-auto-refresh',
       description: 'cache-expiry auto refresh가 이미 진행 중이면 저장 버튼이 waiting-refresh 상태로 합류하는지 확인',
       screenshot: '10-save-button-waits-auto-refresh.png',
+      expectNoCollectingAfterWaitingRefresh: true,
+      expectNoDuplicateReportKeysAfterSave: true,
       readyDelayMs: 0,
       preloadCache: async (page, dataset) => {
         await seedCache(page, dataset, expiredTimestamp);
@@ -707,6 +855,9 @@ async function main() {
       },
       captureState: 'waiting-refresh',
       captureTimeoutMs: 20000,
+      expectNoCollectingAfterWaitingRefresh: true,
+      expectNoDuplicateReportKeys: true,
+      expectNoDuplicateReportKeysAfterSave: true,
       beforeCapture: async (page) => {
         await page.waitForTimeout(300);
       },
@@ -715,6 +866,8 @@ async function main() {
       name: '11-direct-save-waits-auto-refresh',
       description: 'cache-expiry auto refresh가 이미 진행 중이면 directSave가 waiting-refresh 상태로 합류하는지 확인',
       screenshot: '11-direct-save-waits-auto-refresh.png',
+      expectNoCollectingAfterWaitingRefresh: true,
+      expectNoDuplicateReportKeysAfterSave: true,
       readyDelayMs: 0,
       preloadCache: async (page, dataset) => {
         await seedCache(page, dataset, expiredTimestamp);
@@ -735,6 +888,9 @@ async function main() {
       },
       captureState: 'waiting-refresh',
       captureTimeoutMs: 20000,
+      expectNoCollectingAfterWaitingRefresh: true,
+      expectNoDuplicateReportKeys: true,
+      expectNoDuplicateReportKeysAfterSave: true,
       beforeCapture: async (page) => {
         await page.waitForTimeout(300);
       },
@@ -743,6 +899,8 @@ async function main() {
       name: '12-background-download-waits-auto-refresh',
       description: 'cache-expiry auto refresh가 이미 진행 중이면 boot-hidden background download도 waiting-refresh로 합류하는지 확인',
       screenshot: '12-background-download-waits-auto-refresh.png',
+      expectNoCollectingAfterWaitingRefresh: true,
+      expectNoDuplicateReportKeysAfterSave: true,
       readyDelayMs: 0,
       autoStart: true,
       bootRequest: { action: 'background-download', cleanupDelayMs: 1800 },
@@ -765,17 +923,24 @@ async function main() {
       },
       captureState: 'waiting-refresh',
       captureTimeoutMs: 20000,
+      expectNoCollectingAfterWaitingRefresh: true,
+      expectNoDuplicateReportKeys: true,
+      expectNoDuplicateReportKeysAfterSave: true,
       captureProbe: true,
       beforeCapture: async (page) => {
         await page.waitForTimeout(300);
       },
     },
   ];
+  const activeScenarios =
+    SCENARIO_FILTER.length > 0
+      ? scenarios.filter((scenario) => SCENARIO_FILTER.includes(scenario.name))
+      : scenarios;
 
   const results = [];
   let savedVerification = null;
   try {
-    for (const scenario of scenarios) {
+    for (const scenario of activeScenarios) {
       console.log(`[direct-save-qa] start ${scenario.name}`);
       const result = await runScenario(browser, scenario, freshDataset);
       console.log(`[direct-save-qa] done ${scenario.name}`);

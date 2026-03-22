@@ -147,6 +147,21 @@ let fullRefreshInFlightPromise = null;
 let fullRefreshInFlightMeta = null;
 let cacheExpiryMonitorId = null;
 
+function buildFullRefreshSiteSignature() {
+  const sites = Array.isArray(allSites) ? allSites : [];
+  let hash = 2166136261;
+  for (let i = 0; i < sites.length; i++) {
+    const site = typeof sites[i] === "string" ? sites[i] : "";
+    for (let j = 0; j < site.length; j++) {
+      hash ^= site.charCodeAt(j);
+      hash = Math.imul(hash, 16777619);
+    }
+    hash ^= 124;
+    hash = Math.imul(hash, 16777619);
+  }
+  return sites.length + ":" + (hash >>> 0).toString(36);
+}
+
 function buildFullRefreshSaveReuseContext() {
   const runtimeKind =
     typeof window !== "undefined" && window.__SEARCHADVISOR_RUNTIME_KIND__
@@ -180,6 +195,7 @@ function buildFullRefreshSaveReuseContext() {
         : "",
     isMultiAccount: !!isMultiAccount,
     siteCount: Array.isArray(allSites) ? allSites.length : 0,
+    siteSignature: buildFullRefreshSiteSignature(),
   };
 }
 
@@ -192,7 +208,8 @@ function isReusableFullRefreshContextForSave(requestContext, inflightMeta) {
     inflightContext.accountEncId === requestContext.accountEncId &&
     inflightContext.accountLabel === requestContext.accountLabel &&
     inflightContext.isMultiAccount === requestContext.isMultiAccount &&
-    inflightContext.siteCount === requestContext.siteCount
+    inflightContext.siteCount === requestContext.siteCount &&
+    inflightContext.siteSignature === requestContext.siteSignature
   );
 }
 
@@ -213,13 +230,20 @@ function getReusableFullRefreshStatusForSave() {
         ? fullRefreshInFlightMeta.startedAt
         : null,
     context: requestContext,
+    promise: reusable ? fullRefreshInFlightPromise : null,
   };
 }
 
-async function awaitReusableFullRefreshPayloadForSave() {
-  const status = getReusableFullRefreshStatusForSave();
-  if (!status.reusable || !fullRefreshInFlightPromise) return null;
-  return await fullRefreshInFlightPromise;
+async function awaitReusableFullRefreshPayloadForSave(reusableHandle) {
+  const handle =
+    reusableHandle &&
+    reusableHandle.reusable &&
+    reusableHandle.promise &&
+    typeof reusableHandle.promise.then === "function"
+      ? reusableHandle
+      : null;
+  if (!handle.reusable || !handle.promise) return null;
+  return await handle.promise;
 }
 
 function stopCacheExpiryMonitor() {
@@ -296,6 +320,12 @@ async function runFullRefreshPipeline(options = {}) {
     labelEl.innerHTML = sanitizeHTML("<span>\uc804\uccb4 \uc7ac\uc218\uc9d1 \uc9c4\ud589 \uc911</span>");
   }
   const btn = options && options.button ? options.button : null;
+  recordRuntimeEvent("collect-export-start", {
+    source: "full-refresh",
+    trigger: trigger,
+    refreshMode: "refresh",
+    siteCount: allSites.length,
+  });
   const payload = await collectExportData(
     function (done, total, site, stats) {
       const safeTotal = Math.max(1, total);
@@ -318,6 +348,13 @@ async function runFullRefreshPipeline(options = {}) {
     },
     { refreshMode: "refresh" },
   );
+  recordRuntimeEvent("collect-export-complete", {
+    source: "full-refresh",
+    trigger: trigger,
+    refreshMode: "refresh",
+    siteCount: payload && payload.summaryRows ? payload.summaryRows.length : allSites.length,
+    stats: payload && payload.stats ? payload.stats : null,
+  });
   window.__sadvRows = payload.summaryRows;
   buildCombo(payload.summaryRows);
   assignColors();

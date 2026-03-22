@@ -172,6 +172,8 @@ actions = {
 - 저장 버튼/download/directSave/background save는 **이미 진행 중인 `cache-expiry` refresh만** 재사용할 수 있다.
 - 저장이 refresh를 새로 시작하는 것이 아니라,
   **이미 돌고 있는 auto refresh가 있을 때만** 그 payload를 받아 저장에 재사용한다.
+- 이때 save 경로는 재사용 가능하다고 판정한 **그 순간의 in-flight promise를 직접 캡처**해야 한다.
+  즉, `waiting-refresh` 상태만 찍고 나중에 다시 재판정하는 구조는 허용하지 않는다.
 - 이때 save 시작 시점의 `curMode/curSite/curTab/allSitesPeriodDays`는
   canonical selection snapshot으로 고정한다.
 - 합류한 refresh가 `failed`/`blocked`면 save도 그대로 실패/차단으로 끝나야 하며,
