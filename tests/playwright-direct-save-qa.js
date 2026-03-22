@@ -363,6 +363,7 @@ async function getScenarioResult(page, downloadTriggered) {
 
 function validateScenarioResult(scenario, scenarioResult) {
   const requestProbe = scenarioResult.result.requestProbe || {};
+  const collectProbe = scenarioResult.result.collectProbe || {};
   if (scenario.expectNoCollectingAfterWaitingRefresh && requestProbe.collectingAfterWaiting) {
     throw new Error(
       `[${scenario.name}] waiting-refresh 이후 collecting 상태가 다시 발생했습니다.`
@@ -385,6 +386,24 @@ function validateScenarioResult(scenario, scenarioResult) {
     throw new Error(
       `[${scenario.name}] save 시작 이후 중복 report 요청이 감지됐습니다: ${requestProbe.duplicateReportKeysAfterSave.join(', ')}`
     );
+  }
+  if (scenario.expectedCollectStartsBySource && collectProbe.bySource) {
+    const expectedEntries = Object.entries(scenario.expectedCollectStartsBySource);
+    const mismatched = expectedEntries.filter(([source, expectedCount]) => {
+      const actualCount = collectProbe.bySource[source] || 0;
+      return actualCount !== expectedCount;
+    });
+    if (mismatched.length > 0) {
+      throw new Error(
+        `[${scenario.name}] collect-export-start source mismatch: ` +
+          mismatched
+            .map(([source, expectedCount]) => {
+              const actualCount = collectProbe.bySource[source] || 0;
+              return `${source} expected=${expectedCount} actual=${actualCount}`;
+            })
+            .join(', ')
+      );
+    }
   }
 }
 
@@ -638,6 +657,12 @@ function renderScenarioSection(lines, scenarioResult) {
       lines.push(`- duplicate report keys after save: ${scenarioResult.result.requestProbe.duplicateReportKeysAfterSave.join(', ')}`);
     }
     lines.push(`- collecting after waiting-refresh: ${scenarioResult.result.requestProbe.collectingAfterWaiting ? 'true' : 'false'}`);
+  }
+  if (scenarioResult.result.collectProbe) {
+    lines.push(`- collect-export-start total: ${scenarioResult.result.collectProbe.totalCollectStarts || 0}`);
+    if (scenarioResult.result.collectProbe.bySource) {
+      lines.push(`- collect-export-start by source: ${JSON.stringify(scenarioResult.result.collectProbe.bySource)}`);
+    }
   }
   if (scenarioResult.pageErrors.length) {
     lines.push(`- pageErrors: ${scenarioResult.pageErrors.join(' | ')}`);
