@@ -146,6 +146,9 @@ actions = {
   - UI overlay, 전역 mirror 상태, public facade가 같은 상태 객체를 보도록 유지한다.
   - 상태 객체는 `runtimeType` 외에도 `uiHidden` 플래그를 노출해,
     headless directSave 여부를 DOM 없이도 판별할 수 있어야 한다.
+  - 상태 객체는 `waiting-runtime`을 별도 상태로 구분해,
+    “현재 패널이 이미 진행 중인 초기 로딩(all-sites/site-view)을 재사용하기 위해 대기 중”이라는 의미를
+    외부 드라이버와 사용자에게 같이 전달해야 한다.
   - 상태 객체는 `waiting-refresh`를 별도 상태로 구분해,
     “저장 요청은 접수됐지만 기존 cache-expiry refresh를 재사용하기 위해 대기 중”이라는 의미를
     외부 드라이버와 사용자에게 같이 전달해야 한다.
@@ -172,6 +175,9 @@ actions = {
 - 저장 버튼/download/directSave/background save는 **이미 진행 중인 `cache-expiry` refresh만** 재사용할 수 있다.
 - 저장이 refresh를 새로 시작하는 것이 아니라,
   **이미 돌고 있는 auto refresh가 있을 때만** 그 payload를 받아 저장에 재사용한다.
+- 또한 저장 직전 패널이 `renderAllSites()` / `loadSiteView()` 초기 로딩을 진행 중이면,
+  save는 그 in-flight 작업이 끝날 때까지 기다렸다가 refresh 필요 여부를 다시 판단해야 한다.
+  즉 패널 초기 로딩과 save collect가 동시에 같은 데이터를 다시 요청하면 안 된다.
 - 이때 save 경로는 재사용 가능하다고 판정한 **그 순간의 in-flight promise를 직접 캡처**해야 한다.
   즉, `waiting-refresh` 상태만 찍고 나중에 다시 재판정하는 구조는 허용하지 않는다.
 - 이때 save 시작 시점의 `curMode/curSite/curTab/allSitesPeriodDays`는

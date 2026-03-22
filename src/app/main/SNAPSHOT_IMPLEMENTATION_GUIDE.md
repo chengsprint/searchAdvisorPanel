@@ -281,6 +281,12 @@
     `blocked`는 정책상 다운로드를 멈춘 상태라는 의미로 구분한다.
 - auto refresh와 save가 경쟁할 때는 save가 별도 `collectExportData()`를 또 시작하지 않도록 주의한다.
   - 이미 진행 중인 `cache-expiry` refresh만 save가 재사용할 수 있다.
+  - 또한 패널이 이미 `renderAllSites()` / `loadSiteView()` 초기 로딩을 진행 중이면,
+    save는 해당 in-flight 작업을 먼저 재사용하고 나서 refresh 필요 여부를 다시 판단해야 한다.
+    즉 실사용 경쟁 상대는 auto refresh뿐 아니라 초기 all-sites/site-view fetch도 포함된다.
+  - 이때 save status는 상황에 따라 `waiting-runtime` 또는 `waiting-refresh`를 거칠 수 있다.
+    - `waiting-runtime`: 현재 화면 기본 데이터 로딩 대기
+    - `waiting-refresh`: 이미 진행 중인 auto refresh 결과 대기
   - 이때 save status는 `waiting-refresh`를 먼저 거친다.
   - `waiting-refresh`로 들어간 뒤에는, 재사용 가능하다고 판정한 시점의 in-flight refresh promise를
     그대로 await 해야 한다. 나중에 다시 재판정해서 fallback collect로 내려가면 경쟁 버그가 재발한다.
@@ -288,7 +294,9 @@
     재사용한 refresh payload의 `ui`에도 그 snapshot을 덮어써야 한다.
   - 즉 “최신 payload 재사용”과 “save 요청 시점 selection 고정”을 같이 유지해야 parity가 안 깨진다.
   - QA도 `waiting-refresh` 상태 진입만 보지 말고,
-    `waiting-refresh -> collecting` 금지와 `/api-console/report/` 요청 key 중복 금지까지 같이 검증해야 한다.
+    `waiting-refresh -> collecting` 금지,
+    `waiting-runtime` 이후 중복 collect 재시작 금지,
+    `/api-console/report/` 요청 key 중복 금지까지 같이 검증해야 한다.
 - background download boot contract는
   - `SEARCHADVISOR_BOOT.REQUEST_WINDOW_KEY`
   - `SEARCHADVISOR_BOOT.ACTIONS.BACKGROUND_DOWNLOAD`

@@ -213,6 +213,8 @@ function buildSnapshotSaveOverlayTitle(status) {
   const state = status && typeof status.state === "string" ? status.state : "idle";
   if (status && status.stageLabel) return status.stageLabel;
   if (state === "checking-cache") return "저장 준비 중";
+  if (state === "waiting-runtime") return "현재 화면 데이터 대기 중";
+  if (state === "starting-refresh") return "최신 데이터 갱신 시작 중";
   if (state === "waiting-refresh") return "자동 갱신 결과 대기 중";
   if (state === "refreshing") return "최신 데이터 갱신 중";
   if (state === "collecting") return "저장 데이터 수집 중";
@@ -231,6 +233,8 @@ function buildSnapshotSaveOverlayAccent(status) {
   if (state === "completed") return C.green;
   if (state === "blocked") return C.red;
   if (state === "failed") return C.red;
+  if (state === "waiting-runtime") return C.blue;
+  if (state === "starting-refresh") return C.blue;
   if (state === "waiting-refresh") return C.blue;
   if (state === "refreshing") return C.blue;
   if (state === "checking-cache") return C.amber;
@@ -445,6 +449,31 @@ function resolveSnapshotSaveRefreshLease(decision, options) {
     bootstrapStatus: null,
     promise: reusableHandle.promise || null,
   };
+}
+
+function resolveSnapshotRuntimeBootstrapLeaseForSave(requestContext) {
+  if (!requestContext || (requestContext.options && requestContext.options.payload)) {
+    return { reusable: false, kind: null, promise: null };
+  }
+  const selectionSnapshot = requestContext.selectionSnapshot || null;
+  const currentMode =
+    selectionSnapshot && selectionSnapshot.curMode === "site" ? "site" : "all";
+  if (currentMode === "all" && typeof getAllSitesRenderLeaseForSave === "function") {
+    const lease = getAllSitesRenderLeaseForSave();
+    if (lease && lease.reusable) return lease;
+  }
+  if (currentMode === "site" && typeof getSiteViewLoadLeaseForSave === "function") {
+    const lease = getSiteViewLoadLeaseForSave();
+    if (lease && lease.reusable) return lease;
+  }
+  return { reusable: false, kind: null, promise: null };
+}
+
+function buildSnapshotWaitingRuntimeDetail(runtimeLease) {
+  if (runtimeLease && runtimeLease.kind === "site-view-load") {
+    return "현재 사이트 상세 데이터를 이미 불러오는 중입니다. 같은 요청을 다시 시작하지 않고, 현재 화면 준비가 끝나면 바로 저장합니다.";
+  }
+  return "현재 화면에 필요한 기본 데이터를 이미 불러오는 중입니다. 같은 요청을 다시 시작하지 않고, 화면 준비가 끝나면 바로 저장합니다.";
 }
 
 async function collectSnapshotSavePayloadCacheFirst(requestContext, decision, btn) {
@@ -1075,13 +1104,13 @@ function restoreSnapshotSaveButton(btn, originalText) {
       const restoreHeadlessUi = requestContext.headlessMode
         ? createSnapshotHeadlessUiRestore()
         : null;
-      const decision =
+      const explicitDecision =
         requestContext.options &&
         requestContext.options.cacheDecision &&
         typeof requestContext.options.cacheDecision === "object"
           ? requestContext.options.cacheDecision
-          : buildDirectSaveRefreshDecision();
-      const refreshLease = resolveSnapshotSaveRefreshLease(decision, requestContext.options);
+          : null;
+      let decision = explicitDecision || buildDirectSaveRefreshDecision();
       const btn = document.getElementById("sadv-save-btn");
       try {
         setSnapshotSaveOverlaySuppressed(requestContext.headlessMode);
@@ -1107,6 +1136,30 @@ function restoreSnapshotSaveButton(btn, originalText) {
           site: null,
           error: null,
         });
+        const runtimeBootstrapLease = resolveSnapshotRuntimeBootstrapLeaseForSave(requestContext);
+        if (runtimeBootstrapLease && runtimeBootstrapLease.reusable && runtimeBootstrapLease.promise) {
+          pushSnapshotSaveStatus({
+            active: true,
+            state: "waiting-runtime",
+            phase: "prepare",
+            uiHidden: requestContext.headlessMode,
+            stageLabel: "현재 화면 데이터 대기 중",
+            detail: buildSnapshotWaitingRuntimeDetail(runtimeBootstrapLease),
+            cacheDecision: decision,
+          });
+          await runtimeBootstrapLease.promise;
+          decision = explicitDecision || buildDirectSaveRefreshDecision();
+          pushSnapshotSaveStatus({
+            active: true,
+            state: "checking-cache",
+            phase: "prepare",
+            uiHidden: requestContext.headlessMode,
+            stageLabel: "저장 준비 중",
+            detail: buildDirectSaveDecisionDetail(decision),
+            cacheDecision: decision,
+          });
+        }
+        const refreshLease = resolveSnapshotSaveRefreshLease(decision, requestContext.options);
         const payload = await acquireSnapshotSavePayloadForExecution(
           requestContext,
           decision,
