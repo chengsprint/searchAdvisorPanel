@@ -49,9 +49,25 @@ if (typeof window !== "undefined") {
       injectDemoData(); // Inject mock data if on localhost
       assignColors();
       const cachedUiState = getCachedUiState();
-      shouldBootstrapFullRefresh() && runFullRefreshPipeline({ trigger: "cache-expiry" });
       let bootMode = CONFIG.MODE.ALL;
       let bootSite = null;
+      const applyBootShellState = function (mode, site) {
+        if (mode === CONFIG.MODE.SITE && site) {
+          curMode = CONFIG.MODE.SITE;
+          modeBar.querySelectorAll(".sadv-mode").forEach((b) => b.classList.remove("on"));
+          const siteModeBtn = modeBar.querySelector('[data-m="site"]');
+          if (siteModeBtn) siteModeBtn.classList.add("on");
+          siteBar.classList.add("show");
+          tabsEl.classList.add("show");
+          return;
+        }
+        curMode = CONFIG.MODE.ALL;
+        modeBar.querySelectorAll(".sadv-mode").forEach((b) => b.classList.remove("on"));
+        const allModeBtn = modeBar.querySelector('[data-m="all"]');
+        if (allModeBtn) allModeBtn.classList.add("on");
+        siteBar.classList.remove("show");
+        tabsEl.classList.remove("show");
+      };
       // In demo mode, default to site mode with first demo site
       if (IS_DEMO_MODE && allSites.length > 0) {
         bootMode = CONFIG.MODE.SITE;
@@ -86,20 +102,42 @@ if (typeof window !== "undefined") {
       ensureCurrentSite();
       buildCombo(null);
       if (curSite) setComboSite(curSite);
-      if (bootMode === CONFIG.MODE.SITE && curSite && modeBar && siteBar && tabsEl) {
-        curMode = CONFIG.MODE.SITE;
-        modeBar.querySelectorAll(".sadv-mode").forEach((b) => b.classList.remove("on"));
-        const siteModeBtn = modeBar.querySelector('[data-m="site"]');
-        if (siteModeBtn) siteModeBtn.classList.add("on");
-        siteBar.classList.add("show");
-        tabsEl.classList.add("show");
-        loadSiteView(curSite);
-      } else {
-        if (bootMode === CONFIG.MODE.SITE && curSite && (!modeBar || !siteBar || !tabsEl)) {
-          console.error("[Init] Site mode UI scaffold missing, falling back to all-sites view.");
+      const refreshStatus =
+        typeof getBootstrapFullRefreshStatus === "function"
+          ? getBootstrapFullRefreshStatus()
+          : {
+              shouldRefresh:
+                typeof shouldBootstrapFullRefresh === "function" ? shouldBootstrapFullRefresh() : false,
+              reason: null,
+            };
+      const startupRefreshFirst = !IS_DEMO_MODE && !!(refreshStatus && refreshStatus.shouldRefresh);
+      // startup owner arbitration:
+      // cache/site-data miss가 감지된 직후에는 panel bootstrap fetch(renderAllSites/loadSiteView)와
+      // cache-expiry full refresh가 같은 report key를 동시에 owner처럼 잡으면 안 된다.
+      // 따라서 live startup에서는 refresh-first를 우선 owner로 두고,
+      // panel bootstrap은 shell state/selection만 준비한 뒤 refresh 결과를 소비하게 만든다.
+      applyBootShellState(bootMode, curSite);
+      if (startupRefreshFirst) {
+        if (typeof recordRuntimeEvent === "function") {
+          recordRuntimeEvent("startup-refresh-arbitrated", {
+            mode: bootMode,
+            site: curSite || null,
+            reason: refreshStatus.reason || null,
+          });
         }
-        setAllSitesLabel();
-        renderAllSites();
+        runFullRefreshPipeline({ trigger: "cache-expiry" }).catch(function (error) {
+          console.error("[Init] Startup refresh-first pipeline failed:", error);
+        });
+      } else {
+        if (bootMode === CONFIG.MODE.SITE && curSite && modeBar && siteBar && tabsEl) {
+          loadSiteView(curSite);
+        } else {
+          if (bootMode === CONFIG.MODE.SITE && curSite && (!modeBar || !siteBar || !tabsEl)) {
+            console.error("[Init] Site mode UI scaffold missing, falling back to all-sites view.");
+          }
+          setAllSitesLabel();
+          renderAllSites();
+        }
       }
       setCachedUiState();
       startCacheExpiryMonitor();
