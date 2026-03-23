@@ -10,6 +10,8 @@
 // - 이 파일은 XLSX "정책 owner"가 아니라 workbook commit leaf다.
 //   blocked/waiting/refresh/startup owner 판단은 여전히 runSnapshotSaveExecution()
 //   쪽에서 끝나 있어야 한다.
+// - 새 시트는 extractor + column 계약 + README 설명 + QA를 함께 갱신하는 방식으로만 추가한다.
+// - 즉 이 파일에서는 save 판단/blocked 판단/refresh 판단을 새로 만들지 않는다.
 // - 외부 SheetJS 로딩은 실패/타임아웃/CSP 차단 가능성이 있으므로,
 //   실패 script는 제거하고 promise를 초기화해 다음 수동 시도에서 재시도 가능해야 한다.
 const SNAPSHOT_XLSX_STANDALONE_URL =
@@ -49,6 +51,8 @@ function ensureSnapshotXlsxLibrary() {
   if (typeof window === "undefined") {
     return Promise.reject(new Error("xlsx export requires a browser runtime"));
   }
+  // 이 경로의 주 리스크는 기능 리그레션보다 외부 CDN/CSP/네트워크 환경 차이에 가깝다.
+  // 따라서 timeout/cleanup/retry reset을 통해 실패 후 다음 수동 시도를 보장한다.
   if (hasUsableSnapshotXlsxGlobal(window.XLSX)) {
     return Promise.resolve(window.XLSX);
   }
@@ -565,6 +569,7 @@ function buildSnapshotXlsxCrawlRows(savedAt, payload, fallbackContext) {
   const exportedAt = getSnapshotXlsxExportedAt(savedAt);
   const runtimeTypeLabel = getSnapshotXlsxRuntimeTypeLabel(getSnapshotXlsxRuntimeType(payload));
   const periodDays = getSnapshotXlsxPeriodDays(payload);
+  // 크롤 시트는 1행 = 1사이트 × 1날짜 fact row로 유지한다.
   return getSnapshotXlsxSiteEntries(payload, fallbackContext).flatMap(function (entry) {
     const crawlItem =
       entry &&
@@ -605,6 +610,8 @@ function buildSnapshotXlsxBacklinkRows(savedAt, payload, fallbackContext) {
   const exportedAt = getSnapshotXlsxExportedAt(savedAt);
   const runtimeTypeLabel = getSnapshotXlsxRuntimeTypeLabel(getSnapshotXlsxRuntimeType(payload));
   const periodDays = getSnapshotXlsxPeriodDays(payload);
+  // 백링크 시트는 topDomain 기준 1행 = 1사이트 × 1도메인 grain을 사용한다.
+  // countTime 시계열은 latest summary 용도로만 참고하고 별도 시계열 시트로는 아직 분리하지 않는다.
   return getSnapshotXlsxSiteEntries(payload, fallbackContext).flatMap(function (entry) {
     const backlinkItem =
       entry &&
@@ -810,11 +817,18 @@ function buildSnapshotXlsxReadmeSheet(XLSX, savedAt, payload, dailyRows, summary
     ["백링크 행 수", backlinkRows.length],
     ["워크북 버전", "xlsx-phase1-expanded-plus"],
     ["메인 시트", SNAPSHOT_XLSX_SHEET_NAMES.daily],
-    ["행 기준", "1행 = 1사이트 × 1날짜"],
+    ["대표 조인 키", "사이트 / 날짜 / 계정 라벨"],
+    ["사이트 일별 기준", "1행 = 1사이트 × 1날짜"],
+    ["검색어 기준", "1행 = 1사이트 × 1검색어"],
+    ["페이지 기준", "1행 = 1사이트 × 1URL"],
+    ["색인 기준", "1행 = 1사이트 × 1날짜"],
+    ["크롤 기준", "1행 = 1사이트 × 1날짜"],
+    ["백링크 기준", "1행 = 1사이트 × 1도메인"],
+    ["주의사항", "검색어/페이지/백링크는 최신 스냅샷 기준 상세 테이블이고, 사이트 일별/색인/크롤은 날짜 기준 시계열 테이블입니다."],
     ["설명", "기존 HTML 저장 계약을 재사용하고, 사이트 일별/요약/메타에 더해 검색어·페이지·색인·크롤·백링크 시트를 함께 제공합니다."],
   ];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws["!cols"] = [{ wch: 22 }, { wch: 48 }];
+  ws["!cols"] = [{ wch: 22 }, { wch: 72 }];
   return ws;
 }
 

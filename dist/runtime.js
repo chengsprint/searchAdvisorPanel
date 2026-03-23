@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-23T13:28:38Z";
-var __SADV_GIT_HEAD__="d4931cd";
+var __SADV_BUILD_STAMP__="2026-03-23T13:32:59Z";
+var __SADV_GIT_HEAD__="884dc2b";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -16953,11 +16953,18 @@ function buildSnapshotXlsxReadmeSheet(XLSX, savedAt, payload, dailyRows, summary
     ["백링크 행 수", backlinkRows.length],
     ["워크북 버전", "xlsx-phase1-expanded-plus"],
     ["메인 시트", SNAPSHOT_XLSX_SHEET_NAMES.daily],
-    ["행 기준", "1행 = 1사이트 × 1날짜"],
+    ["대표 조인 키", "사이트 / 날짜 / 계정 라벨"],
+    ["사이트 일별 기준", "1행 = 1사이트 × 1날짜"],
+    ["검색어 기준", "1행 = 1사이트 × 1검색어"],
+    ["페이지 기준", "1행 = 1사이트 × 1URL"],
+    ["색인 기준", "1행 = 1사이트 × 1날짜"],
+    ["크롤 기준", "1행 = 1사이트 × 1날짜"],
+    ["백링크 기준", "1행 = 1사이트 × 1도메인"],
+    ["주의사항", "검색어/페이지/백링크는 최신 스냅샷 기준 상세 테이블이고, 사이트 일별/색인/크롤은 날짜 기준 시계열 테이블입니다."],
     ["설명", "기존 HTML 저장 계약을 재사용하고, 사이트 일별/요약/메타에 더해 검색어·페이지·색인·크롤·백링크 시트를 함께 제공합니다."],
   ];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws["!cols"] = [{ wch: 22 }, { wch: 48 }];
+  ws["!cols"] = [{ wch: 22 }, { wch: 72 }];
   return ws;
 }
 
