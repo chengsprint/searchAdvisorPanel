@@ -586,7 +586,12 @@ function resolveSnapshotSaveRequestContext(options) {
     typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
   return {
     options: options || {},
+    entryPoint:
+      options && typeof options.entryPoint === "string" && options.entryPoint
+        ? options.entryPoint
+        : "unknown",
     runtimeSites: runtimeSites,
+    runtimeType: getSnapshotSaveRuntimeType(),
     startedAt:
       options && typeof options.startedAt === "number" ? options.startedAt : Date.now(),
     headlessMode: getDirectSaveHeadlessMode(options),
@@ -598,6 +603,54 @@ function resolveSnapshotSaveRequestContext(options) {
     capabilities:
       typeof getRuntimeCapabilities === "function" ? getRuntimeCapabilities() : null,
   };
+}
+
+function buildSnapshotOutputAvailabilityDecision(requestContext) {
+  const outputFormat =
+    requestContext &&
+    requestContext.outputMeta &&
+    typeof requestContext.outputMeta.outputFormat === "string"
+      ? requestContext.outputMeta.outputFormat
+      : "html";
+  if (outputFormat !== "xlsx") {
+    return { allowed: true, reason: null, detail: "", userMessage: "", technicalMessage: "" };
+  }
+  const runtimeType =
+    requestContext && typeof requestContext.runtimeType === "string"
+      ? requestContext.runtimeType
+      : getSnapshotSaveRuntimeType();
+  if (runtimeType !== "live") {
+    return {
+      allowed: false,
+      reason: "xlsx-live-only",
+      detail: "엑셀 저장은 라이브 패널에서만 지원해요.",
+      userMessage: "엑셀 저장은 라이브 패널에서만 지원해요.",
+      technicalMessage: "xlsx export is restricted to live runtime",
+    };
+  }
+  if (requestContext && requestContext.headlessMode) {
+    return {
+      allowed: false,
+      reason: "xlsx-manual-only",
+      detail: "엑셀 저장은 라이브 패널에서 직접 눌러 저장할 때만 지원해요.",
+      userMessage: "엑셀 저장은 라이브 패널에서 직접 눌러 저장할 때만 지원해요.",
+      technicalMessage: "xlsx export is restricted to visible manual live entry",
+    };
+  }
+  const entryPoint =
+    requestContext && typeof requestContext.entryPoint === "string"
+      ? requestContext.entryPoint
+      : "";
+  if (entryPoint !== "button-xlsx") {
+    return {
+      allowed: false,
+      reason: "xlsx-manual-only",
+      detail: "엑셀 저장은 라이브 패널의 엑셀 버튼에서만 지원해요.",
+      userMessage: "엑셀 저장은 라이브 패널의 엑셀 버튼에서만 지원해요.",
+      technicalMessage: "xlsx export is restricted to button-xlsx entry",
+    };
+  }
+  return { allowed: true, reason: null, detail: "", userMessage: "", technicalMessage: "" };
 }
 
 function resolveSnapshotSaveRefreshLease(decision, options) {
@@ -1352,7 +1405,57 @@ async function runSnapshotSaveExecution(options) {
   // - 그 이후에는 캡처한 lease/payload만 소비해야 하며, entrypoint별 별도 save policy를 다시 만들면 안 된다.
   if (snapshotSaveRequestInFlightPromise) return snapshotSaveRequestInFlightPromise;
   const requestContext = resolveSnapshotSaveRequestContext(options);
+    const outputAvailabilityDecision = buildSnapshotOutputAvailabilityDecision(requestContext);
     if (requestContext.capabilities && !requestContext.capabilities.canSave) return false;
+    if (!outputAvailabilityDecision.allowed) {
+      showError(
+        outputAvailabilityDecision.userMessage,
+        outputAvailabilityDecision.technicalMessage,
+        "runSnapshotSaveExecution-output-not-allowed",
+        {
+          dedupeKey:
+            "runSnapshotSaveExecution-output-not-allowed::" +
+            requestContext.outputMeta.outputFormat +
+            "::" +
+            outputAvailabilityDecision.reason,
+          dedupeWindowMs: 1500,
+        },
+      );
+      pushSnapshotSaveStatus({
+        __replace: true,
+        active: false,
+        state: "blocked",
+        phase: "prepare",
+        uiHidden: requestContext.headlessMode,
+        outputFormat: requestContext.outputMeta.outputFormat,
+        stageLabel: requestContext.outputMeta.blockedTitle,
+        detail: outputAvailabilityDecision.detail,
+        startedAt: requestContext.startedAt,
+        completedAt: Date.now(),
+        progress: {
+          done: 0,
+          total: requestContext.runtimeSites.length,
+          ratio: 0,
+          percent: 0,
+        },
+        mirroredProgress: null,
+        stats: { success: 0, partial: 0, failed: 0, errors: [] },
+        cacheDecision: null,
+        fileName: null,
+        site: null,
+        error: {
+          message: outputAvailabilityDecision.userMessage,
+          context: "runSnapshotSaveExecution-output-not-allowed",
+        },
+      });
+      return {
+        ok: false,
+        status: "blocked",
+        reason: outputAvailabilityDecision.reason,
+        downloaded: false,
+        outputFormat: requestContext.outputMeta.outputFormat,
+      };
+    }
     snapshotSaveRequestInFlightPromise = (async function () {
       const restoreHeadlessUi = requestContext.headlessMode
         ? createSnapshotHeadlessUiRestore()

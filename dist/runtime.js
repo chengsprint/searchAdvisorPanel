@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-23T09:45:45Z";
-var __SADV_GIT_HEAD__="50f4f20";
+var __SADV_BUILD_STAMP__="2026-03-23T09:58:00Z";
+var __SADV_GIT_HEAD__="8b4745e";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -12347,7 +12347,12 @@ function resolveSnapshotSaveRequestContext(options) {
     typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
   return {
     options: options || {},
+    entryPoint:
+      options && typeof options.entryPoint === "string" && options.entryPoint
+        ? options.entryPoint
+        : "unknown",
     runtimeSites: runtimeSites,
+    runtimeType: getSnapshotSaveRuntimeType(),
     startedAt:
       options && typeof options.startedAt === "number" ? options.startedAt : Date.now(),
     headlessMode: getDirectSaveHeadlessMode(options),
@@ -12359,6 +12364,54 @@ function resolveSnapshotSaveRequestContext(options) {
     capabilities:
       typeof getRuntimeCapabilities === "function" ? getRuntimeCapabilities() : null,
   };
+}
+
+function buildSnapshotOutputAvailabilityDecision(requestContext) {
+  const outputFormat =
+    requestContext &&
+    requestContext.outputMeta &&
+    typeof requestContext.outputMeta.outputFormat === "string"
+      ? requestContext.outputMeta.outputFormat
+      : "html";
+  if (outputFormat !== "xlsx") {
+    return { allowed: true, reason: null, detail: "", userMessage: "", technicalMessage: "" };
+  }
+  const runtimeType =
+    requestContext && typeof requestContext.runtimeType === "string"
+      ? requestContext.runtimeType
+      : getSnapshotSaveRuntimeType();
+  if (runtimeType !== "live") {
+    return {
+      allowed: false,
+      reason: "xlsx-live-only",
+      detail: "엑셀 저장은 라이브 패널에서만 지원해요.",
+      userMessage: "엑셀 저장은 라이브 패널에서만 지원해요.",
+      technicalMessage: "xlsx export is restricted to live runtime",
+    };
+  }
+  if (requestContext && requestContext.headlessMode) {
+    return {
+      allowed: false,
+      reason: "xlsx-manual-only",
+      detail: "엑셀 저장은 라이브 패널에서 직접 눌러 저장할 때만 지원해요.",
+      userMessage: "엑셀 저장은 라이브 패널에서 직접 눌러 저장할 때만 지원해요.",
+      technicalMessage: "xlsx export is restricted to visible manual live entry",
+    };
+  }
+  const entryPoint =
+    requestContext && typeof requestContext.entryPoint === "string"
+      ? requestContext.entryPoint
+      : "";
+  if (entryPoint !== "button-xlsx") {
+    return {
+      allowed: false,
+      reason: "xlsx-manual-only",
+      detail: "엑셀 저장은 라이브 패널의 엑셀 버튼에서만 지원해요.",
+      userMessage: "엑셀 저장은 라이브 패널의 엑셀 버튼에서만 지원해요.",
+      technicalMessage: "xlsx export is restricted to button-xlsx entry",
+    };
+  }
+  return { allowed: true, reason: null, detail: "", userMessage: "", technicalMessage: "" };
 }
 
 function resolveSnapshotSaveRefreshLease(decision, options) {
@@ -13113,7 +13166,57 @@ async function runSnapshotSaveExecution(options) {
   // - 그 이후에는 캡처한 lease/payload만 소비해야 하며, entrypoint별 별도 save policy를 다시 만들면 안 된다.
   if (snapshotSaveRequestInFlightPromise) return snapshotSaveRequestInFlightPromise;
   const requestContext = resolveSnapshotSaveRequestContext(options);
+    const outputAvailabilityDecision = buildSnapshotOutputAvailabilityDecision(requestContext);
     if (requestContext.capabilities && !requestContext.capabilities.canSave) return false;
+    if (!outputAvailabilityDecision.allowed) {
+      showError(
+        outputAvailabilityDecision.userMessage,
+        outputAvailabilityDecision.technicalMessage,
+        "runSnapshotSaveExecution-output-not-allowed",
+        {
+          dedupeKey:
+            "runSnapshotSaveExecution-output-not-allowed::" +
+            requestContext.outputMeta.outputFormat +
+            "::" +
+            outputAvailabilityDecision.reason,
+          dedupeWindowMs: 1500,
+        },
+      );
+      pushSnapshotSaveStatus({
+        __replace: true,
+        active: false,
+        state: "blocked",
+        phase: "prepare",
+        uiHidden: requestContext.headlessMode,
+        outputFormat: requestContext.outputMeta.outputFormat,
+        stageLabel: requestContext.outputMeta.blockedTitle,
+        detail: outputAvailabilityDecision.detail,
+        startedAt: requestContext.startedAt,
+        completedAt: Date.now(),
+        progress: {
+          done: 0,
+          total: requestContext.runtimeSites.length,
+          ratio: 0,
+          percent: 0,
+        },
+        mirroredProgress: null,
+        stats: { success: 0, partial: 0, failed: 0, errors: [] },
+        cacheDecision: null,
+        fileName: null,
+        site: null,
+        error: {
+          message: outputAvailabilityDecision.userMessage,
+          context: "runSnapshotSaveExecution-output-not-allowed",
+        },
+      });
+      return {
+        ok: false,
+        status: "blocked",
+        reason: outputAvailabilityDecision.reason,
+        downloaded: false,
+        outputFormat: requestContext.outputMeta.outputFormat,
+      };
+    }
     snapshotSaveRequestInFlightPromise = (async function () {
       const restoreHeadlessUi = requestContext.headlessMode
         ? createSnapshotHeadlessUiRestore()
@@ -16045,47 +16148,108 @@ function renderFailureSummary(stats) {
 // 현재 runtime 빌드는 import/require 번들러가 아니라 단순 concat IIFE다.
 // 따라서 XLSX는 node-style dependency를 직접 끼워넣기보다,
 // 공식 standalone browser build를 필요 시점에만 로드하는 방식이 가장 안전하다.
+//
+// 중요:
+// - 이 파일은 XLSX "정책 owner"가 아니라 workbook commit leaf다.
+//   blocked/waiting/refresh/startup owner 판단은 여전히 runSnapshotSaveExecution()
+//   쪽에서 끝나 있어야 한다.
+// - 외부 SheetJS 로딩은 실패/타임아웃/CSP 차단 가능성이 있으므로,
+//   실패 script는 제거하고 promise를 초기화해 다음 수동 시도에서 재시도 가능해야 한다.
 const SNAPSHOT_XLSX_STANDALONE_URL =
   "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js";
+const SNAPSHOT_XLSX_LIBRARY_TIMEOUT_MS = 15000;
 let snapshotXlsxLibraryPromise = null;
+
+function hasUsableSnapshotXlsxGlobal(XLSX) {
+  return !!(
+    XLSX &&
+    XLSX.utils &&
+    typeof XLSX.write === "function" &&
+    typeof XLSX.utils.book_new === "function" &&
+    typeof XLSX.utils.book_append_sheet === "function" &&
+    typeof XLSX.utils.aoa_to_sheet === "function"
+  );
+}
 
 function ensureSnapshotXlsxLibrary() {
   if (typeof window === "undefined") {
     return Promise.reject(new Error("xlsx export requires a browser runtime"));
   }
-  if (window.XLSX && window.XLSX.utils && typeof window.XLSX.write === "function") {
+  if (hasUsableSnapshotXlsxGlobal(window.XLSX)) {
     return Promise.resolve(window.XLSX);
   }
   if (snapshotXlsxLibraryPromise) return snapshotXlsxLibraryPromise;
   snapshotXlsxLibraryPromise = new Promise(function (resolve, reject) {
-    const existing = document.querySelector('script[data-sadv-xlsx-lib="sheetjs"]');
+    let timeoutId = null;
+    const finishWithError = function (message, existingScript) {
+      if (timeoutId) clearTimeout(timeoutId);
+      // 실패한 script element는 그대로 두지 않는다.
+      // 그래야 다음 수동 엑셀 저장 시도에서 깨진 DOM 노드를 재활용하지 않고
+      // 새 standalone runtime load를 다시 시도할 수 있다.
+      if (existingScript && existingScript.parentNode && existingScript.dataset.sadvXlsxState !== "ready") {
+        existingScript.parentNode.removeChild(existingScript);
+      }
+      reject(new Error(message));
+    };
     const finish = function () {
-      if (window.XLSX && window.XLSX.utils && typeof window.XLSX.write === "function") {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (hasUsableSnapshotXlsxGlobal(window.XLSX)) {
         resolve(window.XLSX);
         return true;
       }
       return false;
     };
+    let existing = document.querySelector('script[data-sadv-xlsx-lib="sheetjs"]');
+    if (existing && existing.dataset.sadvXlsxState === "error") {
+      existing.parentNode && existing.parentNode.removeChild(existing);
+      existing = null;
+    }
     if (finish()) return;
     const handleLoad = function () {
-      if (!finish()) reject(new Error("sheetjs loaded but XLSX global missing"));
+      if (existing) existing.dataset.sadvXlsxState = "ready";
+      if (!finish()) finishWithError("sheetjs loaded but XLSX global missing", existing);
     };
     const handleError = function () {
-      reject(new Error("failed to load sheetjs standalone runtime"));
+      if (existing) existing.dataset.sadvXlsxState = "error";
+      finishWithError(
+        "failed to load sheetjs standalone runtime; check CSP/network access to " +
+          SNAPSHOT_XLSX_STANDALONE_URL,
+        existing,
+      );
     };
+    timeoutId = setTimeout(function () {
+      if (existing) existing.dataset.sadvXlsxState = "error";
+      finishWithError(
+        "timed out while loading sheetjs standalone runtime; check CSP/network access to " +
+          SNAPSHOT_XLSX_STANDALONE_URL,
+        existing,
+      );
+    }, SNAPSHOT_XLSX_LIBRARY_TIMEOUT_MS);
     if (existing) {
       existing.addEventListener("load", handleLoad, { once: true });
       existing.addEventListener("error", handleError, { once: true });
       return;
     }
-    const script = document.createElement("script");
-    script.src = SNAPSHOT_XLSX_STANDALONE_URL;
-    script.async = true;
-    script.crossOrigin = "anonymous";
-    script.dataset.sadvXlsxLib = "sheetjs";
-    script.addEventListener("load", handleLoad, { once: true });
-    script.addEventListener("error", handleError, { once: true });
-    document.head.appendChild(script);
+    const nextScript = document.createElement("script");
+    nextScript.src = SNAPSHOT_XLSX_STANDALONE_URL;
+    nextScript.async = true;
+    nextScript.crossOrigin = "anonymous";
+    const nonce =
+      (document.currentScript && document.currentScript.nonce) ||
+      (document.querySelector("script[nonce]") || {}).nonce ||
+      "";
+    if (nonce) nextScript.nonce = nonce;
+    nextScript.dataset.sadvXlsxLib = "sheetjs";
+    nextScript.dataset.sadvXlsxState = "loading";
+    nextScript.addEventListener("load", function () {
+      existing = nextScript;
+      handleLoad();
+    }, { once: true });
+    nextScript.addEventListener("error", function () {
+      existing = nextScript;
+      handleError();
+    }, { once: true });
+    document.head.appendChild(nextScript);
   }).catch(function (error) {
     snapshotXlsxLibraryPromise = null;
     throw error;
@@ -16483,6 +16647,9 @@ async function downloadSnapshotXlsx(options) {
       };
     }
 
+    // `building-html`은 historical generic save phase 이름이다.
+    // HTML/XLSX 모두 동일한 save state contract를 재사용하고,
+    // 실제 포맷 구분은 stageLabel/outputFormat이 담당한다.
     pushSnapshotSaveStatus({
       active: true,
       state: "building-html",
