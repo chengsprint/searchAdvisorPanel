@@ -21,6 +21,14 @@ PAYLOAD_TOKENS = (
     "const EXPORT_PAYLOAD =",
     "EXPORT_PAYLOAD =",
 )
+MERGED_TEMPLATE_HELPERS = (
+    "getSnapshotMergedMetaHint",
+    "isSavedMergedSnapshotRuntime",
+    "canManualXlsxExportInCurrentRuntime",
+    "buildSnapshotManualXlsxExecutionOptions",
+    "bindSnapshotManualXlsxButton",
+    "createMergedAccountsInfo",
+)
 
 
 @dataclass(frozen=True)
@@ -430,14 +438,159 @@ def replace_payload_raw(html: str, payload: Dict[str, Any]) -> str:
     return html[:start_idx] + replacement + html[end_idx + 1 :]
 
 
+def build_snapshot_shell_state(payload: Dict[str, Any]) -> Dict[str, Any]:
+    all_sites = payload.get("allSites") if isinstance(payload.get("allSites"), list) else []
+    rows = payload.get("summaryRows") if isinstance(payload.get("summaryRows"), list) else []
+    site_meta = payload.get("siteMeta") if isinstance(payload.get("siteMeta"), dict) else {}
+    data_by_site = payload.get("dataBySite") if isinstance(payload.get("dataBySite"), dict) else {}
+    cache_saved_at_values: List[int] = []
+    for site in all_sites:
+        if not isinstance(site, str):
+            continue
+        site_data = data_by_site.get(site)
+        if not isinstance(site_data, dict):
+            continue
+        cache_saved_at = site_data.get("__cacheSavedAt")
+        if isinstance(cache_saved_at, int):
+            cache_saved_at_values.append(cache_saved_at)
+
+    saved_at = payload.get("savedAt")
+    updated_at: Optional[str] = None
+    if cache_saved_at_values:
+        updated_at = (
+            datetime.fromtimestamp(max(cache_saved_at_values) / 1000, tz=UTC)
+            .replace(microsecond=0)
+            .isoformat()
+            .replace("+00:00", "Z")
+        )
+    elif isinstance(saved_at, str) and saved_at:
+        updated_at = saved_at
+
+    cur_site = payload.get("curSite")
+    if not isinstance(cur_site, str) or not cur_site:
+        cur_site = next((site for site in all_sites if isinstance(site, str) and site), None)
+
+    return {
+        "accountLabel": payload.get("accountLabel") or "",
+        "allSites": all_sites,
+        "rows": rows,
+        "siteMeta": site_meta,
+        "mergedMeta": payload.get("mergedMeta") if "mergedMeta" in payload else None,
+        "curMode": "site" if payload.get("curMode") == "site" else "all",
+        "curSite": cur_site,
+        "curTab": payload.get("curTab") or "overview",
+        "allSitesPeriodDays": payload.get("allSitesPeriodDays", 90),
+        "runtimeVersion": payload.get("generatorVersion") or "snapshot",
+        "cacheMeta": {
+            "label": "snapshot",
+            "updatedAt": updated_at,
+            "remainingMs": None,
+            "sourceCount": len(all_sites),
+            "measuredAt": int(datetime.now(UTC).timestamp() * 1000),
+        }
+        if updated_at
+        else None,
+    }
+
+
+def replace_snapshot_shell_state(html: str, shell_state: Dict[str, Any]) -> str:
+    marker = "window.__SEARCHADVISOR_SNAPSHOT_SHELL_STATE__="
+    marker_idx = html.find(marker)
+    if marker_idx < 0:
+        return html
+    start_idx = marker_idx + len(marker)
+    end_markers = (";<\\/script>", ";</script>")
+    end_idx = -1
+    end_marker_value = ""
+    for candidate in end_markers:
+        found_idx = html.find(candidate, start_idx)
+        if found_idx >= 0 and (end_idx < 0 or found_idx < end_idx):
+            end_idx = found_idx
+            end_marker_value = candidate
+    if end_idx < 0:
+        return html
+    replacement = json.dumps(shell_state, ensure_ascii=False, separators=(",", ":"))
+    return html[:start_idx] + replacement + html[end_idx:]
+
+
+def has_function_definition(html: str, function_name: str) -> bool:
+    return f"function {function_name}(" in html
+
+
+def load_snapshot_source_text() -> str:
+    return (Path(__file__).resolve().parent / "src/app/main/12-snapshot.js").read_text(encoding="utf-8")
+
+
+def extract_function_source(source_text: str, function_name: str) -> str:
+    start = source_text.find(f"function {function_name}(")
+    if start < 0:
+        raise ValueError(f"function {function_name} not found in 12-snapshot.js")
+    next_idx = source_text.find("\nfunction ", start + 1)
+    if next_idx < 0:
+        snippet = source_text[start:]
+    else:
+        snippet = source_text[start:next_idx]
+    return snippet.rstrip()
+
+
+def inject_missing_merge_helpers(html: str) -> str:
+    missing = [name for name in MERGED_TEMPLATE_HELPERS if not has_function_definition(html, name)]
+    if not missing:
+        return html
+    source_text = load_snapshot_source_text()
+    helper_block = "\n\n".join(extract_function_source(source_text, name) for name in missing).strip()
+    if not helper_block:
+        return html
+    anchors = (
+        "function syncXlsxButtonVisibility(",
+        "function setAllSitesLabel(",
+        "createMergedAccountsInfo(",
+        "canManualXlsxExportInCurrentRuntime(",
+        "</script>",
+    )
+    for anchor in anchors:
+        idx = html.find(anchor)
+        if idx >= 0:
+            return html[:idx] + helper_block + "\n\n" + html[idx:]
+    return html + "\n<script>\n" + helper_block + "\n</script>\n"
+
+
+def inject_missing_merge_xlsx_binding_call(html: str) -> str:
+    marker = 'bindSnapshotManualXlsxButton(document.getElementById("sadv-xlsx-btn"))'
+    if marker in html:
+        return html
+    binding_block = (
+        '\n    if (typeof bindSnapshotManualXlsxButton === "function") {\n'
+        '      bindSnapshotManualXlsxButton(document.getElementById("sadv-xlsx-btn"));\n'
+        "    }\n"
+    )
+    anchors = (
+        "const snapshotApi = {",
+        "publishSnapshotRuntimeApis(snapshotApi);",
+        "</script>",
+    )
+    for anchor in anchors:
+        idx = html.find(anchor)
+        if idx >= 0:
+            return html[:idx] + binding_block + html[idx:]
+    return html + "\n<script>" + binding_block + "</script>\n"
+
+
 def build_merged_html(template_html: str, payload: Dict[str, Any]) -> str:
     html = replace_payload_raw(template_html, payload)
     html = replace_first_saved_chip(html, format_saved_label(payload.get("savedAt") or ""))
+    html = replace_snapshot_shell_state(html, build_snapshot_shell_state(payload))
+    html = inject_missing_merge_helpers(html)
+    html = inject_missing_merge_xlsx_binding_call(html)
     return html
 
 
 def is_xlsx_capable_saved_template(html: str) -> bool:
     return "downloadSnapshotXlsx" in html or "canXlsxSave" in html
+
+
+def is_merge_helper_capable_saved_template(html: str) -> bool:
+    return all(has_function_definition(html, name) for name in MERGED_TEMPLATE_HELPERS)
 
 
 def cleanup_html_files(
@@ -496,13 +649,20 @@ def merge_current_directory(directory: Path) -> int:
         xlsx_capable_entries = [
             entry for entry in readable_entries if is_xlsx_capable_saved_template(entry.template_html)
         ]
+        merged_helper_capable_entries = [
+            entry for entry in xlsx_capable_entries if is_merge_helper_capable_saved_template(entry.template_html)
+        ]
         template_entry = max(
-            xlsx_capable_entries or readable_entries,
+            merged_helper_capable_entries or xlsx_capable_entries or readable_entries,
             key=lambda item: (item.source_file.stamp, item.source_file.account_key),
         )
         if not xlsx_capable_entries:
             log(
                 "  ⚠️ 선택된 최신 HTML이 모두 구형 saved template이라 merged HTML에서 엑셀 버튼 동작은 best-effort일 수 있습니다."
+            )
+        elif not merged_helper_capable_entries:
+            log(
+                "  ⚠️ 선택된 최신 HTML에 merged helper pack이 없어 현재 코드 기준 helper를 보강 주입합니다."
             )
         merged_html = build_merged_html(template_entry.template_html, merged_payload)
         merged_output_path = directory / f"searchadvisor-MERGED-{target_month}.html"

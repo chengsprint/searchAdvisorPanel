@@ -317,6 +317,118 @@ function buildSnapshotManualXlsxExecutionOptions() {
   };
 }
 
+function bindSnapshotManualXlsxButton(buttonEl) {
+  if (!buttonEl || buttonEl.dataset.snapshotXlsxBound === "true") return;
+  buttonEl.dataset.snapshotXlsxBound = "true";
+  if (typeof syncXlsxButtonVisibility === "function") {
+    syncXlsxButtonVisibility();
+  }
+  buttonEl.addEventListener("click", function () {
+    if (buttonEl.disabled) return;
+    const saveStatus =
+      typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null;
+    if (saveStatus && saveStatus.active) return;
+    if (typeof runSnapshotSaveExecution === "function") {
+      const manualOptions =
+        typeof buildSnapshotManualXlsxExecutionOptions === "function"
+          ? buildSnapshotManualXlsxExecutionOptions()
+          : {};
+      runSnapshotSaveExecution({
+        entryPoint: "button-xlsx",
+        outputFormat: "xlsx",
+        ...(manualOptions || {}),
+      });
+      return;
+    }
+    if (typeof downloadMergedSnapshotXlsxCompat === "function") {
+      downloadMergedSnapshotXlsxCompat(buttonEl);
+    }
+  });
+}
+
+function formatSnapshotMergedXlsxCompatStamp(date) {
+  const safeDate = date instanceof Date && !Number.isNaN(date.getTime()) ? date : new Date();
+  const yyyy = safeDate.getFullYear();
+  const mm = String(safeDate.getMonth() + 1).padStart(2, "0");
+  const dd = String(safeDate.getDate()).padStart(2, "0");
+  const hh = String(safeDate.getHours()).padStart(2, "0");
+  const mi = String(safeDate.getMinutes()).padStart(2, "0");
+  const ss = String(safeDate.getSeconds()).padStart(2, "0");
+  return { month: `${yyyy}${mm}`, stamp: `${yyyy}${mm}${dd}-${hh}${mi}${ss}` };
+}
+
+function buildSnapshotMergedXlsxCompatFileName(savedAt, payload) {
+  const parts = formatSnapshotMergedXlsxCompatStamp(savedAt);
+  const mergedMeta = payload && payload.mergedMeta && typeof payload.mergedMeta === "object"
+    ? payload.mergedMeta
+    : null;
+  const targetMonth =
+    mergedMeta && typeof mergedMeta.targetDate === "string" && /^\d{6}$/.test(mergedMeta.targetDate)
+      ? mergedMeta.targetDate
+      : parts.month;
+  return `searchadvisor-MERGED-${targetMonth}-${parts.stamp.slice(6)}.xlsx`;
+}
+
+function triggerSnapshotMergedXlsxCompatDownload(fileName, workbookBytes) {
+  const blob = new Blob([workbookBytes], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.rel = "noopener";
+  anchor.style.display = "none";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  setTimeout(function () {
+    URL.revokeObjectURL(url);
+  }, 1000);
+}
+
+async function downloadMergedSnapshotXlsxCompat(buttonEl) {
+  if (!isSavedMergedSnapshotRuntime()) return false;
+  if (
+    typeof ensureSnapshotXlsxLibrary !== "function" ||
+    typeof buildSnapshotXlsxWorkbook !== "function"
+  ) {
+    console.warn("[Snapshot XLSX Compat] XLSX helper pack is unavailable in this saved template");
+    return false;
+  }
+  const payload =
+    typeof window !== "undefined" && window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+      ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+      : null;
+  if (!payload) return false;
+  const originalText = buttonEl ? buttonEl.textContent : "엑셀";
+  if (buttonEl) {
+    buttonEl.disabled = true;
+    buttonEl.textContent = "엑셀 준비 중";
+  }
+  try {
+    await ensureSnapshotXlsxLibrary();
+    const savedAt = new Date();
+    const workbookBundle = buildSnapshotXlsxWorkbook(savedAt, payload);
+    const workbookBytes = window.XLSX.write(workbookBundle.workbook, {
+      bookType: "xlsx",
+      type: "array",
+      compression: true,
+    });
+    const fileName = buildSnapshotMergedXlsxCompatFileName(savedAt, payload);
+    triggerSnapshotMergedXlsxCompatDownload(fileName, workbookBytes);
+    return { ok: true, downloaded: true, fileName: fileName, outputFormat: "xlsx" };
+  } catch (error) {
+    console.error("[Snapshot XLSX Compat] merged saved snapshot xlsx export failed:", error);
+    return { ok: false, downloaded: false, error: String(error), outputFormat: "xlsx" };
+  } finally {
+    if (buttonEl) {
+      buttonEl.disabled = false;
+      buttonEl.textContent = originalText;
+    }
+  }
+}
+
 function buildSnapshotSaveRuntimeTypeLabel(runtimeType) {
   if (runtimeType === "saved") return "SAVED";
   if (runtimeType === "merge") return "MERGE";
@@ -2107,6 +2219,41 @@ const SNAPSHOT_UI_CONTROLS_HELPER_PACK = [
   applyUiControlsTab,
 ];
 
+const SNAPSHOT_SAVED_MERGED_XLSX_COMPAT_HELPER_PACK = [
+  hasUsableSnapshotXlsxGlobal,
+  ensureSnapshotXlsxLibrary,
+  formatSnapshotXlsxSourceAccount,
+  getSnapshotXlsxPrimaryAccountInfo,
+  buildSnapshotXlsxAccountFallbackContext,
+  getSnapshotXlsxRowAccountLabel,
+  getSnapshotXlsxRowSourceAccount,
+  formatSnapshotXlsxDiagRange,
+  normalizeSnapshotXlsxDate,
+  normalizeSnapshotXlsxNumber,
+  getSnapshotXlsxExportedAt,
+  getSnapshotXlsxPeriodDays,
+  getSnapshotXlsxRuntimeType,
+  getSnapshotXlsxRuntimeTypeLabel,
+  getSnapshotXlsxSummaryRows,
+  getSnapshotXlsxSiteEntries,
+  buildSnapshotXlsxSiteDailyRows,
+  buildSnapshotXlsxSiteSummaryRows,
+  buildSnapshotXlsxSiteMetaRows,
+  buildSnapshotXlsxQueryRows,
+  buildSnapshotXlsxPageRows,
+  buildSnapshotXlsxIndexedRows,
+  buildSnapshotXlsxCrawlRows,
+  buildSnapshotXlsxBacklinkRows,
+  getSnapshotXlsxSheetColumns,
+  buildSnapshotXlsxDataSheet,
+  buildSnapshotXlsxReadmeSheet,
+  buildSnapshotXlsxWorkbook,
+  formatSnapshotMergedXlsxCompatStamp,
+  buildSnapshotMergedXlsxCompatFileName,
+  triggerSnapshotMergedXlsxCompatDownload,
+  downloadMergedSnapshotXlsxCompat,
+];
+
 const SNAPSHOT_SHELL_NODE_IDS = ["sadv-header", "sadv-mode-bar", "sadv-site-bar", "sadv-tabs"];
 
 function serializeSnapshotHelperPack(helperPack) {
@@ -2151,6 +2298,19 @@ function buildSnapshotSerializedHelperSection() {
       "// live는 번들 전체가 한 스코프에 있지만, saved는 allowlist에 넣은 함수만",
       "// 포함되므로 여기서 빠지면 saved-only is-not-defined 회귀가 생긴다.",
       serializeSnapshotHelperPack(SNAPSHOT_UI_CONTROLS_HELPER_PACK),
+    ].join("\n"),
+    [
+      "// Saved merged snapshot XLSX compat pack:",
+      "// 일반 saved snapshot은 여전히 read-only지만, merge.py가 만든 merged saved snapshot은",
+      "// 수동 엑셀 버튼만 예외적으로 다시 연다.",
+      "// live save orchestration 전체를 직렬화하지 않고, 현재 source-of-truth workbook builder와",
+      "// standalone loader를 그대로 재사용하는 좁은 compat leaf만 같이 싣는다.",
+      `const SNAPSHOT_XLSX_STANDALONE_URL = ${JSON.stringify(SNAPSHOT_XLSX_STANDALONE_URL)};`,
+      `const SNAPSHOT_XLSX_LIBRARY_TIMEOUT_MS = ${JSON.stringify(SNAPSHOT_XLSX_LIBRARY_TIMEOUT_MS)};`,
+      `let snapshotXlsxLibraryPromise = null;`,
+      `const SNAPSHOT_XLSX_SHEET_NAMES = Object.freeze(${JSON.stringify(SNAPSHOT_XLSX_SHEET_NAMES)});`,
+      `const SNAPSHOT_XLSX_RUNTIME_LABELS = Object.freeze(${JSON.stringify(SNAPSHOT_XLSX_RUNTIME_LABELS)});`,
+      serializeSnapshotHelperPack(SNAPSHOT_SAVED_MERGED_XLSX_COMPAT_HELPER_PACK),
     ].join("\n"),
   ].join("\n");
 }
@@ -2678,6 +2838,13 @@ function buildSnapshotSerializedHelperSection() {
     // saved snapshot inline bootstrap도 같은 helper pack을 함께 직렬화해야 한다.
     // 누락되면 reopen 시 pageerror가 나고 shell/API selection parity까지 흔들릴 수 있다.
     ${syncXlsxButtonVisibility.toString()}
+    // merge.py 산출물은 read-only saved snapshot에서도 공통 xlsx save orchestration을
+    // 그대로 재사용해야 하므로, 실행 옵션/버튼 바인딩 helper도 함께 직렬화한다.
+    ${buildSnapshotManualXlsxExecutionOptions.toString()}
+    ${bindSnapshotManualXlsxButton.toString()}
+    // merged saved snapshot의 전체현황 카드 상단은 createMergedAccountsInfo()를 직접 사용한다.
+    // merge.py 산출물도 같은 공통 helper를 재사용하게 inline bootstrap에 함께 싣는다.
+    ${createMergedAccountsInfo.toString()}
     ${setAllSitesLabel.toString()}
     ${renderSnapshotAllSites.toString()}
     const renderAllSites = renderSnapshotAllSites;
@@ -3017,6 +3184,9 @@ function buildSnapshotSerializedHelperSection() {
         closeSnapshotCombo();
         switchMode(m.dataset.m);
       });
+    }
+    if (typeof bindSnapshotManualXlsxButton === "function") {
+      bindSnapshotManualXlsxButton(document.getElementById("sadv-xlsx-btn"));
     }
     function bindSnapshotAllCardLinks() {
       document.querySelectorAll(".sadv-allcard[data-site]").forEach(function (card) {
