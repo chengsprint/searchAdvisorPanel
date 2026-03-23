@@ -516,9 +516,9 @@ function buildSnapshotXlsxReadmeSheet(XLSX, savedAt, payload, dailyRows, summary
     ["사이트 요약 행 수", summaryRows.length],
     ["사이트 메타 행 수", metaRows.length],
     ["워크북 버전", "xlsx-phase1-core"],
-    ["메인 시트", SNAPSHOT_XLSX_SHEET_NAMES.DAILY],
+    ["주 시트", SNAPSHOT_XLSX_SHEET_NAMES.daily],
     ["행 기준", "1행 = 1사이트 × 1날짜"],
-    ["설명", "기존 HTML 저장 계약을 재사용하고 출력 포맷만 엑셀로 전환합니다."],
+    ["설명", "기존 HTML 저장 계약을 재사용하고 출력 형식만 엑셀로 바꾼 결과입니다."],
   ];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws["!cols"] = [{ wch: 22 }, { wch: 48 }];
@@ -534,30 +534,30 @@ function buildSnapshotXlsxWorkbook(savedAt, payload) {
   const metaRows = buildSnapshotXlsxSiteMetaRows(savedAt, payload, fallbackContext);
   const wb = XLSX.utils.book_new();
   wb.Props = {
-    Title: "서치어드바이저 상세 엑셀 내보내기",
-    Subject: "서치어드바이저 XLSX 내보내기",
-    Author: "서치어드바이저 런타임",
+    Title: "SearchAdvisor 상세 엑셀 내보내기",
+    Subject: "SearchAdvisor XLSX 내보내기",
+    Author: "SearchAdvisor 런타임",
     CreatedDate: savedAt instanceof Date ? savedAt : new Date(),
   };
   XLSX.utils.book_append_sheet(
     wb,
     buildSnapshotXlsxReadmeSheet(XLSX, savedAt, payload, dailyRows, summaryRows, metaRows),
-    SNAPSHOT_XLSX_SHEET_NAMES.README,
+    SNAPSHOT_XLSX_SHEET_NAMES.readme,
   );
   XLSX.utils.book_append_sheet(
     wb,
     buildSnapshotXlsxDataSheet(XLSX, columns.daily, dailyRows),
-    SNAPSHOT_XLSX_SHEET_NAMES.DAILY,
+    SNAPSHOT_XLSX_SHEET_NAMES.daily,
   );
   XLSX.utils.book_append_sheet(
     wb,
     buildSnapshotXlsxDataSheet(XLSX, columns.summary, summaryRows),
-    SNAPSHOT_XLSX_SHEET_NAMES.SUMMARY,
+    SNAPSHOT_XLSX_SHEET_NAMES.summary,
   );
   XLSX.utils.book_append_sheet(
     wb,
     buildSnapshotXlsxDataSheet(XLSX, columns.meta, metaRows),
-    SNAPSHOT_XLSX_SHEET_NAMES.META,
+    SNAPSHOT_XLSX_SHEET_NAMES.meta,
   );
   return {
     workbook: wb,
@@ -718,10 +718,10 @@ async function downloadSnapshotXlsx(options) {
       stats: saveStats,
       workbook: {
         sheetNames: [
-          SNAPSHOT_XLSX_SHEET_NAMES.README,
-          SNAPSHOT_XLSX_SHEET_NAMES.DAILY,
-          SNAPSHOT_XLSX_SHEET_NAMES.SUMMARY,
-          SNAPSHOT_XLSX_SHEET_NAMES.META,
+          SNAPSHOT_XLSX_SHEET_NAMES.readme,
+          SNAPSHOT_XLSX_SHEET_NAMES.daily,
+          SNAPSHOT_XLSX_SHEET_NAMES.summary,
+          SNAPSHOT_XLSX_SHEET_NAMES.meta,
         ],
         dailyRowCount: workbookBundle.dailyRows.length,
         summaryRowCount: workbookBundle.summaryRows.length,

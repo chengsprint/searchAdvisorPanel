@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-23T12:39:20Z";
-var __SADV_GIT_HEAD__="a0e6ae8";
+var __SADV_BUILD_STAMP__="2026-03-23T12:40:57Z";
+var __SADV_GIT_HEAD__="ab6ec62";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -16659,9 +16659,9 @@ function buildSnapshotXlsxReadmeSheet(XLSX, savedAt, payload, dailyRows, summary
     ["사이트 요약 행 수", summaryRows.length],
     ["사이트 메타 행 수", metaRows.length],
     ["워크북 버전", "xlsx-phase1-core"],
-    ["메인 시트", SNAPSHOT_XLSX_SHEET_NAMES.daily],
+    ["주 시트", SNAPSHOT_XLSX_SHEET_NAMES.daily],
     ["행 기준", "1행 = 1사이트 × 1날짜"],
-    ["설명", "기존 HTML 저장 계약을 재사용하고 출력 포맷만 엑셀로 전환합니다."],
+    ["설명", "기존 HTML 저장 계약을 재사용하고 출력 형식만 엑셀로 바꾼 결과입니다."],
   ];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws["!cols"] = [{ wch: 22 }, { wch: 48 }];
@@ -16677,9 +16677,9 @@ function buildSnapshotXlsxWorkbook(savedAt, payload) {
   const metaRows = buildSnapshotXlsxSiteMetaRows(savedAt, payload, fallbackContext);
   const wb = XLSX.utils.book_new();
   wb.Props = {
-    Title: "서치어드바이저 상세 엑셀 내보내기",
-    Subject: "서치어드바이저 XLSX 내보내기",
-    Author: "서치어드바이저 런타임",
+    Title: "SearchAdvisor 상세 엑셀 내보내기",
+    Subject: "SearchAdvisor XLSX 내보내기",
+    Author: "SearchAdvisor 런타임",
     CreatedDate: savedAt instanceof Date ? savedAt : new Date(),
   };
   XLSX.utils.book_append_sheet(
