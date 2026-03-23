@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-23T13:22:26Z";
-var __SADV_GIT_HEAD__="49f8ddf";
+var __SADV_BUILD_STAMP__="2026-03-23T13:28:38Z";
+var __SADV_GIT_HEAD__="d4931cd";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -16167,6 +16167,8 @@ const SNAPSHOT_XLSX_SHEET_NAMES = Object.freeze({
   queries: "검색어",
   pages: "페이지",
   indexed: "색인",
+  crawl: "크롤",
+  backlink: "백링크",
 });
 const SNAPSHOT_XLSX_RUNTIME_LABELS = Object.freeze({
   live: "라이브",
@@ -16702,6 +16704,86 @@ function buildSnapshotXlsxIndexedRows(savedAt, payload, fallbackContext) {
   });
 }
 
+function buildSnapshotXlsxCrawlRows(savedAt, payload, fallbackContext) {
+  const exportedAt = getSnapshotXlsxExportedAt(savedAt);
+  const runtimeTypeLabel = getSnapshotXlsxRuntimeTypeLabel(getSnapshotXlsxRuntimeType(payload));
+  const periodDays = getSnapshotXlsxPeriodDays(payload);
+  return getSnapshotXlsxSiteEntries(payload, fallbackContext).flatMap(function (entry) {
+    const crawlItem =
+      entry &&
+      entry.siteData &&
+      entry.siteData.crawl &&
+      Array.isArray(entry.siteData.crawl.items) &&
+      entry.siteData.crawl.items.length
+        ? entry.siteData.crawl.items[0] || {}
+        : {};
+    const stats = Array.isArray(crawlItem.stats) ? crawlItem.stats : [];
+    return stats
+      .slice()
+      .sort(function (a, b) {
+        return String((a && a.date) || "").localeCompare(String((b && b.date) || ""));
+      })
+      .map(function (statRow) {
+        return {
+          date: normalizeSnapshotXlsxDate(statRow && statRow.date),
+          site: entry.site,
+          account_label: entry.accountLabel,
+          source_account: entry.sourceAccount,
+          runtime_type: runtimeTypeLabel,
+          period_days: periodDays,
+          exported_at: exportedAt,
+          page_count: normalizeSnapshotXlsxNumber(statRow && statRow.pageCount),
+          download_size: normalizeSnapshotXlsxNumber(statRow && statRow.downloadSize),
+          try_count: normalizeSnapshotXlsxNumber(statRow && statRow.sumTryCount),
+          error_count: normalizeSnapshotXlsxNumber(statRow && statRow.sumErrorCount),
+          not_found_count: normalizeSnapshotXlsxNumber(statRow && statRow.notFound),
+          server_error_count: normalizeSnapshotXlsxNumber(statRow && statRow.serverError),
+          timeout_count: normalizeSnapshotXlsxNumber(statRow && statRow.connectTimeout),
+        };
+      });
+  });
+}
+
+function buildSnapshotXlsxBacklinkRows(savedAt, payload, fallbackContext) {
+  const exportedAt = getSnapshotXlsxExportedAt(savedAt);
+  const runtimeTypeLabel = getSnapshotXlsxRuntimeTypeLabel(getSnapshotXlsxRuntimeType(payload));
+  const periodDays = getSnapshotXlsxPeriodDays(payload);
+  return getSnapshotXlsxSiteEntries(payload, fallbackContext).flatMap(function (entry) {
+    const backlinkItem =
+      entry &&
+      entry.siteData &&
+      entry.siteData.backlink &&
+      Array.isArray(entry.siteData.backlink.items) &&
+      entry.siteData.backlink.items.length
+        ? entry.siteData.backlink.items[0] || {}
+        : {};
+    const topDomains = Array.isArray(backlinkItem.topDomain) ? backlinkItem.topDomain : [];
+    const countTime = Array.isArray(backlinkItem.countTime) ? backlinkItem.countTime : [];
+    const latestTimeRow = countTime
+      .slice()
+      .sort(function (a, b) {
+        return String((a && a.timeStamp) || "").localeCompare(String((b && b.timeStamp) || ""));
+      })
+      .pop() || null;
+    return topDomains.map(function (domainRow, index) {
+      return {
+        site: entry.site,
+        account_label: entry.accountLabel,
+        source_account: entry.sourceAccount,
+        runtime_type: runtimeTypeLabel,
+        period_days: periodDays,
+        exported_at: exportedAt,
+        domain: domainRow && domainRow.domain != null ? String(domainRow.domain) : "",
+        backlink_count: normalizeSnapshotXlsxNumber(domainRow && domainRow.backlinkCnt),
+        domain_rank: index + 1,
+        total_backlinks: normalizeSnapshotXlsxNumber(backlinkItem && backlinkItem.total),
+        total_domains: normalizeSnapshotXlsxNumber(backlinkItem && backlinkItem.domains),
+        latest_backlink_count: normalizeSnapshotXlsxNumber(latestTimeRow && latestTimeRow.backlinkCnt),
+      };
+    });
+  });
+}
+
 function getSnapshotXlsxSheetColumns() {
   return {
     daily: [
@@ -16792,6 +16874,36 @@ function getSnapshotXlsxSheetColumns() {
       { key: "dropped_count", header: "제외 수", width: 12 },
       { key: "total_count", header: "총 상태 수", width: 12 },
     ],
+    crawl: [
+      { key: "date", header: "날짜", width: 14 },
+      { key: "site", header: "사이트", width: 34 },
+      { key: "account_label", header: "계정 라벨", width: 24 },
+      { key: "source_account", header: "소스 계정", width: 24 },
+      { key: "runtime_type", header: "런타임 유형", width: 14 },
+      { key: "period_days", header: "기간(일)", width: 12 },
+      { key: "exported_at", header: "생성 시각", width: 24 },
+      { key: "page_count", header: "크롤 페이지 수", width: 16 },
+      { key: "download_size", header: "다운로드 크기", width: 16 },
+      { key: "try_count", header: "시도 수", width: 12 },
+      { key: "error_count", header: "오류 수", width: 12 },
+      { key: "not_found_count", header: "404 수", width: 12 },
+      { key: "server_error_count", header: "서버 오류 수", width: 14 },
+      { key: "timeout_count", header: "타임아웃 수", width: 14 },
+    ],
+    backlink: [
+      { key: "site", header: "사이트", width: 34 },
+      { key: "account_label", header: "계정 라벨", width: 24 },
+      { key: "source_account", header: "소스 계정", width: 24 },
+      { key: "runtime_type", header: "런타임 유형", width: 14 },
+      { key: "period_days", header: "기간(일)", width: 12 },
+      { key: "exported_at", header: "생성 시각", width: 24 },
+      { key: "domain", header: "도메인", width: 36 },
+      { key: "backlink_count", header: "백링크 수", width: 12 },
+      { key: "domain_rank", header: "도메인 순위", width: 12 },
+      { key: "total_backlinks", header: "총 백링크 수", width: 14 },
+      { key: "total_domains", header: "총 도메인 수", width: 14 },
+      { key: "latest_backlink_count", header: "최신 백링크 수", width: 14 },
+    ],
   };
 }
 
@@ -16819,7 +16931,7 @@ function buildSnapshotXlsxDataSheet(XLSX, columns, rows) {
   return ws;
 }
 
-function buildSnapshotXlsxReadmeSheet(XLSX, savedAt, payload, dailyRows, summaryRows, metaRows, queryRows, pageRows, indexedRows) {
+function buildSnapshotXlsxReadmeSheet(XLSX, savedAt, payload, dailyRows, summaryRows, metaRows, queryRows, pageRows, indexedRows, crawlRows, backlinkRows) {
   const exportedAt = getSnapshotXlsxExportedAt(savedAt);
   const periodDays = getSnapshotXlsxPeriodDays(payload);
   const runtimeType = getSnapshotXlsxRuntimeType(payload);
@@ -16837,10 +16949,12 @@ function buildSnapshotXlsxReadmeSheet(XLSX, savedAt, payload, dailyRows, summary
     ["검색어 행 수", queryRows.length],
     ["페이지 행 수", pageRows.length],
     ["색인 행 수", indexedRows.length],
-    ["워크북 버전", "xlsx-phase1-expanded"],
+    ["크롤 행 수", crawlRows.length],
+    ["백링크 행 수", backlinkRows.length],
+    ["워크북 버전", "xlsx-phase1-expanded-plus"],
     ["메인 시트", SNAPSHOT_XLSX_SHEET_NAMES.daily],
     ["행 기준", "1행 = 1사이트 × 1날짜"],
-    ["설명", "기존 HTML 저장 계약을 재사용하고, 사이트 일별/요약/메타에 더해 검색어·페이지·색인 시트를 함께 제공합니다."],
+    ["설명", "기존 HTML 저장 계약을 재사용하고, 사이트 일별/요약/메타에 더해 검색어·페이지·색인·크롤·백링크 시트를 함께 제공합니다."],
   ];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws["!cols"] = [{ wch: 22 }, { wch: 48 }];
@@ -16857,6 +16971,8 @@ function buildSnapshotXlsxWorkbook(savedAt, payload) {
   const queryRows = buildSnapshotXlsxQueryRows(savedAt, payload, fallbackContext);
   const pageRows = buildSnapshotXlsxPageRows(savedAt, payload, fallbackContext);
   const indexedRows = buildSnapshotXlsxIndexedRows(savedAt, payload, fallbackContext);
+  const crawlRows = buildSnapshotXlsxCrawlRows(savedAt, payload, fallbackContext);
+  const backlinkRows = buildSnapshotXlsxBacklinkRows(savedAt, payload, fallbackContext);
   const wb = XLSX.utils.book_new();
   wb.Props = {
     Title: "서치어드바이저 상세 엑셀 내보내기",
@@ -16876,6 +16992,8 @@ function buildSnapshotXlsxWorkbook(savedAt, payload) {
       queryRows,
       pageRows,
       indexedRows,
+      crawlRows,
+      backlinkRows,
     ),
     SNAPSHOT_XLSX_SHEET_NAMES.readme,
   );
@@ -16909,6 +17027,16 @@ function buildSnapshotXlsxWorkbook(savedAt, payload) {
     buildSnapshotXlsxDataSheet(XLSX, columns.indexed, indexedRows),
     SNAPSHOT_XLSX_SHEET_NAMES.indexed,
   );
+  XLSX.utils.book_append_sheet(
+    wb,
+    buildSnapshotXlsxDataSheet(XLSX, columns.crawl, crawlRows),
+    SNAPSHOT_XLSX_SHEET_NAMES.crawl,
+  );
+  XLSX.utils.book_append_sheet(
+    wb,
+    buildSnapshotXlsxDataSheet(XLSX, columns.backlink, backlinkRows),
+    SNAPSHOT_XLSX_SHEET_NAMES.backlink,
+  );
   return {
     workbook: wb,
     dailyRows: dailyRows,
@@ -16917,6 +17045,8 @@ function buildSnapshotXlsxWorkbook(savedAt, payload) {
     queryRows: queryRows,
     pageRows: pageRows,
     indexedRows: indexedRows,
+    crawlRows: crawlRows,
+    backlinkRows: backlinkRows,
   };
 }
 
@@ -17078,6 +17208,8 @@ async function downloadSnapshotXlsx(options) {
           SNAPSHOT_XLSX_SHEET_NAMES.queries,
           SNAPSHOT_XLSX_SHEET_NAMES.pages,
           SNAPSHOT_XLSX_SHEET_NAMES.indexed,
+          SNAPSHOT_XLSX_SHEET_NAMES.crawl,
+          SNAPSHOT_XLSX_SHEET_NAMES.backlink,
         ],
         dailyRowCount: workbookBundle.dailyRows.length,
         summaryRowCount: workbookBundle.summaryRows.length,
@@ -17085,6 +17217,8 @@ async function downloadSnapshotXlsx(options) {
         queryRowCount: workbookBundle.queryRows.length,
         pageRowCount: workbookBundle.pageRows.length,
         indexedRowCount: workbookBundle.indexedRows.length,
+        crawlRowCount: workbookBundle.crawlRows.length,
+        backlinkRowCount: workbookBundle.backlinkRows.length,
       },
     };
   } catch (e) {
