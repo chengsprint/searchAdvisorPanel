@@ -134,6 +134,106 @@ function formatSnapshotXlsxSourceAccount(sourceAccount) {
   return String(sourceAccount);
 }
 
+function getSnapshotXlsxPrimaryAccountInfo(payload) {
+  const accounts =
+    payload && payload.accounts && typeof payload.accounts === "object" ? payload.accounts : {};
+  const accountKeys = Object.keys(accounts).filter(Boolean);
+  const primaryKey = accountKeys[0] || "";
+  const primaryAccount = primaryKey ? accounts[primaryKey] || null : null;
+  return {
+    accountLabel:
+      primaryKey ||
+      (primaryAccount && typeof primaryAccount.accountLabel === "string"
+        ? primaryAccount.accountLabel
+        : "") ||
+      (payload && typeof payload.accountLabel === "string" ? payload.accountLabel : ""),
+    accountEncId:
+      (primaryAccount && typeof primaryAccount.encId === "string" ? primaryAccount.encId : "") ||
+      (payload && typeof payload.accountEncId === "string" ? payload.accountEncId : "") ||
+      (payload && typeof payload.encId === "string" ? payload.encId : ""),
+  };
+}
+
+function buildSnapshotXlsxAccountFallbackContext(payload) {
+  const primaryAccount = getSnapshotXlsxPrimaryAccountInfo(payload);
+  const accounts =
+    payload && payload.accounts && typeof payload.accounts === "object" ? payload.accounts : {};
+  const bySite = {};
+  Object.keys(accounts).forEach(function (accountKey) {
+    const account = accounts[accountKey];
+    const dataBySite =
+      account && account.dataBySite && typeof account.dataBySite === "object"
+        ? account.dataBySite
+        : {};
+    Object.keys(dataBySite).forEach(function (site) {
+      if (!site || bySite[site]) return;
+      const siteData = dataBySite[site] || {};
+      const sourceAccount =
+        (siteData.__source && typeof siteData.__source === "object" && siteData.__source) ||
+        (siteData.__meta && siteData.__meta.__source ? siteData.__meta.__source : null) ||
+        (siteData._merge && siteData._merge.__source ? siteData._merge.__source : null) ||
+        accountKey ||
+        null;
+      bySite[site] = {
+        accountLabel:
+          accountKey ||
+          (sourceAccount && typeof sourceAccount === "object" && sourceAccount.accountLabel
+            ? sourceAccount.accountLabel
+            : "") ||
+          "",
+        sourceAccount: sourceAccount,
+      };
+    });
+  });
+  return {
+    primaryAccount: primaryAccount,
+    bySite: bySite,
+  };
+}
+
+function getSnapshotXlsxRowAccountLabel(row, fallbackContext) {
+  if (row && typeof row.accountLabel === "string" && row.accountLabel) return row.accountLabel;
+  const site = row && row.site ? row.site : "";
+  const siteFallback =
+    site && fallbackContext && fallbackContext.bySite ? fallbackContext.bySite[site] : null;
+  if (siteFallback && typeof siteFallback.accountLabel === "string" && siteFallback.accountLabel) {
+    return siteFallback.accountLabel;
+  }
+  const sourceAccount = row ? row.sourceAccount : null;
+  if (sourceAccount && typeof sourceAccount === "object") {
+    if (typeof sourceAccount.accountLabel === "string" && sourceAccount.accountLabel) {
+      return sourceAccount.accountLabel;
+    }
+    if (typeof sourceAccount.email === "string" && sourceAccount.email) {
+      return sourceAccount.email;
+    }
+  }
+  if (typeof sourceAccount === "string" && sourceAccount) return sourceAccount;
+  return fallbackContext &&
+    fallbackContext.primaryAccount &&
+    typeof fallbackContext.primaryAccount.accountLabel === "string"
+    ? fallbackContext.primaryAccount.accountLabel
+    : "";
+}
+
+function getSnapshotXlsxRowSourceAccount(row, fallbackContext) {
+  const sourceAccount = row ? row.sourceAccount : null;
+  const formattedSource = formatSnapshotXlsxSourceAccount(sourceAccount);
+  if (formattedSource) return formattedSource;
+  const site = row && row.site ? row.site : "";
+  const siteFallback =
+    site && fallbackContext && fallbackContext.bySite ? fallbackContext.bySite[site] : null;
+  if (siteFallback && siteFallback.sourceAccount) {
+    const siteSource = formatSnapshotXlsxSourceAccount(siteFallback.sourceAccount);
+    if (siteSource) return siteSource;
+  }
+  return fallbackContext &&
+    fallbackContext.primaryAccount &&
+    typeof fallbackContext.primaryAccount.accountLabel === "string"
+    ? fallbackContext.primaryAccount.accountLabel
+    : "";
+}
+
 function formatSnapshotXlsxDiagRange(range) {
   if (range == null || range === "") return "";
   if (typeof range === "string") return range;
@@ -210,7 +310,7 @@ function getSnapshotXlsxSummaryRows(payload) {
   return baseRows;
 }
 
-function buildSnapshotXlsxSiteDailyRows(savedAt, payload) {
+function buildSnapshotXlsxSiteDailyRows(savedAt, payload, fallbackContext) {
   const exportedAt = getSnapshotXlsxExportedAt(savedAt);
   const runtimeType = getSnapshotXlsxRuntimeType(payload);
   const periodDays = getSnapshotXlsxPeriodDays(payload);
@@ -226,8 +326,8 @@ function buildSnapshotXlsxSiteDailyRows(savedAt, payload) {
       return {
         date: normalizeSnapshotXlsxDate(dates[index]),
         site: row && row.site ? row.site : "",
-        account_label: row && row.accountLabel ? row.accountLabel : "",
-        source_account: formatSnapshotXlsxSourceAccount(row ? row.sourceAccount : null),
+        account_label: getSnapshotXlsxRowAccountLabel(row, fallbackContext),
+        source_account: getSnapshotXlsxRowSourceAccount(row, fallbackContext),
         runtime_type: runtimeType,
         period_days: periodDays,
         exported_at: exportedAt,
@@ -251,15 +351,15 @@ function buildSnapshotXlsxSiteDailyRows(savedAt, payload) {
   });
 }
 
-function buildSnapshotXlsxSiteSummaryRows(savedAt, payload) {
+function buildSnapshotXlsxSiteSummaryRows(savedAt, payload, fallbackContext) {
   const exportedAt = getSnapshotXlsxExportedAt(savedAt);
   const runtimeType = getSnapshotXlsxRuntimeType(payload);
   const periodDays = getSnapshotXlsxPeriodDays(payload);
   return getSnapshotXlsxSummaryRows(payload).map(function (row) {
     return {
       site: row && row.site ? row.site : "",
-      account_label: row && row.accountLabel ? row.accountLabel : "",
-      source_account: formatSnapshotXlsxSourceAccount(row ? row.sourceAccount : null),
+      account_label: getSnapshotXlsxRowAccountLabel(row, fallbackContext),
+      source_account: getSnapshotXlsxRowSourceAccount(row, fallbackContext),
       runtime_type: runtimeType,
       period_days: periodDays,
       exported_at: exportedAt,
@@ -279,14 +379,14 @@ function buildSnapshotXlsxSiteSummaryRows(savedAt, payload) {
   });
 }
 
-function buildSnapshotXlsxSiteMetaRows(savedAt, payload) {
+function buildSnapshotXlsxSiteMetaRows(savedAt, payload, fallbackContext) {
   const exportedAt = getSnapshotXlsxExportedAt(savedAt);
   const runtimeType = getSnapshotXlsxRuntimeType(payload);
   return getSnapshotXlsxSummaryRows(payload).map(function (row) {
     return {
       site: row && row.site ? row.site : "",
-      account_label: row && row.accountLabel ? row.accountLabel : "",
-      source_account: formatSnapshotXlsxSourceAccount(row ? row.sourceAccount : null),
+      account_label: getSnapshotXlsxRowAccountLabel(row, fallbackContext),
+      source_account: getSnapshotXlsxRowSourceAccount(row, fallbackContext),
       runtime_type: runtimeType,
       exported_at: exportedAt,
       diagnosis_meta_code:
@@ -404,9 +504,10 @@ function buildSnapshotXlsxReadmeSheet(XLSX, savedAt, payload, dailyRows, summary
 function buildSnapshotXlsxWorkbook(savedAt, payload) {
   const XLSX = window.XLSX;
   const columns = getSnapshotXlsxSheetColumns();
-  const dailyRows = buildSnapshotXlsxSiteDailyRows(savedAt, payload);
-  const summaryRows = buildSnapshotXlsxSiteSummaryRows(savedAt, payload);
-  const metaRows = buildSnapshotXlsxSiteMetaRows(savedAt, payload);
+  const fallbackContext = buildSnapshotXlsxAccountFallbackContext(payload);
+  const dailyRows = buildSnapshotXlsxSiteDailyRows(savedAt, payload, fallbackContext);
+  const summaryRows = buildSnapshotXlsxSiteSummaryRows(savedAt, payload, fallbackContext);
+  const metaRows = buildSnapshotXlsxSiteMetaRows(savedAt, payload, fallbackContext);
   const wb = XLSX.utils.book_new();
   wb.Props = {
     Title: "SearchAdvisor Detailed Export",
