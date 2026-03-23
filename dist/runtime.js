@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-23T07:47:43Z";
-var __SADV_GIT_HEAD__="eece8e1";
+var __SADV_BUILD_STAMP__="2026-03-23T07:51:53Z";
+var __SADV_GIT_HEAD__="b908574";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -10740,6 +10740,12 @@ function applyUiControlsTab(tab) {
         return __sadvInitialReady;
       },
       waitUntilReady: function (timeoutMs) {
+        // 주의:
+        // waitUntilReady()는 "shell-ready"를 의미한다.
+        // 즉 패널 scaffold/public facade/listener wiring이 준비된 시점을 기다리는 API이지,
+        // live startup refresh/bootstrap work까지 모두 settled 되었다는 뜻은 아니다.
+        // 외부 드라이버가 startup in-flight 여부까지 보고 싶다면
+        // getSaveStatus() / overlay dataset / runtime progress를 함께 읽어야 한다.
         return new Promise(function (resolve, reject) {
           if (__sadvInitialReady) {
             resolve(true);
