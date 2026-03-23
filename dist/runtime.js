@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-23T08:46:03Z";
-var __SADV_GIT_HEAD__="78c3ae3";
+var __SADV_BUILD_STAMP__="2026-03-23T08:53:20Z";
+var __SADV_GIT_HEAD__="ddae7a0";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -16039,6 +16039,9 @@ function renderFailureSummary(stats) {
 // ============================================================
 
 function getSnapshotCsvColumns() {
+  // Phase 1 intentionally stays on canonical summaryRows-only fields.
+  // Columns without a stable payload source (for example top keyword/page)
+  // are excluded instead of emitting permanently blank placeholders.
   return [
     { key: "site", header: "사이트" },
     { key: "accountLabel", header: "계정 라벨" },
@@ -16053,8 +16056,6 @@ function getSnapshotCsvColumns() {
     { key: "diagIndex", header: "진단 지수" },
     { key: "diagLabel", header: "진단 상태" },
     { key: "diagReason", header: "진단 사유" },
-    { key: "diagTopKeyword", header: "대표 키워드" },
-    { key: "diagTopPage", header: "대표 페이지" },
     { key: "savedAt", header: "저장 시각" },
   ];
 }
@@ -16125,8 +16126,18 @@ function formatSnapshotCsvDiagReason(row) {
     if (typeof range === "string") {
       parts.push("range=" + range);
     } else if (range && typeof range === "object") {
-      const start = typeof range.start === "string" ? range.start : "";
-      const end = typeof range.end === "string" ? range.end : "";
+      const start =
+        typeof range.start === "string"
+          ? range.start
+          : typeof range.startDate === "string"
+            ? range.startDate
+            : "";
+      const end =
+        typeof range.end === "string"
+          ? range.end
+          : typeof range.endDate === "string"
+            ? range.endDate
+            : "";
       if (start || end) {
         parts.push("range=" + (start && end ? start + "~" + end : start || end));
       } else {
@@ -16141,11 +16152,16 @@ function formatSnapshotCsvDiagReason(row) {
   return parts.join(" · ");
 }
 
-function buildSnapshotCsvRow(savedAt, row) {
+function buildSnapshotCsvRow(savedAt, row, context) {
+  const fallbackAccountLabel =
+    context && typeof context.accountLabel === "string" ? context.accountLabel : "";
+  const fallbackAccountEncId =
+    context && typeof context.accountEncId === "string" ? context.accountEncId : "";
+  const sourceAccountText = formatSnapshotCsvSourceAccount(row ? row.sourceAccount : null);
   return {
     site: row && row.site ? row.site : "",
-    accountLabel: row && row.accountLabel ? row.accountLabel : "",
-    sourceAccount: formatSnapshotCsvSourceAccount(row ? row.sourceAccount : null),
+    accountLabel: row && row.accountLabel ? row.accountLabel : fallbackAccountLabel,
+    sourceAccount: sourceAccountText || fallbackAccountLabel || fallbackAccountEncId,
     periodDays: row && row.baseWindowDays ? row.baseWindowDays : 90,
     totalC: row && Number.isFinite(Number(row.totalC)) ? Number(row.totalC) : 0,
     totalE: row && Number.isFinite(Number(row.totalE)) ? Number(row.totalE) : 0,
@@ -16159,8 +16175,6 @@ function buildSnapshotCsvRow(savedAt, row) {
         : 0,
     diagLabel: formatSnapshotCsvDiagLabel(row),
     diagReason: formatSnapshotCsvDiagReason(row),
-    diagTopKeyword: "",
-    diagTopPage: "",
     savedAt:
       savedAt && typeof savedAt.toISOString === "function"
         ? savedAt.toISOString()
@@ -16171,11 +16185,15 @@ function buildSnapshotCsvRow(savedAt, row) {
 function buildSnapshotCsv(savedAt, payload) {
   const rows = Array.isArray(payload && payload.summaryRows) ? payload.summaryRows : [];
   const columns = getSnapshotCsvColumns();
+  const context = {
+    accountLabel: payload && payload.accountLabel ? payload.accountLabel : "",
+    accountEncId: payload && payload.accountEncId ? payload.accountEncId : "",
+  };
   const headerLine = columns.map(function (column) {
     return escapeSnapshotCsvCell(column.header);
   }).join(",");
   const dataLines = rows.map(function (row) {
-    const csvRow = buildSnapshotCsvRow(savedAt, row);
+    const csvRow = buildSnapshotCsvRow(savedAt, row, context);
     return columns.map(function (column) {
       return escapeSnapshotCsvCell(csvRow[column.key]);
     }).join(",");
