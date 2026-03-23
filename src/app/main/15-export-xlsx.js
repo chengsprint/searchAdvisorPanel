@@ -629,6 +629,20 @@ function buildSnapshotXlsxBacklinkRows(savedAt, payload, fallbackContext) {
         return String((a && a.timeStamp) || "").localeCompare(String((b && b.timeStamp) || ""));
       })
       .pop() || null;
+    const latestBacklinkCount = normalizeSnapshotXlsxNumber(latestTimeRow && latestTimeRow.backlinkCnt);
+    const declaredTotalBacklinks = normalizeSnapshotXlsxNumber(backlinkItem && backlinkItem.total);
+    const declaredTotalDomains = normalizeSnapshotXlsxNumber(backlinkItem && backlinkItem.domains);
+    const inferredDomainCount = topDomains.length;
+    const inferredBacklinkTotal = topDomains.reduce(function (sum, row) {
+      return sum + normalizeSnapshotXlsxNumber(row && row.backlinkCnt);
+    }, 0);
+    const totalBacklinks =
+      declaredTotalBacklinks > 0
+        ? declaredTotalBacklinks
+        : latestBacklinkCount > 0
+          ? latestBacklinkCount
+          : inferredBacklinkTotal;
+    const totalDomains = declaredTotalDomains > 0 ? declaredTotalDomains : inferredDomainCount;
     return topDomains.map(function (domainRow, index) {
       return {
         site: entry.site,
@@ -640,9 +654,9 @@ function buildSnapshotXlsxBacklinkRows(savedAt, payload, fallbackContext) {
         domain: domainRow && domainRow.domain != null ? String(domainRow.domain) : "",
         backlink_count: normalizeSnapshotXlsxNumber(domainRow && domainRow.backlinkCnt),
         domain_rank: index + 1,
-        total_backlinks: normalizeSnapshotXlsxNumber(backlinkItem && backlinkItem.total),
-        total_domains: normalizeSnapshotXlsxNumber(backlinkItem && backlinkItem.domains),
-        latest_backlink_count: normalizeSnapshotXlsxNumber(latestTimeRow && latestTimeRow.backlinkCnt),
+        total_backlinks: totalBacklinks,
+        total_domains: totalDomains,
+        latest_backlink_count: latestBacklinkCount,
       };
     });
   });
