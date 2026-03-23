@@ -794,8 +794,10 @@ function applyUiControlsTab(tab) {
   var sadvXlsxBtnEl = document.getElementById("sadv-xlsx-btn");
   if (sadvXlsxBtnEl) {
     // XLSX 상세 저장은 기존 CSV 수동 저장 자리를 완전히 대체한다.
-    // public surface는 live interactive manual button까지만 유지하고,
-    // saved/read-only 및 merge UI에는 노출하지 않는다.
+    // 기본 public surface는 live interactive manual button이 정본이다.
+    // 단, merge.py가 만든 read-only saved merged snapshot에서는
+    // manual xlsx entry만 좁게 다시 연다.
+    // 일반 saved/read-only snapshot과 live merge UI는 계속 보수적으로 숨긴다.
     syncXlsxButtonVisibility();
     sadvXlsxBtnEl.addEventListener("click", function () {
       if (sadvXlsxBtnEl.disabled) return;

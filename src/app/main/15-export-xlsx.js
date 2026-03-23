@@ -163,10 +163,10 @@ function getSnapshotXlsxPrimaryAccountInfo(payload) {
   const primaryAccount = primaryKey ? accounts[primaryKey] || null : null;
   return {
     accountLabel:
-      primaryKey ||
       (primaryAccount && typeof primaryAccount.accountLabel === "string"
         ? primaryAccount.accountLabel
         : "") ||
+      primaryKey ||
       (payload && typeof payload.accountLabel === "string" ? payload.accountLabel : ""),
     accountEncId:
       (primaryAccount && typeof primaryAccount.encId === "string" ? primaryAccount.encId : "") ||
@@ -197,10 +197,11 @@ function buildSnapshotXlsxAccountFallbackContext(payload) {
         null;
       bySite[site] = {
         accountLabel:
-          accountKey ||
+          (account && typeof account.accountLabel === "string" && account.accountLabel) ||
           (sourceAccount && typeof sourceAccount === "object" && sourceAccount.accountLabel
             ? sourceAccount.accountLabel
             : "") ||
+          accountKey ||
           "",
         sourceAccount: sourceAccount,
       };

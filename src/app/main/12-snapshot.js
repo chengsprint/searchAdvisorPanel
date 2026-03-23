@@ -262,7 +262,9 @@ function isSavedMergedSnapshotRuntime() {
     capabilities.isReadOnly &&
     capabilities.canXlsxSave &&
     mergedMeta &&
-    mergedMeta.isMerged
+    mergedMeta.isMerged &&
+    mergedMeta.generatedBy === "merge.py" &&
+    mergedMeta.xlsxAllowed
   );
 }
 
@@ -705,8 +707,8 @@ function buildSnapshotOutputAvailabilityDecision(requestContext) {
     return {
       allowed: false,
       reason: "xlsx-live-only",
-      detail: "엑셀 저장은 라이브 패널에서만 지원해요.",
-      userMessage: "엑셀 저장은 라이브 패널에서만 지원해요.",
+      detail: "엑셀 저장은 라이브 패널 또는 병합 저장본의 엑셀 버튼에서만 지원해요.",
+      userMessage: "엑셀 저장은 라이브 패널 또는 병합 저장본의 엑셀 버튼에서만 지원해요.",
       technicalMessage: "xlsx export is restricted to live runtime",
     };
   }

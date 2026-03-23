@@ -129,6 +129,19 @@ def extract_payload_from_html_text(text: str) -> Dict[str, Any]:
     raise ValueError("supported EXPORT_PAYLOAD marker not found")
 
 
+def find_payload_assignment_range(text: str) -> Tuple[str, int, int]:
+    for token in PAYLOAD_TOKENS:
+        token_idx = text.find(token)
+        if token_idx < 0:
+            continue
+        start_idx = text.find("{", token_idx)
+        if start_idx < 0:
+            continue
+        end_idx = find_matching_json_end(text, start_idx)
+        return token, start_idx, end_idx
+    raise ValueError("SADV payload marker not found in template html")
+
+
 def extract_snapshot_source_state(payload: Dict[str, Any]) -> Dict[str, Any]:
     if isinstance(payload.get("__meta"), dict) and isinstance(payload.get("accounts"), dict):
         accounts = payload.get("accounts") or {}
@@ -250,7 +263,8 @@ def build_retained_accounts(
         enc_id = state.get("accountEncId") or ""
         source_data_by_site = state.get("dataBySite") or {}
         source_site_meta = state.get("siteMeta") or {}
-        accounts_payload[display_label] = {
+        accounts_payload[account_key] = {
+            "accountLabel": display_label,
             "encId": enc_id,
             "sites": retained_sites,
             "siteMeta": {site: deepcopy(source_site_meta.get(site, {})) for site in retained_sites},
@@ -337,6 +351,8 @@ def merge_payloads(entries: List[ParsedSnapshot], target_month: str) -> Dict[str
     saved_at_iso = datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     merged_meta = {
         "isMerged": True,
+        "generatedBy": "merge.py",
+        "xlsxAllowed": True,
         "mergedAt": saved_at_iso,
         "targetDate": target_month,
         "sourceCount": len(entries),
@@ -409,14 +425,7 @@ def replace_first_saved_chip(html: str, saved_label: str) -> str:
 
 
 def replace_payload_raw(html: str, payload: Dict[str, Any]) -> str:
-    token = "const EXPORT_PAYLOAD_RAW ="
-    token_idx = html.find(token)
-    if token_idx < 0:
-        raise ValueError("SADV payload marker not found in template html")
-    start_idx = html.find("{", token_idx)
-    if start_idx < 0:
-        raise ValueError("EXPORT_PAYLOAD_RAW assignment missing JSON object")
-    end_idx = find_matching_json_end(html, start_idx)
+    _token, start_idx, end_idx = find_payload_assignment_range(html)
     replacement = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     return html[:start_idx] + replacement + html[end_idx + 1 :]
 
@@ -435,7 +444,7 @@ def cleanup_html_files(
     directory: Path,
     selected_latest: Dict[str, SourceHtmlFile],
     merged_output_path: Optional[Path],
-) -> Tuple[int, List[str]]:
+) -> Tuple[int, List[str], List[str]]:
     keep: set[Path] = {item.path.resolve() for item in selected_latest.values()}
     for merged_path in directory.glob("searchadvisor-MERGED-*.html"):
         keep.add(merged_path.resolve())
@@ -443,6 +452,7 @@ def cleanup_html_files(
         keep.add(merged_output_path.resolve())
 
     removed: List[str] = []
+    failed: List[str] = []
     for candidate in sorted(directory.glob("searchadvisor-*.html")):
         resolved = candidate.resolve()
         if resolved in keep:
@@ -451,9 +461,12 @@ def cleanup_html_files(
             continue
         if parse_source_html_filename(candidate) is None:
             continue
-        candidate.unlink(missing_ok=True)
-        removed.append(candidate.name)
-    return len(removed), removed
+        try:
+            candidate.unlink(missing_ok=True)
+            removed.append(candidate.name)
+        except Exception:
+            failed.append(candidate.name)
+    return len(removed), removed, failed
 
 
 def merge_current_directory(directory: Path) -> int:
@@ -500,10 +513,16 @@ def merge_current_directory(directory: Path) -> int:
     else:
         log("⚠️ 읽을 수 있는 최신 HTML이 없어 merged HTML 생성은 건너뜁니다.")
 
-    removed_count, removed_files = cleanup_html_files(directory, latest_by_account, merged_output_path)
+    removed_count, removed_files, failed_files = cleanup_html_files(
+        directory,
+        latest_by_account,
+        merged_output_path,
+    )
     log(f"🧹 정리 완료: 오래된 HTML {removed_count}개 제거")
     for name in removed_files:
         log(f"  - removed: {name}")
+    for name in failed_files:
+        log(f"  ⚠️ 삭제 실패, 보존됨: {name}")
     return 0
 
 

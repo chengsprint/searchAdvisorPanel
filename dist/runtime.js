@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-23T16:16:47Z";
-var __SADV_GIT_HEAD__="b68cbd9";
+var __SADV_BUILD_STAMP__="2026-03-23T16:26:51Z";
+var __SADV_GIT_HEAD__="786f677";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -8346,6 +8346,13 @@ function getRuntimeCapabilities() {
       window.__SEARCHADVISOR_EXPORT_PAYLOAD__.mergedMeta
         ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__.mergedMeta
         : null;
+    const canMergedSnapshotXlsx =
+      !!(
+        mergedMeta &&
+        mergedMeta.isMerged &&
+        mergedMeta.generatedBy === "merge.py" &&
+        mergedMeta.xlsxAllowed
+      );
     return {
       mode: "snapshot",
       canRefresh: false,
@@ -8354,7 +8361,7 @@ function getRuntimeCapabilities() {
       // saved snapshot 전체에 저장을 다시 열어두면 HTML 저장/public API까지 같이 열리므로 위험하다.
       // merge.py가 만든 merged saved snapshot에서만 수동 엑셀 버튼을 열기 위해
       // xlsx 전용 capability만 별도로 둔다.
-      canXlsxSave: !!(mergedMeta && mergedMeta.isMerged),
+      canXlsxSave: canMergedSnapshotXlsx,
       canClose: false,
       isReadOnly: true,
     };
@@ -10777,8 +10784,10 @@ function applyUiControlsTab(tab) {
   var sadvXlsxBtnEl = document.getElementById("sadv-xlsx-btn");
   if (sadvXlsxBtnEl) {
     // XLSX 상세 저장은 기존 CSV 수동 저장 자리를 완전히 대체한다.
-    // public surface는 live interactive manual button까지만 유지하고,
-    // saved/read-only 및 merge UI에는 노출하지 않는다.
+    // 기본 public surface는 live interactive manual button이 정본이다.
+    // 단, merge.py가 만든 read-only saved merged snapshot에서는
+    // manual xlsx entry만 좁게 다시 연다.
+    // 일반 saved/read-only snapshot과 live merge UI는 계속 보수적으로 숨긴다.
     syncXlsxButtonVisibility();
     sadvXlsxBtnEl.addEventListener("click", function () {
       if (sadvXlsxBtnEl.disabled) return;
@@ -12062,7 +12071,9 @@ function isSavedMergedSnapshotRuntime() {
     capabilities.isReadOnly &&
     capabilities.canXlsxSave &&
     mergedMeta &&
-    mergedMeta.isMerged
+    mergedMeta.isMerged &&
+    mergedMeta.generatedBy === "merge.py" &&
+    mergedMeta.xlsxAllowed
   );
 }
 
@@ -12505,8 +12516,8 @@ function buildSnapshotOutputAvailabilityDecision(requestContext) {
     return {
       allowed: false,
       reason: "xlsx-live-only",
-      detail: "엑셀 저장은 라이브 패널에서만 지원해요.",
-      userMessage: "엑셀 저장은 라이브 패널에서만 지원해요.",
+      detail: "엑셀 저장은 라이브 패널 또는 병합 저장본의 엑셀 버튼에서만 지원해요.",
+      userMessage: "엑셀 저장은 라이브 패널 또는 병합 저장본의 엑셀 버튼에서만 지원해요.",
       technicalMessage: "xlsx export is restricted to live runtime",
     };
   }
@@ -16461,10 +16472,10 @@ function getSnapshotXlsxPrimaryAccountInfo(payload) {
   const primaryAccount = primaryKey ? accounts[primaryKey] || null : null;
   return {
     accountLabel:
-      primaryKey ||
       (primaryAccount && typeof primaryAccount.accountLabel === "string"
         ? primaryAccount.accountLabel
         : "") ||
+      primaryKey ||
       (payload && typeof payload.accountLabel === "string" ? payload.accountLabel : ""),
     accountEncId:
       (primaryAccount && typeof primaryAccount.encId === "string" ? primaryAccount.encId : "") ||
@@ -16495,10 +16506,11 @@ function buildSnapshotXlsxAccountFallbackContext(payload) {
         null;
       bySite[site] = {
         accountLabel:
-          accountKey ||
+          (account && typeof account.accountLabel === "string" && account.accountLabel) ||
           (sourceAccount && typeof sourceAccount === "object" && sourceAccount.accountLabel
             ? sourceAccount.accountLabel
             : "") ||
+          accountKey ||
           "",
         sourceAccount: sourceAccount,
       };
