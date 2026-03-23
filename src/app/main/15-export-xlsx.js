@@ -636,13 +636,15 @@ function buildSnapshotXlsxBacklinkRows(savedAt, payload, fallbackContext) {
     const inferredBacklinkTotal = topDomains.reduce(function (sum, row) {
       return sum + normalizeSnapshotXlsxNumber(row && row.backlinkCnt);
     }, 0);
-    const totalBacklinks =
-      declaredTotalBacklinks > 0
-        ? declaredTotalBacklinks
-        : latestBacklinkCount > 0
-          ? latestBacklinkCount
-          : inferredBacklinkTotal;
-    const totalDomains = declaredTotalDomains > 0 ? declaredTotalDomains : inferredDomainCount;
+    // 총합 컬럼은 개별 row보다 작아지면 의미가 깨진다.
+    // 따라서 raw total이 없을 때는 latest count만 바로 쓰지 말고,
+    // topDomain 합계와 비교해 더 큰 값을 총 백링크 수 fallback으로 사용한다.
+    const totalBacklinks = Math.max(
+      declaredTotalBacklinks,
+      inferredBacklinkTotal,
+      latestBacklinkCount,
+    );
+    const totalDomains = Math.max(declaredTotalDomains, inferredDomainCount);
     return topDomains.map(function (domainRow, index) {
       return {
         site: entry.site,
