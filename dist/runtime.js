@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-23T07:54:15Z";
-var __SADV_GIT_HEAD__="2fdcdc1";
+var __SADV_BUILD_STAMP__="2026-03-23T08:46:03Z";
+var __SADV_GIT_HEAD__="78c3ae3";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -1429,6 +1429,7 @@ const ERROR_MESSAGES = {
   // Download/Export Errors
   DOWNLOAD_FAILED: "파일 다운로드에 실패했어요. 다시 시도해주세요.",
   HTML_SAVE_ERROR: "HTML 저장 중 오류가 발생했어요. 다시 시도해주세요.",
+  CSV_SAVE_ERROR: "CSV 저장 중 오류가 발생했어요. 다시 시도해주세요.",
   EXPORT_INCOMPLETE: "일부 사이트 데이터를 내보내지 못했어요.",
   SAVE_BLOCKED_PANEL_ERROR: "패널 작업 중 문제가 남아 있어 저장을 진행하지 않았어요.",
   SAVE_BLOCKED_TOO_MANY_FAILURES: "조회 실패 사이트가 많아 저장을 진행하지 않았어요.",
@@ -3071,7 +3072,7 @@ if (sadvBootBackgroundSave) {
   p.style.pointerEvents = "none";
   p.style.transform = "translateX(calc(100% + 48px))";
 }
-p.innerHTML = sanitizeHTML(`<style>#sadv-p *{box-sizing:border-box}#sadv-p ::-webkit-scrollbar{width:6px}#sadv-p ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}#sadv-header{padding:20px;border-bottom:1px solid #1e293b;background:rgba(2,6,23,0.8);backdrop-filter:blur(12px)}#sadv-mode-bar{display:flex;gap:4px;margin-top:16px;background:#0f172a;padding:4px;border-radius:12px;border:1px solid #334155}.sadv-mode{flex:1;background:transparent;border:none;color:#94a3b8;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}.sadv-mode.on{background:#1e293b;color:#0ea5e9;box-shadow:0 4px 6px -1px rgba(0,0,0,0.2)}#sadv-site-bar{margin-top:12px;position:relative;display:none}#sadv-site-bar.show{display:block}#sadv-combo-wrap{position:relative}#sadv-combo-btn{width:100%;background:#0f172a;border:1px solid #334155;color:#f8fafc;border-radius:10px;padding:10px 36px 10px 12px;font-size:13px;cursor:pointer;text-align:left;font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:10px}#sadv-combo-btn:hover{border-color:#0ea5e9;background:#1e293b}#sadv-combo-btn:focus-visible{outline:2px solid #0ea5e9;outline-offset:2px;box-shadow:0 0 0 4px rgba(14, 165, 233, 0.1)}#sadv-combo-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#64748b}#sadv-combo-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:500}#sadv-combo-arrow{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#64748b;font-size:12px;pointer-events:none;transition:transform .2s}#sadv-combo-wrap.open #sadv-combo-arrow{transform:translateY(-50%) rotate(180deg)}#sadv-combo-drop{display:none;position:absolute;top:calc(100% + 8px);left:0;right:0;background:#0f172a;border:1px solid #334155;border-radius:12px;padding:6px;z-index:100;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);max-height:300px;overflow-y:auto}#sadv-combo-wrap.open #sadv-combo-drop{display:block}.sadv-combo-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;cursor:pointer;transition:all .1s;border:1px solid transparent}.sadv-combo-item:hover{background:#1e293b}.sadv-combo-item:focus-visible{outline:2px solid #0ea5e9;outline-offset:-2px}.sadv-combo-item.active{background:#1e293b;border-color:#334155;color:#0ea5e9}#sadv-tabs{display:none;flex-wrap:wrap;gap:6px;padding:12px 20px;background:#020617;border-bottom:1px solid #1e293b;justify-content:center}#sadv-tabs.show{display:flex;justify-content:center}#sadv-tabs::-webkit-scrollbar{display:none}.sadv-t{background:transparent;border:1px solid transparent;color:#64748b;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}.sadv-t:hover{color:#f8fafc;background:#1e293b}.sadv-t.on{background:rgba(14,165,233,0.1);border-color:rgba(14,165,233,0.2);color:#0ea5e9}#sadv-refresh-btn,#sadv-save-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s;white-space:nowrap;flex-shrink:0;min-width:74px;line-height:1.1}#sadv-refresh-btn:hover,#sadv-save-btn:hover{border-color:#0ea5e9;color:#0ea5e9;background:#1e293b}#sadv-refresh-btn:focus-visible,#sadv-save-btn:focus-visible{outline:2px solid #0ea5e9;outline-offset:2px;box-shadow:0 0 0 4px rgba(14, 165, 233, 0.1)}#sadv-cache-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}#sadv-bd{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px}#sadv-tabpanel{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px}.sadv-allcard{background:#0f172a;border:1px solid #1e293b;border-radius:16px;padding:20px;margin-bottom:16px;cursor:pointer;transition:all .2s}.sadv-allcard:hover{border-color:#334155;transform:translateY(-2px)}</style><div id="sadv-header"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:7px;font-size:18px;font-weight:800;letter-spacing:-0.03em"><span style="display:inline-flex;opacity:0.95">${ICONS.logoSearch}</span>Search<span style="color:#ffd400">Advisor</span></div><div id="sadv-account-badge" style="display:none;padding:4px 12px;border-radius:999px;border:1px solid rgba(255,212,0,0.2);color:#ffd400;background:rgba(255,212,0,0.12);font-size:11px;font-weight:600;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div></div><div id="sadv-site-label" style="font-size:11px;color:#64748b;margin-top:4px;display:flex;align-items:center;gap:4px">\ub85c\ub529 \uc911...</div><div id="sadv-cache-meta"></div></div><div style="display:flex;gap:8px;align-items:center"><button id="sadv-refresh-btn" class="sadv-btn" title="새로고침" style="display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;flex-shrink:0;min-width:74px">${ICONS.refresh} 새로고침</button><button id="sadv-save-btn" class="sadv-btn" title="현재 화면 저장" style="display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;flex-shrink:0;min-width:74px">${ICONS.save} 저장</button><button id="sadv-x" style="background:none;border:1px solid #1e293b;color:#475569;width:32px;height:32px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s">${ICONS.xMark}</button></div></div><div id="sadv-mode-bar"><button class="sadv-mode on" data-m="all" style="display:inline-flex;align-items:center;justify-content:center;gap:5px">${ICONS.globe} 전체현황</button><button class="sadv-mode" data-m="site" style="display:inline-flex;align-items:center;justify-content:center;gap:5px">${ICONS.layers} 사이트별</button></div><div id="sadv-site-bar"><div id="sadv-combo-wrap"><button id="sadv-combo-btn"><span id="sadv-combo-dot"></span><span id="sadv-combo-label">\uc0ac\uc774\ud2b8 \uc120\ud0dd</span></button><span id="sadv-combo-arrow" style="display:inline-flex;align-items:center">${ICONS.chevronDown}</span><div id="sadv-combo-drop"></div></div></div></div><div id="sadv-tabs"></div><div id="sadv-bd"><div style="padding:60px 20px;text-align:center;color:#64748b">⏳ \ub85c\ub529 \uc911...</div></div>`);
+p.innerHTML = sanitizeHTML(`<style>#sadv-p *{box-sizing:border-box}#sadv-p ::-webkit-scrollbar{width:6px}#sadv-p ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}#sadv-header{padding:20px;border-bottom:1px solid #1e293b;background:rgba(2,6,23,0.8);backdrop-filter:blur(12px)}#sadv-mode-bar{display:flex;gap:4px;margin-top:16px;background:#0f172a;padding:4px;border-radius:12px;border:1px solid #334155}.sadv-mode{flex:1;background:transparent;border:none;color:#94a3b8;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}.sadv-mode.on{background:#1e293b;color:#0ea5e9;box-shadow:0 4px 6px -1px rgba(0,0,0,0.2)}#sadv-site-bar{margin-top:12px;position:relative;display:none}#sadv-site-bar.show{display:block}#sadv-combo-wrap{position:relative}#sadv-combo-btn{width:100%;background:#0f172a;border:1px solid #334155;color:#f8fafc;border-radius:10px;padding:10px 36px 10px 12px;font-size:13px;cursor:pointer;text-align:left;font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:10px}#sadv-combo-btn:hover{border-color:#0ea5e9;background:#1e293b}#sadv-combo-btn:focus-visible{outline:2px solid #0ea5e9;outline-offset:2px;box-shadow:0 0 0 4px rgba(14, 165, 233, 0.1)}#sadv-combo-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#64748b}#sadv-combo-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:500}#sadv-combo-arrow{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#64748b;font-size:12px;pointer-events:none;transition:transform .2s}#sadv-combo-wrap.open #sadv-combo-arrow{transform:translateY(-50%) rotate(180deg)}#sadv-combo-drop{display:none;position:absolute;top:calc(100% + 8px);left:0;right:0;background:#0f172a;border:1px solid #334155;border-radius:12px;padding:6px;z-index:100;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);max-height:300px;overflow-y:auto}#sadv-combo-wrap.open #sadv-combo-drop{display:block}.sadv-combo-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;cursor:pointer;transition:all .1s;border:1px solid transparent}.sadv-combo-item:hover{background:#1e293b}.sadv-combo-item:focus-visible{outline:2px solid #0ea5e9;outline-offset:-2px}.sadv-combo-item.active{background:#1e293b;border-color:#334155;color:#0ea5e9}#sadv-tabs{display:none;flex-wrap:wrap;gap:6px;padding:12px 20px;background:#020617;border-bottom:1px solid #1e293b;justify-content:center}#sadv-tabs.show{display:flex;justify-content:center}#sadv-tabs::-webkit-scrollbar{display:none}.sadv-t{background:transparent;border:1px solid transparent;color:#64748b;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}.sadv-t:hover{color:#f8fafc;background:#1e293b}.sadv-t.on{background:rgba(14,165,233,0.1);border-color:rgba(14,165,233,0.2);color:#0ea5e9}#sadv-refresh-btn,#sadv-save-btn,#sadv-csv-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s;white-space:nowrap;flex-shrink:0;min-width:74px;line-height:1.1}#sadv-refresh-btn:hover,#sadv-save-btn:hover,#sadv-csv-btn:hover{border-color:#0ea5e9;color:#0ea5e9;background:#1e293b}#sadv-refresh-btn:focus-visible,#sadv-save-btn:focus-visible,#sadv-csv-btn:focus-visible{outline:2px solid #0ea5e9;outline-offset:2px;box-shadow:0 0 0 4px rgba(14, 165, 233, 0.1)}#sadv-cache-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}#sadv-bd{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px}#sadv-tabpanel{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px}.sadv-allcard{background:#0f172a;border:1px solid #1e293b;border-radius:16px;padding:20px;margin-bottom:16px;cursor:pointer;transition:all .2s}.sadv-allcard:hover{border-color:#334155;transform:translateY(-2px)}</style><div id="sadv-header"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:7px;font-size:18px;font-weight:800;letter-spacing:-0.03em"><span style="display:inline-flex;opacity:0.95">${ICONS.logoSearch}</span>Search<span style="color:#ffd400">Advisor</span></div><div id="sadv-account-badge" style="display:none;padding:4px 12px;border-radius:999px;border:1px solid rgba(255,212,0,0.2);color:#ffd400;background:rgba(255,212,0,0.12);font-size:11px;font-weight:600;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div></div><div id="sadv-site-label" style="font-size:11px;color:#64748b;margin-top:4px;display:flex;align-items:center;gap:4px">\ub85c\ub529 \uc911...</div><div id="sadv-cache-meta"></div></div><div style="display:flex;gap:8px;align-items:center"><button id="sadv-refresh-btn" class="sadv-btn" title="새로고침" style="display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;flex-shrink:0;min-width:74px">${ICONS.refresh} 새로고침</button><button id="sadv-save-btn" class="sadv-btn" title="현재 화면 저장" style="display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;flex-shrink:0;min-width:74px">${ICONS.save} 저장</button><button id="sadv-csv-btn" class="sadv-btn" title="전체 데이터 CSV 저장" style="display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;flex-shrink:0;min-width:74px">${ICONS.save} CSV</button><button id="sadv-x" style="background:none;border:1px solid #1e293b;color:#475569;width:32px;height:32px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s">${ICONS.xMark}</button></div></div><div id="sadv-mode-bar"><button class="sadv-mode on" data-m="all" style="display:inline-flex;align-items:center;justify-content:center;gap:5px">${ICONS.globe} 전체현황</button><button class="sadv-mode" data-m="site" style="display:inline-flex;align-items:center;justify-content:center;gap:5px">${ICONS.layers} 사이트별</button></div><div id="sadv-site-bar"><div id="sadv-combo-wrap"><button id="sadv-combo-btn"><span id="sadv-combo-dot"></span><span id="sadv-combo-label">\uc0ac\uc774\ud2b8 \uc120\ud0dd</span></button><span id="sadv-combo-arrow" style="display:inline-flex;align-items:center">${ICONS.chevronDown}</span><div id="sadv-combo-drop"></div></div></div></div><div id="sadv-tabs"></div><div id="sadv-bd"><div style="padding:60px 20px;text-align:center;color:#64748b">⏳ \ub85c\ub529 \uc911...</div></div>`);
 const initialShellStyleEl = p.querySelector("style");
 if (initialShellStyleEl) {
   initialShellStyleEl.textContent = initialShellStyleEl.textContent
@@ -3097,6 +3098,7 @@ if (headerEl) {
   const modeBarEl = document.getElementById("sadv-mode-bar");
   const refreshBtnEl = document.getElementById("sadv-refresh-btn");
   const saveBtnEl = document.getElementById("sadv-save-btn");
+  const csvBtnEl = document.getElementById("sadv-csv-btn");
   const closeBtnEl = document.getElementById("sadv-x");
   const accountBadgeEl = document.getElementById("sadv-account-badge");
   const siteLabelMetaEl = document.getElementById("sadv-site-label");
@@ -3137,7 +3139,7 @@ if (headerEl) {
 
     const actionsWrapEl = document.createElement("div");
     actionsWrapEl.className = "sadv-header-actions";
-    [refreshBtnEl, saveBtnEl, closeBtnEl].forEach((node) => {
+    [refreshBtnEl, saveBtnEl, csvBtnEl, closeBtnEl].forEach((node) => {
       if (node) actionsWrapEl.appendChild(node);
     });
 
@@ -3363,6 +3365,7 @@ siteUiStyle.textContent = `
 #sadv-combo-btn:focus-visible,
 #sadv-refresh-btn:focus-visible,
 #sadv-save-btn:focus-visible,
+#sadv-csv-btn:focus-visible,
 #sadv-x:focus-visible,
 .sadv-mode:focus-visible,
 .sadv-t:focus-visible,
@@ -3507,12 +3510,14 @@ siteUiStyle.textContent = `
 }
 #sadv-refresh-btn,
 #sadv-save-btn,
+#sadv-csv-btn,
 #sadv-x{
   min-height:36px !important;
   border-radius:0 !important;
 }
 #sadv-refresh-btn,
-#sadv-save-btn{
+#sadv-save-btn,
+#sadv-csv-btn{
   background:var(--sadv-layer-01) !important;
   border:1px solid var(--sadv-border) !important;
   color:var(--sadv-text-secondary) !important;
@@ -3521,7 +3526,8 @@ siteUiStyle.textContent = `
   font-size:12px !important;
 }
 #sadv-refresh-btn:hover,
-#sadv-save-btn:hover{
+#sadv-save-btn:hover,
+#sadv-csv-btn:hover{
   background:var(--sadv-layer-02) !important;
   border-color:var(--sadv-accent) !important;
   color:var(--sadv-text) !important;
@@ -8376,6 +8382,7 @@ function createDefaultRuntimeSaveStatus() {
       missingSites: 0,
       expiredSites: 0,
     },
+    outputFormat: null,
     fileName: null,
     site: null,
     error: null,
@@ -10703,6 +10710,37 @@ function applyUiControlsTab(tab) {
     console.warn("[UI Controls] #sadv-save-btn not found during initialization");
   }
 
+  var sadvCsvBtnEl = document.getElementById("sadv-csv-btn");
+  if (sadvCsvBtnEl) {
+    // phase 1 CSV export is intentionally scoped to live interactive panels.
+    // saved/read-only runtimes must not expose the button, and merge/runtime
+    // specific expansions can be revisited later with explicit contract updates.
+    const runtimeKind =
+      typeof window !== "undefined" && window.__SEARCHADVISOR_RUNTIME_KIND__
+        ? window.__SEARCHADVISOR_RUNTIME_KIND__
+        : "live";
+    const canManualCsvSave = !!(
+      runtimeCapabilities.canSave &&
+      !runtimeCapabilities.isReadOnly &&
+      runtimeKind === "live"
+    );
+    if (!canManualCsvSave) {
+      sadvCsvBtnEl.style.display = "none";
+      sadvCsvBtnEl.setAttribute("aria-hidden", "true");
+    } else {
+      sadvCsvBtnEl.addEventListener("click", function () {
+        const saveStatus =
+          typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null;
+        if (saveStatus && saveStatus.active) return;
+        if (typeof runSnapshotSaveExecution === "function") {
+          runSnapshotSaveExecution({ entryPoint: "button-csv", outputFormat: "csv" });
+        }
+      });
+    }
+  } else {
+    console.warn("[UI Controls] #sadv-csv-btn not found during initialization");
+  }
+
   var sadvCloseBtnEl = document.getElementById("sadv-x");
   if (sadvCloseBtnEl) {
     if (!runtimeCapabilities.canClose) {
@@ -11765,9 +11803,52 @@ function createIdleDirectSaveStatus() {
     mirroredProgress: null,
     stats: { success: 0, partial: 0, failed: 0, errors: [] },
     cacheDecision: { neededRefresh: false, reason: null, missingSites: 0, expiredSites: 0 },
+    outputFormat: null,
     fileName: null,
     site: null,
     error: null,
+  };
+}
+
+function normalizeSnapshotSaveOutputFormat(format) {
+  return format === "csv" ? "csv" : "html";
+}
+
+function getSnapshotSaveOutputMeta(format) {
+  const outputFormat = normalizeSnapshotSaveOutputFormat(format);
+  if (outputFormat === "csv") {
+    return {
+      outputFormat: "csv",
+      triggerButtonId: "sadv-csv-btn",
+      preparingTitle: "CSV 저장 준비 중",
+      collectingTitle: "CSV 저장 데이터 수집 중",
+      buildingTitle: "CSV 파일 생성 중",
+      buildingDetail: "스프레드시트에서 열 수 있는 단일 CSV 파일을 조립하고 있어요.",
+      triggeringTitle: "CSV 다운로드 시작 중",
+      completedTitle: "CSV 저장 완료",
+      completedWithIssuesTitle: "CSV 저장 완료 · 이슈 있음",
+      blockedTitle: "CSV 저장 중단",
+      failedTitle: "CSV 저장 실패",
+      errorMessage: ERROR_MESSAGES.CSV_SAVE_ERROR,
+      fileExtension: "csv",
+      fileKindLabel: "CSV 파일",
+    };
+  }
+  return {
+    outputFormat: "html",
+    triggerButtonId: "sadv-save-btn",
+    preparingTitle: "저장 준비 중",
+    collectingTitle: "저장 데이터 수집 중",
+    buildingTitle: "HTML 저장본 생성 중",
+    buildingDetail: "오프라인에서도 열리는 단일 HTML 파일을 조립하고 있어요.",
+    triggeringTitle: "다운로드 시작 중",
+    completedTitle: "저장 완료",
+    completedWithIssuesTitle: "저장 완료 · 이슈 있음",
+    blockedTitle: "저장 중단",
+    failedTitle: "저장 실패",
+    errorMessage: ERROR_MESSAGES.HTML_SAVE_ERROR,
+      fileExtension: "html",
+      fileKindLabel: "저장본",
   };
 }
 
@@ -11935,20 +12016,21 @@ function ensureSnapshotSaveOverlay() {
 
 function buildSnapshotSaveOverlayTitle(status) {
   const state = status && typeof status.state === "string" ? status.state : "idle";
+  const outputMeta = getSnapshotSaveOutputMeta(status && status.outputFormat);
   if (status && status.stageLabel) return status.stageLabel;
-  if (state === "checking-cache") return "저장 준비 중";
+  if (state === "checking-cache") return outputMeta.preparingTitle;
   if (state === "waiting-runtime") return "현재 화면 데이터 대기 중";
   if (state === "starting-refresh") return "최신 데이터 갱신 시작 중";
   if (state === "waiting-refresh") return "자동 갱신 결과 대기 중";
   if (state === "refreshing") return "최신 데이터 갱신 중";
-  if (state === "collecting") return "저장 데이터 수집 중";
-  if (state === "building-html") return "HTML 저장본 생성 중";
-  if (state === "triggering-download") return "다운로드 시작 중";
-  if (state === "completed-with-issues") return "저장 완료 · 이슈 있음";
-  if (state === "completed") return "저장 완료";
-  if (state === "blocked") return "저장 중단";
-  if (state === "failed") return "저장 실패";
-  return "저장 대기 중";
+  if (state === "collecting") return outputMeta.collectingTitle;
+  if (state === "building-html") return outputMeta.buildingTitle;
+  if (state === "triggering-download") return outputMeta.triggeringTitle;
+  if (state === "completed-with-issues") return outputMeta.completedWithIssuesTitle;
+  if (state === "completed") return outputMeta.completedTitle;
+  if (state === "blocked") return outputMeta.blockedTitle;
+  if (state === "failed") return outputMeta.failedTitle;
+  return outputMeta.preparingTitle;
 }
 
 function buildSnapshotSaveOverlayAccent(status) {
@@ -12057,6 +12139,10 @@ function renderSnapshotSaveOverlay(status) {
   overlay.dataset.state = status.state || "idle";
   overlay.dataset.phase = status.phase || "";
   overlay.dataset.runtimeType = runtimeType;
+  overlay.dataset.outputFormat =
+    status && typeof status.outputFormat === "string" && status.outputFormat
+      ? status.outputFormat
+      : "";
   overlay.dataset.uiHidden = status.uiHidden ? "true" : "false";
   overlay.dataset.active = status.active ? "true" : "false";
   overlay.dataset.current =
@@ -12194,6 +12280,7 @@ function buildSnapshotWaitingStatePatch(requestContext, decision, state, title, 
     state: state,
     phase: state === "waiting-refresh" ? "refresh" : "prepare",
     uiHidden: requestContext.headlessMode,
+    outputFormat: requestContext.outputMeta.outputFormat,
     stageLabel: title,
     detail: detail,
     cacheDecision: decision,
@@ -12265,6 +12352,7 @@ function resolveSnapshotSaveRequestContext(options) {
       options && options.selectionSnapshot
         ? options.selectionSnapshot
         : buildSnapshotSaveSelectionSnapshot(runtimeSites),
+    outputMeta: getSnapshotSaveOutputMeta(options && options.outputFormat),
     capabilities:
       typeof getRuntimeCapabilities === "function" ? getRuntimeCapabilities() : null,
   };
@@ -12321,11 +12409,12 @@ function resolveSnapshotRuntimeBootstrapLeaseForSave(requestContext) {
   return { reusable: false, kind: null, promise: null };
 }
 
-function buildSnapshotWaitingRuntimeDetail(runtimeLease) {
+function buildSnapshotWaitingRuntimeDetail(runtimeLease, outputFormat) {
+  const outputMeta = getSnapshotSaveOutputMeta(outputFormat);
   if (runtimeLease && runtimeLease.kind === "site-view-load") {
-    return "현재 사이트 상세 데이터를 이미 불러오는 중입니다. 같은 요청을 다시 시작하지 않고, 현재 화면 준비가 끝나면 바로 저장합니다.";
+    return "현재 사이트 상세 데이터를 이미 불러오는 중입니다. 같은 요청을 다시 시작하지 않고, 현재 화면 준비가 끝나면 바로 " + outputMeta.fileKindLabel + "을 생성합니다.";
   }
-  return "현재 화면에 필요한 기본 데이터를 이미 불러오는 중입니다. 같은 요청을 다시 시작하지 않고, 화면 준비가 끝나면 바로 저장합니다.";
+  return "현재 화면에 필요한 기본 데이터를 이미 불러오는 중입니다. 같은 요청을 다시 시작하지 않고, 화면 준비가 끝나면 바로 " + outputMeta.fileKindLabel + "을 생성합니다.";
 }
 
 async function collectSnapshotSavePayloadCacheFirst(requestContext, decision, btn) {
@@ -12344,7 +12433,7 @@ async function collectSnapshotSavePayloadCacheFirst(requestContext, decision, bt
         state: "collecting",
         phase: "download",
         uiHidden: requestContext.headlessMode,
-        stageLabel: "저장 데이터 수집 중",
+        stageLabel: requestContext.outputMeta.collectingTitle,
         detail:
           done +
           " / " +
@@ -12361,6 +12450,7 @@ async function collectSnapshotSavePayloadCacheFirst(requestContext, decision, bt
         stats: stats || { success: 0, partial: 0, failed: 0, errors: [] },
         site: site || null,
         cacheDecision: decision,
+        outputFormat: requestContext.outputMeta.outputFormat,
       });
     },
     { refreshMode: "cache-first" },
@@ -12397,7 +12487,7 @@ async function acquireSnapshotSavePayloadForExecution(requestContext, decision, 
           decision,
           "waiting-refresh",
           "자동 갱신 결과 대기 중",
-          buildSnapshotWaitingRefreshDetail(),
+          buildSnapshotWaitingRefreshDetail(requestContext.outputMeta.outputFormat),
           mirroredProgress,
         ),
       );
@@ -12425,9 +12515,10 @@ async function acquireSnapshotSavePayloadForExecution(requestContext, decision, 
       phase: "refresh",
       uiHidden: requestContext.headlessMode,
       stageLabel: "최신 데이터 갱신 시작 중",
-      detail: buildDirectSaveDecisionDetail(decision),
+      detail: buildDirectSaveDecisionDetail(decision, requestContext.outputMeta.outputFormat),
       cacheDecision: decision,
       mirroredProgress: null,
+      outputFormat: requestContext.outputMeta.outputFormat,
     });
     if (typeof acquireFullRefreshPayloadForSave === "function") {
       return await acquireFullRefreshPayloadForSave(refreshLease, {
@@ -12455,6 +12546,7 @@ async function acquireSnapshotSavePayloadForExecution(requestContext, decision, 
             stats: stats || { success: 0, partial: 0, failed: 0, errors: [] },
             site: site || null,
             cacheDecision: decision,
+            outputFormat: requestContext.outputMeta.outputFormat,
           });
         },
       });
@@ -12528,8 +12620,9 @@ function getSnapshotReusableRefreshStatusForSave() {
     : { reusable: false, trigger: null, startedAt: null, context: null };
 }
 
-function buildSnapshotWaitingRefreshDetail() {
-  return "이미 진행 중인 자동 갱신이 끝나면 바로 저장합니다. 새로운 수집을 다시 시작하지 않고, 현재 갱신 결과를 그대로 재사용합니다.";
+function buildSnapshotWaitingRefreshDetail(outputFormat) {
+  const outputMeta = getSnapshotSaveOutputMeta(outputFormat);
+  return "이미 진행 중인 자동 갱신이 끝나면 바로 " + outputMeta.fileKindLabel + "을 생성합니다. 새로운 수집을 다시 시작하지 않고, 현재 갱신 결과를 그대로 재사용합니다.";
 }
 
 function getSnapshotPayloadSiteCount(payload, fallbackCount) {
@@ -12621,24 +12714,27 @@ function buildSnapshotSaveBlockDecision(payload, runtimeSites) {
   };
 }
 
-function buildDirectSaveDecisionDetail(decision) {
+function buildDirectSaveDecisionDetail(decision, outputFormat) {
+  const outputMeta = getSnapshotSaveOutputMeta(outputFormat);
   if (!decision || !decision.neededRefresh) {
-    return "현재 캐시를 사용해 바로 저장을 시작합니다.";
+    return "현재 캐시를 사용해 바로 " + outputMeta.fileKindLabel + " 생성을 시작합니다. HTML 저장과 동일한 데이터 검증 경로를 사용합니다.";
   }
   if (decision.reason === "site-list-missing") {
-    return "사이트 목록 캐시가 없어 전체 데이터를 다시 수집한 뒤 저장합니다.";
+    return "사이트 목록 캐시가 없어 전체 데이터를 다시 수집한 뒤 " + outputMeta.fileKindLabel + "을 생성합니다. HTML 저장과 동일한 데이터 검증 경로를 사용합니다.";
   }
   if (decision.reason === "site-list-expired") {
-    return "사이트 목록 캐시가 만료되어 최신 데이터를 다시 수집한 뒤 저장합니다.";
+    return "사이트 목록 캐시가 만료되어 최신 데이터를 다시 수집한 뒤 " + outputMeta.fileKindLabel + "을 생성합니다. HTML 저장과 동일한 데이터 검증 경로를 사용합니다.";
   }
   if (decision.reason === "site-data-missing") {
     return (
       "저장에 필요한 사이트 데이터가 일부 비어 있어 " +
       String(decision.missingSites || 0) +
-      "개 사이트를 포함해 전체 데이터를 갱신한 뒤 저장합니다."
+      "개 사이트를 포함해 전체 데이터를 갱신한 뒤 " +
+      outputMeta.fileKindLabel +
+      "을 생성합니다. HTML 저장과 동일한 데이터 검증 경로를 사용합니다."
     );
   }
-  return "캐시가 만료되었거나 불완전해서 최신 데이터를 갱신한 뒤 저장합니다.";
+  return "캐시가 만료되었거나 불완전해서 최신 데이터를 갱신한 뒤 " + outputMeta.fileKindLabel + "을 생성합니다. HTML 저장과 동일한 데이터 검증 경로를 사용합니다.";
 }
 
 function hasSnapshotSaveIssues(stats) {
@@ -12650,7 +12746,8 @@ function hasSnapshotSaveIssues(stats) {
   );
 }
 
-function buildSnapshotSaveIssuesDetail(stats, fileName) {
+function buildSnapshotSaveIssuesDetail(stats, fileName, outputFormat) {
+  const outputMeta = getSnapshotSaveOutputMeta(outputFormat);
   const safeStats = stats || { failed: 0, partial: 0 };
   const summary =
     "실패 " +
@@ -12659,19 +12756,24 @@ function buildSnapshotSaveIssuesDetail(stats, fileName) {
     String(safeStats.partial || 0) +
     "개";
   if (fileName) {
-    return "일부 요청 이슈가 있었지만 저장본은 생성되었습니다. " + summary + " · " + fileName;
+    return "일부 요청 이슈가 있었지만 " + outputMeta.fileKindLabel + "은 생성되었습니다. " + summary + " · " + fileName;
   }
-  return "일부 요청 이슈가 있었지만 저장본은 생성되었습니다. " + summary;
+  return "일부 요청 이슈가 있었지만 " + outputMeta.fileKindLabel + "은 생성되었습니다. " + summary;
 }
 
-function buildSnapshotDownloadFileName(savedAt) {
+function buildSnapshotDownloadFileName(savedAt, extension) {
   return (
     "searchadvisor-" +
     accountIdFromLabel(accountLabel) +
     "-" +
     stampFile(savedAt) +
-    ".html"
+    "." +
+    (extension || "html")
   );
+}
+
+function getSnapshotSaveTriggerButton(outputFormat) {
+  return document.getElementById(getSnapshotSaveOutputMeta(outputFormat).triggerButtonId);
 }
 
 function setSnapshotSaveButtonBusy(btn, text) {
@@ -12742,8 +12844,9 @@ function restoreSnapshotSaveButton(btn, originalText) {
               missingSites: 0,
               expiredSites: 0,
             };
-      const btn = document.getElementById("sadv-save-btn");
-      const originalText = btn ? btn.textContent : "저장";
+      const outputMeta = getSnapshotSaveOutputMeta(options && options.outputFormat);
+      const btn = getSnapshotSaveTriggerButton(outputMeta.outputFormat);
+      const originalText = btn ? btn.textContent : (outputMeta.outputFormat === "csv" ? "CSV" : "저장");
       setSnapshotSaveButtonBusy(btn, "0/" + runtimeSites.length);
       const reusableRefreshHandle =
         !options || !options.payload ? getSnapshotReusableRefreshStatusForSave() : { reusable: false };
@@ -12759,16 +12862,16 @@ function restoreSnapshotSaveButton(btn, originalText) {
         phase: reusableRefreshHandle.reusable ? "refresh" : "download",
         stageLabel:
           options && options.payload
-            ? "HTML 저장본 생성 중"
+            ? outputMeta.buildingTitle
             : reusableRefreshHandle.reusable
               ? "자동 갱신 결과 대기 중"
-              : "저장 데이터 수집 중",
+              : outputMeta.collectingTitle,
         detail:
           options && options.payload
-            ? "최신 데이터 수집은 이미 끝났고, 오프라인 HTML 저장본을 조립하고 있어요."
+            ? outputMeta.buildingDetail
             : reusableRefreshHandle.reusable
-              ? buildSnapshotWaitingRefreshDetail()
-              : "저장본에 들어갈 사이트 데이터를 순서대로 수집하고 있어요.",
+              ? buildSnapshotWaitingRefreshDetail(outputMeta.outputFormat)
+              : "저장에 들어갈 사이트 데이터를 순서대로 수집하고 있어요.",
         startedAt: startedAt,
         completedAt: null,
         progress: {
@@ -12787,6 +12890,7 @@ function restoreSnapshotSaveButton(btn, originalText) {
             ? options.payload.stats
             : { success: 0, partial: 0, failed: 0, errors: [] },
         cacheDecision: cacheDecision,
+        outputFormat: outputMeta.outputFormat,
         fileName: null,
         site: null,
         error: null,
@@ -12814,7 +12918,7 @@ function restoreSnapshotSaveButton(btn, originalText) {
                 active: true,
                 state: "collecting",
                 phase: "download",
-                stageLabel: "저장 데이터 수집 중",
+                stageLabel: outputMeta.collectingTitle,
                 detail:
                   done +
                   " / " +
@@ -12830,6 +12934,7 @@ function restoreSnapshotSaveButton(btn, originalText) {
                 stats: stats || { success: 0, partial: 0, failed: 0, errors: [] },
                 site: site || null,
                 cacheDecision: cacheDecision,
+                outputFormat: outputMeta.outputFormat,
               });
             },
             { refreshMode: refreshMode },
@@ -12847,8 +12952,8 @@ function restoreSnapshotSaveButton(btn, originalText) {
           active: true,
           state: "building-html",
           phase: "download",
-          stageLabel: "HTML 저장본 생성 중",
-          detail: "오프라인에서도 열리는 단일 HTML 파일을 조립하고 있어요.",
+          stageLabel: outputMeta.buildingTitle,
+          detail: outputMeta.buildingDetail,
           progress: {
             done: runtimeSites.length,
             total: runtimeSites.length,
@@ -12858,6 +12963,7 @@ function restoreSnapshotSaveButton(btn, originalText) {
           stats: payload && payload.stats ? payload.stats : { success: 0, partial: 0, failed: 0, errors: [] },
           site: null,
           cacheDecision: cacheDecision,
+          outputFormat: outputMeta.outputFormat,
         });
         const saveBlockDecision = buildSnapshotSaveBlockDecision(payload, runtimeSites);
         if (saveBlockDecision.blocked) {
@@ -12874,11 +12980,12 @@ function restoreSnapshotSaveButton(btn, originalText) {
             active: false,
             state: "blocked",
             phase: "download",
-            stageLabel: "저장 중단",
+            stageLabel: outputMeta.blockedTitle,
             detail: saveBlockDecision.detail,
             completedAt: Date.now(),
             cacheDecision: cacheDecision,
             stats: saveBlockDecision.stats,
+            outputFormat: outputMeta.outputFormat,
             fileName: null,
             site: null,
             error: {
@@ -12896,15 +13003,16 @@ function restoreSnapshotSaveButton(btn, originalText) {
           };
         }
         const html = injectSnapshotReactShell(buildSnapshotHtml(savedAt, payload), payload);
-        const fileName = buildSnapshotDownloadFileName(savedAt);
+        const fileName = buildSnapshotDownloadFileName(savedAt, "html");
         pushSnapshotSaveStatus({
           active: true,
           state: "triggering-download",
           phase: "download",
-          stageLabel: "다운로드 시작 중",
+          stageLabel: outputMeta.triggeringTitle,
           detail: "브라우저 다운로드를 트리거하고 있어요.",
           fileName: fileName,
           cacheDecision: cacheDecision,
+          outputFormat: outputMeta.outputFormat,
         });
         const blob = new Blob([html], { type: "text/html;charset=utf-8" });
         const link = document.createElement("a");
@@ -12926,19 +13034,21 @@ function restoreSnapshotSaveButton(btn, originalText) {
           active: false,
           state: hasIssues ? "completed-with-issues" : "completed",
           phase: "download",
-          stageLabel: hasIssues ? "저장 완료 · 이슈 있음" : "저장 완료",
+          stageLabel: hasIssues ? outputMeta.completedWithIssuesTitle : outputMeta.completedTitle,
           detail: hasIssues
-            ? buildSnapshotSaveIssuesDetail(saveStats, fileName)
+            ? buildSnapshotSaveIssuesDetail(saveStats, fileName, outputMeta.outputFormat)
             : "브라우저 다운로드 요청을 전송했어요.",
           fileName: fileName,
           completedAt: Date.now(),
           cacheDecision: cacheDecision,
           stats: saveStats,
+          outputFormat: outputMeta.outputFormat,
         });
         return {
           ok: true,
           status: hasIssues ? "completed-with-issues" : "completed",
           hasIssues: hasIssues,
+          outputFormat: outputMeta.outputFormat,
           fileName: fileName,
           payload: payload,
           stats: saveStats,
@@ -12948,7 +13058,7 @@ function restoreSnapshotSaveButton(btn, originalText) {
           active: false,
           state: "failed",
           phase: "download",
-          stageLabel: "저장 실패",
+          stageLabel: outputMeta.failedTitle,
           detail:
             "저장 중 오류가 발생했어요. 상태 객체와 오류 배너를 확인한 뒤 다시 시도해 주세요.",
           completedAt: Date.now(),
@@ -12957,10 +13067,11 @@ function restoreSnapshotSaveButton(btn, originalText) {
             context: "downloadSnapshot",
           },
           cacheDecision: cacheDecision,
+          outputFormat: outputMeta.outputFormat,
         });
-        showError(ERROR_MESSAGES.HTML_SAVE_ERROR, e, 'downloadSnapshot');
+        showError(outputMeta.errorMessage, e, 'downloadSnapshot');
         bdEl.innerHTML = createInlineError(
-          ERROR_MESSAGES.HTML_SAVE_ERROR,
+          outputMeta.errorMessage,
           function () {
             runSnapshotSaveExecution();
           },
@@ -13010,7 +13121,7 @@ async function runSnapshotSaveExecution(options) {
           ? requestContext.options.cacheDecision
           : null;
       let decision = explicitDecision || buildDirectSaveRefreshDecision();
-      const btn = document.getElementById("sadv-save-btn");
+      const btn = getSnapshotSaveTriggerButton(requestContext.outputMeta.outputFormat);
       try {
         setSnapshotSaveOverlaySuppressed(requestContext.headlessMode);
         pushSnapshotSaveStatus({
@@ -13019,8 +13130,9 @@ async function runSnapshotSaveExecution(options) {
           state: "checking-cache",
           phase: "prepare",
           uiHidden: requestContext.headlessMode,
-          stageLabel: "저장 준비 중",
-          detail: buildDirectSaveDecisionDetail(decision),
+          outputFormat: requestContext.outputMeta.outputFormat,
+          stageLabel: requestContext.outputMeta.preparingTitle,
+          detail: buildDirectSaveDecisionDetail(decision, requestContext.outputMeta.outputFormat),
           startedAt: requestContext.startedAt,
           completedAt: null,
           progress: {
@@ -13047,7 +13159,10 @@ async function runSnapshotSaveExecution(options) {
                   decision,
                   "waiting-runtime",
                   "현재 화면 데이터 대기 중",
-                  buildSnapshotWaitingRuntimeDetail(runtimeBootstrapLease),
+                  buildSnapshotWaitingRuntimeDetail(
+                    runtimeBootstrapLease,
+                    requestContext.outputMeta.outputFormat
+                  ),
                   mirroredProgress,
                 ),
               );
@@ -13064,8 +13179,9 @@ async function runSnapshotSaveExecution(options) {
             state: "checking-cache",
             phase: "prepare",
             uiHidden: requestContext.headlessMode,
-            stageLabel: "저장 준비 중",
-            detail: buildDirectSaveDecisionDetail(decision),
+            outputFormat: requestContext.outputMeta.outputFormat,
+            stageLabel: requestContext.outputMeta.preparingTitle,
+            detail: buildDirectSaveDecisionDetail(decision, requestContext.outputMeta.outputFormat),
             cacheDecision: decision,
             mirroredProgress: null,
           });
@@ -13077,13 +13193,18 @@ async function runSnapshotSaveExecution(options) {
           refreshLease,
           btn,
         );
-        return await downloadSnapshot({
+        const commitOptions = {
           payload: payload,
           refreshMode: decision.neededRefresh ? "refresh" : "cache-first",
           startedAt: requestContext.startedAt,
           cacheDecision: decision,
           selectionSnapshot: requestContext.selectionSnapshot,
-        });
+          outputFormat: requestContext.outputMeta.outputFormat,
+        };
+        if (requestContext.outputMeta.outputFormat === "csv") {
+          return await downloadSnapshotCsv(commitOptions);
+        }
+        return await downloadSnapshot(commitOptions);
       } finally {
         setSnapshotSaveOverlaySuppressed(false);
         if (typeof restoreHeadlessUi === "function") {
@@ -13681,7 +13802,7 @@ function buildSnapshotSerializedHelperSection() {
     if (siteLabelEl) {
       siteLabelEl.innerHTML = `<span>${escHtml(siteLabel)}</span><span style="display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;border:1px solid ${T.accentSoftBorderStrong};color:${T.accentSoftText};background:${T.warmDarkBg}">${escHtml(activeTabLabel)}</span>`;
     }
-    ["sadv-refresh-btn", "sadv-save-btn", "sadv-x"].forEach(function (id) {
+    ["sadv-refresh-btn", "sadv-save-btn", "sadv-csv-btn", "sadv-x"].forEach(function (id) {
       const el = clone.querySelector("#" + id);
       if (el) el.remove();
     });
@@ -15911,6 +16032,308 @@ function renderFailureSummary(stats) {
   setTimeout(function () {
     if (summaryEl && summaryEl.parentElement) summaryEl.remove();
   }, 30000);
+}
+
+// ============================================================
+// CSV EXPORT ADAPTER
+// ============================================================
+
+function getSnapshotCsvColumns() {
+  return [
+    { key: "site", header: "사이트" },
+    { key: "accountLabel", header: "계정 라벨" },
+    { key: "sourceAccount", header: "소스 계정" },
+    { key: "periodDays", header: "조회 기간(일)" },
+    { key: "totalC", header: "총 클릭" },
+    { key: "totalE", header: "총 노출" },
+    { key: "avgCtr", header: "평균 CTR" },
+    { key: "trend", header: "클릭 추세" },
+    { key: "latestClick", header: "최근 클릭" },
+    { key: "prevClickRatio", header: "직전 대비" },
+    { key: "diagIndex", header: "진단 지수" },
+    { key: "diagLabel", header: "진단 상태" },
+    { key: "diagReason", header: "진단 사유" },
+    { key: "diagTopKeyword", header: "대표 키워드" },
+    { key: "diagTopPage", header: "대표 페이지" },
+    { key: "savedAt", header: "저장 시각" },
+  ];
+}
+
+function escapeSnapshotCsvCell(value) {
+  const text =
+    value == null || (typeof value === "number" && !Number.isFinite(value))
+      ? ""
+      : String(value);
+  if (/[",\r\n]/.test(text)) {
+    return '"' + text.replace(/"/g, '""') + '"';
+  }
+  return text;
+}
+
+function formatSnapshotCsvPercent(value) {
+  if (value == null || value === "") return "";
+  const num = Number(value);
+  if (!Number.isFinite(num)) return "";
+  return num.toFixed(2) + "%";
+}
+
+function formatSnapshotCsvTrend(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return "";
+  if (num > 0) return "상승";
+  if (num < 0) return "하락";
+  return "보합";
+}
+
+function formatSnapshotCsvSourceAccount(sourceAccount) {
+  if (!sourceAccount) return "";
+  if (typeof sourceAccount === "string") return sourceAccount;
+  if (typeof sourceAccount === "object") {
+    if (typeof sourceAccount.accountLabel === "string" && sourceAccount.accountLabel) {
+      return sourceAccount.accountLabel;
+    }
+    if (typeof sourceAccount.email === "string" && sourceAccount.email) {
+      return sourceAccount.email;
+    }
+    if (typeof sourceAccount.accountEncId === "string" && sourceAccount.accountEncId) {
+      return sourceAccount.accountEncId;
+    }
+    if (typeof sourceAccount.encId === "string" && sourceAccount.encId) {
+      return sourceAccount.encId;
+    }
+  }
+  return String(sourceAccount);
+}
+
+function formatSnapshotCsvDiagLabel(row) {
+  const code = row && row.diagnosisMetaCode;
+  if (code == null || code === "") return "";
+  return Number(code) === 0 ? "정상" : "확인 필요";
+}
+
+function formatSnapshotCsvDiagReason(row) {
+  if (!row) return "";
+  const parts = [];
+  if (row.diagnosisMetaCode != null && row.diagnosisMetaCode !== "") {
+    parts.push("metaCode=" + String(row.diagnosisMetaCode));
+  }
+  if (row.diagnosisMetaStatus != null && row.diagnosisMetaStatus !== "") {
+    parts.push("status=" + String(row.diagnosisMetaStatus));
+  }
+  if (row.diagnosisMetaRange != null && row.diagnosisMetaRange !== "") {
+    const range = row.diagnosisMetaRange;
+    if (typeof range === "string") {
+      parts.push("range=" + range);
+    } else if (range && typeof range === "object") {
+      const start = typeof range.start === "string" ? range.start : "";
+      const end = typeof range.end === "string" ? range.end : "";
+      if (start || end) {
+        parts.push("range=" + (start && end ? start + "~" + end : start || end));
+      } else {
+        try {
+          parts.push("range=" + JSON.stringify(range));
+        } catch (e) {}
+      }
+    } else {
+      parts.push("range=" + String(range));
+    }
+  }
+  return parts.join(" · ");
+}
+
+function buildSnapshotCsvRow(savedAt, row) {
+  return {
+    site: row && row.site ? row.site : "",
+    accountLabel: row && row.accountLabel ? row.accountLabel : "",
+    sourceAccount: formatSnapshotCsvSourceAccount(row ? row.sourceAccount : null),
+    periodDays: row && row.baseWindowDays ? row.baseWindowDays : 90,
+    totalC: row && Number.isFinite(Number(row.totalC)) ? Number(row.totalC) : 0,
+    totalE: row && Number.isFinite(Number(row.totalE)) ? Number(row.totalE) : 0,
+    avgCtr: formatSnapshotCsvPercent(row ? row.avgCtr : null),
+    trend: formatSnapshotCsvTrend(row ? row.trend : null),
+    latestClick: row && Number.isFinite(Number(row.latestClick)) ? Number(row.latestClick) : 0,
+    prevClickRatio: formatSnapshotCsvPercent(row ? row.prevClickRatio : null),
+    diagIndex:
+      row && Number.isFinite(Number(row.diagnosisIndexedCurrent))
+        ? Number(row.diagnosisIndexedCurrent)
+        : 0,
+    diagLabel: formatSnapshotCsvDiagLabel(row),
+    diagReason: formatSnapshotCsvDiagReason(row),
+    diagTopKeyword: "",
+    diagTopPage: "",
+    savedAt:
+      savedAt && typeof savedAt.toISOString === "function"
+        ? savedAt.toISOString()
+        : savedAtIso(new Date()),
+  };
+}
+
+function buildSnapshotCsv(savedAt, payload) {
+  const rows = Array.isArray(payload && payload.summaryRows) ? payload.summaryRows : [];
+  const columns = getSnapshotCsvColumns();
+  const headerLine = columns.map(function (column) {
+    return escapeSnapshotCsvCell(column.header);
+  }).join(",");
+  const dataLines = rows.map(function (row) {
+    const csvRow = buildSnapshotCsvRow(savedAt, row);
+    return columns.map(function (column) {
+      return escapeSnapshotCsvCell(csvRow[column.key]);
+    }).join(",");
+  });
+  return "\uFEFF" + [headerLine].concat(dataLines).join("\r\n");
+}
+
+async function downloadSnapshotCsv(options) {
+  const outputMeta = getSnapshotSaveOutputMeta("csv");
+  const capabilities =
+    typeof getRuntimeCapabilities === "function" ? getRuntimeCapabilities() : null;
+  if (capabilities && capabilities.isReadOnly) {
+    throw new Error("csv export is disabled in read-only mode");
+  }
+  const payload = options && options.payload ? options.payload : null;
+  if (!payload) {
+    throw new Error("csv export requires a precomputed payload");
+  }
+  const runtimeSites =
+    typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
+  const startedAt =
+    options && typeof options.startedAt === "number" ? options.startedAt : Date.now();
+  const cacheDecision =
+    options && options.cacheDecision && typeof options.cacheDecision === "object"
+      ? options.cacheDecision
+      : { neededRefresh: false, reason: null, missingSites: 0, expiredSites: 0 };
+  const btn = getSnapshotSaveTriggerButton("csv");
+  const originalText = btn ? btn.textContent : "CSV";
+  setSnapshotSaveButtonBusy(btn, "CSV");
+  try {
+    const saveBlockDecision = buildSnapshotSaveBlockDecision(payload, runtimeSites);
+    if (saveBlockDecision.blocked) {
+      showError(
+        saveBlockDecision.userMessage,
+        saveBlockDecision.technicalMessage,
+        "downloadSnapshotCsv-blocked",
+        {
+          dedupeKey: "downloadSnapshotCsv-blocked::" + saveBlockDecision.reason,
+          dedupeWindowMs: 1500,
+        },
+      );
+      pushSnapshotSaveStatus({
+        active: false,
+        state: "blocked",
+        phase: "download",
+        stageLabel: outputMeta.blockedTitle,
+        detail: saveBlockDecision.detail,
+        completedAt: Date.now(),
+        cacheDecision: cacheDecision,
+        stats: saveBlockDecision.stats,
+        outputFormat: outputMeta.outputFormat,
+        fileName: null,
+        site: null,
+        error: {
+          message: saveBlockDecision.userMessage,
+          context: "downloadSnapshotCsv-blocked",
+        },
+      });
+      return {
+        ok: false,
+        status: "blocked",
+        reason: saveBlockDecision.reason,
+        downloaded: false,
+        outputFormat: outputMeta.outputFormat,
+        stats: saveBlockDecision.stats,
+        block: saveBlockDecision,
+      };
+    }
+    const savedAt = new Date();
+    pushSnapshotSaveStatus({
+      active: true,
+      state: "building-html",
+      phase: "download",
+      stageLabel: outputMeta.buildingTitle,
+      detail: outputMeta.buildingDetail,
+      startedAt: startedAt,
+      progress: {
+        done: runtimeSites.length,
+        total: runtimeSites.length,
+        ratio: 1,
+        percent: 100,
+      },
+      cacheDecision: cacheDecision,
+      outputFormat: outputMeta.outputFormat,
+      stats: payload && payload.stats ? payload.stats : { success: 0, partial: 0, failed: 0, errors: [] },
+      site: null,
+    });
+    const csv = buildSnapshotCsv(savedAt, payload);
+    const fileName = buildSnapshotDownloadFileName(savedAt, outputMeta.fileExtension);
+    pushSnapshotSaveStatus({
+      active: true,
+      state: "triggering-download",
+      phase: "download",
+      stageLabel: outputMeta.triggeringTitle,
+      detail: "브라우저 다운로드를 트리거하고 있어요.",
+      fileName: fileName,
+      cacheDecision: cacheDecision,
+      outputFormat: outputMeta.outputFormat,
+    });
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(function () {
+      URL.revokeObjectURL(link.href);
+    }, 1000);
+    const saveStats =
+      payload && payload.stats ? payload.stats : { success: 0, partial: 0, failed: 0, errors: [] };
+    const hasIssues = hasSnapshotSaveIssues(saveStats);
+    if (hasIssues && typeof renderFailureSummary === "function") {
+      renderFailureSummary(saveStats);
+    }
+    pushSnapshotSaveStatus({
+      active: false,
+      state: hasIssues ? "completed-with-issues" : "completed",
+      phase: "download",
+      stageLabel: hasIssues ? outputMeta.completedWithIssuesTitle : outputMeta.completedTitle,
+      detail: hasIssues
+        ? buildSnapshotSaveIssuesDetail(saveStats, fileName, outputMeta.outputFormat)
+        : "브라우저 다운로드 요청을 전송했어요.",
+      fileName: fileName,
+      completedAt: Date.now(),
+      cacheDecision: cacheDecision,
+      outputFormat: outputMeta.outputFormat,
+      stats: saveStats,
+    });
+    return {
+      ok: true,
+      status: hasIssues ? "completed-with-issues" : "completed",
+      hasIssues: hasIssues,
+      outputFormat: outputMeta.outputFormat,
+      fileName: fileName,
+      payload: payload,
+      stats: saveStats,
+    };
+  } catch (e) {
+    pushSnapshotSaveStatus({
+      active: false,
+      state: "failed",
+      phase: "download",
+      stageLabel: outputMeta.failedTitle,
+      detail: "CSV 저장 중 오류가 발생했어요. 상태 객체와 오류 배너를 확인한 뒤 다시 시도해 주세요.",
+      completedAt: Date.now(),
+      cacheDecision: cacheDecision,
+      outputFormat: outputMeta.outputFormat,
+      error: {
+        message: e && e.message ? e.message : String(e),
+        context: "downloadSnapshotCsv",
+      },
+    });
+    showError(outputMeta.errorMessage, e, "downloadSnapshotCsv");
+    throw e;
+  } finally {
+    restoreSnapshotSaveButton(btn, originalText);
+  }
 }
 
 /**

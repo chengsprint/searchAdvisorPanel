@@ -42,9 +42,52 @@ function createIdleDirectSaveStatus() {
     mirroredProgress: null,
     stats: { success: 0, partial: 0, failed: 0, errors: [] },
     cacheDecision: { neededRefresh: false, reason: null, missingSites: 0, expiredSites: 0 },
+    outputFormat: null,
     fileName: null,
     site: null,
     error: null,
+  };
+}
+
+function normalizeSnapshotSaveOutputFormat(format) {
+  return format === "csv" ? "csv" : "html";
+}
+
+function getSnapshotSaveOutputMeta(format) {
+  const outputFormat = normalizeSnapshotSaveOutputFormat(format);
+  if (outputFormat === "csv") {
+    return {
+      outputFormat: "csv",
+      triggerButtonId: "sadv-csv-btn",
+      preparingTitle: "CSV 저장 준비 중",
+      collectingTitle: "CSV 저장 데이터 수집 중",
+      buildingTitle: "CSV 파일 생성 중",
+      buildingDetail: "스프레드시트에서 열 수 있는 단일 CSV 파일을 조립하고 있어요.",
+      triggeringTitle: "CSV 다운로드 시작 중",
+      completedTitle: "CSV 저장 완료",
+      completedWithIssuesTitle: "CSV 저장 완료 · 이슈 있음",
+      blockedTitle: "CSV 저장 중단",
+      failedTitle: "CSV 저장 실패",
+      errorMessage: ERROR_MESSAGES.CSV_SAVE_ERROR,
+      fileExtension: "csv",
+      fileKindLabel: "CSV 파일",
+    };
+  }
+  return {
+    outputFormat: "html",
+    triggerButtonId: "sadv-save-btn",
+    preparingTitle: "저장 준비 중",
+    collectingTitle: "저장 데이터 수집 중",
+    buildingTitle: "HTML 저장본 생성 중",
+    buildingDetail: "오프라인에서도 열리는 단일 HTML 파일을 조립하고 있어요.",
+    triggeringTitle: "다운로드 시작 중",
+    completedTitle: "저장 완료",
+    completedWithIssuesTitle: "저장 완료 · 이슈 있음",
+    blockedTitle: "저장 중단",
+    failedTitle: "저장 실패",
+    errorMessage: ERROR_MESSAGES.HTML_SAVE_ERROR,
+      fileExtension: "html",
+      fileKindLabel: "저장본",
   };
 }
 
@@ -212,20 +255,21 @@ function ensureSnapshotSaveOverlay() {
 
 function buildSnapshotSaveOverlayTitle(status) {
   const state = status && typeof status.state === "string" ? status.state : "idle";
+  const outputMeta = getSnapshotSaveOutputMeta(status && status.outputFormat);
   if (status && status.stageLabel) return status.stageLabel;
-  if (state === "checking-cache") return "저장 준비 중";
+  if (state === "checking-cache") return outputMeta.preparingTitle;
   if (state === "waiting-runtime") return "현재 화면 데이터 대기 중";
   if (state === "starting-refresh") return "최신 데이터 갱신 시작 중";
   if (state === "waiting-refresh") return "자동 갱신 결과 대기 중";
   if (state === "refreshing") return "최신 데이터 갱신 중";
-  if (state === "collecting") return "저장 데이터 수집 중";
-  if (state === "building-html") return "HTML 저장본 생성 중";
-  if (state === "triggering-download") return "다운로드 시작 중";
-  if (state === "completed-with-issues") return "저장 완료 · 이슈 있음";
-  if (state === "completed") return "저장 완료";
-  if (state === "blocked") return "저장 중단";
-  if (state === "failed") return "저장 실패";
-  return "저장 대기 중";
+  if (state === "collecting") return outputMeta.collectingTitle;
+  if (state === "building-html") return outputMeta.buildingTitle;
+  if (state === "triggering-download") return outputMeta.triggeringTitle;
+  if (state === "completed-with-issues") return outputMeta.completedWithIssuesTitle;
+  if (state === "completed") return outputMeta.completedTitle;
+  if (state === "blocked") return outputMeta.blockedTitle;
+  if (state === "failed") return outputMeta.failedTitle;
+  return outputMeta.preparingTitle;
 }
 
 function buildSnapshotSaveOverlayAccent(status) {
@@ -334,6 +378,10 @@ function renderSnapshotSaveOverlay(status) {
   overlay.dataset.state = status.state || "idle";
   overlay.dataset.phase = status.phase || "";
   overlay.dataset.runtimeType = runtimeType;
+  overlay.dataset.outputFormat =
+    status && typeof status.outputFormat === "string" && status.outputFormat
+      ? status.outputFormat
+      : "";
   overlay.dataset.uiHidden = status.uiHidden ? "true" : "false";
   overlay.dataset.active = status.active ? "true" : "false";
   overlay.dataset.current =
@@ -471,6 +519,7 @@ function buildSnapshotWaitingStatePatch(requestContext, decision, state, title, 
     state: state,
     phase: state === "waiting-refresh" ? "refresh" : "prepare",
     uiHidden: requestContext.headlessMode,
+    outputFormat: requestContext.outputMeta.outputFormat,
     stageLabel: title,
     detail: detail,
     cacheDecision: decision,
@@ -542,6 +591,7 @@ function resolveSnapshotSaveRequestContext(options) {
       options && options.selectionSnapshot
         ? options.selectionSnapshot
         : buildSnapshotSaveSelectionSnapshot(runtimeSites),
+    outputMeta: getSnapshotSaveOutputMeta(options && options.outputFormat),
     capabilities:
       typeof getRuntimeCapabilities === "function" ? getRuntimeCapabilities() : null,
   };
@@ -598,11 +648,12 @@ function resolveSnapshotRuntimeBootstrapLeaseForSave(requestContext) {
   return { reusable: false, kind: null, promise: null };
 }
 
-function buildSnapshotWaitingRuntimeDetail(runtimeLease) {
+function buildSnapshotWaitingRuntimeDetail(runtimeLease, outputFormat) {
+  const outputMeta = getSnapshotSaveOutputMeta(outputFormat);
   if (runtimeLease && runtimeLease.kind === "site-view-load") {
-    return "현재 사이트 상세 데이터를 이미 불러오는 중입니다. 같은 요청을 다시 시작하지 않고, 현재 화면 준비가 끝나면 바로 저장합니다.";
+    return "현재 사이트 상세 데이터를 이미 불러오는 중입니다. 같은 요청을 다시 시작하지 않고, 현재 화면 준비가 끝나면 바로 " + outputMeta.fileKindLabel + "을 생성합니다.";
   }
-  return "현재 화면에 필요한 기본 데이터를 이미 불러오는 중입니다. 같은 요청을 다시 시작하지 않고, 화면 준비가 끝나면 바로 저장합니다.";
+  return "현재 화면에 필요한 기본 데이터를 이미 불러오는 중입니다. 같은 요청을 다시 시작하지 않고, 화면 준비가 끝나면 바로 " + outputMeta.fileKindLabel + "을 생성합니다.";
 }
 
 async function collectSnapshotSavePayloadCacheFirst(requestContext, decision, btn) {
@@ -621,7 +672,7 @@ async function collectSnapshotSavePayloadCacheFirst(requestContext, decision, bt
         state: "collecting",
         phase: "download",
         uiHidden: requestContext.headlessMode,
-        stageLabel: "저장 데이터 수집 중",
+        stageLabel: requestContext.outputMeta.collectingTitle,
         detail:
           done +
           " / " +
@@ -638,6 +689,7 @@ async function collectSnapshotSavePayloadCacheFirst(requestContext, decision, bt
         stats: stats || { success: 0, partial: 0, failed: 0, errors: [] },
         site: site || null,
         cacheDecision: decision,
+        outputFormat: requestContext.outputMeta.outputFormat,
       });
     },
     { refreshMode: "cache-first" },
@@ -674,7 +726,7 @@ async function acquireSnapshotSavePayloadForExecution(requestContext, decision, 
           decision,
           "waiting-refresh",
           "자동 갱신 결과 대기 중",
-          buildSnapshotWaitingRefreshDetail(),
+          buildSnapshotWaitingRefreshDetail(requestContext.outputMeta.outputFormat),
           mirroredProgress,
         ),
       );
@@ -702,9 +754,10 @@ async function acquireSnapshotSavePayloadForExecution(requestContext, decision, 
       phase: "refresh",
       uiHidden: requestContext.headlessMode,
       stageLabel: "최신 데이터 갱신 시작 중",
-      detail: buildDirectSaveDecisionDetail(decision),
+      detail: buildDirectSaveDecisionDetail(decision, requestContext.outputMeta.outputFormat),
       cacheDecision: decision,
       mirroredProgress: null,
+      outputFormat: requestContext.outputMeta.outputFormat,
     });
     if (typeof acquireFullRefreshPayloadForSave === "function") {
       return await acquireFullRefreshPayloadForSave(refreshLease, {
@@ -732,6 +785,7 @@ async function acquireSnapshotSavePayloadForExecution(requestContext, decision, 
             stats: stats || { success: 0, partial: 0, failed: 0, errors: [] },
             site: site || null,
             cacheDecision: decision,
+            outputFormat: requestContext.outputMeta.outputFormat,
           });
         },
       });
@@ -805,8 +859,9 @@ function getSnapshotReusableRefreshStatusForSave() {
     : { reusable: false, trigger: null, startedAt: null, context: null };
 }
 
-function buildSnapshotWaitingRefreshDetail() {
-  return "이미 진행 중인 자동 갱신이 끝나면 바로 저장합니다. 새로운 수집을 다시 시작하지 않고, 현재 갱신 결과를 그대로 재사용합니다.";
+function buildSnapshotWaitingRefreshDetail(outputFormat) {
+  const outputMeta = getSnapshotSaveOutputMeta(outputFormat);
+  return "이미 진행 중인 자동 갱신이 끝나면 바로 " + outputMeta.fileKindLabel + "을 생성합니다. 새로운 수집을 다시 시작하지 않고, 현재 갱신 결과를 그대로 재사용합니다.";
 }
 
 function getSnapshotPayloadSiteCount(payload, fallbackCount) {
@@ -898,24 +953,27 @@ function buildSnapshotSaveBlockDecision(payload, runtimeSites) {
   };
 }
 
-function buildDirectSaveDecisionDetail(decision) {
+function buildDirectSaveDecisionDetail(decision, outputFormat) {
+  const outputMeta = getSnapshotSaveOutputMeta(outputFormat);
   if (!decision || !decision.neededRefresh) {
-    return "현재 캐시를 사용해 바로 저장을 시작합니다.";
+    return "현재 캐시를 사용해 바로 " + outputMeta.fileKindLabel + " 생성을 시작합니다. HTML 저장과 동일한 데이터 검증 경로를 사용합니다.";
   }
   if (decision.reason === "site-list-missing") {
-    return "사이트 목록 캐시가 없어 전체 데이터를 다시 수집한 뒤 저장합니다.";
+    return "사이트 목록 캐시가 없어 전체 데이터를 다시 수집한 뒤 " + outputMeta.fileKindLabel + "을 생성합니다. HTML 저장과 동일한 데이터 검증 경로를 사용합니다.";
   }
   if (decision.reason === "site-list-expired") {
-    return "사이트 목록 캐시가 만료되어 최신 데이터를 다시 수집한 뒤 저장합니다.";
+    return "사이트 목록 캐시가 만료되어 최신 데이터를 다시 수집한 뒤 " + outputMeta.fileKindLabel + "을 생성합니다. HTML 저장과 동일한 데이터 검증 경로를 사용합니다.";
   }
   if (decision.reason === "site-data-missing") {
     return (
       "저장에 필요한 사이트 데이터가 일부 비어 있어 " +
       String(decision.missingSites || 0) +
-      "개 사이트를 포함해 전체 데이터를 갱신한 뒤 저장합니다."
+      "개 사이트를 포함해 전체 데이터를 갱신한 뒤 " +
+      outputMeta.fileKindLabel +
+      "을 생성합니다. HTML 저장과 동일한 데이터 검증 경로를 사용합니다."
     );
   }
-  return "캐시가 만료되었거나 불완전해서 최신 데이터를 갱신한 뒤 저장합니다.";
+  return "캐시가 만료되었거나 불완전해서 최신 데이터를 갱신한 뒤 " + outputMeta.fileKindLabel + "을 생성합니다. HTML 저장과 동일한 데이터 검증 경로를 사용합니다.";
 }
 
 function hasSnapshotSaveIssues(stats) {
@@ -927,7 +985,8 @@ function hasSnapshotSaveIssues(stats) {
   );
 }
 
-function buildSnapshotSaveIssuesDetail(stats, fileName) {
+function buildSnapshotSaveIssuesDetail(stats, fileName, outputFormat) {
+  const outputMeta = getSnapshotSaveOutputMeta(outputFormat);
   const safeStats = stats || { failed: 0, partial: 0 };
   const summary =
     "실패 " +
@@ -936,19 +995,24 @@ function buildSnapshotSaveIssuesDetail(stats, fileName) {
     String(safeStats.partial || 0) +
     "개";
   if (fileName) {
-    return "일부 요청 이슈가 있었지만 저장본은 생성되었습니다. " + summary + " · " + fileName;
+    return "일부 요청 이슈가 있었지만 " + outputMeta.fileKindLabel + "은 생성되었습니다. " + summary + " · " + fileName;
   }
-  return "일부 요청 이슈가 있었지만 저장본은 생성되었습니다. " + summary;
+  return "일부 요청 이슈가 있었지만 " + outputMeta.fileKindLabel + "은 생성되었습니다. " + summary;
 }
 
-function buildSnapshotDownloadFileName(savedAt) {
+function buildSnapshotDownloadFileName(savedAt, extension) {
   return (
     "searchadvisor-" +
     accountIdFromLabel(accountLabel) +
     "-" +
     stampFile(savedAt) +
-    ".html"
+    "." +
+    (extension || "html")
   );
+}
+
+function getSnapshotSaveTriggerButton(outputFormat) {
+  return document.getElementById(getSnapshotSaveOutputMeta(outputFormat).triggerButtonId);
 }
 
 function setSnapshotSaveButtonBusy(btn, text) {
@@ -1019,8 +1083,9 @@ function restoreSnapshotSaveButton(btn, originalText) {
               missingSites: 0,
               expiredSites: 0,
             };
-      const btn = document.getElementById("sadv-save-btn");
-      const originalText = btn ? btn.textContent : "저장";
+      const outputMeta = getSnapshotSaveOutputMeta(options && options.outputFormat);
+      const btn = getSnapshotSaveTriggerButton(outputMeta.outputFormat);
+      const originalText = btn ? btn.textContent : (outputMeta.outputFormat === "csv" ? "CSV" : "저장");
       setSnapshotSaveButtonBusy(btn, "0/" + runtimeSites.length);
       const reusableRefreshHandle =
         !options || !options.payload ? getSnapshotReusableRefreshStatusForSave() : { reusable: false };
@@ -1036,16 +1101,16 @@ function restoreSnapshotSaveButton(btn, originalText) {
         phase: reusableRefreshHandle.reusable ? "refresh" : "download",
         stageLabel:
           options && options.payload
-            ? "HTML 저장본 생성 중"
+            ? outputMeta.buildingTitle
             : reusableRefreshHandle.reusable
               ? "자동 갱신 결과 대기 중"
-              : "저장 데이터 수집 중",
+              : outputMeta.collectingTitle,
         detail:
           options && options.payload
-            ? "최신 데이터 수집은 이미 끝났고, 오프라인 HTML 저장본을 조립하고 있어요."
+            ? outputMeta.buildingDetail
             : reusableRefreshHandle.reusable
-              ? buildSnapshotWaitingRefreshDetail()
-              : "저장본에 들어갈 사이트 데이터를 순서대로 수집하고 있어요.",
+              ? buildSnapshotWaitingRefreshDetail(outputMeta.outputFormat)
+              : "저장에 들어갈 사이트 데이터를 순서대로 수집하고 있어요.",
         startedAt: startedAt,
         completedAt: null,
         progress: {
@@ -1064,6 +1129,7 @@ function restoreSnapshotSaveButton(btn, originalText) {
             ? options.payload.stats
             : { success: 0, partial: 0, failed: 0, errors: [] },
         cacheDecision: cacheDecision,
+        outputFormat: outputMeta.outputFormat,
         fileName: null,
         site: null,
         error: null,
@@ -1091,7 +1157,7 @@ function restoreSnapshotSaveButton(btn, originalText) {
                 active: true,
                 state: "collecting",
                 phase: "download",
-                stageLabel: "저장 데이터 수집 중",
+                stageLabel: outputMeta.collectingTitle,
                 detail:
                   done +
                   " / " +
@@ -1107,6 +1173,7 @@ function restoreSnapshotSaveButton(btn, originalText) {
                 stats: stats || { success: 0, partial: 0, failed: 0, errors: [] },
                 site: site || null,
                 cacheDecision: cacheDecision,
+                outputFormat: outputMeta.outputFormat,
               });
             },
             { refreshMode: refreshMode },
@@ -1124,8 +1191,8 @@ function restoreSnapshotSaveButton(btn, originalText) {
           active: true,
           state: "building-html",
           phase: "download",
-          stageLabel: "HTML 저장본 생성 중",
-          detail: "오프라인에서도 열리는 단일 HTML 파일을 조립하고 있어요.",
+          stageLabel: outputMeta.buildingTitle,
+          detail: outputMeta.buildingDetail,
           progress: {
             done: runtimeSites.length,
             total: runtimeSites.length,
@@ -1135,6 +1202,7 @@ function restoreSnapshotSaveButton(btn, originalText) {
           stats: payload && payload.stats ? payload.stats : { success: 0, partial: 0, failed: 0, errors: [] },
           site: null,
           cacheDecision: cacheDecision,
+          outputFormat: outputMeta.outputFormat,
         });
         const saveBlockDecision = buildSnapshotSaveBlockDecision(payload, runtimeSites);
         if (saveBlockDecision.blocked) {
@@ -1151,11 +1219,12 @@ function restoreSnapshotSaveButton(btn, originalText) {
             active: false,
             state: "blocked",
             phase: "download",
-            stageLabel: "저장 중단",
+            stageLabel: outputMeta.blockedTitle,
             detail: saveBlockDecision.detail,
             completedAt: Date.now(),
             cacheDecision: cacheDecision,
             stats: saveBlockDecision.stats,
+            outputFormat: outputMeta.outputFormat,
             fileName: null,
             site: null,
             error: {
@@ -1173,15 +1242,16 @@ function restoreSnapshotSaveButton(btn, originalText) {
           };
         }
         const html = injectSnapshotReactShell(buildSnapshotHtml(savedAt, payload), payload);
-        const fileName = buildSnapshotDownloadFileName(savedAt);
+        const fileName = buildSnapshotDownloadFileName(savedAt, "html");
         pushSnapshotSaveStatus({
           active: true,
           state: "triggering-download",
           phase: "download",
-          stageLabel: "다운로드 시작 중",
+          stageLabel: outputMeta.triggeringTitle,
           detail: "브라우저 다운로드를 트리거하고 있어요.",
           fileName: fileName,
           cacheDecision: cacheDecision,
+          outputFormat: outputMeta.outputFormat,
         });
         const blob = new Blob([html], { type: "text/html;charset=utf-8" });
         const link = document.createElement("a");
@@ -1203,19 +1273,21 @@ function restoreSnapshotSaveButton(btn, originalText) {
           active: false,
           state: hasIssues ? "completed-with-issues" : "completed",
           phase: "download",
-          stageLabel: hasIssues ? "저장 완료 · 이슈 있음" : "저장 완료",
+          stageLabel: hasIssues ? outputMeta.completedWithIssuesTitle : outputMeta.completedTitle,
           detail: hasIssues
-            ? buildSnapshotSaveIssuesDetail(saveStats, fileName)
+            ? buildSnapshotSaveIssuesDetail(saveStats, fileName, outputMeta.outputFormat)
             : "브라우저 다운로드 요청을 전송했어요.",
           fileName: fileName,
           completedAt: Date.now(),
           cacheDecision: cacheDecision,
           stats: saveStats,
+          outputFormat: outputMeta.outputFormat,
         });
         return {
           ok: true,
           status: hasIssues ? "completed-with-issues" : "completed",
           hasIssues: hasIssues,
+          outputFormat: outputMeta.outputFormat,
           fileName: fileName,
           payload: payload,
           stats: saveStats,
@@ -1225,7 +1297,7 @@ function restoreSnapshotSaveButton(btn, originalText) {
           active: false,
           state: "failed",
           phase: "download",
-          stageLabel: "저장 실패",
+          stageLabel: outputMeta.failedTitle,
           detail:
             "저장 중 오류가 발생했어요. 상태 객체와 오류 배너를 확인한 뒤 다시 시도해 주세요.",
           completedAt: Date.now(),
@@ -1234,10 +1306,11 @@ function restoreSnapshotSaveButton(btn, originalText) {
             context: "downloadSnapshot",
           },
           cacheDecision: cacheDecision,
+          outputFormat: outputMeta.outputFormat,
         });
-        showError(ERROR_MESSAGES.HTML_SAVE_ERROR, e, 'downloadSnapshot');
+        showError(outputMeta.errorMessage, e, 'downloadSnapshot');
         bdEl.innerHTML = createInlineError(
-          ERROR_MESSAGES.HTML_SAVE_ERROR,
+          outputMeta.errorMessage,
           function () {
             runSnapshotSaveExecution();
           },
@@ -1287,7 +1360,7 @@ async function runSnapshotSaveExecution(options) {
           ? requestContext.options.cacheDecision
           : null;
       let decision = explicitDecision || buildDirectSaveRefreshDecision();
-      const btn = document.getElementById("sadv-save-btn");
+      const btn = getSnapshotSaveTriggerButton(requestContext.outputMeta.outputFormat);
       try {
         setSnapshotSaveOverlaySuppressed(requestContext.headlessMode);
         pushSnapshotSaveStatus({
@@ -1296,8 +1369,9 @@ async function runSnapshotSaveExecution(options) {
           state: "checking-cache",
           phase: "prepare",
           uiHidden: requestContext.headlessMode,
-          stageLabel: "저장 준비 중",
-          detail: buildDirectSaveDecisionDetail(decision),
+          outputFormat: requestContext.outputMeta.outputFormat,
+          stageLabel: requestContext.outputMeta.preparingTitle,
+          detail: buildDirectSaveDecisionDetail(decision, requestContext.outputMeta.outputFormat),
           startedAt: requestContext.startedAt,
           completedAt: null,
           progress: {
@@ -1324,7 +1398,10 @@ async function runSnapshotSaveExecution(options) {
                   decision,
                   "waiting-runtime",
                   "현재 화면 데이터 대기 중",
-                  buildSnapshotWaitingRuntimeDetail(runtimeBootstrapLease),
+                  buildSnapshotWaitingRuntimeDetail(
+                    runtimeBootstrapLease,
+                    requestContext.outputMeta.outputFormat
+                  ),
                   mirroredProgress,
                 ),
               );
@@ -1341,8 +1418,9 @@ async function runSnapshotSaveExecution(options) {
             state: "checking-cache",
             phase: "prepare",
             uiHidden: requestContext.headlessMode,
-            stageLabel: "저장 준비 중",
-            detail: buildDirectSaveDecisionDetail(decision),
+            outputFormat: requestContext.outputMeta.outputFormat,
+            stageLabel: requestContext.outputMeta.preparingTitle,
+            detail: buildDirectSaveDecisionDetail(decision, requestContext.outputMeta.outputFormat),
             cacheDecision: decision,
             mirroredProgress: null,
           });
@@ -1354,13 +1432,18 @@ async function runSnapshotSaveExecution(options) {
           refreshLease,
           btn,
         );
-        return await downloadSnapshot({
+        const commitOptions = {
           payload: payload,
           refreshMode: decision.neededRefresh ? "refresh" : "cache-first",
           startedAt: requestContext.startedAt,
           cacheDecision: decision,
           selectionSnapshot: requestContext.selectionSnapshot,
-        });
+          outputFormat: requestContext.outputMeta.outputFormat,
+        };
+        if (requestContext.outputMeta.outputFormat === "csv") {
+          return await downloadSnapshotCsv(commitOptions);
+        }
+        return await downloadSnapshot(commitOptions);
       } finally {
         setSnapshotSaveOverlaySuppressed(false);
         if (typeof restoreHeadlessUi === "function") {
@@ -1958,7 +2041,7 @@ function buildSnapshotSerializedHelperSection() {
     if (siteLabelEl) {
       siteLabelEl.innerHTML = `<span>${escHtml(siteLabel)}</span><span style="display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;border:1px solid ${T.accentSoftBorderStrong};color:${T.accentSoftText};background:${T.warmDarkBg}">${escHtml(activeTabLabel)}</span>`;
     }
-    ["sadv-refresh-btn", "sadv-save-btn", "sadv-x"].forEach(function (id) {
+    ["sadv-refresh-btn", "sadv-save-btn", "sadv-csv-btn", "sadv-x"].forEach(function (id) {
       const el = clone.querySelector("#" + id);
       if (el) el.remove();
     });

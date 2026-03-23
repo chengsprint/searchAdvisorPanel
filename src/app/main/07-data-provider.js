@@ -121,6 +121,7 @@ function createDefaultRuntimeSaveStatus() {
       missingSites: 0,
       expiredSites: 0,
     },
+    outputFormat: null,
     fileName: null,
     site: null,
     error: null,
