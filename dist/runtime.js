@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-23T12:20:06Z";
-var __SADV_GIT_HEAD__="8818179";
+var __SADV_BUILD_STAMP__="2026-03-23T12:39:20Z";
+var __SADV_GIT_HEAD__="a0e6ae8";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -16159,6 +16159,18 @@ const SNAPSHOT_XLSX_STANDALONE_URL =
   "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js";
 const SNAPSHOT_XLSX_LIBRARY_TIMEOUT_MS = 15000;
 let snapshotXlsxLibraryPromise = null;
+const SNAPSHOT_XLSX_SHEET_NAMES = Object.freeze({
+  readme: "안내",
+  daily: "사이트 일별",
+  summary: "사이트 요약",
+  meta: "사이트 메타",
+});
+const SNAPSHOT_XLSX_RUNTIME_LABELS = Object.freeze({
+  live: "라이브",
+  snapshot: "저장본",
+  saved: "저장본",
+  merge: "병합",
+});
 
 function hasUsableSnapshotXlsxGlobal(XLSX) {
   return !!(
@@ -16444,6 +16456,14 @@ function getSnapshotXlsxRuntimeType(payload) {
   return getSnapshotSaveRuntimeType();
 }
 
+function getSnapshotXlsxRuntimeTypeLabel(runtimeType) {
+  if (runtimeType === "snapshot") runtimeType = "saved";
+  if (SNAPSHOT_XLSX_RUNTIME_LABELS[runtimeType]) {
+    return SNAPSHOT_XLSX_RUNTIME_LABELS[runtimeType];
+  }
+  return runtimeType ? String(runtimeType) : "";
+}
+
 function getSnapshotXlsxSummaryRows(payload) {
   const baseRows = Array.isArray(payload && payload.summaryRows) ? payload.summaryRows : [];
   const periodDays = getSnapshotXlsxPeriodDays(payload);
@@ -16456,6 +16476,7 @@ function getSnapshotXlsxSummaryRows(payload) {
 function buildSnapshotXlsxSiteDailyRows(savedAt, payload, fallbackContext) {
   const exportedAt = getSnapshotXlsxExportedAt(savedAt);
   const runtimeType = getSnapshotXlsxRuntimeType(payload);
+  const runtimeTypeLabel = getSnapshotXlsxRuntimeTypeLabel(runtimeType);
   const periodDays = getSnapshotXlsxPeriodDays(payload);
   return getSnapshotXlsxSummaryRows(payload).flatMap(function (row) {
     const clicks = Array.isArray(row && row.clicks) ? row.clicks : [];
@@ -16471,7 +16492,7 @@ function buildSnapshotXlsxSiteDailyRows(savedAt, payload, fallbackContext) {
         site: row && row.site ? row.site : "",
         account_label: getSnapshotXlsxRowAccountLabel(row, fallbackContext),
         source_account: getSnapshotXlsxRowSourceAccount(row, fallbackContext),
-        runtime_type: runtimeType,
+        runtime_type: runtimeTypeLabel,
         period_days: periodDays,
         exported_at: exportedAt,
         daily_clicks: dailyClicks,
@@ -16497,13 +16518,14 @@ function buildSnapshotXlsxSiteDailyRows(savedAt, payload, fallbackContext) {
 function buildSnapshotXlsxSiteSummaryRows(savedAt, payload, fallbackContext) {
   const exportedAt = getSnapshotXlsxExportedAt(savedAt);
   const runtimeType = getSnapshotXlsxRuntimeType(payload);
+  const runtimeTypeLabel = getSnapshotXlsxRuntimeTypeLabel(runtimeType);
   const periodDays = getSnapshotXlsxPeriodDays(payload);
   return getSnapshotXlsxSummaryRows(payload).map(function (row) {
     return {
       site: row && row.site ? row.site : "",
       account_label: getSnapshotXlsxRowAccountLabel(row, fallbackContext),
       source_account: getSnapshotXlsxRowSourceAccount(row, fallbackContext),
-      runtime_type: runtimeType,
+      runtime_type: runtimeTypeLabel,
       period_days: periodDays,
       exported_at: exportedAt,
       total_clicks: normalizeSnapshotXlsxNumber(row && row.totalC),
@@ -16525,12 +16547,13 @@ function buildSnapshotXlsxSiteSummaryRows(savedAt, payload, fallbackContext) {
 function buildSnapshotXlsxSiteMetaRows(savedAt, payload, fallbackContext) {
   const exportedAt = getSnapshotXlsxExportedAt(savedAt);
   const runtimeType = getSnapshotXlsxRuntimeType(payload);
+  const runtimeTypeLabel = getSnapshotXlsxRuntimeTypeLabel(runtimeType);
   return getSnapshotXlsxSummaryRows(payload).map(function (row) {
     return {
       site: row && row.site ? row.site : "",
       account_label: getSnapshotXlsxRowAccountLabel(row, fallbackContext),
       source_account: getSnapshotXlsxRowSourceAccount(row, fallbackContext),
-      runtime_type: runtimeType,
+      runtime_type: runtimeTypeLabel,
       exported_at: exportedAt,
       diagnosis_meta_code:
         row && row.diagnosisMetaCode != null ? String(row.diagnosisMetaCode) : "",
@@ -16544,54 +16567,54 @@ function buildSnapshotXlsxSiteMetaRows(savedAt, payload, fallbackContext) {
 function getSnapshotXlsxSheetColumns() {
   return {
     daily: [
-      { key: "date", header: "date", width: 14 },
-      { key: "site", header: "site", width: 34 },
-      { key: "account_label", header: "account_label", width: 24 },
-      { key: "source_account", header: "source_account", width: 24 },
-      { key: "runtime_type", header: "runtime_type", width: 14 },
-      { key: "period_days", header: "period_days", width: 12 },
-      { key: "exported_at", header: "exported_at", width: 24 },
-      { key: "daily_clicks", header: "daily_clicks", width: 14 },
-      { key: "daily_exposes", header: "daily_exposes", width: 14 },
-      { key: "daily_ctr", header: "daily_ctr", width: 12 },
-      { key: "site_total_clicks", header: "site_total_clicks", width: 16 },
-      { key: "site_total_exposes", header: "site_total_exposes", width: 17 },
-      { key: "site_avg_ctr", header: "site_avg_ctr", width: 13 },
-      { key: "site_trend", header: "site_trend", width: 13 },
-      { key: "site_latest_click", header: "site_latest_click", width: 16 },
-      { key: "site_prev_click_ratio", header: "site_prev_click_ratio", width: 19 },
-      { key: "diagnosis_index_current", header: "diagnosis_index_current", width: 21 },
-      { key: "diagnosis_meta_code", header: "diagnosis_meta_code", width: 20 },
-      { key: "diagnosis_meta_status", header: "diagnosis_meta_status", width: 22 },
-      { key: "diagnosis_meta_range", header: "diagnosis_meta_range", width: 28 },
+      { key: "date", header: "날짜", width: 14 },
+      { key: "site", header: "사이트", width: 34 },
+      { key: "account_label", header: "계정 라벨", width: 24 },
+      { key: "source_account", header: "소스 계정", width: 24 },
+      { key: "runtime_type", header: "런타임 유형", width: 14 },
+      { key: "period_days", header: "기간(일)", width: 12 },
+      { key: "exported_at", header: "생성 시각", width: 24 },
+      { key: "daily_clicks", header: "일별 클릭", width: 14 },
+      { key: "daily_exposes", header: "일별 노출", width: 14 },
+      { key: "daily_ctr", header: "일별 CTR(%)", width: 12 },
+      { key: "site_total_clicks", header: "사이트 총 클릭", width: 16 },
+      { key: "site_total_exposes", header: "사이트 총 노출", width: 17 },
+      { key: "site_avg_ctr", header: "사이트 평균 CTR(%)", width: 17 },
+      { key: "site_trend", header: "클릭 추세", width: 13 },
+      { key: "site_latest_click", header: "최근 클릭", width: 16 },
+      { key: "site_prev_click_ratio", header: "직전 대비(%)", width: 19 },
+      { key: "diagnosis_index_current", header: "진단 지수 현재값", width: 21 },
+      { key: "diagnosis_meta_code", header: "진단 코드", width: 20 },
+      { key: "diagnosis_meta_status", header: "진단 상태", width: 22 },
+      { key: "diagnosis_meta_range", header: "진단 범위", width: 28 },
     ],
     summary: [
-      { key: "site", header: "site", width: 34 },
-      { key: "account_label", header: "account_label", width: 24 },
-      { key: "source_account", header: "source_account", width: 24 },
-      { key: "runtime_type", header: "runtime_type", width: 14 },
-      { key: "period_days", header: "period_days", width: 12 },
-      { key: "exported_at", header: "exported_at", width: 24 },
-      { key: "total_clicks", header: "total_clicks", width: 14 },
-      { key: "total_exposes", header: "total_exposes", width: 15 },
-      { key: "avg_ctr", header: "avg_ctr", width: 12 },
-      { key: "trend", header: "trend", width: 12 },
-      { key: "latest_click", header: "latest_click", width: 14 },
-      { key: "prev_click_ratio", header: "prev_click_ratio", width: 17 },
-      { key: "diagnosis_index_current", header: "diagnosis_index_current", width: 21 },
-      { key: "diagnosis_meta_code", header: "diagnosis_meta_code", width: 20 },
-      { key: "diagnosis_meta_status", header: "diagnosis_meta_status", width: 22 },
-      { key: "diagnosis_meta_range", header: "diagnosis_meta_range", width: 28 },
+      { key: "site", header: "사이트", width: 34 },
+      { key: "account_label", header: "계정 라벨", width: 24 },
+      { key: "source_account", header: "소스 계정", width: 24 },
+      { key: "runtime_type", header: "런타임 유형", width: 14 },
+      { key: "period_days", header: "기간(일)", width: 12 },
+      { key: "exported_at", header: "생성 시각", width: 24 },
+      { key: "total_clicks", header: "총 클릭", width: 14 },
+      { key: "total_exposes", header: "총 노출", width: 15 },
+      { key: "avg_ctr", header: "평균 CTR(%)", width: 12 },
+      { key: "trend", header: "클릭 추세", width: 12 },
+      { key: "latest_click", header: "최근 클릭", width: 14 },
+      { key: "prev_click_ratio", header: "직전 대비(%)", width: 17 },
+      { key: "diagnosis_index_current", header: "진단 지수 현재값", width: 21 },
+      { key: "diagnosis_meta_code", header: "진단 코드", width: 20 },
+      { key: "diagnosis_meta_status", header: "진단 상태", width: 22 },
+      { key: "diagnosis_meta_range", header: "진단 범위", width: 28 },
     ],
     meta: [
-      { key: "site", header: "site", width: 34 },
-      { key: "account_label", header: "account_label", width: 24 },
-      { key: "source_account", header: "source_account", width: 24 },
-      { key: "runtime_type", header: "runtime_type", width: 14 },
-      { key: "exported_at", header: "exported_at", width: 24 },
-      { key: "diagnosis_meta_code", header: "diagnosis_meta_code", width: 20 },
-      { key: "diagnosis_meta_status", header: "diagnosis_meta_status", width: 22 },
-      { key: "diagnosis_meta_range", header: "diagnosis_meta_range", width: 28 },
+      { key: "site", header: "사이트", width: 34 },
+      { key: "account_label", header: "계정 라벨", width: 24 },
+      { key: "source_account", header: "소스 계정", width: 24 },
+      { key: "runtime_type", header: "런타임 유형", width: 14 },
+      { key: "exported_at", header: "생성 시각", width: 24 },
+      { key: "diagnosis_meta_code", header: "진단 코드", width: 20 },
+      { key: "diagnosis_meta_status", header: "진단 상태", width: 22 },
+      { key: "diagnosis_meta_range", header: "진단 범위", width: 28 },
     ],
   };
 }
@@ -16624,20 +16647,21 @@ function buildSnapshotXlsxReadmeSheet(XLSX, savedAt, payload, dailyRows, summary
   const exportedAt = getSnapshotXlsxExportedAt(savedAt);
   const periodDays = getSnapshotXlsxPeriodDays(payload);
   const runtimeType = getSnapshotXlsxRuntimeType(payload);
+  const runtimeTypeLabel = getSnapshotXlsxRuntimeTypeLabel(runtimeType);
   const siteCount = Array.isArray(payload && payload.summaryRows) ? payload.summaryRows.length : 0;
   const aoa = [
-    ["field", "value"],
-    ["generated_at", exportedAt],
-    ["runtime_type", runtimeType],
-    ["period_days", periodDays],
-    ["site_count", siteCount],
-    ["site_daily_rows", dailyRows.length],
-    ["site_summary_rows", summaryRows.length],
-    ["site_meta_rows", metaRows.length],
-    ["workbook_version", "xlsx-phase1-core"],
-    ["main_sheet", "site_daily"],
-    ["row_grain", "1 row = 1 site × 1 date"],
-    ["notes", "existing HTML save contract reused; output adapter only"],
+    ["항목", "값"],
+    ["생성 시각", exportedAt],
+    ["런타임 유형", runtimeTypeLabel],
+    ["기간(일)", periodDays],
+    ["사이트 수", siteCount],
+    ["사이트 일별 행 수", dailyRows.length],
+    ["사이트 요약 행 수", summaryRows.length],
+    ["사이트 메타 행 수", metaRows.length],
+    ["워크북 버전", "xlsx-phase1-core"],
+    ["메인 시트", SNAPSHOT_XLSX_SHEET_NAMES.daily],
+    ["행 기준", "1행 = 1사이트 × 1날짜"],
+    ["설명", "기존 HTML 저장 계약을 재사용하고 출력 포맷만 엑셀로 전환합니다."],
   ];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws["!cols"] = [{ wch: 22 }, { wch: 48 }];
@@ -16653,30 +16677,30 @@ function buildSnapshotXlsxWorkbook(savedAt, payload) {
   const metaRows = buildSnapshotXlsxSiteMetaRows(savedAt, payload, fallbackContext);
   const wb = XLSX.utils.book_new();
   wb.Props = {
-    Title: "SearchAdvisor Detailed Export",
-    Subject: "SearchAdvisor XLSX Export",
-    Author: "SearchAdvisor Runtime",
+    Title: "서치어드바이저 상세 엑셀 내보내기",
+    Subject: "서치어드바이저 XLSX 내보내기",
+    Author: "서치어드바이저 런타임",
     CreatedDate: savedAt instanceof Date ? savedAt : new Date(),
   };
   XLSX.utils.book_append_sheet(
     wb,
     buildSnapshotXlsxReadmeSheet(XLSX, savedAt, payload, dailyRows, summaryRows, metaRows),
-    "README",
+    SNAPSHOT_XLSX_SHEET_NAMES.readme,
   );
   XLSX.utils.book_append_sheet(
     wb,
     buildSnapshotXlsxDataSheet(XLSX, columns.daily, dailyRows),
-    "site_daily",
+    SNAPSHOT_XLSX_SHEET_NAMES.daily,
   );
   XLSX.utils.book_append_sheet(
     wb,
     buildSnapshotXlsxDataSheet(XLSX, columns.summary, summaryRows),
-    "site_summary",
+    SNAPSHOT_XLSX_SHEET_NAMES.summary,
   );
   XLSX.utils.book_append_sheet(
     wb,
     buildSnapshotXlsxDataSheet(XLSX, columns.meta, metaRows),
-    "site_meta",
+    SNAPSHOT_XLSX_SHEET_NAMES.meta,
   );
   return {
     workbook: wb,
@@ -16836,7 +16860,12 @@ async function downloadSnapshotXlsx(options) {
       payload: payload,
       stats: saveStats,
       workbook: {
-        sheetNames: ["README", "site_daily", "site_summary", "site_meta"],
+        sheetNames: [
+          SNAPSHOT_XLSX_SHEET_NAMES.readme,
+          SNAPSHOT_XLSX_SHEET_NAMES.daily,
+          SNAPSHOT_XLSX_SHEET_NAMES.summary,
+          SNAPSHOT_XLSX_SHEET_NAMES.meta,
+        ],
         dailyRowCount: workbookBundle.dailyRows.length,
         summaryRowCount: workbookBundle.summaryRows.length,
         metaRowCount: workbookBundle.metaRows.length,
