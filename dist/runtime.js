@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-23T08:53:50Z";
-var __SADV_GIT_HEAD__="d7b1f99";
+var __SADV_BUILD_STAMP__="2026-03-23T08:55:02Z";
+var __SADV_GIT_HEAD__="cfd9c96";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -16185,9 +16185,30 @@ function buildSnapshotCsvRow(savedAt, row, context) {
 function buildSnapshotCsv(savedAt, payload) {
   const rows = Array.isArray(payload && payload.summaryRows) ? payload.summaryRows : [];
   const columns = getSnapshotCsvColumns();
+  const runtimeAccountInfo =
+    typeof ACCOUNT_UTILS !== "undefined" &&
+    ACCOUNT_UTILS &&
+    typeof ACCOUNT_UTILS.getAccountInfo === "function"
+      ? ACCOUNT_UTILS.getAccountInfo()
+      : { accountLabel: "", encId: "" };
+  const runtimeCurrentAccount =
+    typeof ACCOUNT_UTILS !== "undefined" &&
+    ACCOUNT_UTILS &&
+    typeof ACCOUNT_UTILS.getCurrentAccount === "function"
+      ? ACCOUNT_UTILS.getCurrentAccount()
+      : typeof window !== "undefined" &&
+          window.__sadvAccountState &&
+          typeof window.__sadvAccountState.currentAccount === "string"
+        ? window.__sadvAccountState.currentAccount
+        : "";
   const context = {
-    accountLabel: payload && payload.accountLabel ? payload.accountLabel : "",
-    accountEncId: payload && payload.accountEncId ? payload.accountEncId : "",
+    accountLabel:
+      (payload && payload.accountLabel ? payload.accountLabel : "") ||
+      (typeof runtimeCurrentAccount === "string" ? runtimeCurrentAccount : "") ||
+      (runtimeAccountInfo && runtimeAccountInfo.accountLabel ? runtimeAccountInfo.accountLabel : ""),
+    accountEncId:
+      (payload && payload.accountEncId ? payload.accountEncId : "") ||
+      (runtimeAccountInfo && runtimeAccountInfo.encId ? runtimeAccountInfo.encId : ""),
   };
   const headerLine = columns.map(function (column) {
     return escapeSnapshotCsvCell(column.header);
