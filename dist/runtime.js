@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-23T13:32:59Z";
-var __SADV_GIT_HEAD__="884dc2b";
+var __SADV_BUILD_STAMP__="2026-03-23T13:35:11Z";
+var __SADV_GIT_HEAD__="bd3a70b";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -16153,6 +16153,8 @@ function renderFailureSummary(stats) {
 // - 이 파일은 XLSX "정책 owner"가 아니라 workbook commit leaf다.
 //   blocked/waiting/refresh/startup owner 판단은 여전히 runSnapshotSaveExecution()
 //   쪽에서 끝나 있어야 한다.
+// - 새 시트는 extractor + column 계약 + README 설명 + QA를 함께 갱신하는 방식으로만 추가한다.
+// - 즉 이 파일에서는 save 판단/blocked 판단/refresh 판단을 새로 만들지 않는다.
 // - 외부 SheetJS 로딩은 실패/타임아웃/CSP 차단 가능성이 있으므로,
 //   실패 script는 제거하고 promise를 초기화해 다음 수동 시도에서 재시도 가능해야 한다.
 const SNAPSHOT_XLSX_STANDALONE_URL =
@@ -16192,6 +16194,8 @@ function ensureSnapshotXlsxLibrary() {
   if (typeof window === "undefined") {
     return Promise.reject(new Error("xlsx export requires a browser runtime"));
   }
+  // 이 경로의 주 리스크는 기능 리그레션보다 외부 CDN/CSP/네트워크 환경 차이에 가깝다.
+  // 따라서 timeout/cleanup/retry reset을 통해 실패 후 다음 수동 시도를 보장한다.
   if (hasUsableSnapshotXlsxGlobal(window.XLSX)) {
     return Promise.resolve(window.XLSX);
   }
@@ -16708,6 +16712,7 @@ function buildSnapshotXlsxCrawlRows(savedAt, payload, fallbackContext) {
   const exportedAt = getSnapshotXlsxExportedAt(savedAt);
   const runtimeTypeLabel = getSnapshotXlsxRuntimeTypeLabel(getSnapshotXlsxRuntimeType(payload));
   const periodDays = getSnapshotXlsxPeriodDays(payload);
+  // 크롤 시트는 1행 = 1사이트 × 1날짜 fact row로 유지한다.
   return getSnapshotXlsxSiteEntries(payload, fallbackContext).flatMap(function (entry) {
     const crawlItem =
       entry &&
@@ -16748,6 +16753,8 @@ function buildSnapshotXlsxBacklinkRows(savedAt, payload, fallbackContext) {
   const exportedAt = getSnapshotXlsxExportedAt(savedAt);
   const runtimeTypeLabel = getSnapshotXlsxRuntimeTypeLabel(getSnapshotXlsxRuntimeType(payload));
   const periodDays = getSnapshotXlsxPeriodDays(payload);
+  // 백링크 시트는 topDomain 기준 1행 = 1사이트 × 1도메인 grain을 사용한다.
+  // countTime 시계열은 latest summary 용도로만 참고하고 별도 시계열 시트로는 아직 분리하지 않는다.
   return getSnapshotXlsxSiteEntries(payload, fallbackContext).flatMap(function (entry) {
     const backlinkItem =
       entry &&
