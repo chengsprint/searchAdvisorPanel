@@ -22,11 +22,16 @@ PAYLOAD_TOKENS = (
     "EXPORT_PAYLOAD =",
 )
 MERGED_TEMPLATE_HELPERS = (
+    "getSnapshotSaveRuntimeType",
     "getSnapshotMergedMetaHint",
     "isSavedMergedSnapshotRuntime",
     "canManualXlsxExportInCurrentRuntime",
     "buildSnapshotManualXlsxExecutionOptions",
     "bindSnapshotManualXlsxButton",
+    "formatSnapshotMergedXlsxCompatStamp",
+    "buildSnapshotMergedXlsxCompatFileName",
+    "triggerSnapshotMergedXlsxCompatDownload",
+    "downloadMergedSnapshotXlsxCompat",
     "createMergedAccountsInfo",
 )
 
@@ -521,15 +526,32 @@ def load_snapshot_source_text() -> str:
     return (Path(__file__).resolve().parent / "src/app/main/12-snapshot.js").read_text(encoding="utf-8")
 
 
+def load_xlsx_source_text() -> str:
+    source_text = (Path(__file__).resolve().parent / "src/app/main/15-export-xlsx.js").read_text(
+        encoding="utf-8"
+    )
+    cutoff = source_text.find("async function downloadSnapshotXlsx(")
+    if cutoff < 0:
+        raise ValueError("downloadSnapshotXlsx adapter boundary not found in 15-export-xlsx.js")
+    # merge.py가 필요한 것은 saved merged snapshot에서 workbook을 직접 조립하는 공통 helper들뿐이다.
+    # runSnapshotSaveExecution()/downloadSnapshotXlsx() 같은 정책 owner/adapter 본문은 saved inline script에
+    # 통째로 주입하면 await 문맥 오류와 중복 계약 drift를 만들 수 있으므로 제외한다.
+    return source_text[:cutoff].rstrip()
+
+
 def extract_function_source(source_text: str, function_name: str) -> str:
-    start = source_text.find(f"function {function_name}(")
+    async_sig = f"async function {function_name}("
+    plain_sig = f"function {function_name}("
+    start = source_text.find(async_sig)
+    if start < 0:
+        start = source_text.find(plain_sig)
     if start < 0:
         raise ValueError(f"function {function_name} not found in 12-snapshot.js")
-    next_idx = source_text.find("\nfunction ", start + 1)
-    if next_idx < 0:
-        snippet = source_text[start:]
-    else:
-        snippet = source_text[start:next_idx]
+    next_plain = source_text.find("\nfunction ", start + 1)
+    next_async = source_text.find("\nasync function ", start + 1)
+    candidates = [idx for idx in (next_plain, next_async) if idx >= 0]
+    next_idx = min(candidates) if candidates else -1
+    snippet = source_text[start:] if next_idx < 0 else source_text[start:next_idx]
     return snippet.rstrip()
 
 
@@ -553,6 +575,25 @@ def inject_missing_merge_helpers(html: str) -> str:
         if idx >= 0:
             return html[:idx] + helper_block + "\n\n" + html[idx:]
     return html + "\n<script>\n" + helper_block + "\n</script>\n"
+
+
+def inject_missing_merge_xlsx_compat_pack(html: str) -> str:
+    if "function buildSnapshotXlsxWorkbook(" in html and "function ensureSnapshotXlsxLibrary(" in html:
+        return html
+    xlsx_source = load_xlsx_source_text().strip()
+    if not xlsx_source:
+        return html
+    anchors = (
+        "function formatSnapshotMergedXlsxCompatStamp(",
+        "function bindSnapshotManualXlsxButton(",
+        "function syncXlsxButtonVisibility(",
+        "</script>",
+    )
+    for anchor in anchors:
+        idx = html.find(anchor)
+        if idx >= 0:
+            return html[:idx] + xlsx_source + "\n\n" + html[idx:]
+    return html + "\n<script>\n" + xlsx_source + "\n</script>\n"
 
 
 def inject_missing_merge_xlsx_binding_call(html: str) -> str:
@@ -580,6 +621,7 @@ def build_merged_html(template_html: str, payload: Dict[str, Any]) -> str:
     html = replace_payload_raw(template_html, payload)
     html = replace_first_saved_chip(html, format_saved_label(payload.get("savedAt") or ""))
     html = replace_snapshot_shell_state(html, build_snapshot_shell_state(payload))
+    html = inject_missing_merge_xlsx_compat_pack(html)
     html = inject_missing_merge_helpers(html)
     html = inject_missing_merge_xlsx_binding_call(html)
     return html
