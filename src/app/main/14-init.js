@@ -51,6 +51,47 @@ if (typeof window !== "undefined") {
       const cachedUiState = getCachedUiState();
       let bootMode = CONFIG.MODE.ALL;
       let bootSite = null;
+      const renderStartupRefreshFailure = function (mode, site, error) {
+        if (!bdEl) return;
+        const shortSite =
+          typeof site === "string" && site
+            ? site.replace("https://", "").replace("http://", "")
+            : null;
+        const title =
+          mode === CONFIG.MODE.SITE && shortSite
+            ? shortSite + " 사이트 초기 데이터를 불러오지 못했어요."
+            : "초기 데이터를 불러오지 못했어요.";
+        const retry = function () {
+          if (typeof recordRuntimeEvent === "function") {
+            recordRuntimeEvent("startup-refresh-retry-click", {
+              mode: mode,
+              site: site || null,
+            });
+          }
+          runFullRefreshPipeline({ trigger: "manual" }).catch(function (retryError) {
+            console.error("[Init] Startup refresh retry failed:", retryError);
+            renderStartupRefreshFailure(mode, site, retryError);
+          });
+        };
+        bdEl.replaceChildren(
+          createInlineError(
+            title,
+            retry,
+            "다시 시도",
+          ),
+        );
+        if (labelEl) {
+          labelEl.classList.remove("sadv-meta-hidden");
+          labelEl.innerHTML = sanitizeHTML("<span>초기 데이터 준비 실패</span>");
+        }
+        if (typeof recordRuntimeEvent === "function") {
+          recordRuntimeEvent("startup-refresh-failure-ui", {
+            mode: mode,
+            site: site || null,
+            message: error && error.message ? error.message : String(error),
+          });
+        }
+      };
       const applyBootShellState = function (mode, site) {
         if (mode === CONFIG.MODE.SITE && site) {
           curMode = CONFIG.MODE.SITE;
@@ -127,6 +168,7 @@ if (typeof window !== "undefined") {
         }
         runFullRefreshPipeline({ trigger: "cache-expiry" }).catch(function (error) {
           console.error("[Init] Startup refresh-first pipeline failed:", error);
+          renderStartupRefreshFailure(bootMode, curSite, error);
         });
       } else {
         if (bootMode === CONFIG.MODE.SITE && curSite && modeBar && siteBar && tabsEl) {

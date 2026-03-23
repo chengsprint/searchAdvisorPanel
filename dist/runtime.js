@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-23T07:37:09Z";
-var __SADV_GIT_HEAD__="ca04be3";
+var __SADV_BUILD_STAMP__="2026-03-23T07:47:43Z";
+var __SADV_GIT_HEAD__="eece8e1";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -15682,7 +15682,38 @@ function startCacheExpiryMonitor() {
  * @see {renderFullRefreshProgress}
  */
 async function runFullRefreshPipeline(options = {}) {
-  if (fullRefreshInFlightPromise) return fullRefreshInFlightPromise;
+  if (fullRefreshInFlightPromise) {
+    const requestedTrigger = options && options.trigger ? options.trigger : "manual";
+    const ownerTrigger =
+      fullRefreshInFlightMeta && typeof fullRefreshInFlightMeta.trigger === "string"
+        ? fullRefreshInFlightMeta.trigger
+        : null;
+    recordRuntimeEvent("full-refresh-join", {
+      requestedTrigger: requestedTrigger,
+      ownerTrigger: ownerTrigger,
+      siteCount: allSites.length,
+    });
+    if (fullRefreshInFlightMeta && fullRefreshInFlightMeta.progress) {
+      const joinDetail =
+        ownerTrigger === "cache-expiry" && requestedTrigger === "manual"
+          ? "이미 진행 중인 자동 갱신에 수동 새로고침 요청이 합류했습니다. 새로운 수집을 다시 시작하지 않습니다."
+          : "이미 진행 중인 전체 갱신 결과를 그대로 재사용합니다. 새로운 수집을 다시 시작하지 않습니다.";
+      fullRefreshInFlightMeta.progress = {
+        ...fullRefreshInFlightMeta.progress,
+        label: "원본 자동 갱신 진행상태와 동기화 중",
+        detail: joinDetail,
+        updatedAt: Date.now(),
+      };
+    }
+    const joinedButton = options && options.button ? options.button : null;
+    if (joinedButton) {
+      joinedButton.textContent =
+        ownerTrigger === "cache-expiry" && requestedTrigger === "manual"
+          ? "자동 갱신 합류 중..."
+          : "기존 작업 합류 중...";
+    }
+    return fullRefreshInFlightPromise;
+  }
   const trigger = options && options.trigger ? options.trigger : "manual";
   fullRefreshInFlightMeta = {
     trigger: trigger,
@@ -15929,6 +15960,47 @@ if (typeof window !== "undefined") {
       const cachedUiState = getCachedUiState();
       let bootMode = CONFIG.MODE.ALL;
       let bootSite = null;
+      const renderStartupRefreshFailure = function (mode, site, error) {
+        if (!bdEl) return;
+        const shortSite =
+          typeof site === "string" && site
+            ? site.replace("https://", "").replace("http://", "")
+            : null;
+        const title =
+          mode === CONFIG.MODE.SITE && shortSite
+            ? shortSite + " 사이트 초기 데이터를 불러오지 못했어요."
+            : "초기 데이터를 불러오지 못했어요.";
+        const retry = function () {
+          if (typeof recordRuntimeEvent === "function") {
+            recordRuntimeEvent("startup-refresh-retry-click", {
+              mode: mode,
+              site: site || null,
+            });
+          }
+          runFullRefreshPipeline({ trigger: "manual" }).catch(function (retryError) {
+            console.error("[Init] Startup refresh retry failed:", retryError);
+            renderStartupRefreshFailure(mode, site, retryError);
+          });
+        };
+        bdEl.replaceChildren(
+          createInlineError(
+            title,
+            retry,
+            "다시 시도",
+          ),
+        );
+        if (labelEl) {
+          labelEl.classList.remove("sadv-meta-hidden");
+          labelEl.innerHTML = sanitizeHTML("<span>초기 데이터 준비 실패</span>");
+        }
+        if (typeof recordRuntimeEvent === "function") {
+          recordRuntimeEvent("startup-refresh-failure-ui", {
+            mode: mode,
+            site: site || null,
+            message: error && error.message ? error.message : String(error),
+          });
+        }
+      };
       const applyBootShellState = function (mode, site) {
         if (mode === CONFIG.MODE.SITE && site) {
           curMode = CONFIG.MODE.SITE;
@@ -16005,6 +16077,7 @@ if (typeof window !== "undefined") {
         }
         runFullRefreshPipeline({ trigger: "cache-expiry" }).catch(function (error) {
           console.error("[Init] Startup refresh-first pipeline failed:", error);
+          renderStartupRefreshFailure(bootMode, curSite, error);
         });
       } else {
         if (bootMode === CONFIG.MODE.SITE && curSite && modeBar && siteBar && tabsEl) {

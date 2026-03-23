@@ -363,7 +363,38 @@ function startCacheExpiryMonitor() {
  * @see {renderFullRefreshProgress}
  */
 async function runFullRefreshPipeline(options = {}) {
-  if (fullRefreshInFlightPromise) return fullRefreshInFlightPromise;
+  if (fullRefreshInFlightPromise) {
+    const requestedTrigger = options && options.trigger ? options.trigger : "manual";
+    const ownerTrigger =
+      fullRefreshInFlightMeta && typeof fullRefreshInFlightMeta.trigger === "string"
+        ? fullRefreshInFlightMeta.trigger
+        : null;
+    recordRuntimeEvent("full-refresh-join", {
+      requestedTrigger: requestedTrigger,
+      ownerTrigger: ownerTrigger,
+      siteCount: allSites.length,
+    });
+    if (fullRefreshInFlightMeta && fullRefreshInFlightMeta.progress) {
+      const joinDetail =
+        ownerTrigger === "cache-expiry" && requestedTrigger === "manual"
+          ? "이미 진행 중인 자동 갱신에 수동 새로고침 요청이 합류했습니다. 새로운 수집을 다시 시작하지 않습니다."
+          : "이미 진행 중인 전체 갱신 결과를 그대로 재사용합니다. 새로운 수집을 다시 시작하지 않습니다.";
+      fullRefreshInFlightMeta.progress = {
+        ...fullRefreshInFlightMeta.progress,
+        label: "원본 자동 갱신 진행상태와 동기화 중",
+        detail: joinDetail,
+        updatedAt: Date.now(),
+      };
+    }
+    const joinedButton = options && options.button ? options.button : null;
+    if (joinedButton) {
+      joinedButton.textContent =
+        ownerTrigger === "cache-expiry" && requestedTrigger === "manual"
+          ? "자동 갱신 합류 중..."
+          : "기존 작업 합류 중...";
+    }
+    return fullRefreshInFlightPromise;
+  }
   const trigger = options && options.trigger ? options.trigger : "manual";
   fullRefreshInFlightMeta = {
     trigger: trigger,
