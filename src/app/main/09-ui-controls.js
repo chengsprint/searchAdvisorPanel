@@ -769,35 +769,35 @@ function applyUiControlsTab(tab) {
     console.warn("[UI Controls] #sadv-save-btn not found during initialization");
   }
 
-  var sadvCsvBtnEl = document.getElementById("sadv-csv-btn");
-  if (sadvCsvBtnEl) {
-    // phase 1 CSV export is intentionally scoped to live interactive panels.
-    // saved/read-only runtimes must not expose the button, and merge/runtime
-    // specific expansions can be revisited later with explicit contract updates.
+  var sadvXlsxBtnEl = document.getElementById("sadv-xlsx-btn");
+  if (sadvXlsxBtnEl) {
+    // XLSX 상세 저장은 기존 CSV 수동 저장 자리를 완전히 대체한다.
+    // public surface는 live interactive manual button까지만 유지하고,
+    // saved/read-only 및 merge UI에는 노출하지 않는다.
     const runtimeKind =
       typeof window !== "undefined" && window.__SEARCHADVISOR_RUNTIME_KIND__
         ? window.__SEARCHADVISOR_RUNTIME_KIND__
         : "live";
-    const canManualCsvSave = !!(
+    const canManualXlsxSave = !!(
       runtimeCapabilities.canSave &&
       !runtimeCapabilities.isReadOnly &&
       runtimeKind === "live"
     );
-    if (!canManualCsvSave) {
-      sadvCsvBtnEl.style.display = "none";
-      sadvCsvBtnEl.setAttribute("aria-hidden", "true");
+    if (!canManualXlsxSave) {
+      sadvXlsxBtnEl.style.display = "none";
+      sadvXlsxBtnEl.setAttribute("aria-hidden", "true");
     } else {
-      sadvCsvBtnEl.addEventListener("click", function () {
+      sadvXlsxBtnEl.addEventListener("click", function () {
         const saveStatus =
           typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null;
         if (saveStatus && saveStatus.active) return;
         if (typeof runSnapshotSaveExecution === "function") {
-          runSnapshotSaveExecution({ entryPoint: "button-csv", outputFormat: "csv" });
+          runSnapshotSaveExecution({ entryPoint: "button-xlsx", outputFormat: "xlsx" });
         }
       });
     }
   } else {
-    console.warn("[UI Controls] #sadv-csv-btn not found during initialization");
+    console.warn("[UI Controls] #sadv-xlsx-btn not found during initialization");
   }
 
   var sadvCloseBtnEl = document.getElementById("sadv-x");

@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-23T08:55:02Z";
-var __SADV_GIT_HEAD__="cfd9c96";
+var __SADV_BUILD_STAMP__="2026-03-23T09:45:45Z";
+var __SADV_GIT_HEAD__="50f4f20";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -1429,7 +1429,7 @@ const ERROR_MESSAGES = {
   // Download/Export Errors
   DOWNLOAD_FAILED: "파일 다운로드에 실패했어요. 다시 시도해주세요.",
   HTML_SAVE_ERROR: "HTML 저장 중 오류가 발생했어요. 다시 시도해주세요.",
-  CSV_SAVE_ERROR: "CSV 저장 중 오류가 발생했어요. 다시 시도해주세요.",
+  XLSX_SAVE_ERROR: "엑셀 저장 중 오류가 발생했어요. 다시 시도해주세요.",
   EXPORT_INCOMPLETE: "일부 사이트 데이터를 내보내지 못했어요.",
   SAVE_BLOCKED_PANEL_ERROR: "패널 작업 중 문제가 남아 있어 저장을 진행하지 않았어요.",
   SAVE_BLOCKED_TOO_MANY_FAILURES: "조회 실패 사이트가 많아 저장을 진행하지 않았어요.",
@@ -3072,7 +3072,7 @@ if (sadvBootBackgroundSave) {
   p.style.pointerEvents = "none";
   p.style.transform = "translateX(calc(100% + 48px))";
 }
-p.innerHTML = sanitizeHTML(`<style>#sadv-p *{box-sizing:border-box}#sadv-p ::-webkit-scrollbar{width:6px}#sadv-p ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}#sadv-header{padding:20px;border-bottom:1px solid #1e293b;background:rgba(2,6,23,0.8);backdrop-filter:blur(12px)}#sadv-mode-bar{display:flex;gap:4px;margin-top:16px;background:#0f172a;padding:4px;border-radius:12px;border:1px solid #334155}.sadv-mode{flex:1;background:transparent;border:none;color:#94a3b8;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}.sadv-mode.on{background:#1e293b;color:#0ea5e9;box-shadow:0 4px 6px -1px rgba(0,0,0,0.2)}#sadv-site-bar{margin-top:12px;position:relative;display:none}#sadv-site-bar.show{display:block}#sadv-combo-wrap{position:relative}#sadv-combo-btn{width:100%;background:#0f172a;border:1px solid #334155;color:#f8fafc;border-radius:10px;padding:10px 36px 10px 12px;font-size:13px;cursor:pointer;text-align:left;font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:10px}#sadv-combo-btn:hover{border-color:#0ea5e9;background:#1e293b}#sadv-combo-btn:focus-visible{outline:2px solid #0ea5e9;outline-offset:2px;box-shadow:0 0 0 4px rgba(14, 165, 233, 0.1)}#sadv-combo-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#64748b}#sadv-combo-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:500}#sadv-combo-arrow{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#64748b;font-size:12px;pointer-events:none;transition:transform .2s}#sadv-combo-wrap.open #sadv-combo-arrow{transform:translateY(-50%) rotate(180deg)}#sadv-combo-drop{display:none;position:absolute;top:calc(100% + 8px);left:0;right:0;background:#0f172a;border:1px solid #334155;border-radius:12px;padding:6px;z-index:100;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);max-height:300px;overflow-y:auto}#sadv-combo-wrap.open #sadv-combo-drop{display:block}.sadv-combo-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;cursor:pointer;transition:all .1s;border:1px solid transparent}.sadv-combo-item:hover{background:#1e293b}.sadv-combo-item:focus-visible{outline:2px solid #0ea5e9;outline-offset:-2px}.sadv-combo-item.active{background:#1e293b;border-color:#334155;color:#0ea5e9}#sadv-tabs{display:none;flex-wrap:wrap;gap:6px;padding:12px 20px;background:#020617;border-bottom:1px solid #1e293b;justify-content:center}#sadv-tabs.show{display:flex;justify-content:center}#sadv-tabs::-webkit-scrollbar{display:none}.sadv-t{background:transparent;border:1px solid transparent;color:#64748b;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}.sadv-t:hover{color:#f8fafc;background:#1e293b}.sadv-t.on{background:rgba(14,165,233,0.1);border-color:rgba(14,165,233,0.2);color:#0ea5e9}#sadv-refresh-btn,#sadv-save-btn,#sadv-csv-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s;white-space:nowrap;flex-shrink:0;min-width:74px;line-height:1.1}#sadv-refresh-btn:hover,#sadv-save-btn:hover,#sadv-csv-btn:hover{border-color:#0ea5e9;color:#0ea5e9;background:#1e293b}#sadv-refresh-btn:focus-visible,#sadv-save-btn:focus-visible,#sadv-csv-btn:focus-visible{outline:2px solid #0ea5e9;outline-offset:2px;box-shadow:0 0 0 4px rgba(14, 165, 233, 0.1)}#sadv-cache-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}#sadv-bd{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px}#sadv-tabpanel{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px}.sadv-allcard{background:#0f172a;border:1px solid #1e293b;border-radius:16px;padding:20px;margin-bottom:16px;cursor:pointer;transition:all .2s}.sadv-allcard:hover{border-color:#334155;transform:translateY(-2px)}</style><div id="sadv-header"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:7px;font-size:18px;font-weight:800;letter-spacing:-0.03em"><span style="display:inline-flex;opacity:0.95">${ICONS.logoSearch}</span>Search<span style="color:#ffd400">Advisor</span></div><div id="sadv-account-badge" style="display:none;padding:4px 12px;border-radius:999px;border:1px solid rgba(255,212,0,0.2);color:#ffd400;background:rgba(255,212,0,0.12);font-size:11px;font-weight:600;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div></div><div id="sadv-site-label" style="font-size:11px;color:#64748b;margin-top:4px;display:flex;align-items:center;gap:4px">\ub85c\ub529 \uc911...</div><div id="sadv-cache-meta"></div></div><div style="display:flex;gap:8px;align-items:center"><button id="sadv-refresh-btn" class="sadv-btn" title="새로고침" style="display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;flex-shrink:0;min-width:74px">${ICONS.refresh} 새로고침</button><button id="sadv-save-btn" class="sadv-btn" title="현재 화면 저장" style="display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;flex-shrink:0;min-width:74px">${ICONS.save} 저장</button><button id="sadv-csv-btn" class="sadv-btn" title="전체 데이터 CSV 저장" style="display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;flex-shrink:0;min-width:74px">${ICONS.save} CSV</button><button id="sadv-x" style="background:none;border:1px solid #1e293b;color:#475569;width:32px;height:32px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s">${ICONS.xMark}</button></div></div><div id="sadv-mode-bar"><button class="sadv-mode on" data-m="all" style="display:inline-flex;align-items:center;justify-content:center;gap:5px">${ICONS.globe} 전체현황</button><button class="sadv-mode" data-m="site" style="display:inline-flex;align-items:center;justify-content:center;gap:5px">${ICONS.layers} 사이트별</button></div><div id="sadv-site-bar"><div id="sadv-combo-wrap"><button id="sadv-combo-btn"><span id="sadv-combo-dot"></span><span id="sadv-combo-label">\uc0ac\uc774\ud2b8 \uc120\ud0dd</span></button><span id="sadv-combo-arrow" style="display:inline-flex;align-items:center">${ICONS.chevronDown}</span><div id="sadv-combo-drop"></div></div></div></div><div id="sadv-tabs"></div><div id="sadv-bd"><div style="padding:60px 20px;text-align:center;color:#64748b">⏳ \ub85c\ub529 \uc911...</div></div>`);
+p.innerHTML = sanitizeHTML(`<style>#sadv-p *{box-sizing:border-box}#sadv-p ::-webkit-scrollbar{width:6px}#sadv-p ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}#sadv-header{padding:20px;border-bottom:1px solid #1e293b;background:rgba(2,6,23,0.8);backdrop-filter:blur(12px)}#sadv-mode-bar{display:flex;gap:4px;margin-top:16px;background:#0f172a;padding:4px;border-radius:12px;border:1px solid #334155}.sadv-mode{flex:1;background:transparent;border:none;color:#94a3b8;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}.sadv-mode.on{background:#1e293b;color:#0ea5e9;box-shadow:0 4px 6px -1px rgba(0,0,0,0.2)}#sadv-site-bar{margin-top:12px;position:relative;display:none}#sadv-site-bar.show{display:block}#sadv-combo-wrap{position:relative}#sadv-combo-btn{width:100%;background:#0f172a;border:1px solid #334155;color:#f8fafc;border-radius:10px;padding:10px 36px 10px 12px;font-size:13px;cursor:pointer;text-align:left;font-family:inherit;transition:all .2s;display:flex;align-items:center;gap:10px}#sadv-combo-btn:hover{border-color:#0ea5e9;background:#1e293b}#sadv-combo-btn:focus-visible{outline:2px solid #0ea5e9;outline-offset:2px;box-shadow:0 0 0 4px rgba(14, 165, 233, 0.1)}#sadv-combo-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#64748b}#sadv-combo-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:500}#sadv-combo-arrow{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#64748b;font-size:12px;pointer-events:none;transition:transform .2s}#sadv-combo-wrap.open #sadv-combo-arrow{transform:translateY(-50%) rotate(180deg)}#sadv-combo-drop{display:none;position:absolute;top:calc(100% + 8px);left:0;right:0;background:#0f172a;border:1px solid #334155;border-radius:12px;padding:6px;z-index:100;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);max-height:300px;overflow-y:auto}#sadv-combo-wrap.open #sadv-combo-drop{display:block}.sadv-combo-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;cursor:pointer;transition:all .1s;border:1px solid transparent}.sadv-combo-item:hover{background:#1e293b}.sadv-combo-item:focus-visible{outline:2px solid #0ea5e9;outline-offset:-2px}.sadv-combo-item.active{background:#1e293b;border-color:#334155;color:#0ea5e9}#sadv-tabs{display:none;flex-wrap:wrap;gap:6px;padding:12px 20px;background:#020617;border-bottom:1px solid #1e293b;justify-content:center}#sadv-tabs.show{display:flex;justify-content:center}#sadv-tabs::-webkit-scrollbar{display:none}.sadv-t{background:transparent;border:1px solid transparent;color:#64748b;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}.sadv-t:hover{color:#f8fafc;background:#1e293b}.sadv-t.on{background:rgba(14,165,233,0.1);border-color:rgba(14,165,233,0.2);color:#0ea5e9}#sadv-refresh-btn,#sadv-save-btn,#sadv-xlsx-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:#0f172a;border:1px solid #334155;color:#94a3b8;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s;white-space:nowrap;flex-shrink:0;min-width:74px;line-height:1.1}#sadv-refresh-btn:hover,#sadv-save-btn:hover,#sadv-xlsx-btn:hover{border-color:#0ea5e9;color:#0ea5e9;background:#1e293b}#sadv-refresh-btn:focus-visible,#sadv-save-btn:focus-visible,#sadv-xlsx-btn:focus-visible{outline:2px solid #0ea5e9;outline-offset:2px;box-shadow:0 0 0 4px rgba(14, 165, 233, 0.1)}#sadv-cache-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}#sadv-bd{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px}#sadv-tabpanel{flex:1;overflow-y:auto;overflow-x:hidden;padding:20px}.sadv-allcard{background:#0f172a;border:1px solid #1e293b;border-radius:16px;padding:20px;margin-bottom:16px;cursor:pointer;transition:all .2s}.sadv-allcard:hover{border-color:#334155;transform:translateY(-2px)}</style><div id="sadv-header"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:7px;font-size:18px;font-weight:800;letter-spacing:-0.03em"><span style="display:inline-flex;opacity:0.95">${ICONS.logoSearch}</span>Search<span style="color:#ffd400">Advisor</span></div><div id="sadv-account-badge" style="display:none;padding:4px 12px;border-radius:999px;border:1px solid rgba(255,212,0,0.2);color:#ffd400;background:rgba(255,212,0,0.12);font-size:11px;font-weight:600;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div></div><div id="sadv-site-label" style="font-size:11px;color:#64748b;margin-top:4px;display:flex;align-items:center;gap:4px">\ub85c\ub529 \uc911...</div><div id="sadv-cache-meta"></div></div><div style="display:flex;gap:8px;align-items:center"><button id="sadv-refresh-btn" class="sadv-btn" title="새로고침" style="display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;flex-shrink:0;min-width:74px">${ICONS.refresh} 새로고침</button><button id="sadv-save-btn" class="sadv-btn" title="현재 화면 저장" style="display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;flex-shrink:0;min-width:74px">${ICONS.save} 저장</button><button id="sadv-xlsx-btn" data-output-format="xlsx" class="sadv-btn" title="전체 데이터 엑셀 저장" style="display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;flex-shrink:0;min-width:74px">${ICONS.save} 엑셀</button><button id="sadv-x" style="background:none;border:1px solid #1e293b;color:#475569;width:32px;height:32px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s">${ICONS.xMark}</button></div></div><div id="sadv-mode-bar"><button class="sadv-mode on" data-m="all" style="display:inline-flex;align-items:center;justify-content:center;gap:5px">${ICONS.globe} 전체현황</button><button class="sadv-mode" data-m="site" style="display:inline-flex;align-items:center;justify-content:center;gap:5px">${ICONS.layers} 사이트별</button></div><div id="sadv-site-bar"><div id="sadv-combo-wrap"><button id="sadv-combo-btn"><span id="sadv-combo-dot"></span><span id="sadv-combo-label">\uc0ac\uc774\ud2b8 \uc120\ud0dd</span></button><span id="sadv-combo-arrow" style="display:inline-flex;align-items:center">${ICONS.chevronDown}</span><div id="sadv-combo-drop"></div></div></div></div><div id="sadv-tabs"></div><div id="sadv-bd"><div style="padding:60px 20px;text-align:center;color:#64748b">⏳ \ub85c\ub529 \uc911...</div></div>`);
 const initialShellStyleEl = p.querySelector("style");
 if (initialShellStyleEl) {
   initialShellStyleEl.textContent = initialShellStyleEl.textContent
@@ -3098,7 +3098,7 @@ if (headerEl) {
   const modeBarEl = document.getElementById("sadv-mode-bar");
   const refreshBtnEl = document.getElementById("sadv-refresh-btn");
   const saveBtnEl = document.getElementById("sadv-save-btn");
-  const csvBtnEl = document.getElementById("sadv-csv-btn");
+  const xlsxBtnEl = document.getElementById("sadv-xlsx-btn");
   const closeBtnEl = document.getElementById("sadv-x");
   const accountBadgeEl = document.getElementById("sadv-account-badge");
   const siteLabelMetaEl = document.getElementById("sadv-site-label");
@@ -3139,7 +3139,7 @@ if (headerEl) {
 
     const actionsWrapEl = document.createElement("div");
     actionsWrapEl.className = "sadv-header-actions";
-    [refreshBtnEl, saveBtnEl, csvBtnEl, closeBtnEl].forEach((node) => {
+    [refreshBtnEl, saveBtnEl, xlsxBtnEl, closeBtnEl].forEach((node) => {
       if (node) actionsWrapEl.appendChild(node);
     });
 
@@ -3365,7 +3365,7 @@ siteUiStyle.textContent = `
 #sadv-combo-btn:focus-visible,
 #sadv-refresh-btn:focus-visible,
 #sadv-save-btn:focus-visible,
-#sadv-csv-btn:focus-visible,
+#sadv-xlsx-btn:focus-visible,
 #sadv-x:focus-visible,
 .sadv-mode:focus-visible,
 .sadv-t:focus-visible,
@@ -3510,14 +3510,14 @@ siteUiStyle.textContent = `
 }
 #sadv-refresh-btn,
 #sadv-save-btn,
-#sadv-csv-btn,
+#sadv-xlsx-btn,
 #sadv-x{
   min-height:36px !important;
   border-radius:0 !important;
 }
 #sadv-refresh-btn,
 #sadv-save-btn,
-#sadv-csv-btn{
+#sadv-xlsx-btn{
   background:var(--sadv-layer-01) !important;
   border:1px solid var(--sadv-border) !important;
   color:var(--sadv-text-secondary) !important;
@@ -3527,7 +3527,7 @@ siteUiStyle.textContent = `
 }
 #sadv-refresh-btn:hover,
 #sadv-save-btn:hover,
-#sadv-csv-btn:hover{
+#sadv-xlsx-btn:hover{
   background:var(--sadv-layer-02) !important;
   border-color:var(--sadv-accent) !important;
   color:var(--sadv-text) !important;
@@ -10710,35 +10710,35 @@ function applyUiControlsTab(tab) {
     console.warn("[UI Controls] #sadv-save-btn not found during initialization");
   }
 
-  var sadvCsvBtnEl = document.getElementById("sadv-csv-btn");
-  if (sadvCsvBtnEl) {
-    // phase 1 CSV export is intentionally scoped to live interactive panels.
-    // saved/read-only runtimes must not expose the button, and merge/runtime
-    // specific expansions can be revisited later with explicit contract updates.
+  var sadvXlsxBtnEl = document.getElementById("sadv-xlsx-btn");
+  if (sadvXlsxBtnEl) {
+    // XLSX 상세 저장은 기존 CSV 수동 저장 자리를 완전히 대체한다.
+    // public surface는 live interactive manual button까지만 유지하고,
+    // saved/read-only 및 merge UI에는 노출하지 않는다.
     const runtimeKind =
       typeof window !== "undefined" && window.__SEARCHADVISOR_RUNTIME_KIND__
         ? window.__SEARCHADVISOR_RUNTIME_KIND__
         : "live";
-    const canManualCsvSave = !!(
+    const canManualXlsxSave = !!(
       runtimeCapabilities.canSave &&
       !runtimeCapabilities.isReadOnly &&
       runtimeKind === "live"
     );
-    if (!canManualCsvSave) {
-      sadvCsvBtnEl.style.display = "none";
-      sadvCsvBtnEl.setAttribute("aria-hidden", "true");
+    if (!canManualXlsxSave) {
+      sadvXlsxBtnEl.style.display = "none";
+      sadvXlsxBtnEl.setAttribute("aria-hidden", "true");
     } else {
-      sadvCsvBtnEl.addEventListener("click", function () {
+      sadvXlsxBtnEl.addEventListener("click", function () {
         const saveStatus =
           typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null;
         if (saveStatus && saveStatus.active) return;
         if (typeof runSnapshotSaveExecution === "function") {
-          runSnapshotSaveExecution({ entryPoint: "button-csv", outputFormat: "csv" });
+          runSnapshotSaveExecution({ entryPoint: "button-xlsx", outputFormat: "xlsx" });
         }
       });
     }
   } else {
-    console.warn("[UI Controls] #sadv-csv-btn not found during initialization");
+    console.warn("[UI Controls] #sadv-xlsx-btn not found during initialization");
   }
 
   var sadvCloseBtnEl = document.getElementById("sadv-x");
@@ -11811,27 +11811,30 @@ function createIdleDirectSaveStatus() {
 }
 
 function normalizeSnapshotSaveOutputFormat(format) {
-  return format === "csv" ? "csv" : "html";
+  // output target은 HTML과 XLSX 두 가지만 canonical public surface로 유지한다.
+  // CSV phase는 feature branch 실험에서 폐기됐고, 이후 save contract는
+  // "같은 orchestration + 다른 commit adapter" 원칙만 남긴다.
+  return format === "xlsx" ? "xlsx" : "html";
 }
 
 function getSnapshotSaveOutputMeta(format) {
   const outputFormat = normalizeSnapshotSaveOutputFormat(format);
-  if (outputFormat === "csv") {
+  if (outputFormat === "xlsx") {
     return {
-      outputFormat: "csv",
-      triggerButtonId: "sadv-csv-btn",
-      preparingTitle: "CSV 저장 준비 중",
-      collectingTitle: "CSV 저장 데이터 수집 중",
-      buildingTitle: "CSV 파일 생성 중",
-      buildingDetail: "스프레드시트에서 열 수 있는 단일 CSV 파일을 조립하고 있어요.",
-      triggeringTitle: "CSV 다운로드 시작 중",
-      completedTitle: "CSV 저장 완료",
-      completedWithIssuesTitle: "CSV 저장 완료 · 이슈 있음",
-      blockedTitle: "CSV 저장 중단",
-      failedTitle: "CSV 저장 실패",
-      errorMessage: ERROR_MESSAGES.CSV_SAVE_ERROR,
-      fileExtension: "csv",
-      fileKindLabel: "CSV 파일",
+      outputFormat: "xlsx",
+      triggerButtonId: "sadv-xlsx-btn",
+      preparingTitle: "엑셀 저장 준비 중",
+      collectingTitle: "엑셀 저장 데이터 수집 중",
+      buildingTitle: "엑셀 파일 생성 중",
+      buildingDetail: "상세 분석용 XLSX 파일을 여러 시트로 조립하고 있어요.",
+      triggeringTitle: "엑셀 다운로드 시작 중",
+      completedTitle: "엑셀 저장 완료",
+      completedWithIssuesTitle: "엑셀 저장 완료 · 이슈 있음",
+      blockedTitle: "엑셀 저장 중단",
+      failedTitle: "엑셀 저장 실패",
+      errorMessage: ERROR_MESSAGES.XLSX_SAVE_ERROR,
+      fileExtension: "xlsx",
+      fileKindLabel: "엑셀 파일",
     };
   }
   return {
@@ -12846,7 +12849,7 @@ function restoreSnapshotSaveButton(btn, originalText) {
             };
       const outputMeta = getSnapshotSaveOutputMeta(options && options.outputFormat);
       const btn = getSnapshotSaveTriggerButton(outputMeta.outputFormat);
-      const originalText = btn ? btn.textContent : (outputMeta.outputFormat === "csv" ? "CSV" : "저장");
+      const originalText = btn ? btn.textContent : (outputMeta.outputFormat === "xlsx" ? "엑셀" : "저장");
       setSnapshotSaveButtonBusy(btn, "0/" + runtimeSites.length);
       const reusableRefreshHandle =
         !options || !options.payload ? getSnapshotReusableRefreshStatusForSave() : { reusable: false };
@@ -13102,7 +13105,8 @@ async function runSnapshotSaveExecution(options) {
   // 2) resolveSnapshotRuntimeBootstrapLeaseForSave() 로 현재 화면 초기 로딩(all-sites/site-view) 재사용 여부 판단
   // 3) resolveSnapshotSaveRefreshLease() 로 refresh owner lease 재사용/시작 여부 판단
   // 4) acquireSnapshotSavePayloadForExecution() 으로 payload 획득
-  // 5) downloadSnapshot() 으로 최종 blocked 검사 + HTML commit/downloader 실행
+  // 5) output adapter(downloadSnapshot / downloadSnapshotXlsx)로
+  //    최종 blocked 검사 + 파일 생성 + downloader commit 실행
   //
   // 중요:
   // - decision recompute는 runtime bootstrap wait 이후 1회만 허용한다.
@@ -13201,8 +13205,8 @@ async function runSnapshotSaveExecution(options) {
           selectionSnapshot: requestContext.selectionSnapshot,
           outputFormat: requestContext.outputMeta.outputFormat,
         };
-        if (requestContext.outputMeta.outputFormat === "csv") {
-          return await downloadSnapshotCsv(commitOptions);
+        if (requestContext.outputMeta.outputFormat === "xlsx") {
+          return await downloadSnapshotXlsx(commitOptions);
         }
         return await downloadSnapshot(commitOptions);
       } finally {
@@ -13802,7 +13806,7 @@ function buildSnapshotSerializedHelperSection() {
     if (siteLabelEl) {
       siteLabelEl.innerHTML = `<span>${escHtml(siteLabel)}</span><span style="display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;border:1px solid ${T.accentSoftBorderStrong};color:${T.accentSoftText};background:${T.warmDarkBg}">${escHtml(activeTabLabel)}</span>`;
     }
-    ["sadv-refresh-btn", "sadv-save-btn", "sadv-csv-btn", "sadv-x"].forEach(function (id) {
+    ["sadv-refresh-btn", "sadv-save-btn", "sadv-xlsx-btn", "sadv-x"].forEach(function (id) {
       const el = clone.querySelector("#" + id);
       if (el) el.remove();
     });
@@ -16035,58 +16039,61 @@ function renderFailureSummary(stats) {
 }
 
 // ============================================================
-// CSV EXPORT ADAPTER
+// XLSX EXPORT ADAPTER
 // ============================================================
 
-function getSnapshotCsvColumns() {
-  // Phase 1 intentionally stays on canonical summaryRows-only fields.
-  // Columns without a stable payload source (for example top keyword/page)
-  // are excluded instead of emitting permanently blank placeholders.
-  return [
-    { key: "site", header: "사이트" },
-    { key: "accountLabel", header: "계정 라벨" },
-    { key: "sourceAccount", header: "소스 계정" },
-    { key: "periodDays", header: "조회 기간(일)" },
-    { key: "totalC", header: "총 클릭" },
-    { key: "totalE", header: "총 노출" },
-    { key: "avgCtr", header: "평균 CTR" },
-    { key: "trend", header: "클릭 추세" },
-    { key: "latestClick", header: "최근 클릭" },
-    { key: "prevClickRatio", header: "직전 대비" },
-    { key: "diagIndex", header: "진단 지수" },
-    { key: "diagLabel", header: "진단 상태" },
-    { key: "diagReason", header: "진단 사유" },
-    { key: "savedAt", header: "저장 시각" },
-  ];
-}
+// 현재 runtime 빌드는 import/require 번들러가 아니라 단순 concat IIFE다.
+// 따라서 XLSX는 node-style dependency를 직접 끼워넣기보다,
+// 공식 standalone browser build를 필요 시점에만 로드하는 방식이 가장 안전하다.
+const SNAPSHOT_XLSX_STANDALONE_URL =
+  "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js";
+let snapshotXlsxLibraryPromise = null;
 
-function escapeSnapshotCsvCell(value) {
-  const text =
-    value == null || (typeof value === "number" && !Number.isFinite(value))
-      ? ""
-      : String(value);
-  if (/[",\r\n]/.test(text)) {
-    return '"' + text.replace(/"/g, '""') + '"';
+function ensureSnapshotXlsxLibrary() {
+  if (typeof window === "undefined") {
+    return Promise.reject(new Error("xlsx export requires a browser runtime"));
   }
-  return text;
+  if (window.XLSX && window.XLSX.utils && typeof window.XLSX.write === "function") {
+    return Promise.resolve(window.XLSX);
+  }
+  if (snapshotXlsxLibraryPromise) return snapshotXlsxLibraryPromise;
+  snapshotXlsxLibraryPromise = new Promise(function (resolve, reject) {
+    const existing = document.querySelector('script[data-sadv-xlsx-lib="sheetjs"]');
+    const finish = function () {
+      if (window.XLSX && window.XLSX.utils && typeof window.XLSX.write === "function") {
+        resolve(window.XLSX);
+        return true;
+      }
+      return false;
+    };
+    if (finish()) return;
+    const handleLoad = function () {
+      if (!finish()) reject(new Error("sheetjs loaded but XLSX global missing"));
+    };
+    const handleError = function () {
+      reject(new Error("failed to load sheetjs standalone runtime"));
+    };
+    if (existing) {
+      existing.addEventListener("load", handleLoad, { once: true });
+      existing.addEventListener("error", handleError, { once: true });
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = SNAPSHOT_XLSX_STANDALONE_URL;
+    script.async = true;
+    script.crossOrigin = "anonymous";
+    script.dataset.sadvXlsxLib = "sheetjs";
+    script.addEventListener("load", handleLoad, { once: true });
+    script.addEventListener("error", handleError, { once: true });
+    document.head.appendChild(script);
+  }).catch(function (error) {
+    snapshotXlsxLibraryPromise = null;
+    throw error;
+  });
+  return snapshotXlsxLibraryPromise;
 }
 
-function formatSnapshotCsvPercent(value) {
-  if (value == null || value === "") return "";
-  const num = Number(value);
-  if (!Number.isFinite(num)) return "";
-  return num.toFixed(2) + "%";
-}
-
-function formatSnapshotCsvTrend(value) {
-  const num = Number(value);
-  if (!Number.isFinite(num)) return "";
-  if (num > 0) return "상승";
-  if (num < 0) return "하락";
-  return "보합";
-}
-
-function formatSnapshotCsvSourceAccount(sourceAccount) {
+function formatSnapshotXlsxSourceAccount(sourceAccount) {
   if (!sourceAccount) return "";
   if (typeof sourceAccount === "string") return sourceAccount;
   if (typeof sourceAccount === "object") {
@@ -16106,132 +16113,324 @@ function formatSnapshotCsvSourceAccount(sourceAccount) {
   return String(sourceAccount);
 }
 
-function formatSnapshotCsvDiagLabel(row) {
-  const code = row && row.diagnosisMetaCode;
-  if (code == null || code === "") return "";
-  return Number(code) === 0 ? "정상" : "확인 필요";
-}
-
-function formatSnapshotCsvDiagReason(row) {
-  if (!row) return "";
-  const parts = [];
-  if (row.diagnosisMetaCode != null && row.diagnosisMetaCode !== "") {
-    parts.push("metaCode=" + String(row.diagnosisMetaCode));
-  }
-  if (row.diagnosisMetaStatus != null && row.diagnosisMetaStatus !== "") {
-    parts.push("status=" + String(row.diagnosisMetaStatus));
-  }
-  if (row.diagnosisMetaRange != null && row.diagnosisMetaRange !== "") {
-    const range = row.diagnosisMetaRange;
-    if (typeof range === "string") {
-      parts.push("range=" + range);
-    } else if (range && typeof range === "object") {
-      const start =
-        typeof range.start === "string"
-          ? range.start
-          : typeof range.startDate === "string"
-            ? range.startDate
-            : "";
-      const end =
-        typeof range.end === "string"
-          ? range.end
-          : typeof range.endDate === "string"
-            ? range.endDate
-            : "";
-      if (start || end) {
-        parts.push("range=" + (start && end ? start + "~" + end : start || end));
-      } else {
-        try {
-          parts.push("range=" + JSON.stringify(range));
-        } catch (e) {}
-      }
-    } else {
-      parts.push("range=" + String(range));
+function formatSnapshotXlsxDiagRange(range) {
+  if (range == null || range === "") return "";
+  if (typeof range === "string") return range;
+  if (range && typeof range === "object") {
+    const start =
+      typeof range.start === "string"
+        ? range.start
+        : typeof range.startDate === "string"
+          ? range.startDate
+          : "";
+    const end =
+      typeof range.end === "string"
+        ? range.end
+        : typeof range.endDate === "string"
+          ? range.endDate
+          : "";
+    if (start || end) return start && end ? start + "~" + end : start || end;
+    try {
+      return JSON.stringify(range);
+    } catch (_) {
+      return "";
     }
   }
-  return parts.join(" · ");
+  return String(range);
 }
 
-function buildSnapshotCsvRow(savedAt, row, context) {
-  const fallbackAccountLabel =
-    context && typeof context.accountLabel === "string" ? context.accountLabel : "";
-  const fallbackAccountEncId =
-    context && typeof context.accountEncId === "string" ? context.accountEncId : "";
-  const sourceAccountText = formatSnapshotCsvSourceAccount(row ? row.sourceAccount : null);
-  return {
-    site: row && row.site ? row.site : "",
-    accountLabel: row && row.accountLabel ? row.accountLabel : fallbackAccountLabel,
-    sourceAccount: sourceAccountText || fallbackAccountLabel || fallbackAccountEncId,
-    periodDays: row && row.baseWindowDays ? row.baseWindowDays : 90,
-    totalC: row && Number.isFinite(Number(row.totalC)) ? Number(row.totalC) : 0,
-    totalE: row && Number.isFinite(Number(row.totalE)) ? Number(row.totalE) : 0,
-    avgCtr: formatSnapshotCsvPercent(row ? row.avgCtr : null),
-    trend: formatSnapshotCsvTrend(row ? row.trend : null),
-    latestClick: row && Number.isFinite(Number(row.latestClick)) ? Number(row.latestClick) : 0,
-    prevClickRatio: formatSnapshotCsvPercent(row ? row.prevClickRatio : null),
-    diagIndex:
-      row && Number.isFinite(Number(row.diagnosisIndexedCurrent))
-        ? Number(row.diagnosisIndexedCurrent)
-        : 0,
-    diagLabel: formatSnapshotCsvDiagLabel(row),
-    diagReason: formatSnapshotCsvDiagReason(row),
-    savedAt:
-      savedAt && typeof savedAt.toISOString === "function"
-        ? savedAt.toISOString()
-        : savedAtIso(new Date()),
-  };
+function normalizeSnapshotXlsxDate(value) {
+  const digits = String(value || "").replace(/[^\d]/g, "").slice(0, 8);
+  if (digits.length !== 8) return "";
+  return digits.slice(0, 4) + "-" + digits.slice(4, 6) + "-" + digits.slice(6, 8);
 }
 
-function buildSnapshotCsv(savedAt, payload) {
-  const rows = Array.isArray(payload && payload.summaryRows) ? payload.summaryRows : [];
-  const columns = getSnapshotCsvColumns();
-  const runtimeAccountInfo =
-    typeof ACCOUNT_UTILS !== "undefined" &&
-    ACCOUNT_UTILS &&
-    typeof ACCOUNT_UTILS.getAccountInfo === "function"
-      ? ACCOUNT_UTILS.getAccountInfo()
-      : { accountLabel: "", encId: "" };
-  const runtimeCurrentAccount =
-    typeof ACCOUNT_UTILS !== "undefined" &&
-    ACCOUNT_UTILS &&
-    typeof ACCOUNT_UTILS.getCurrentAccount === "function"
-      ? ACCOUNT_UTILS.getCurrentAccount()
-      : typeof window !== "undefined" &&
-          window.__sadvAccountState &&
-          typeof window.__sadvAccountState.currentAccount === "string"
-        ? window.__sadvAccountState.currentAccount
-        : "";
-  const context = {
-    accountLabel:
-      (payload && payload.accountLabel ? payload.accountLabel : "") ||
-      (typeof runtimeCurrentAccount === "string" ? runtimeCurrentAccount : "") ||
-      (runtimeAccountInfo && runtimeAccountInfo.accountLabel ? runtimeAccountInfo.accountLabel : ""),
-    accountEncId:
-      (payload && payload.accountEncId ? payload.accountEncId : "") ||
-      (runtimeAccountInfo && runtimeAccountInfo.encId ? runtimeAccountInfo.encId : ""),
-  };
-  const headerLine = columns.map(function (column) {
-    return escapeSnapshotCsvCell(column.header);
-  }).join(",");
-  const dataLines = rows.map(function (row) {
-    const csvRow = buildSnapshotCsvRow(savedAt, row, context);
-    return columns.map(function (column) {
-      return escapeSnapshotCsvCell(csvRow[column.key]);
-    }).join(",");
+function normalizeSnapshotXlsxNumber(value) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : 0;
+}
+
+function getSnapshotXlsxExportedAt(savedAt) {
+  return savedAt && typeof savedAt.toISOString === "function"
+    ? savedAt.toISOString()
+    : savedAtIso(new Date());
+}
+
+function getSnapshotXlsxPeriodDays(payload) {
+  const raw =
+    payload && payload.ui && Object.prototype.hasOwnProperty.call(payload.ui, "allSitesPeriodDays")
+      ? payload.ui.allSitesPeriodDays
+      : payload && Object.prototype.hasOwnProperty.call(payload, "allSitesPeriodDays")
+        ? payload.allSitesPeriodDays
+        : 90;
+  return typeof normalizeAllSitesPeriodDays === "function"
+    ? normalizeAllSitesPeriodDays(raw)
+    : 90;
+}
+
+function getSnapshotXlsxRuntimeType(payload) {
+  if (
+    payload &&
+    payload.__meta &&
+    typeof payload.__meta.runtimeType === "string" &&
+    payload.__meta.runtimeType
+  ) {
+    return payload.__meta.runtimeType;
+  }
+  return getSnapshotSaveRuntimeType();
+}
+
+function getSnapshotXlsxSummaryRows(payload) {
+  const baseRows = Array.isArray(payload && payload.summaryRows) ? payload.summaryRows : [];
+  const periodDays = getSnapshotXlsxPeriodDays(payload);
+  if (typeof deriveAllSitesPeriodRows === "function") {
+    return deriveAllSitesPeriodRows(baseRows, periodDays);
+  }
+  return baseRows;
+}
+
+function buildSnapshotXlsxSiteDailyRows(savedAt, payload) {
+  const exportedAt = getSnapshotXlsxExportedAt(savedAt);
+  const runtimeType = getSnapshotXlsxRuntimeType(payload);
+  const periodDays = getSnapshotXlsxPeriodDays(payload);
+  return getSnapshotXlsxSummaryRows(payload).flatMap(function (row) {
+    const clicks = Array.isArray(row && row.clicks) ? row.clicks : [];
+    const exposes = Array.isArray(row && row.exposes) ? row.exposes : [];
+    const dates = Array.isArray(row && row.dates) ? row.dates : [];
+    const rowCount = Math.max(clicks.length, exposes.length, dates.length);
+    if (!rowCount) return [];
+    return Array.from({ length: rowCount }, function (_, index) {
+      const dailyClicks = normalizeSnapshotXlsxNumber(clicks[index]);
+      const dailyExposes = normalizeSnapshotXlsxNumber(exposes[index]);
+      return {
+        date: normalizeSnapshotXlsxDate(dates[index]),
+        site: row && row.site ? row.site : "",
+        account_label: row && row.accountLabel ? row.accountLabel : "",
+        source_account: formatSnapshotXlsxSourceAccount(row ? row.sourceAccount : null),
+        runtime_type: runtimeType,
+        period_days: periodDays,
+        exported_at: exportedAt,
+        daily_clicks: dailyClicks,
+        daily_exposes: dailyExposes,
+        daily_ctr: dailyExposes > 0 ? +((dailyClicks / dailyExposes) * 100).toFixed(2) : 0,
+        site_total_clicks: normalizeSnapshotXlsxNumber(row && row.totalC),
+        site_total_exposes: normalizeSnapshotXlsxNumber(row && row.totalE),
+        site_avg_ctr: normalizeSnapshotXlsxNumber(row && row.avgCtr),
+        site_trend: normalizeSnapshotXlsxNumber(row && row.trend),
+        site_latest_click: normalizeSnapshotXlsxNumber(row && row.latestClick),
+        site_prev_click_ratio: normalizeSnapshotXlsxNumber(row && row.prevClickRatio),
+        diagnosis_index_current: normalizeSnapshotXlsxNumber(row && row.diagnosisIndexedCurrent),
+        diagnosis_meta_code:
+          row && row.diagnosisMetaCode != null ? String(row.diagnosisMetaCode) : "",
+        diagnosis_meta_status:
+          row && row.diagnosisMetaStatus != null ? String(row.diagnosisMetaStatus) : "",
+        diagnosis_meta_range: formatSnapshotXlsxDiagRange(row && row.diagnosisMetaRange),
+      };
+    });
   });
-  return "\uFEFF" + [headerLine].concat(dataLines).join("\r\n");
 }
 
-async function downloadSnapshotCsv(options) {
-  const outputMeta = getSnapshotSaveOutputMeta("csv");
+function buildSnapshotXlsxSiteSummaryRows(savedAt, payload) {
+  const exportedAt = getSnapshotXlsxExportedAt(savedAt);
+  const runtimeType = getSnapshotXlsxRuntimeType(payload);
+  const periodDays = getSnapshotXlsxPeriodDays(payload);
+  return getSnapshotXlsxSummaryRows(payload).map(function (row) {
+    return {
+      site: row && row.site ? row.site : "",
+      account_label: row && row.accountLabel ? row.accountLabel : "",
+      source_account: formatSnapshotXlsxSourceAccount(row ? row.sourceAccount : null),
+      runtime_type: runtimeType,
+      period_days: periodDays,
+      exported_at: exportedAt,
+      total_clicks: normalizeSnapshotXlsxNumber(row && row.totalC),
+      total_exposes: normalizeSnapshotXlsxNumber(row && row.totalE),
+      avg_ctr: normalizeSnapshotXlsxNumber(row && row.avgCtr),
+      trend: normalizeSnapshotXlsxNumber(row && row.trend),
+      latest_click: normalizeSnapshotXlsxNumber(row && row.latestClick),
+      prev_click_ratio: normalizeSnapshotXlsxNumber(row && row.prevClickRatio),
+      diagnosis_index_current: normalizeSnapshotXlsxNumber(row && row.diagnosisIndexedCurrent),
+      diagnosis_meta_code:
+        row && row.diagnosisMetaCode != null ? String(row.diagnosisMetaCode) : "",
+      diagnosis_meta_status:
+        row && row.diagnosisMetaStatus != null ? String(row.diagnosisMetaStatus) : "",
+      diagnosis_meta_range: formatSnapshotXlsxDiagRange(row && row.diagnosisMetaRange),
+    };
+  });
+}
+
+function buildSnapshotXlsxSiteMetaRows(savedAt, payload) {
+  const exportedAt = getSnapshotXlsxExportedAt(savedAt);
+  const runtimeType = getSnapshotXlsxRuntimeType(payload);
+  return getSnapshotXlsxSummaryRows(payload).map(function (row) {
+    return {
+      site: row && row.site ? row.site : "",
+      account_label: row && row.accountLabel ? row.accountLabel : "",
+      source_account: formatSnapshotXlsxSourceAccount(row ? row.sourceAccount : null),
+      runtime_type: runtimeType,
+      exported_at: exportedAt,
+      diagnosis_meta_code:
+        row && row.diagnosisMetaCode != null ? String(row.diagnosisMetaCode) : "",
+      diagnosis_meta_status:
+        row && row.diagnosisMetaStatus != null ? String(row.diagnosisMetaStatus) : "",
+      diagnosis_meta_range: formatSnapshotXlsxDiagRange(row && row.diagnosisMetaRange),
+    };
+  });
+}
+
+function getSnapshotXlsxSheetColumns() {
+  return {
+    daily: [
+      { key: "date", header: "date", width: 14 },
+      { key: "site", header: "site", width: 34 },
+      { key: "account_label", header: "account_label", width: 24 },
+      { key: "source_account", header: "source_account", width: 24 },
+      { key: "runtime_type", header: "runtime_type", width: 14 },
+      { key: "period_days", header: "period_days", width: 12 },
+      { key: "exported_at", header: "exported_at", width: 24 },
+      { key: "daily_clicks", header: "daily_clicks", width: 14 },
+      { key: "daily_exposes", header: "daily_exposes", width: 14 },
+      { key: "daily_ctr", header: "daily_ctr", width: 12 },
+      { key: "site_total_clicks", header: "site_total_clicks", width: 16 },
+      { key: "site_total_exposes", header: "site_total_exposes", width: 17 },
+      { key: "site_avg_ctr", header: "site_avg_ctr", width: 13 },
+      { key: "site_trend", header: "site_trend", width: 13 },
+      { key: "site_latest_click", header: "site_latest_click", width: 16 },
+      { key: "site_prev_click_ratio", header: "site_prev_click_ratio", width: 19 },
+      { key: "diagnosis_index_current", header: "diagnosis_index_current", width: 21 },
+      { key: "diagnosis_meta_code", header: "diagnosis_meta_code", width: 20 },
+      { key: "diagnosis_meta_status", header: "diagnosis_meta_status", width: 22 },
+      { key: "diagnosis_meta_range", header: "diagnosis_meta_range", width: 28 },
+    ],
+    summary: [
+      { key: "site", header: "site", width: 34 },
+      { key: "account_label", header: "account_label", width: 24 },
+      { key: "source_account", header: "source_account", width: 24 },
+      { key: "runtime_type", header: "runtime_type", width: 14 },
+      { key: "period_days", header: "period_days", width: 12 },
+      { key: "exported_at", header: "exported_at", width: 24 },
+      { key: "total_clicks", header: "total_clicks", width: 14 },
+      { key: "total_exposes", header: "total_exposes", width: 15 },
+      { key: "avg_ctr", header: "avg_ctr", width: 12 },
+      { key: "trend", header: "trend", width: 12 },
+      { key: "latest_click", header: "latest_click", width: 14 },
+      { key: "prev_click_ratio", header: "prev_click_ratio", width: 17 },
+      { key: "diagnosis_index_current", header: "diagnosis_index_current", width: 21 },
+      { key: "diagnosis_meta_code", header: "diagnosis_meta_code", width: 20 },
+      { key: "diagnosis_meta_status", header: "diagnosis_meta_status", width: 22 },
+      { key: "diagnosis_meta_range", header: "diagnosis_meta_range", width: 28 },
+    ],
+    meta: [
+      { key: "site", header: "site", width: 34 },
+      { key: "account_label", header: "account_label", width: 24 },
+      { key: "source_account", header: "source_account", width: 24 },
+      { key: "runtime_type", header: "runtime_type", width: 14 },
+      { key: "exported_at", header: "exported_at", width: 24 },
+      { key: "diagnosis_meta_code", header: "diagnosis_meta_code", width: 20 },
+      { key: "diagnosis_meta_status", header: "diagnosis_meta_status", width: 22 },
+      { key: "diagnosis_meta_range", header: "diagnosis_meta_range", width: 28 },
+    ],
+  };
+}
+
+function buildSnapshotXlsxDataSheet(XLSX, columns, rows) {
+  const aoa = [
+    columns.map(function (column) {
+      return column.header;
+    }),
+  ].concat(
+    rows.map(function (row) {
+      return columns.map(function (column) {
+        const value = row && Object.prototype.hasOwnProperty.call(row, column.key) ? row[column.key] : "";
+        if (value == null) return "";
+        return value;
+      });
+    }),
+  );
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws["!cols"] = columns.map(function (column) {
+    return { wch: column.width || 14 };
+  });
+  if (aoa.length > 1) {
+    ws["!autofilter"] = { ref: ws["!ref"] };
+  }
+  return ws;
+}
+
+function buildSnapshotXlsxReadmeSheet(XLSX, savedAt, payload, dailyRows, summaryRows, metaRows) {
+  const exportedAt = getSnapshotXlsxExportedAt(savedAt);
+  const periodDays = getSnapshotXlsxPeriodDays(payload);
+  const runtimeType = getSnapshotXlsxRuntimeType(payload);
+  const siteCount = Array.isArray(payload && payload.summaryRows) ? payload.summaryRows.length : 0;
+  const aoa = [
+    ["field", "value"],
+    ["generated_at", exportedAt],
+    ["runtime_type", runtimeType],
+    ["period_days", periodDays],
+    ["site_count", siteCount],
+    ["site_daily_rows", dailyRows.length],
+    ["site_summary_rows", summaryRows.length],
+    ["site_meta_rows", metaRows.length],
+    ["workbook_version", "xlsx-phase1-core"],
+    ["main_sheet", "site_daily"],
+    ["row_grain", "1 row = 1 site × 1 date"],
+    ["notes", "existing HTML save contract reused; output adapter only"],
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws["!cols"] = [{ wch: 22 }, { wch: 48 }];
+  return ws;
+}
+
+function buildSnapshotXlsxWorkbook(savedAt, payload) {
+  const XLSX = window.XLSX;
+  const columns = getSnapshotXlsxSheetColumns();
+  const dailyRows = buildSnapshotXlsxSiteDailyRows(savedAt, payload);
+  const summaryRows = buildSnapshotXlsxSiteSummaryRows(savedAt, payload);
+  const metaRows = buildSnapshotXlsxSiteMetaRows(savedAt, payload);
+  const wb = XLSX.utils.book_new();
+  wb.Props = {
+    Title: "SearchAdvisor Detailed Export",
+    Subject: "SearchAdvisor XLSX Export",
+    Author: "SearchAdvisor Runtime",
+    CreatedDate: savedAt instanceof Date ? savedAt : new Date(),
+  };
+  XLSX.utils.book_append_sheet(
+    wb,
+    buildSnapshotXlsxReadmeSheet(XLSX, savedAt, payload, dailyRows, summaryRows, metaRows),
+    "README",
+  );
+  XLSX.utils.book_append_sheet(
+    wb,
+    buildSnapshotXlsxDataSheet(XLSX, columns.daily, dailyRows),
+    "site_daily",
+  );
+  XLSX.utils.book_append_sheet(
+    wb,
+    buildSnapshotXlsxDataSheet(XLSX, columns.summary, summaryRows),
+    "site_summary",
+  );
+  XLSX.utils.book_append_sheet(
+    wb,
+    buildSnapshotXlsxDataSheet(XLSX, columns.meta, metaRows),
+    "site_meta",
+  );
+  return {
+    workbook: wb,
+    dailyRows: dailyRows,
+    summaryRows: summaryRows,
+    metaRows: metaRows,
+  };
+}
+
+async function downloadSnapshotXlsx(options) {
+  const outputMeta = getSnapshotSaveOutputMeta("xlsx");
   const capabilities =
     typeof getRuntimeCapabilities === "function" ? getRuntimeCapabilities() : null;
   if (capabilities && capabilities.isReadOnly) {
-    throw new Error("csv export is disabled in read-only mode");
+    throw new Error("xlsx export is disabled in read-only mode");
   }
   const payload = options && options.payload ? options.payload : null;
   if (!payload) {
-    throw new Error("csv export requires a precomputed payload");
+    throw new Error("xlsx export requires a precomputed payload");
   }
   const runtimeSites =
     typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
@@ -16241,18 +16440,18 @@ async function downloadSnapshotCsv(options) {
     options && options.cacheDecision && typeof options.cacheDecision === "object"
       ? options.cacheDecision
       : { neededRefresh: false, reason: null, missingSites: 0, expiredSites: 0 };
-  const btn = getSnapshotSaveTriggerButton("csv");
-  const originalText = btn ? btn.textContent : "CSV";
-  setSnapshotSaveButtonBusy(btn, "CSV");
+  const btn = getSnapshotSaveTriggerButton("xlsx");
+  const originalText = btn ? btn.textContent : "엑셀";
+  setSnapshotSaveButtonBusy(btn, "엑셀");
   try {
     const saveBlockDecision = buildSnapshotSaveBlockDecision(payload, runtimeSites);
     if (saveBlockDecision.blocked) {
       showError(
         saveBlockDecision.userMessage,
         saveBlockDecision.technicalMessage,
-        "downloadSnapshotCsv-blocked",
+        "downloadSnapshotXlsx-blocked",
         {
-          dedupeKey: "downloadSnapshotCsv-blocked::" + saveBlockDecision.reason,
+          dedupeKey: "downloadSnapshotXlsx-blocked::" + saveBlockDecision.reason,
           dedupeWindowMs: 1500,
         },
       );
@@ -16270,7 +16469,7 @@ async function downloadSnapshotCsv(options) {
         site: null,
         error: {
           message: saveBlockDecision.userMessage,
-          context: "downloadSnapshotCsv-blocked",
+          context: "downloadSnapshotXlsx-blocked",
         },
       });
       return {
@@ -16283,13 +16482,13 @@ async function downloadSnapshotCsv(options) {
         block: saveBlockDecision,
       };
     }
-    const savedAt = new Date();
+
     pushSnapshotSaveStatus({
       active: true,
       state: "building-html",
       phase: "download",
       stageLabel: outputMeta.buildingTitle,
-      detail: outputMeta.buildingDetail,
+      detail: "엑셀 라이브러리를 준비하고 시트를 조립하고 있어요.",
       startedAt: startedAt,
       progress: {
         done: runtimeSites.length,
@@ -16297,24 +16496,39 @@ async function downloadSnapshotCsv(options) {
         ratio: 1,
         percent: 100,
       },
-      cacheDecision: cacheDecision,
-      outputFormat: outputMeta.outputFormat,
       stats: payload && payload.stats ? payload.stats : { success: 0, partial: 0, failed: 0, errors: [] },
       site: null,
+      cacheDecision: cacheDecision,
+      outputFormat: outputMeta.outputFormat,
     });
-    const csv = buildSnapshotCsv(savedAt, payload);
-    const fileName = buildSnapshotDownloadFileName(savedAt, outputMeta.fileExtension);
+
+    await ensureSnapshotXlsxLibrary();
+    const savedAt = new Date();
+    const workbookBundle = buildSnapshotXlsxWorkbook(savedAt, payload);
+    const workbookBytes = window.XLSX.write(workbookBundle.workbook, {
+      bookType: "xlsx",
+      type: "array",
+      compression: true,
+    });
+    const fileName = buildSnapshotDownloadFileName(savedAt, "xlsx");
+
     pushSnapshotSaveStatus({
       active: true,
       state: "triggering-download",
       phase: "download",
       stageLabel: outputMeta.triggeringTitle,
-      detail: "브라우저 다운로드를 트리거하고 있어요.",
+      detail:
+        "메인 시트 " +
+        workbookBundle.dailyRows.length +
+        "행을 포함한 상세 엑셀 파일 다운로드를 시작하고 있어요.",
       fileName: fileName,
       cacheDecision: cacheDecision,
       outputFormat: outputMeta.outputFormat,
     });
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+
+    const blob = new Blob([workbookBytes], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = fileName;
@@ -16324,6 +16538,7 @@ async function downloadSnapshotCsv(options) {
     setTimeout(function () {
       URL.revokeObjectURL(link.href);
     }, 1000);
+
     const saveStats =
       payload && payload.stats ? payload.stats : { success: 0, partial: 0, failed: 0, errors: [] };
     const hasIssues = hasSnapshotSaveIssues(saveStats);
@@ -16341,8 +16556,8 @@ async function downloadSnapshotCsv(options) {
       fileName: fileName,
       completedAt: Date.now(),
       cacheDecision: cacheDecision,
-      outputFormat: outputMeta.outputFormat,
       stats: saveStats,
+      outputFormat: outputMeta.outputFormat,
     });
     return {
       ok: true,
@@ -16352,24 +16567,38 @@ async function downloadSnapshotCsv(options) {
       fileName: fileName,
       payload: payload,
       stats: saveStats,
+      workbook: {
+        sheetNames: ["README", "site_daily", "site_summary", "site_meta"],
+        dailyRowCount: workbookBundle.dailyRows.length,
+        summaryRowCount: workbookBundle.summaryRows.length,
+        metaRowCount: workbookBundle.metaRows.length,
+      },
     };
   } catch (e) {
+    showError(outputMeta.errorMessage, e, "downloadSnapshotXlsx");
     pushSnapshotSaveStatus({
       active: false,
       state: "failed",
       phase: "download",
       stageLabel: outputMeta.failedTitle,
-      detail: "CSV 저장 중 오류가 발생했어요. 상태 객체와 오류 배너를 확인한 뒤 다시 시도해 주세요.",
+      detail: outputMeta.errorMessage,
       completedAt: Date.now(),
       cacheDecision: cacheDecision,
       outputFormat: outputMeta.outputFormat,
+      fileName: null,
+      site: null,
       error: {
-        message: e && e.message ? e.message : String(e),
-        context: "downloadSnapshotCsv",
+        message: e && e.message ? e.message : outputMeta.errorMessage,
+        context: "downloadSnapshotXlsx",
       },
     });
-    showError(outputMeta.errorMessage, e, "downloadSnapshotCsv");
-    throw e;
+    return {
+      ok: false,
+      status: "failed",
+      downloaded: false,
+      outputFormat: outputMeta.outputFormat,
+      error: e,
+    };
   } finally {
     restoreSnapshotSaveButton(btn, originalText);
   }

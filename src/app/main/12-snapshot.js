@@ -50,27 +50,30 @@ function createIdleDirectSaveStatus() {
 }
 
 function normalizeSnapshotSaveOutputFormat(format) {
-  return format === "csv" ? "csv" : "html";
+  // output target은 HTML과 XLSX 두 가지만 canonical public surface로 유지한다.
+  // CSV phase는 feature branch 실험에서 폐기됐고, 이후 save contract는
+  // "같은 orchestration + 다른 commit adapter" 원칙만 남긴다.
+  return format === "xlsx" ? "xlsx" : "html";
 }
 
 function getSnapshotSaveOutputMeta(format) {
   const outputFormat = normalizeSnapshotSaveOutputFormat(format);
-  if (outputFormat === "csv") {
+  if (outputFormat === "xlsx") {
     return {
-      outputFormat: "csv",
-      triggerButtonId: "sadv-csv-btn",
-      preparingTitle: "CSV 저장 준비 중",
-      collectingTitle: "CSV 저장 데이터 수집 중",
-      buildingTitle: "CSV 파일 생성 중",
-      buildingDetail: "스프레드시트에서 열 수 있는 단일 CSV 파일을 조립하고 있어요.",
-      triggeringTitle: "CSV 다운로드 시작 중",
-      completedTitle: "CSV 저장 완료",
-      completedWithIssuesTitle: "CSV 저장 완료 · 이슈 있음",
-      blockedTitle: "CSV 저장 중단",
-      failedTitle: "CSV 저장 실패",
-      errorMessage: ERROR_MESSAGES.CSV_SAVE_ERROR,
-      fileExtension: "csv",
-      fileKindLabel: "CSV 파일",
+      outputFormat: "xlsx",
+      triggerButtonId: "sadv-xlsx-btn",
+      preparingTitle: "엑셀 저장 준비 중",
+      collectingTitle: "엑셀 저장 데이터 수집 중",
+      buildingTitle: "엑셀 파일 생성 중",
+      buildingDetail: "상세 분석용 XLSX 파일을 여러 시트로 조립하고 있어요.",
+      triggeringTitle: "엑셀 다운로드 시작 중",
+      completedTitle: "엑셀 저장 완료",
+      completedWithIssuesTitle: "엑셀 저장 완료 · 이슈 있음",
+      blockedTitle: "엑셀 저장 중단",
+      failedTitle: "엑셀 저장 실패",
+      errorMessage: ERROR_MESSAGES.XLSX_SAVE_ERROR,
+      fileExtension: "xlsx",
+      fileKindLabel: "엑셀 파일",
     };
   }
   return {
@@ -1085,7 +1088,7 @@ function restoreSnapshotSaveButton(btn, originalText) {
             };
       const outputMeta = getSnapshotSaveOutputMeta(options && options.outputFormat);
       const btn = getSnapshotSaveTriggerButton(outputMeta.outputFormat);
-      const originalText = btn ? btn.textContent : (outputMeta.outputFormat === "csv" ? "CSV" : "저장");
+      const originalText = btn ? btn.textContent : (outputMeta.outputFormat === "xlsx" ? "엑셀" : "저장");
       setSnapshotSaveButtonBusy(btn, "0/" + runtimeSites.length);
       const reusableRefreshHandle =
         !options || !options.payload ? getSnapshotReusableRefreshStatusForSave() : { reusable: false };
@@ -1341,7 +1344,8 @@ async function runSnapshotSaveExecution(options) {
   // 2) resolveSnapshotRuntimeBootstrapLeaseForSave() 로 현재 화면 초기 로딩(all-sites/site-view) 재사용 여부 판단
   // 3) resolveSnapshotSaveRefreshLease() 로 refresh owner lease 재사용/시작 여부 판단
   // 4) acquireSnapshotSavePayloadForExecution() 으로 payload 획득
-  // 5) downloadSnapshot() 으로 최종 blocked 검사 + HTML commit/downloader 실행
+  // 5) output adapter(downloadSnapshot / downloadSnapshotXlsx)로
+  //    최종 blocked 검사 + 파일 생성 + downloader commit 실행
   //
   // 중요:
   // - decision recompute는 runtime bootstrap wait 이후 1회만 허용한다.
@@ -1440,8 +1444,8 @@ async function runSnapshotSaveExecution(options) {
           selectionSnapshot: requestContext.selectionSnapshot,
           outputFormat: requestContext.outputMeta.outputFormat,
         };
-        if (requestContext.outputMeta.outputFormat === "csv") {
-          return await downloadSnapshotCsv(commitOptions);
+        if (requestContext.outputMeta.outputFormat === "xlsx") {
+          return await downloadSnapshotXlsx(commitOptions);
         }
         return await downloadSnapshot(commitOptions);
       } finally {
@@ -2041,7 +2045,7 @@ function buildSnapshotSerializedHelperSection() {
     if (siteLabelEl) {
       siteLabelEl.innerHTML = `<span>${escHtml(siteLabel)}</span><span style="display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;border:1px solid ${T.accentSoftBorderStrong};color:${T.accentSoftText};background:${T.warmDarkBg}">${escHtml(activeTabLabel)}</span>`;
     }
-    ["sadv-refresh-btn", "sadv-save-btn", "sadv-csv-btn", "sadv-x"].forEach(function (id) {
+    ["sadv-refresh-btn", "sadv-save-btn", "sadv-xlsx-btn", "sadv-x"].forEach(function (id) {
       const el = clone.querySelector("#" + id);
       if (el) el.remove();
     });

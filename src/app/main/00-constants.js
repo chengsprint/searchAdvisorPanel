@@ -704,7 +704,7 @@ const ERROR_MESSAGES = {
   // Download/Export Errors
   DOWNLOAD_FAILED: "파일 다운로드에 실패했어요. 다시 시도해주세요.",
   HTML_SAVE_ERROR: "HTML 저장 중 오류가 발생했어요. 다시 시도해주세요.",
-  CSV_SAVE_ERROR: "CSV 저장 중 오류가 발생했어요. 다시 시도해주세요.",
+  XLSX_SAVE_ERROR: "엑셀 저장 중 오류가 발생했어요. 다시 시도해주세요.",
   EXPORT_INCOMPLETE: "일부 사이트 데이터를 내보내지 못했어요.",
   SAVE_BLOCKED_PANEL_ERROR: "패널 작업 중 문제가 남아 있어 저장을 진행하지 않았어요.",
   SAVE_BLOCKED_TOO_MANY_FAILURES: "조회 실패 사이트가 많아 저장을 진행하지 않았어요.",
