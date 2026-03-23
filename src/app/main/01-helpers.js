@@ -600,18 +600,30 @@ function kpiGrid(items) {
   const contentGap = isUltraNarrow ? "4px" : isCompactViewport ? "5px" : "6px";
   const iconSize = isUltraNarrow ? "15px" : isCompactViewport ? "16px" : "17px";
   items.forEach(function (it) {
+    const hasIcon = !!it.icon;
+    const hasSub = !!(it.sub && String(it.sub).trim());
+    const stackGap = hasSub
+      ? contentGap
+      : isUltraNarrow
+        ? "3px"
+        : isCompactViewport
+          ? "4px"
+          : "5px";
     const d = document.createElement("div");
     d.style.cssText =
       "background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);border-radius:" + T.radiusNone + ";padding:" + cardPadding + ";text-align:center;min-width:0;min-height:" + minHeight + ";display:flex;align-items:center;justify-content:center;transition:all 0.2s;box-shadow:" + T.shadowCard + ";overflow:hidden";
-    const iconHtml = it.icon
-      ? `<div style="width:100%;display:flex;align-items:center;justify-content:center;color:${it.color || 'var(--sadv-text-secondary,#c6c6c6)'};opacity:0.92;line-height:1">${it.icon}</div>`
+    const iconHtml = hasIcon
+      ? `<div style="width:100%;display:flex;align-items:center;justify-content:center;color:${it.color || 'var(--sadv-text-secondary,#c6c6c6)'};opacity:0.92;line-height:1;min-height:${iconSize}">${it.icon}</div>`
+      : "";
+    const subHtml = hasSub
+      ? `<div style="width:100%;font-size:${subFontSize};color:var(--sadv-text-secondary,#c6c6c6);line-height:1.4;min-height:${subFontSize === "9px" ? "1.5em" : "1.6em"};text-align:center">${escHtml(it.sub)}</div>`
       : "";
     d.innerHTML = sanitizeHTML(
-      `<div style="width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:${contentGap};min-height:100%">` +
+      `<div style="width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:${stackGap};min-height:100%">` +
         `${iconHtml}` +
         `<div style="width:100%;font-size:${labelFontSize};color:var(--sadv-text-tertiary,#8d8d8d);line-height:1.4;word-break:keep-all;font-weight:600;text-transform:uppercase;letter-spacing:${isCompactViewport ? "0.02em" : "0.04em"};text-align:center">${escHtml(it.label)}</div>` +
         `<div style="width:100%;font-size:${valueFontSize};font-weight:650;color:${it.color || C.text};line-height:1.08;letter-spacing:${isCompactViewport ? "-0.03em" : "-0.01em"};word-break:keep-all;text-align:center">${escHtml(it.value)}</div>` +
-        `<div style="width:100%;font-size:${subFontSize};color:var(--sadv-text-secondary,#c6c6c6);line-height:1.4;min-height:${subFontSize === "9px" ? "1.5em" : "1.6em"};visibility:${it.sub ? "visible" : "hidden"};text-align:center">${escHtml(it.sub || "\u00a0")}</div>` +
+        `${subHtml}` +
       `</div>`
     );
     const iconSvg = d.querySelector("svg");
