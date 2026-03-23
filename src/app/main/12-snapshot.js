@@ -235,6 +235,86 @@ function getSnapshotSaveRuntimeType() {
   return "live";
 }
 
+function getSnapshotMergedMetaHint() {
+  return (
+    (typeof getMergedMetaState === "function" ? getMergedMetaState() : null) ||
+    (typeof getRuntimeShellState === "function" ? getRuntimeShellState()?.mergedMeta : null) ||
+    (typeof window !== "undefined" && window.__sadvMergedData ? { isMerged: true } : null) ||
+    (typeof window !== "undefined" &&
+    window.__SEARCHADVISOR_EXPORT_PAYLOAD__ &&
+    window.__SEARCHADVISOR_EXPORT_PAYLOAD__.mergedMeta
+      ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__.mergedMeta
+      : null)
+  );
+}
+
+function isSavedMergedSnapshotRuntime() {
+  const runtimeKind =
+    typeof window !== "undefined" && window.__SEARCHADVISOR_RUNTIME_KIND__
+      ? window.__SEARCHADVISOR_RUNTIME_KIND__
+      : "live";
+  const capabilities =
+    typeof getRuntimeCapabilities === "function" ? getRuntimeCapabilities() : null;
+  const mergedMeta = getSnapshotMergedMetaHint();
+  return !!(
+    runtimeKind === "snapshot" &&
+    capabilities &&
+    capabilities.isReadOnly &&
+    capabilities.canXlsxSave &&
+    mergedMeta &&
+    mergedMeta.isMerged
+  );
+}
+
+function canManualXlsxExportInCurrentRuntime() {
+  const runtimeKind =
+    typeof window !== "undefined" && window.__SEARCHADVISOR_RUNTIME_KIND__
+      ? window.__SEARCHADVISOR_RUNTIME_KIND__
+      : "live";
+  const capabilities =
+    typeof getRuntimeCapabilities === "function" ? getRuntimeCapabilities() : null;
+  const mergedMeta = getSnapshotMergedMetaHint();
+  const mergeVisible = !!(
+    (typeof isMergedReport === "function" && isMergedReport()) ||
+    (mergedMeta && mergedMeta.isMerged)
+  );
+  if (isSavedMergedSnapshotRuntime()) return true;
+  return !!(
+    runtimeKind === "live" &&
+    capabilities &&
+    capabilities.canSave &&
+    capabilities.canXlsxSave &&
+    !capabilities.isReadOnly &&
+    !mergeVisible
+  );
+}
+
+function isSavedMergedSnapshotXlsxRequestAllowed(requestContext) {
+  const capabilities = requestContext && requestContext.capabilities ? requestContext.capabilities : null;
+  const entryPoint =
+    requestContext && typeof requestContext.entryPoint === "string" ? requestContext.entryPoint : "";
+  return !!(
+    isSavedMergedSnapshotRuntime() &&
+    capabilities &&
+    capabilities.canXlsxSave &&
+    capabilities.isReadOnly &&
+    !requestContext.headlessMode &&
+    entryPoint === "button-xlsx"
+  );
+}
+
+function buildSnapshotManualXlsxExecutionOptions() {
+  if (!isSavedMergedSnapshotRuntime()) return {};
+  const payload =
+    typeof window !== "undefined" && window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+      ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+      : null;
+  return {
+    payload: payload,
+    cacheDecision: { neededRefresh: false, reason: null, missingSites: 0, expiredSites: 0 },
+  };
+}
+
 function buildSnapshotSaveRuntimeTypeLabel(runtimeType) {
   if (runtimeType === "saved") return "SAVED";
   if (runtimeType === "merge") return "MERGE";
@@ -619,7 +699,9 @@ function buildSnapshotOutputAvailabilityDecision(requestContext) {
     requestContext && typeof requestContext.runtimeType === "string"
       ? requestContext.runtimeType
       : getSnapshotSaveRuntimeType();
-  if (runtimeType !== "live") {
+  const savedMergedSnapshotXlsxAllowed =
+    outputFormat === "xlsx" && isSavedMergedSnapshotXlsxRequestAllowed(requestContext);
+  if (runtimeType !== "live" && !savedMergedSnapshotXlsxAllowed) {
     return {
       allowed: false,
       reason: "xlsx-live-only",
@@ -1406,7 +1488,15 @@ async function runSnapshotSaveExecution(options) {
   if (snapshotSaveRequestInFlightPromise) return snapshotSaveRequestInFlightPromise;
   const requestContext = resolveSnapshotSaveRequestContext(options);
     const outputAvailabilityDecision = buildSnapshotOutputAvailabilityDecision(requestContext);
-    if (requestContext.capabilities && !requestContext.capabilities.canSave) return false;
+    const canStartSaveExecution = requestContext.capabilities
+      ? requestContext.outputMeta.outputFormat === "xlsx"
+        ? !!(
+            requestContext.capabilities.canSave ||
+            isSavedMergedSnapshotXlsxRequestAllowed(requestContext)
+          )
+        : !!requestContext.capabilities.canSave
+      : true;
+    if (!canStartSaveExecution) return false;
     if (!outputAvailabilityDecision.allowed) {
       showError(
         outputAvailabilityDecision.userMessage,
@@ -2148,16 +2238,36 @@ function buildSnapshotSerializedHelperSection() {
     if (siteLabelEl) {
       siteLabelEl.innerHTML = `<span>${escHtml(siteLabel)}</span><span style="display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;border:1px solid ${T.accentSoftBorderStrong};color:${T.accentSoftText};background:${T.warmDarkBg}">${escHtml(activeTabLabel)}</span>`;
     }
-    ["sadv-refresh-btn", "sadv-save-btn", "sadv-xlsx-btn", "sadv-x"].forEach(function (id) {
+    const allowSavedMergedXlsx =
+      !!(payload && payload.mergedMeta && payload.mergedMeta.isMerged);
+    ["sadv-refresh-btn", "sadv-save-btn", "sadv-x"].forEach(function (id) {
       const el = clone.querySelector("#" + id);
       if (el) el.remove();
     });
+    if (!allowSavedMergedXlsx) {
+      const xlsxEl = clone.querySelector("#sadv-xlsx-btn");
+      if (xlsxEl) xlsxEl.remove();
+    } else {
+      const xlsxEl = clone.querySelector("#sadv-xlsx-btn");
+      if (xlsxEl) {
+        xlsxEl.style.display = "inline-flex";
+        xlsxEl.removeAttribute("aria-hidden");
+        xlsxEl.disabled = false;
+        xlsxEl.title = "병합 데이터 엑셀 저장";
+      }
+    }
     if (topRow && topRow.lastElementChild) {
       const meta = document.createElement("div");
       meta.style.cssText =
         "display:flex;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid " + T.accentSoftBorder + ";color:" + T.accentSoftText + ";background:" + T.warmDarkBg + ";font-size:10px;font-weight:800";
       meta.textContent = "Saved " + savedLabel;
-      topRow.lastElementChild.replaceWith(meta);
+      if (allowSavedMergedXlsx) {
+        const actions = topRow.lastElementChild;
+        actions.className = "sadv-header-actions";
+        actions.appendChild(meta);
+      } else {
+        topRow.lastElementChild.replaceWith(meta);
+      }
     }
     const exportPayloadJson = stringifyForInlineJson(payload);
     const html = `<!doctype html>
@@ -2927,12 +3037,15 @@ function buildSnapshotSerializedHelperSection() {
     const snapshotApi = {
       getState: cloneSnapshotShellState,
       getCapabilities: function () {
+        const mergedMeta =
+          typeof getMergedMetaState === "function" ? getMergedMetaState() : MERGED_META;
         return typeof getRuntimeCapabilities === "function"
           ? getRuntimeCapabilities()
           : {
               mode: "snapshot",
               canRefresh: false,
               canSave: false,
+              canXlsxSave: !!(mergedMeta && mergedMeta.isMerged),
               canClose: false,
               isReadOnly: true,
             };
@@ -3309,6 +3422,9 @@ function buildSnapshotSerializedHelperSection() {
 
   function buildSnapshotApiCompatNoopActionLines() {
     return [
+      '    getCapabilities: function () { return { mode: "snapshot", canRefresh: false, canSave: false, canXlsxSave: ' +
+        '(snapshotState && snapshotState.mergedMeta && snapshotState.mergedMeta.isMerged ? true : false)' +
+        ', canClose: false, isReadOnly: true }; },',
       '    getSaveStatus: function () { return ' + JSON.stringify({ ...createIdleDirectSaveStatus(), runtimeType: "saved" }) + '; },',
       '    subscribeSaveStatus: function () { return function () {}; },',
       '    refresh: function () { return false; },',

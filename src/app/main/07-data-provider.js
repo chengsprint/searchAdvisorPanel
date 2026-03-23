@@ -49,10 +49,21 @@ function getRuntimeCapabilities() {
   // 1단계에서는 선언적 노출이 목적이고,
   // 이후 단계에서 버튼/행동 제어가 이 capability를 더 적극적으로 소비하게 된다.
   if (isSnapshotRuntime()) {
+    const mergedMeta =
+      typeof window !== "undefined" &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__ &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.mergedMeta
+        ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__.mergedMeta
+        : null;
     return {
       mode: "snapshot",
       canRefresh: false,
       canSave: false,
+      // 중요:
+      // saved snapshot 전체에 저장을 다시 열어두면 HTML 저장/public API까지 같이 열리므로 위험하다.
+      // merge.py가 만든 merged saved snapshot에서만 수동 엑셀 버튼을 열기 위해
+      // xlsx 전용 capability만 별도로 둔다.
+      canXlsxSave: !!(mergedMeta && mergedMeta.isMerged),
       canClose: false,
       isReadOnly: true,
     };
@@ -61,6 +72,7 @@ function getRuntimeCapabilities() {
     mode: "live",
     canRefresh: true,
     canSave: true,
+    canXlsxSave: true,
     canClose: true,
     isReadOnly: false,
   };

@@ -941,7 +941,9 @@ async function downloadSnapshotXlsx(options) {
   const outputMeta = getSnapshotSaveOutputMeta("xlsx");
   const capabilities =
     typeof getRuntimeCapabilities === "function" ? getRuntimeCapabilities() : null;
-  if (capabilities && capabilities.isReadOnly) {
+  const allowReadOnlyMergedSnapshotXlsx =
+    typeof isSavedMergedSnapshotRuntime === "function" ? isSavedMergedSnapshotRuntime() : false;
+  if (capabilities && capabilities.isReadOnly && !allowReadOnlyMergedSnapshotXlsx) {
     throw new Error("xlsx export is disabled in read-only mode");
   }
   const payload = options && options.payload ? options.payload : null;

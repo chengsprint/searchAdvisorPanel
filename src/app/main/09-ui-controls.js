@@ -199,29 +199,14 @@ function applyUiControlsTab(tab) {
   function syncXlsxButtonVisibility() {
     const xlsxBtnEl = document.getElementById("sadv-xlsx-btn");
     if (!xlsxBtnEl) return;
-    const runtimeKind =
-      typeof window !== "undefined" && window.__SEARCHADVISOR_RUNTIME_KIND__
-        ? window.__SEARCHADVISOR_RUNTIME_KIND__
-        : "live";
-    const mergedMetaHint =
-      (typeof getRuntimeMergedMeta === "function" ? getRuntimeMergedMeta() : null) ||
-      (typeof getMergedMetaState === "function" ? getMergedMetaState() : null) ||
-      (typeof window !== "undefined" &&
-      window.__SEARCHADVISOR_EXPORT_PAYLOAD__ &&
-      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.mergedMeta
-        ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__.mergedMeta
-        : null) ||
-      (typeof window !== "undefined" && window.__sadvMergedData ? { isMerged: true } : null);
-    const mergeVisible = !!(
-      (typeof isMergedReport === "function" && isMergedReport()) ||
-      (mergedMetaHint && mergedMetaHint.isMerged)
-    );
-    const canManualXlsxSave = !!(
-      runtimeCapabilities.canSave &&
-      !runtimeCapabilities.isReadOnly &&
-      runtimeKind === "live" &&
-      !mergeVisible
-    );
+    const canManualXlsxSave =
+      typeof canManualXlsxExportInCurrentRuntime === "function"
+        ? canManualXlsxExportInCurrentRuntime()
+        : !!(
+            runtimeCapabilities.canSave &&
+            runtimeCapabilities.canXlsxSave &&
+            !runtimeCapabilities.isReadOnly
+          );
     if (!canManualXlsxSave) {
       xlsxBtnEl.style.display = "none";
       xlsxBtnEl.setAttribute("aria-hidden", "true");
@@ -818,7 +803,15 @@ function applyUiControlsTab(tab) {
         typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null;
       if (saveStatus && saveStatus.active) return;
       if (typeof runSnapshotSaveExecution === "function") {
-        runSnapshotSaveExecution({ entryPoint: "button-xlsx", outputFormat: "xlsx" });
+        const manualOptions =
+          typeof buildSnapshotManualXlsxExecutionOptions === "function"
+            ? buildSnapshotManualXlsxExecutionOptions()
+            : {};
+        runSnapshotSaveExecution({
+          entryPoint: "button-xlsx",
+          outputFormat: "xlsx",
+          ...(manualOptions || {}),
+        });
       }
     });
   } else {
