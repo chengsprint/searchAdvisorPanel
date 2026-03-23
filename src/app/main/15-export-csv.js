@@ -149,9 +149,19 @@ function buildSnapshotCsvRow(savedAt, row, context) {
 function buildSnapshotCsv(savedAt, payload) {
   const rows = Array.isArray(payload && payload.summaryRows) ? payload.summaryRows : [];
   const columns = getSnapshotCsvColumns();
+  const runtimeAccountInfo =
+    typeof ACCOUNT_UTILS !== "undefined" &&
+    ACCOUNT_UTILS &&
+    typeof ACCOUNT_UTILS.getAccountInfo === "function"
+      ? ACCOUNT_UTILS.getAccountInfo()
+      : { accountLabel: "", encId: "" };
   const context = {
-    accountLabel: payload && payload.accountLabel ? payload.accountLabel : "",
-    accountEncId: payload && payload.accountEncId ? payload.accountEncId : "",
+    accountLabel:
+      (payload && payload.accountLabel ? payload.accountLabel : "") ||
+      (runtimeAccountInfo && runtimeAccountInfo.accountLabel ? runtimeAccountInfo.accountLabel : ""),
+    accountEncId:
+      (payload && payload.accountEncId ? payload.accountEncId : "") ||
+      (runtimeAccountInfo && runtimeAccountInfo.encId ? runtimeAccountInfo.encId : ""),
   };
   const headerLine = columns.map(function (column) {
     return escapeSnapshotCsvCell(column.header);
