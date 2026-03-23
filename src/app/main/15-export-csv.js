@@ -155,9 +155,20 @@ function buildSnapshotCsv(savedAt, payload) {
     typeof ACCOUNT_UTILS.getAccountInfo === "function"
       ? ACCOUNT_UTILS.getAccountInfo()
       : { accountLabel: "", encId: "" };
+  const runtimeCurrentAccount =
+    typeof ACCOUNT_UTILS !== "undefined" &&
+    ACCOUNT_UTILS &&
+    typeof ACCOUNT_UTILS.getCurrentAccount === "function"
+      ? ACCOUNT_UTILS.getCurrentAccount()
+      : typeof window !== "undefined" &&
+          window.__sadvAccountState &&
+          typeof window.__sadvAccountState.currentAccount === "string"
+        ? window.__sadvAccountState.currentAccount
+        : "";
   const context = {
     accountLabel:
       (payload && payload.accountLabel ? payload.accountLabel : "") ||
+      (typeof runtimeCurrentAccount === "string" ? runtimeCurrentAccount : "") ||
       (runtimeAccountInfo && runtimeAccountInfo.accountLabel ? runtimeAccountInfo.accountLabel : ""),
     accountEncId:
       (payload && payload.accountEncId ? payload.accountEncId : "") ||
