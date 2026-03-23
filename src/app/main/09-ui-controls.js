@@ -199,13 +199,27 @@ function applyUiControlsTab(tab) {
   function syncXlsxButtonVisibility() {
     const xlsxBtnEl = document.getElementById("sadv-xlsx-btn");
     if (!xlsxBtnEl) return;
+    // saved snapshot HTML은 helper body만 직렬화되어 inline bootstrap에서 다시 실행된다.
+    // 따라서 live initialize()의 closure(runtimeCapabilities)에만 의존하면
+    // reopen 시 ReferenceError/undefined 접근으로 회귀가 날 수 있다.
+    // 공통 helper를 그대로 재사용하되, closure가 없을 때도 self-contained 하게 capability snapshot을 읽는다.
+    const runtimeCapabilitiesSnapshot =
+      typeof getRuntimeCapabilities === "function"
+        ? getRuntimeCapabilities()
+        : typeof runtimeCapabilities !== "undefined"
+          ? runtimeCapabilities
+          : {
+              canSave: false,
+              canXlsxSave: false,
+              isReadOnly: true,
+            };
     const canManualXlsxSave =
       typeof canManualXlsxExportInCurrentRuntime === "function"
         ? canManualXlsxExportInCurrentRuntime()
         : !!(
-            runtimeCapabilities.canSave &&
-            runtimeCapabilities.canXlsxSave &&
-            !runtimeCapabilities.isReadOnly
+            runtimeCapabilitiesSnapshot.canSave &&
+            runtimeCapabilitiesSnapshot.canXlsxSave &&
+            !runtimeCapabilitiesSnapshot.isReadOnly
           );
     if (!canManualXlsxSave) {
       xlsxBtnEl.style.display = "none";

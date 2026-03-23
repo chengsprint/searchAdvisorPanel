@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-23T16:26:51Z";
-var __SADV_GIT_HEAD__="786f677";
+var __SADV_BUILD_STAMP__="2026-03-23T17:14:30Z";
+var __SADV_GIT_HEAD__="d081791";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -10189,13 +10189,27 @@ function applyUiControlsTab(tab) {
   function syncXlsxButtonVisibility() {
     const xlsxBtnEl = document.getElementById("sadv-xlsx-btn");
     if (!xlsxBtnEl) return;
+    // saved snapshot HTML은 helper body만 직렬화되어 inline bootstrap에서 다시 실행된다.
+    // 따라서 live initialize()의 closure(runtimeCapabilities)에만 의존하면
+    // reopen 시 ReferenceError/undefined 접근으로 회귀가 날 수 있다.
+    // 공통 helper를 그대로 재사용하되, closure가 없을 때도 self-contained 하게 capability snapshot을 읽는다.
+    const runtimeCapabilitiesSnapshot =
+      typeof getRuntimeCapabilities === "function"
+        ? getRuntimeCapabilities()
+        : typeof runtimeCapabilities !== "undefined"
+          ? runtimeCapabilities
+          : {
+              canSave: false,
+              canXlsxSave: false,
+              isReadOnly: true,
+            };
     const canManualXlsxSave =
       typeof canManualXlsxExportInCurrentRuntime === "function"
         ? canManualXlsxExportInCurrentRuntime()
         : !!(
-            runtimeCapabilities.canSave &&
-            runtimeCapabilities.canXlsxSave &&
-            !runtimeCapabilities.isReadOnly
+            runtimeCapabilitiesSnapshot.canSave &&
+            runtimeCapabilitiesSnapshot.canXlsxSave &&
+            !runtimeCapabilitiesSnapshot.isReadOnly
           );
     if (!canManualXlsxSave) {
       xlsxBtnEl.style.display = "none";
@@ -14483,6 +14497,10 @@ function buildSnapshotSerializedHelperSection() {
     ${renderAllSitesFromCanonicalRows.toString()}
     ${renderTab.toString()}
     ${switchMode.toString()}
+    // setAllSitesLabel()가 공통 helper syncXlsxButtonVisibility()를 호출하므로
+    // saved snapshot inline bootstrap도 같은 helper pack을 함께 직렬화해야 한다.
+    // 누락되면 reopen 시 pageerror가 나고 shell/API selection parity까지 흔들릴 수 있다.
+    ${syncXlsxButtonVisibility.toString()}
     ${setAllSitesLabel.toString()}
     ${renderSnapshotAllSites.toString()}
     const renderAllSites = renderSnapshotAllSites;

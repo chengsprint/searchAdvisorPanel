@@ -2674,6 +2674,10 @@ function buildSnapshotSerializedHelperSection() {
     ${renderAllSitesFromCanonicalRows.toString()}
     ${renderTab.toString()}
     ${switchMode.toString()}
+    // setAllSitesLabel()가 공통 helper syncXlsxButtonVisibility()를 호출하므로
+    // saved snapshot inline bootstrap도 같은 helper pack을 함께 직렬화해야 한다.
+    // 누락되면 reopen 시 pageerror가 나고 shell/API selection parity까지 흔들릴 수 있다.
+    ${syncXlsxButtonVisibility.toString()}
     ${setAllSitesLabel.toString()}
     ${renderSnapshotAllSites.toString()}
     const renderAllSites = renderSnapshotAllSites;
