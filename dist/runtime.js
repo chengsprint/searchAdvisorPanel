@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-23T14:52:56Z";
-var __SADV_GIT_HEAD__="b7593b6";
+var __SADV_BUILD_STAMP__="2026-03-23T15:16:55Z";
+var __SADV_GIT_HEAD__="37833c8";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -10165,6 +10165,43 @@ function applyUiControlsTab(tab) {
     if (labelTextEl) labelTextEl.textContent = summary;
     else labelEl.textContent = summary;
     labelEl.title = summary;
+    syncXlsxButtonVisibility();
+  }
+  function syncXlsxButtonVisibility() {
+    const xlsxBtnEl = document.getElementById("sadv-xlsx-btn");
+    if (!xlsxBtnEl) return;
+    const runtimeKind =
+      typeof window !== "undefined" && window.__SEARCHADVISOR_RUNTIME_KIND__
+        ? window.__SEARCHADVISOR_RUNTIME_KIND__
+        : "live";
+    const mergedMetaHint =
+      (typeof getRuntimeMergedMeta === "function" ? getRuntimeMergedMeta() : null) ||
+      (typeof getMergedMetaState === "function" ? getMergedMetaState() : null) ||
+      (typeof window !== "undefined" &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__ &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.mergedMeta
+        ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__.mergedMeta
+        : null) ||
+      (typeof window !== "undefined" && window.__sadvMergedData ? { isMerged: true } : null);
+    const mergeVisible = !!(
+      (typeof isMergedReport === "function" && isMergedReport()) ||
+      (mergedMetaHint && mergedMetaHint.isMerged)
+    );
+    const canManualXlsxSave = !!(
+      runtimeCapabilities.canSave &&
+      !runtimeCapabilities.isReadOnly &&
+      runtimeKind === "live" &&
+      !mergeVisible
+    );
+    if (!canManualXlsxSave) {
+      xlsxBtnEl.style.display = "none";
+      xlsxBtnEl.setAttribute("aria-hidden", "true");
+      xlsxBtnEl.disabled = true;
+      return;
+    }
+    xlsxBtnEl.style.display = "";
+    xlsxBtnEl.removeAttribute("aria-hidden");
+    xlsxBtnEl.disabled = false;
   }
   function formatCacheMetaTime(dateLike) {
     const date = dateLike instanceof Date ? dateLike : new Date(dateLike);
@@ -10745,28 +10782,16 @@ function applyUiControlsTab(tab) {
     // XLSX 상세 저장은 기존 CSV 수동 저장 자리를 완전히 대체한다.
     // public surface는 live interactive manual button까지만 유지하고,
     // saved/read-only 및 merge UI에는 노출하지 않는다.
-    const runtimeKind =
-      typeof window !== "undefined" && window.__SEARCHADVISOR_RUNTIME_KIND__
-        ? window.__SEARCHADVISOR_RUNTIME_KIND__
-        : "live";
-    const canManualXlsxSave = !!(
-      runtimeCapabilities.canSave &&
-      !runtimeCapabilities.isReadOnly &&
-      runtimeKind === "live"
-    );
-    if (!canManualXlsxSave) {
-      sadvXlsxBtnEl.style.display = "none";
-      sadvXlsxBtnEl.setAttribute("aria-hidden", "true");
-    } else {
-      sadvXlsxBtnEl.addEventListener("click", function () {
-        const saveStatus =
-          typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null;
-        if (saveStatus && saveStatus.active) return;
-        if (typeof runSnapshotSaveExecution === "function") {
-          runSnapshotSaveExecution({ entryPoint: "button-xlsx", outputFormat: "xlsx" });
-        }
-      });
-    }
+    syncXlsxButtonVisibility();
+    sadvXlsxBtnEl.addEventListener("click", function () {
+      if (sadvXlsxBtnEl.disabled) return;
+      const saveStatus =
+        typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null;
+      if (saveStatus && saveStatus.active) return;
+      if (typeof runSnapshotSaveExecution === "function") {
+        runSnapshotSaveExecution({ entryPoint: "button-xlsx", outputFormat: "xlsx" });
+      }
+    });
   } else {
     console.warn("[UI Controls] #sadv-xlsx-btn not found during initialization");
   }
