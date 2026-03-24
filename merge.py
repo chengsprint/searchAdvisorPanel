@@ -827,6 +827,16 @@ def build_canonical_menu_action_button(
     )
 
 
+@lru_cache(maxsize=None)
+def get_canonical_save_icon_svg() -> str:
+    try:
+        source_text = load_merge_source_text_with_fallback("src/app/main/00-constants.js")
+    except FileNotFoundError:
+        return ""
+    match = re.search(r"save:\s*'(<svg.*?</svg>)'", source_text, re.DOTALL)
+    return match.group(1) if match else ""
+
+
 def build_canonical_save_hub_markup(
     save_btn_html: Optional[str],
     xlsx_btn_html: Optional[str],
@@ -838,7 +848,11 @@ def build_canonical_save_hub_markup(
     xlsx_visible: bool = True,
     xlsx_title: Optional[str] = None,
 ) -> str:
-    icon_svg = extract_first_svg_html(save_btn_html) or extract_first_svg_html(xlsx_btn_html)
+    icon_svg = (
+        extract_first_svg_html(save_btn_html)
+        or extract_first_svg_html(xlsx_btn_html)
+        or get_canonical_save_icon_svg()
+    )
     icon_part = (
         '<span class="sadv-btn-icon" aria-hidden="true">' + icon_svg + "</span>"
         if icon_svg
@@ -870,8 +884,8 @@ def build_canonical_save_hub_markup(
         + ">▾</span>"
         "</button>"
     )
-    save_icon_svg = extract_first_svg_html(save_btn_html) or icon_svg
-    xlsx_icon_svg = extract_first_svg_html(xlsx_btn_html) or icon_svg
+    save_icon_svg = extract_first_svg_html(save_btn_html) or icon_svg or get_canonical_save_icon_svg()
+    xlsx_icon_svg = extract_first_svg_html(xlsx_btn_html) or icon_svg or get_canonical_save_icon_svg()
     menu_parts: List[str] = [
         build_canonical_menu_action_button(
             "sadv-save-btn",
