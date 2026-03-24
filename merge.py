@@ -726,6 +726,17 @@ def is_merge_helper_capable_saved_template(html: str) -> bool:
     return all(has_function_definition(html, name) for name in MERGED_TEMPLATE_HELPERS)
 
 
+def is_canonical_header_shell_template(html: str) -> bool:
+    return all(
+        token in html
+        for token in (
+            'class="sadv-header-top"',
+            'class="sadv-header-meta"',
+            'id="sadv-save-hub-btn"',
+        )
+    )
+
+
 def cleanup_html_files(
     directory: Path,
     selected_latest: Dict[str, SourceHtmlFile],
@@ -782,20 +793,34 @@ def merge_current_directory(directory: Path) -> int:
         xlsx_capable_entries = [
             entry for entry in readable_entries if is_xlsx_capable_saved_template(entry.template_html)
         ]
+        canonical_shell_entries = [
+            entry for entry in readable_entries if is_canonical_header_shell_template(entry.template_html)
+        ]
         merged_helper_capable_entries = [
             entry for entry in xlsx_capable_entries if is_merge_helper_capable_saved_template(entry.template_html)
         ]
         template_entry = max(
-            merged_helper_capable_entries or xlsx_capable_entries or readable_entries,
+            canonical_shell_entries
+            or merged_helper_capable_entries
+            or xlsx_capable_entries
+            or readable_entries,
             key=lambda item: (item.source_file.stamp, item.source_file.account_key),
         )
-        if not xlsx_capable_entries:
+        if canonical_shell_entries:
+            log(
+                "  ℹ️ 최신 canonical header shell 구조를 가진 saved HTML을 템플릿으로 우선 사용합니다."
+            )
+        elif not xlsx_capable_entries:
             log(
                 "  ⚠️ 선택된 최신 HTML이 모두 구형 saved template이라 merged HTML에서 엑셀 버튼 동작은 best-effort일 수 있습니다."
             )
         elif not merged_helper_capable_entries:
             log(
                 "  ⚠️ 선택된 최신 HTML에 merged helper pack이 없어 현재 코드 기준 helper를 보강 주입합니다."
+            )
+        else:
+            log(
+                "  ⚠️ canonical header shell 템플릿이 없어 legacy saved template를 사용하되 current ref shell normalizer bridge를 같이 주입합니다."
             )
         merged_html = build_merged_html(template_entry.template_html, merged_payload)
         merged_output_path = directory / f"searchadvisor-MERGED-{target_month}.html"
