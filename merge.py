@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import argparse
 import json
 import re
 import sys
@@ -37,12 +38,8 @@ MERGED_TEMPLATE_HELPERS = (
     "downloadMergedSnapshotXlsxCompat",
     "createMergedAccountsInfo",
 )
-MERGE_PY_SOURCE_REF = "9aeca58"
-MERGE_PY_REMOTE_BASE_URL = (
-    "https://raw.githubusercontent.com/chengsprint/searchAdvisorPanel/"
-    + MERGE_PY_SOURCE_REF
-    + "/"
-)
+DEFAULT_SOURCE_REF = "release"
+_CURRENT_SOURCE_REF = DEFAULT_SOURCE_REF
 
 
 @dataclass(frozen=True)
@@ -70,6 +67,27 @@ class ParsedSnapshot:
 
 def log(message: str) -> None:
     print(message)
+
+
+def get_source_ref() -> str:
+    return _CURRENT_SOURCE_REF
+
+
+def set_source_ref(ref: Optional[str]) -> str:
+    global _CURRENT_SOURCE_REF
+    next_ref = (ref or DEFAULT_SOURCE_REF).strip() or DEFAULT_SOURCE_REF
+    _CURRENT_SOURCE_REF = next_ref
+    load_merge_source_text_with_fallback.cache_clear()
+    return _CURRENT_SOURCE_REF
+
+
+def build_remote_source_url(relative_path: str) -> str:
+    return (
+        "https://raw.githubusercontent.com/chengsprint/searchAdvisorPanel/"
+        + get_source_ref()
+        + "/"
+        + relative_path
+    )
 
 
 def parse_source_html_filename(path: Path) -> Optional[SourceHtmlFile]:
@@ -532,7 +550,7 @@ def has_function_definition(html: str, function_name: str) -> bool:
 
 
 def fetch_remote_source_text(relative_path: str) -> str:
-    remote_url = MERGE_PY_REMOTE_BASE_URL + relative_path
+    remote_url = build_remote_source_url(relative_path)
     with urlopen(remote_url, timeout=10) as response:
         return response.read().decode("utf-8")
 
@@ -544,13 +562,14 @@ def load_merge_source_text_with_fallback(relative_path: str) -> str:
         return local_path.read_text(encoding="utf-8")
     try:
         log(
-            f"  ℹ️ 로컬 source 미발견, GitHub raw fallback 사용: {relative_path} @ {MERGE_PY_SOURCE_REF}"
+            f"  ℹ️ 로컬 source 미발견, GitHub raw fallback 사용: {relative_path} @ {get_source_ref()}"
         )
         return fetch_remote_source_text(relative_path)
     except (OSError, URLError) as error:
         raise FileNotFoundError(
             f"standalone merge.py 실행에 필요한 source helper를 찾지 못했습니다: {relative_path} "
-            f"(로컬 repo 없음, remote fallback 실패: {error})"
+            f"(ref={get_source_ref()}, remote={build_remote_source_url(relative_path)}, error={error}). "
+            "release 또는 올바른 branch/tag/commit ref를 확인한 뒤 다시 시도하세요."
         ) from error
 
 
@@ -758,7 +777,22 @@ def merge_current_directory(directory: Path) -> int:
     return 0
 
 
-def main() -> int:
+def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="계정별 최신 SearchAdvisor saved HTML을 병합하고 오래된 HTML을 정리합니다.",
+    )
+    parser.add_argument(
+        "--ref",
+        default=DEFAULT_SOURCE_REF,
+        help="remote source helper fallback ref (default: release). branch/tag/commit 모두 가능",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: Optional[List[str]] = None) -> int:
+    args = parse_args(argv)
+    resolved_ref = set_source_ref(args.ref)
+    log(f"ℹ️ merge.py source helper ref: {resolved_ref}")
     cwd = Path.cwd()
     try:
         return merge_current_directory(cwd)
