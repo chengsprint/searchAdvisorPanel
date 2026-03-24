@@ -70,3 +70,7 @@ tmp_*.jpeg
 screenshots/
 __pycache__/
 *.pyc
+
+# Public repo minimization: keep docs/tests local-only unless intentionally reintroduced
+docs/
+tests/
