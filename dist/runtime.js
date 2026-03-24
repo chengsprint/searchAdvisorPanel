@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-24T09:54:02Z";
-var __SADV_GIT_HEAD__="ef6c73f";
+var __SADV_BUILD_STAMP__="2026-03-24T11:41:31Z";
+var __SADV_GIT_HEAD__="5426c11";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -3134,6 +3134,29 @@ if (headerEl) {
   const siteLabelMetaEl = document.getElementById("sadv-site-label");
   const cacheMetaEl = document.getElementById("sadv-cache-meta");
 
+  function normalizeHeaderActionButton(buttonEl, label) {
+    if (!buttonEl) return;
+    const iconSvgEl = buttonEl.querySelector("svg");
+    const iconHtml = iconSvgEl ? iconSvgEl.outerHTML : "";
+    const safeLabel = typeof label === "string" ? label.trim() : "";
+    buttonEl.dataset.baseLabel = safeLabel;
+    buttonEl.dataset.baseTitle = buttonEl.getAttribute("title") || safeLabel;
+    buttonEl.innerHTML = sanitizeHTML(
+      safeLabel
+        ? `<span class="sadv-btn-icon" aria-hidden="true">${iconHtml}</span><span class="sadv-btn-label">${escHtml(safeLabel)}</span>`
+        : `<span class="sadv-btn-icon" aria-hidden="true">${iconHtml}</span>`
+    );
+    if (safeLabel) {
+      buttonEl.setAttribute("aria-label", safeLabel);
+      if (!buttonEl.getAttribute("title")) buttonEl.setAttribute("title", safeLabel);
+    }
+  }
+
+  normalizeHeaderActionButton(refreshBtnEl, "새로고침");
+  normalizeHeaderActionButton(saveBtnEl, "저장");
+  normalizeHeaderActionButton(xlsxBtnEl, "엑셀");
+  normalizeHeaderActionButton(closeBtnEl, "닫기");
+
   if (legacyTopRow && brandTitleEl && modeBarEl) {
     const headerTopEl = document.createElement("div");
     headerTopEl.className = "sadv-header-top";
@@ -3172,6 +3195,13 @@ if (headerEl) {
     [refreshBtnEl, saveBtnEl, xlsxBtnEl, closeBtnEl].forEach((node) => {
       if (node) actionsWrapEl.appendChild(node);
     });
+    const actionStatusChipEl = document.createElement("span");
+    actionStatusChipEl.id = "sadv-action-status-chip";
+    actionStatusChipEl.className = "sadv-action-status-chip";
+    actionStatusChipEl.hidden = true;
+    actionStatusChipEl.setAttribute("aria-hidden", "true");
+    actionStatusChipEl.setAttribute("aria-live", "polite");
+    actionsWrapEl.appendChild(actionStatusChipEl);
 
     const metaRowEl = document.createElement("div");
     metaRowEl.className = "sadv-header-meta";
@@ -3276,12 +3306,57 @@ siteUiStyle.textContent = `
 }
 .sadv-header-actions{
   display:flex !important;
-  gap:8px !important;
+  gap:6px !important;
   align-items:center !important;
   flex-wrap:nowrap !important;
   justify-content:flex-end !important;
   white-space:nowrap !important;
   flex-shrink:0 !important;
+}
+.sadv-btn-icon{
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  line-height:0 !important;
+  flex-shrink:0 !important;
+}
+.sadv-btn-label{
+  display:inline-flex !important;
+  align-items:center !important;
+  line-height:1 !important;
+}
+.sadv-action-status-chip{
+  display:inline-flex !important;
+  align-items:center !important;
+  min-height:22px !important;
+  padding:2px 8px !important;
+  border-radius:999px !important;
+  border:1px solid rgba(255,212,0,0.16) !important;
+  background:rgba(255,212,0,0.09) !important;
+  color:#ffe082 !important;
+  font-size:10px !important;
+  font-weight:700 !important;
+  line-height:1.1 !important;
+  white-space:nowrap !important;
+  flex-shrink:0 !important;
+}
+.sadv-action-status-chip[hidden]{
+  display:none !important;
+}
+.sadv-action-status-chip[data-tone="progress"]{
+  border-color:rgba(255,212,0,0.22) !important;
+  background:rgba(255,212,0,0.10) !important;
+  color:#ffe082 !important;
+}
+.sadv-action-status-chip[data-tone="success"]{
+  border-color:rgba(133,224,133,0.24) !important;
+  background:rgba(46,125,50,0.16) !important;
+  color:#c8f7c5 !important;
+}
+.sadv-action-status-chip[data-tone="warning"]{
+  border-color:rgba(255,183,77,0.28) !important;
+  background:rgba(255,152,0,0.14) !important;
+  color:#ffe0b2 !important;
 }
 .sadv-header-meta{
   display:grid !important;
@@ -3548,12 +3623,41 @@ siteUiStyle.textContent = `
 #sadv-refresh-btn,
 #sadv-save-btn,
 #sadv-xlsx-btn{
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:6px !important;
   background:var(--sadv-layer-01) !important;
   border:1px solid var(--sadv-border) !important;
   color:var(--sadv-text-secondary) !important;
-  padding:0 12px !important;
+  padding:0 10px !important;
   min-width:0 !important;
   font-size:12px !important;
+}
+#sadv-refresh-btn.sadv-action-btn-primary,
+#sadv-save-btn.sadv-action-btn-primary,
+#sadv-xlsx-btn.sadv-action-btn-primary{
+  min-width:70px !important;
+  padding:0 12px !important;
+}
+#sadv-refresh-btn.sadv-action-btn-secondary,
+#sadv-save-btn.sadv-action-btn-secondary,
+#sadv-xlsx-btn.sadv-action-btn-secondary,
+#sadv-x.sadv-action-btn-secondary{
+  width:36px !important;
+  min-width:36px !important;
+  padding:0 !important;
+  gap:0 !important;
+}
+#sadv-refresh-btn.sadv-action-btn-secondary .sadv-btn-label,
+#sadv-save-btn.sadv-action-btn-secondary .sadv-btn-label,
+#sadv-xlsx-btn.sadv-action-btn-secondary .sadv-btn-label{
+  display:none !important;
+}
+#sadv-refresh-btn.spinning .sadv-btn-icon svg,
+#sadv-save-btn.spinning .sadv-btn-icon svg,
+#sadv-xlsx-btn.spinning .sadv-btn-icon svg{
+  animation:sadv-action-spin 0.9s linear infinite;
 }
 #sadv-refresh-btn:hover,
 #sadv-save-btn:hover,
@@ -3573,6 +3677,10 @@ siteUiStyle.textContent = `
   border-color:var(--sadv-danger) !important;
   color:var(--sadv-danger) !important;
   background:${T.dangerSoftBg} !important;
+}
+@keyframes sadv-action-spin{
+  from{transform:rotate(0deg)}
+  to{transform:rotate(360deg)}
 }
 #sadv-bd,
 #sadv-tabpanel{
@@ -3608,6 +3716,7 @@ siteUiStyle.textContent = `
   .sadv-header-actions{
     width:100%;
     justify-content:flex-start !important;
+    flex-wrap:wrap !important;
   }
   .sadv-header-meta{
     display:flex !important;
@@ -10283,6 +10392,35 @@ function applyUiControlsTab(tab) {
     else labelEl.textContent = summary;
     labelEl.title = summary;
     syncXlsxButtonVisibility();
+    syncSnapshotActionButtons(
+      typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null
+    );
+  }
+  function getHeaderActionRuntimeCapabilitiesSnapshot() {
+    return typeof getRuntimeCapabilities === "function"
+      ? getRuntimeCapabilities()
+      : typeof runtimeCapabilities !== "undefined"
+        ? runtimeCapabilities
+        : typeof resolveRuntimeCapabilities === "function"
+          ? resolveRuntimeCapabilities()
+          : {
+              canRefresh: false,
+              canSave: false,
+              canClose: false,
+              canXlsxSave: false,
+              isReadOnly: true,
+            };
+  }
+  function canCurrentRuntimeManualXlsxExport(runtimeCapabilitiesSnapshot) {
+    if (typeof canManualXlsxExportInCurrentRuntime === "function") {
+      return !!canManualXlsxExportInCurrentRuntime();
+    }
+    return !!(
+      runtimeCapabilitiesSnapshot &&
+      runtimeCapabilitiesSnapshot.canSave &&
+      runtimeCapabilitiesSnapshot.canXlsxSave &&
+      !runtimeCapabilitiesSnapshot.isReadOnly
+    );
   }
   function syncXlsxButtonVisibility() {
     const xlsxBtnEl = document.getElementById("sadv-xlsx-btn");
@@ -10291,24 +10429,8 @@ function applyUiControlsTab(tab) {
     // 따라서 live initialize()의 closure(runtimeCapabilities)에만 의존하면
     // reopen 시 ReferenceError/undefined 접근으로 회귀가 날 수 있다.
     // 공통 helper를 그대로 재사용하되, closure가 없을 때도 self-contained 하게 capability snapshot을 읽는다.
-    const runtimeCapabilitiesSnapshot =
-      typeof getRuntimeCapabilities === "function"
-        ? getRuntimeCapabilities()
-        : typeof runtimeCapabilities !== "undefined"
-          ? runtimeCapabilities
-          : {
-              canSave: false,
-              canXlsxSave: false,
-              isReadOnly: true,
-            };
-    const canManualXlsxSave =
-      typeof canManualXlsxExportInCurrentRuntime === "function"
-        ? canManualXlsxExportInCurrentRuntime()
-        : !!(
-            runtimeCapabilitiesSnapshot.canSave &&
-            runtimeCapabilitiesSnapshot.canXlsxSave &&
-            !runtimeCapabilitiesSnapshot.isReadOnly
-          );
+    const runtimeCapabilitiesSnapshot = getHeaderActionRuntimeCapabilitiesSnapshot();
+    const canManualXlsxSave = canCurrentRuntimeManualXlsxExport(runtimeCapabilitiesSnapshot);
     if (!canManualXlsxSave) {
       xlsxBtnEl.style.display = "none";
       xlsxBtnEl.setAttribute("aria-hidden", "true");
@@ -10422,41 +10544,167 @@ function applyUiControlsTab(tab) {
     const baseLabel = getSnapshotActionBaseLabel(actionKind);
     if (!status || typeof status !== "object") return baseLabel;
     const statusKind = getSnapshotActionStatusKind(status);
-    if (statusKind !== actionKind) return baseLabel;
-    const entryPoint = typeof status.entryPoint === "string" ? status.entryPoint : "";
-    const expectedEntryPoint = actionKind === "xlsx" ? "button-xlsx" : "button-save";
-    if (entryPoint !== expectedEntryPoint) return baseLabel;
+    return baseLabel;
+  }
+  function setHeaderActionButtonLabel(buttonEl, label) {
+    if (!buttonEl) return;
+    const nextLabel = typeof label === "string" && label.trim() ? label.trim() : "";
+    if (!nextLabel) return;
+    const labelEl = buttonEl.querySelector(".sadv-btn-label");
+    if (labelEl) {
+      labelEl.textContent = nextLabel;
+    } else {
+      buttonEl.textContent = nextLabel;
+    }
+    buttonEl.dataset.currentLabel = nextLabel;
+  }
+  function formatHeaderActionStatusChip(status) {
+    if (!status || typeof status !== "object" || status.uiHidden) return null;
+    const actionKind = getSnapshotActionStatusKind(status);
+    const baseLabel = getSnapshotActionBaseLabel(actionKind);
     const state = typeof status.state === "string" ? status.state : "idle";
     const progress = status.progress && typeof status.progress === "object" ? status.progress : {};
     const done =
       typeof progress.done === "number" && Number.isFinite(progress.done) ? progress.done : 0;
     const total =
       typeof progress.total === "number" && Number.isFinite(progress.total) ? progress.total : 0;
+    const stageLabel =
+      typeof status.stageLabel === "string" && status.stageLabel.trim()
+        ? status.stageLabel.trim()
+        : null;
     if (status.active) {
       if (total > 0 && (state === "collecting" || done > 0)) {
-        return done + "/" + total;
+        return {
+          label: `${baseLabel} ${done}/${total}`,
+          tone: "progress",
+        };
       }
-      return actionKind === "xlsx" ? "엑셀 준비" : "저장 준비";
+      return {
+        label: stageLabel || `${baseLabel} 준비 중`,
+        tone: "progress",
+      };
     }
-    if (state === "completed" || state === "completed-with-issues") {
-      return actionKind === "xlsx" ? "엑셀 완료" : "저장 완료";
+    if (state === "completed") {
+      return {
+        label: `${baseLabel} 완료`,
+        tone: "success",
+      };
     }
-    return baseLabel;
+    if (state === "completed-with-issues") {
+      return {
+        label: stageLabel || `${baseLabel} 일부 확인 필요`,
+        tone: "warning",
+      };
+    }
+    if (state === "blocked") {
+      return {
+        label: stageLabel || `${baseLabel} 차단`,
+        tone: "warning",
+      };
+    }
+    if (state === "failed") {
+      return {
+        label: stageLabel || `${baseLabel} 실패`,
+        tone: "warning",
+      };
+    }
+    return null;
+  }
+  function syncHeaderActionStatusChip(status) {
+    const chipEl = document.getElementById("sadv-action-status-chip");
+    if (!chipEl) return;
+    const chipMeta = formatHeaderActionStatusChip(status);
+    if (!chipMeta) {
+      chipEl.hidden = true;
+      chipEl.setAttribute("aria-hidden", "true");
+      chipEl.textContent = "";
+      chipEl.removeAttribute("data-tone");
+      chipEl.removeAttribute("title");
+      return;
+    }
+    chipEl.hidden = false;
+    chipEl.setAttribute("aria-hidden", "false");
+    chipEl.textContent = chipMeta.label;
+    chipEl.dataset.tone = chipMeta.tone || "progress";
+    chipEl.title = chipMeta.label;
+  }
+  function applyHeaderActionButtonPresentation(buttonEl, presentation) {
+    if (!buttonEl) return;
+    const isVisible = !!(presentation && presentation.visible);
+    buttonEl.style.display = isVisible ? "" : "none";
+    if (!isVisible) {
+      buttonEl.setAttribute("aria-hidden", "true");
+      buttonEl.classList.remove("sadv-action-btn-primary", "sadv-action-btn-secondary");
+      return;
+    }
+    buttonEl.removeAttribute("aria-hidden");
+    const isPrimary = !!presentation.primary;
+    buttonEl.classList.toggle("sadv-action-btn-primary", isPrimary);
+    buttonEl.classList.toggle("sadv-action-btn-secondary", !isPrimary);
+    const accessibleLabel =
+      buttonEl.dataset.baseLabel ||
+      buttonEl.dataset.currentLabel ||
+      buttonEl.getAttribute("aria-label") ||
+      "";
+    if (accessibleLabel) {
+      buttonEl.setAttribute("aria-label", accessibleLabel);
+      if (!buttonEl.dataset.busy || buttonEl.dataset.busy !== "true") {
+        buttonEl.title = accessibleLabel;
+      }
+    }
+  }
+  function getHeaderActionDisplayMeta(status) {
+    const runtimeCapabilitiesSnapshot = getHeaderActionRuntimeCapabilitiesSnapshot();
+    const xlsxVisible = canCurrentRuntimeManualXlsxExport(runtimeCapabilitiesSnapshot);
+    const buttons = {
+      refresh: { visible: !!runtimeCapabilitiesSnapshot.canRefresh, primary: false },
+      save: { visible: !!runtimeCapabilitiesSnapshot.canSave, primary: false },
+      xlsx: { visible: !!xlsxVisible, primary: false },
+      close: { visible: !!runtimeCapabilitiesSnapshot.canClose, primary: false },
+    };
+    const primaryAction = buttons.save.visible
+      ? "save"
+      : buttons.xlsx.visible
+        ? "xlsx"
+        : buttons.refresh.visible
+          ? "refresh"
+          : buttons.close.visible
+            ? "close"
+            : null;
+    if (primaryAction && buttons[primaryAction]) {
+      buttons[primaryAction].primary = true;
+    }
+    return {
+      buttons: buttons,
+      chip: formatHeaderActionStatusChip(status),
+    };
   }
   function syncSnapshotActionButtonLabel(buttonEl, actionKind, status) {
     if (!buttonEl) return;
-    const baseHtml = buttonEl.dataset.baseHtml || buttonEl.innerHTML;
     const nextLabel = formatSnapshotActionLabel(status, actionKind);
-    const baseLabel = getSnapshotActionBaseLabel(actionKind);
-    if (nextLabel === baseLabel) {
-      buttonEl.innerHTML = baseHtml;
-      return;
-    }
-    buttonEl.textContent = nextLabel;
+    setHeaderActionButtonLabel(buttonEl, nextLabel);
   }
   function syncSnapshotActionButtons(status) {
+    const displayMeta = getHeaderActionDisplayMeta(status);
     syncSnapshotActionButtonLabel(document.getElementById("sadv-save-btn"), "save", status);
     syncSnapshotActionButtonLabel(document.getElementById("sadv-xlsx-btn"), "xlsx", status);
+    applyHeaderActionButtonPresentation(
+      document.getElementById("sadv-refresh-btn"),
+      displayMeta.buttons.refresh
+    );
+    applyHeaderActionButtonPresentation(
+      document.getElementById("sadv-save-btn"),
+      displayMeta.buttons.save
+    );
+    applyHeaderActionButtonPresentation(
+      document.getElementById("sadv-xlsx-btn"),
+      displayMeta.buttons.xlsx
+    );
+    applyHeaderActionButtonPresentation(
+      document.getElementById("sadv-x"),
+      displayMeta.buttons.close
+    );
+    syncHeaderActionStatusChip(status);
   }
   function resolveRuntimeCapabilities() {
     // stage 2 boundary:
@@ -10891,18 +11139,27 @@ function applyUiControlsTab(tab) {
       sadvRefreshBtnEl.addEventListener("click", async function () {
         if (this.disabled || this.dataset.busy === "true") return;
         const btn = this;
-        const originalHTML = btn.innerHTML;
+        const baseLabel = btn.dataset.baseLabel || "새로고침";
+        const originalTitle = btn.title || baseLabel;
+        const originalAriaLabel = btn.getAttribute("aria-label") || baseLabel;
         btn.dataset.busy = "true";
         btn.disabled = true;
         btn.classList.add("spinning");
-        btn.innerHTML = ICONS.refresh + " 로딩 중...";
+        btn.title = "새로고침 중";
+        btn.setAttribute("aria-label", "새로고침 중");
         try {
           await runFullRefreshPipeline({ trigger: "manual", button: btn });
         } finally {
           btn.classList.remove("spinning");
           btn.disabled = false;
           btn.dataset.busy = "false";
-          btn.innerHTML = originalHTML;
+          btn.title = originalTitle;
+          btn.setAttribute("aria-label", originalAriaLabel);
+          if (typeof syncSnapshotActionButtons === "function") {
+            syncSnapshotActionButtons(
+              typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null
+            );
+          }
           __sadvNotify();
         }
       });
@@ -10913,7 +11170,6 @@ function applyUiControlsTab(tab) {
 
   var sadvSaveBtnEl = document.getElementById("sadv-save-btn");
   if (sadvSaveBtnEl) {
-    sadvSaveBtnEl.dataset.baseHtml = sadvSaveBtnEl.innerHTML;
     if (!runtimeCapabilities.canSave) {
       sadvSaveBtnEl.style.display = "none";
       sadvSaveBtnEl.setAttribute("aria-hidden", "true");
@@ -10942,7 +11198,6 @@ function applyUiControlsTab(tab) {
 
   var sadvXlsxBtnEl = document.getElementById("sadv-xlsx-btn");
   if (sadvXlsxBtnEl) {
-    sadvXlsxBtnEl.dataset.baseHtml = sadvXlsxBtnEl.innerHTML;
     // XLSX 상세 저장은 기존 CSV 수동 저장 자리를 완전히 대체한다.
     // 기본 public surface는 live interactive manual button이 정본이다.
     // 단, merge.py가 만든 read-only saved merged snapshot에서는
@@ -12450,6 +12705,23 @@ function bindSnapshotManualXlsxButton(buttonEl) {
   buttonEl.dataset.snapshotXlsxBound = "true";
   if (typeof syncXlsxButtonVisibility === "function") {
     syncXlsxButtonVisibility();
+  }
+  if (typeof window !== "undefined" && typeof subscribeRuntimeSaveStatus === "function") {
+    if (typeof window.__SADV_SYNC_ACTION_BUTTONS_UNSUB__ === "function") {
+      try {
+        window.__SADV_SYNC_ACTION_BUTTONS_UNSUB__();
+      } catch (_) {}
+    }
+    window.__SADV_SYNC_ACTION_BUTTONS_UNSUB__ = subscribeRuntimeSaveStatus(function (status) {
+      if (typeof syncSnapshotActionButtons === "function") {
+        syncSnapshotActionButtons(status);
+      }
+    });
+  }
+  if (typeof syncSnapshotActionButtons === "function") {
+    syncSnapshotActionButtons(
+      typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null
+    );
   }
   buttonEl.addEventListener("click", function () {
     if (buttonEl.disabled) return;
@@ -14601,6 +14873,14 @@ function buildSnapshotSerializedHelperSection() {
     }
     const allowSavedMergedXlsx =
       !!(payload && payload.mergedMeta && payload.mergedMeta.isMerged);
+    const actionStatusChipEl = clone.querySelector("#sadv-action-status-chip");
+    if (actionStatusChipEl) {
+      actionStatusChipEl.hidden = true;
+      actionStatusChipEl.setAttribute("aria-hidden", "true");
+      actionStatusChipEl.textContent = "";
+      actionStatusChipEl.removeAttribute("data-tone");
+      actionStatusChipEl.removeAttribute("title");
+    }
     ["sadv-refresh-btn", "sadv-save-btn", "sadv-x"].forEach(function (id) {
       const el = clone.querySelector("#" + id);
       if (el) el.remove();
@@ -14615,6 +14895,9 @@ function buildSnapshotSerializedHelperSection() {
         xlsxEl.removeAttribute("aria-hidden");
         xlsxEl.disabled = false;
         xlsxEl.title = "병합 데이터 엑셀 저장";
+        xlsxEl.setAttribute("aria-label", "엑셀");
+        xlsxEl.classList.add("sadv-action-btn-primary");
+        xlsxEl.classList.remove("sadv-action-btn-secondary", "spinning");
       }
     }
     if (topRow && topRow.lastElementChild) {
@@ -14860,7 +15143,7 @@ function buildSnapshotSerializedHelperSection() {
           (displayMeta && displayMeta.snapshotTitle) || "SearchAdvisor Merged Report",
         snapshotLines,
         accountBadge:
-          (displayMeta && displayMeta.accountBadgeLabel) || ("MERGED " + naverIds.length + " IDs"),
+          (displayMeta && displayMeta.accountBadgeLabel) || ("병합 " + naverIds.length + "개 계정"),
         accountTitle:
           (displayMeta && displayMeta.accountBadgeTitle) || naverIds.join(", "),
         runtimeBadgeLabel:
@@ -15060,6 +15343,18 @@ function buildSnapshotSerializedHelperSection() {
     // saved snapshot inline bootstrap도 같은 helper pack을 함께 직렬화해야 한다.
     // 누락되면 reopen 시 pageerror가 나고 shell/API selection parity까지 흔들릴 수 있다.
     ${syncXlsxButtonVisibility.toString()}
+    ${getHeaderActionRuntimeCapabilitiesSnapshot.toString()}
+    ${canCurrentRuntimeManualXlsxExport.toString()}
+    ${getSnapshotActionBaseLabel.toString()}
+    ${getSnapshotActionStatusKind.toString()}
+    ${formatSnapshotActionLabel.toString()}
+    ${setHeaderActionButtonLabel.toString()}
+    ${formatHeaderActionStatusChip.toString()}
+    ${syncHeaderActionStatusChip.toString()}
+    ${applyHeaderActionButtonPresentation.toString()}
+    ${getHeaderActionDisplayMeta.toString()}
+    ${syncSnapshotActionButtonLabel.toString()}
+    ${syncSnapshotActionButtons.toString()}
     // merge.py 산출물은 read-only saved snapshot에서도 공통 xlsx save orchestration을
     // 그대로 재사용해야 하므로, 실행 옵션/버튼 바인딩 helper도 함께 직렬화한다.
     ${buildSnapshotManualXlsxExecutionOptions.toString()}

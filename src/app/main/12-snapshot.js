@@ -397,6 +397,23 @@ function bindSnapshotManualXlsxButton(buttonEl) {
   if (typeof syncXlsxButtonVisibility === "function") {
     syncXlsxButtonVisibility();
   }
+  if (typeof window !== "undefined" && typeof subscribeRuntimeSaveStatus === "function") {
+    if (typeof window.__SADV_SYNC_ACTION_BUTTONS_UNSUB__ === "function") {
+      try {
+        window.__SADV_SYNC_ACTION_BUTTONS_UNSUB__();
+      } catch (_) {}
+    }
+    window.__SADV_SYNC_ACTION_BUTTONS_UNSUB__ = subscribeRuntimeSaveStatus(function (status) {
+      if (typeof syncSnapshotActionButtons === "function") {
+        syncSnapshotActionButtons(status);
+      }
+    });
+  }
+  if (typeof syncSnapshotActionButtons === "function") {
+    syncSnapshotActionButtons(
+      typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null
+    );
+  }
   buttonEl.addEventListener("click", function () {
     if (buttonEl.disabled) return;
     const saveStatus =
@@ -2547,6 +2564,14 @@ function buildSnapshotSerializedHelperSection() {
     }
     const allowSavedMergedXlsx =
       !!(payload && payload.mergedMeta && payload.mergedMeta.isMerged);
+    const actionStatusChipEl = clone.querySelector("#sadv-action-status-chip");
+    if (actionStatusChipEl) {
+      actionStatusChipEl.hidden = true;
+      actionStatusChipEl.setAttribute("aria-hidden", "true");
+      actionStatusChipEl.textContent = "";
+      actionStatusChipEl.removeAttribute("data-tone");
+      actionStatusChipEl.removeAttribute("title");
+    }
     ["sadv-refresh-btn", "sadv-save-btn", "sadv-x"].forEach(function (id) {
       const el = clone.querySelector("#" + id);
       if (el) el.remove();
@@ -2561,6 +2586,9 @@ function buildSnapshotSerializedHelperSection() {
         xlsxEl.removeAttribute("aria-hidden");
         xlsxEl.disabled = false;
         xlsxEl.title = "병합 데이터 엑셀 저장";
+        xlsxEl.setAttribute("aria-label", "엑셀");
+        xlsxEl.classList.add("sadv-action-btn-primary");
+        xlsxEl.classList.remove("sadv-action-btn-secondary", "spinning");
       }
     }
     if (topRow && topRow.lastElementChild) {
@@ -2806,7 +2834,7 @@ function buildSnapshotSerializedHelperSection() {
           (displayMeta && displayMeta.snapshotTitle) || "SearchAdvisor Merged Report",
         snapshotLines,
         accountBadge:
-          (displayMeta && displayMeta.accountBadgeLabel) || ("MERGED " + naverIds.length + " IDs"),
+          (displayMeta && displayMeta.accountBadgeLabel) || ("병합 " + naverIds.length + "개 계정"),
         accountTitle:
           (displayMeta && displayMeta.accountBadgeTitle) || naverIds.join(", "),
         runtimeBadgeLabel:
@@ -3006,6 +3034,18 @@ function buildSnapshotSerializedHelperSection() {
     // saved snapshot inline bootstrap도 같은 helper pack을 함께 직렬화해야 한다.
     // 누락되면 reopen 시 pageerror가 나고 shell/API selection parity까지 흔들릴 수 있다.
     ${syncXlsxButtonVisibility.toString()}
+    ${getHeaderActionRuntimeCapabilitiesSnapshot.toString()}
+    ${canCurrentRuntimeManualXlsxExport.toString()}
+    ${getSnapshotActionBaseLabel.toString()}
+    ${getSnapshotActionStatusKind.toString()}
+    ${formatSnapshotActionLabel.toString()}
+    ${setHeaderActionButtonLabel.toString()}
+    ${formatHeaderActionStatusChip.toString()}
+    ${syncHeaderActionStatusChip.toString()}
+    ${applyHeaderActionButtonPresentation.toString()}
+    ${getHeaderActionDisplayMeta.toString()}
+    ${syncSnapshotActionButtonLabel.toString()}
+    ${syncSnapshotActionButtons.toString()}
     // merge.py 산출물은 read-only saved snapshot에서도 공통 xlsx save orchestration을
     // 그대로 재사용해야 하므로, 실행 옵션/버튼 바인딩 helper도 함께 직렬화한다.
     ${buildSnapshotManualXlsxExecutionOptions.toString()}

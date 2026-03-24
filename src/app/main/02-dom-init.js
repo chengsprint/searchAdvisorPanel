@@ -84,6 +84,29 @@ if (headerEl) {
   const siteLabelMetaEl = document.getElementById("sadv-site-label");
   const cacheMetaEl = document.getElementById("sadv-cache-meta");
 
+  function normalizeHeaderActionButton(buttonEl, label) {
+    if (!buttonEl) return;
+    const iconSvgEl = buttonEl.querySelector("svg");
+    const iconHtml = iconSvgEl ? iconSvgEl.outerHTML : "";
+    const safeLabel = typeof label === "string" ? label.trim() : "";
+    buttonEl.dataset.baseLabel = safeLabel;
+    buttonEl.dataset.baseTitle = buttonEl.getAttribute("title") || safeLabel;
+    buttonEl.innerHTML = sanitizeHTML(
+      safeLabel
+        ? `<span class="sadv-btn-icon" aria-hidden="true">${iconHtml}</span><span class="sadv-btn-label">${escHtml(safeLabel)}</span>`
+        : `<span class="sadv-btn-icon" aria-hidden="true">${iconHtml}</span>`
+    );
+    if (safeLabel) {
+      buttonEl.setAttribute("aria-label", safeLabel);
+      if (!buttonEl.getAttribute("title")) buttonEl.setAttribute("title", safeLabel);
+    }
+  }
+
+  normalizeHeaderActionButton(refreshBtnEl, "새로고침");
+  normalizeHeaderActionButton(saveBtnEl, "저장");
+  normalizeHeaderActionButton(xlsxBtnEl, "엑셀");
+  normalizeHeaderActionButton(closeBtnEl, "닫기");
+
   if (legacyTopRow && brandTitleEl && modeBarEl) {
     const headerTopEl = document.createElement("div");
     headerTopEl.className = "sadv-header-top";
@@ -122,6 +145,13 @@ if (headerEl) {
     [refreshBtnEl, saveBtnEl, xlsxBtnEl, closeBtnEl].forEach((node) => {
       if (node) actionsWrapEl.appendChild(node);
     });
+    const actionStatusChipEl = document.createElement("span");
+    actionStatusChipEl.id = "sadv-action-status-chip";
+    actionStatusChipEl.className = "sadv-action-status-chip";
+    actionStatusChipEl.hidden = true;
+    actionStatusChipEl.setAttribute("aria-hidden", "true");
+    actionStatusChipEl.setAttribute("aria-live", "polite");
+    actionsWrapEl.appendChild(actionStatusChipEl);
 
     const metaRowEl = document.createElement("div");
     metaRowEl.className = "sadv-header-meta";
@@ -226,12 +256,57 @@ siteUiStyle.textContent = `
 }
 .sadv-header-actions{
   display:flex !important;
-  gap:8px !important;
+  gap:6px !important;
   align-items:center !important;
   flex-wrap:nowrap !important;
   justify-content:flex-end !important;
   white-space:nowrap !important;
   flex-shrink:0 !important;
+}
+.sadv-btn-icon{
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  line-height:0 !important;
+  flex-shrink:0 !important;
+}
+.sadv-btn-label{
+  display:inline-flex !important;
+  align-items:center !important;
+  line-height:1 !important;
+}
+.sadv-action-status-chip{
+  display:inline-flex !important;
+  align-items:center !important;
+  min-height:22px !important;
+  padding:2px 8px !important;
+  border-radius:999px !important;
+  border:1px solid rgba(255,212,0,0.16) !important;
+  background:rgba(255,212,0,0.09) !important;
+  color:#ffe082 !important;
+  font-size:10px !important;
+  font-weight:700 !important;
+  line-height:1.1 !important;
+  white-space:nowrap !important;
+  flex-shrink:0 !important;
+}
+.sadv-action-status-chip[hidden]{
+  display:none !important;
+}
+.sadv-action-status-chip[data-tone="progress"]{
+  border-color:rgba(255,212,0,0.22) !important;
+  background:rgba(255,212,0,0.10) !important;
+  color:#ffe082 !important;
+}
+.sadv-action-status-chip[data-tone="success"]{
+  border-color:rgba(133,224,133,0.24) !important;
+  background:rgba(46,125,50,0.16) !important;
+  color:#c8f7c5 !important;
+}
+.sadv-action-status-chip[data-tone="warning"]{
+  border-color:rgba(255,183,77,0.28) !important;
+  background:rgba(255,152,0,0.14) !important;
+  color:#ffe0b2 !important;
 }
 .sadv-header-meta{
   display:grid !important;
@@ -498,12 +573,41 @@ siteUiStyle.textContent = `
 #sadv-refresh-btn,
 #sadv-save-btn,
 #sadv-xlsx-btn{
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:6px !important;
   background:var(--sadv-layer-01) !important;
   border:1px solid var(--sadv-border) !important;
   color:var(--sadv-text-secondary) !important;
-  padding:0 12px !important;
+  padding:0 10px !important;
   min-width:0 !important;
   font-size:12px !important;
+}
+#sadv-refresh-btn.sadv-action-btn-primary,
+#sadv-save-btn.sadv-action-btn-primary,
+#sadv-xlsx-btn.sadv-action-btn-primary{
+  min-width:70px !important;
+  padding:0 12px !important;
+}
+#sadv-refresh-btn.sadv-action-btn-secondary,
+#sadv-save-btn.sadv-action-btn-secondary,
+#sadv-xlsx-btn.sadv-action-btn-secondary,
+#sadv-x.sadv-action-btn-secondary{
+  width:36px !important;
+  min-width:36px !important;
+  padding:0 !important;
+  gap:0 !important;
+}
+#sadv-refresh-btn.sadv-action-btn-secondary .sadv-btn-label,
+#sadv-save-btn.sadv-action-btn-secondary .sadv-btn-label,
+#sadv-xlsx-btn.sadv-action-btn-secondary .sadv-btn-label{
+  display:none !important;
+}
+#sadv-refresh-btn.spinning .sadv-btn-icon svg,
+#sadv-save-btn.spinning .sadv-btn-icon svg,
+#sadv-xlsx-btn.spinning .sadv-btn-icon svg{
+  animation:sadv-action-spin 0.9s linear infinite;
 }
 #sadv-refresh-btn:hover,
 #sadv-save-btn:hover,
@@ -523,6 +627,10 @@ siteUiStyle.textContent = `
   border-color:var(--sadv-danger) !important;
   color:var(--sadv-danger) !important;
   background:${T.dangerSoftBg} !important;
+}
+@keyframes sadv-action-spin{
+  from{transform:rotate(0deg)}
+  to{transform:rotate(360deg)}
 }
 #sadv-bd,
 #sadv-tabpanel{
@@ -558,6 +666,7 @@ siteUiStyle.textContent = `
   .sadv-header-actions{
     width:100%;
     justify-content:flex-start !important;
+    flex-wrap:wrap !important;
   }
   .sadv-header-meta{
     display:flex !important;

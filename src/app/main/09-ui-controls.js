@@ -195,6 +195,35 @@ function applyUiControlsTab(tab) {
     else labelEl.textContent = summary;
     labelEl.title = summary;
     syncXlsxButtonVisibility();
+    syncSnapshotActionButtons(
+      typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null
+    );
+  }
+  function getHeaderActionRuntimeCapabilitiesSnapshot() {
+    return typeof getRuntimeCapabilities === "function"
+      ? getRuntimeCapabilities()
+      : typeof runtimeCapabilities !== "undefined"
+        ? runtimeCapabilities
+        : typeof resolveRuntimeCapabilities === "function"
+          ? resolveRuntimeCapabilities()
+          : {
+              canRefresh: false,
+              canSave: false,
+              canClose: false,
+              canXlsxSave: false,
+              isReadOnly: true,
+            };
+  }
+  function canCurrentRuntimeManualXlsxExport(runtimeCapabilitiesSnapshot) {
+    if (typeof canManualXlsxExportInCurrentRuntime === "function") {
+      return !!canManualXlsxExportInCurrentRuntime();
+    }
+    return !!(
+      runtimeCapabilitiesSnapshot &&
+      runtimeCapabilitiesSnapshot.canSave &&
+      runtimeCapabilitiesSnapshot.canXlsxSave &&
+      !runtimeCapabilitiesSnapshot.isReadOnly
+    );
   }
   function syncXlsxButtonVisibility() {
     const xlsxBtnEl = document.getElementById("sadv-xlsx-btn");
@@ -203,24 +232,8 @@ function applyUiControlsTab(tab) {
     // 따라서 live initialize()의 closure(runtimeCapabilities)에만 의존하면
     // reopen 시 ReferenceError/undefined 접근으로 회귀가 날 수 있다.
     // 공통 helper를 그대로 재사용하되, closure가 없을 때도 self-contained 하게 capability snapshot을 읽는다.
-    const runtimeCapabilitiesSnapshot =
-      typeof getRuntimeCapabilities === "function"
-        ? getRuntimeCapabilities()
-        : typeof runtimeCapabilities !== "undefined"
-          ? runtimeCapabilities
-          : {
-              canSave: false,
-              canXlsxSave: false,
-              isReadOnly: true,
-            };
-    const canManualXlsxSave =
-      typeof canManualXlsxExportInCurrentRuntime === "function"
-        ? canManualXlsxExportInCurrentRuntime()
-        : !!(
-            runtimeCapabilitiesSnapshot.canSave &&
-            runtimeCapabilitiesSnapshot.canXlsxSave &&
-            !runtimeCapabilitiesSnapshot.isReadOnly
-          );
+    const runtimeCapabilitiesSnapshot = getHeaderActionRuntimeCapabilitiesSnapshot();
+    const canManualXlsxSave = canCurrentRuntimeManualXlsxExport(runtimeCapabilitiesSnapshot);
     if (!canManualXlsxSave) {
       xlsxBtnEl.style.display = "none";
       xlsxBtnEl.setAttribute("aria-hidden", "true");
@@ -334,41 +347,167 @@ function applyUiControlsTab(tab) {
     const baseLabel = getSnapshotActionBaseLabel(actionKind);
     if (!status || typeof status !== "object") return baseLabel;
     const statusKind = getSnapshotActionStatusKind(status);
-    if (statusKind !== actionKind) return baseLabel;
-    const entryPoint = typeof status.entryPoint === "string" ? status.entryPoint : "";
-    const expectedEntryPoint = actionKind === "xlsx" ? "button-xlsx" : "button-save";
-    if (entryPoint !== expectedEntryPoint) return baseLabel;
+    return baseLabel;
+  }
+  function setHeaderActionButtonLabel(buttonEl, label) {
+    if (!buttonEl) return;
+    const nextLabel = typeof label === "string" && label.trim() ? label.trim() : "";
+    if (!nextLabel) return;
+    const labelEl = buttonEl.querySelector(".sadv-btn-label");
+    if (labelEl) {
+      labelEl.textContent = nextLabel;
+    } else {
+      buttonEl.textContent = nextLabel;
+    }
+    buttonEl.dataset.currentLabel = nextLabel;
+  }
+  function formatHeaderActionStatusChip(status) {
+    if (!status || typeof status !== "object" || status.uiHidden) return null;
+    const actionKind = getSnapshotActionStatusKind(status);
+    const baseLabel = getSnapshotActionBaseLabel(actionKind);
     const state = typeof status.state === "string" ? status.state : "idle";
     const progress = status.progress && typeof status.progress === "object" ? status.progress : {};
     const done =
       typeof progress.done === "number" && Number.isFinite(progress.done) ? progress.done : 0;
     const total =
       typeof progress.total === "number" && Number.isFinite(progress.total) ? progress.total : 0;
+    const stageLabel =
+      typeof status.stageLabel === "string" && status.stageLabel.trim()
+        ? status.stageLabel.trim()
+        : null;
     if (status.active) {
       if (total > 0 && (state === "collecting" || done > 0)) {
-        return done + "/" + total;
+        return {
+          label: `${baseLabel} ${done}/${total}`,
+          tone: "progress",
+        };
       }
-      return actionKind === "xlsx" ? "엑셀 준비" : "저장 준비";
+      return {
+        label: stageLabel || `${baseLabel} 준비 중`,
+        tone: "progress",
+      };
     }
-    if (state === "completed" || state === "completed-with-issues") {
-      return actionKind === "xlsx" ? "엑셀 완료" : "저장 완료";
+    if (state === "completed") {
+      return {
+        label: `${baseLabel} 완료`,
+        tone: "success",
+      };
     }
-    return baseLabel;
+    if (state === "completed-with-issues") {
+      return {
+        label: stageLabel || `${baseLabel} 일부 확인 필요`,
+        tone: "warning",
+      };
+    }
+    if (state === "blocked") {
+      return {
+        label: stageLabel || `${baseLabel} 차단`,
+        tone: "warning",
+      };
+    }
+    if (state === "failed") {
+      return {
+        label: stageLabel || `${baseLabel} 실패`,
+        tone: "warning",
+      };
+    }
+    return null;
+  }
+  function syncHeaderActionStatusChip(status) {
+    const chipEl = document.getElementById("sadv-action-status-chip");
+    if (!chipEl) return;
+    const chipMeta = formatHeaderActionStatusChip(status);
+    if (!chipMeta) {
+      chipEl.hidden = true;
+      chipEl.setAttribute("aria-hidden", "true");
+      chipEl.textContent = "";
+      chipEl.removeAttribute("data-tone");
+      chipEl.removeAttribute("title");
+      return;
+    }
+    chipEl.hidden = false;
+    chipEl.setAttribute("aria-hidden", "false");
+    chipEl.textContent = chipMeta.label;
+    chipEl.dataset.tone = chipMeta.tone || "progress";
+    chipEl.title = chipMeta.label;
+  }
+  function applyHeaderActionButtonPresentation(buttonEl, presentation) {
+    if (!buttonEl) return;
+    const isVisible = !!(presentation && presentation.visible);
+    buttonEl.style.display = isVisible ? "" : "none";
+    if (!isVisible) {
+      buttonEl.setAttribute("aria-hidden", "true");
+      buttonEl.classList.remove("sadv-action-btn-primary", "sadv-action-btn-secondary");
+      return;
+    }
+    buttonEl.removeAttribute("aria-hidden");
+    const isPrimary = !!presentation.primary;
+    buttonEl.classList.toggle("sadv-action-btn-primary", isPrimary);
+    buttonEl.classList.toggle("sadv-action-btn-secondary", !isPrimary);
+    const accessibleLabel =
+      buttonEl.dataset.baseLabel ||
+      buttonEl.dataset.currentLabel ||
+      buttonEl.getAttribute("aria-label") ||
+      "";
+    if (accessibleLabel) {
+      buttonEl.setAttribute("aria-label", accessibleLabel);
+      if (!buttonEl.dataset.busy || buttonEl.dataset.busy !== "true") {
+        buttonEl.title = accessibleLabel;
+      }
+    }
+  }
+  function getHeaderActionDisplayMeta(status) {
+    const runtimeCapabilitiesSnapshot = getHeaderActionRuntimeCapabilitiesSnapshot();
+    const xlsxVisible = canCurrentRuntimeManualXlsxExport(runtimeCapabilitiesSnapshot);
+    const buttons = {
+      refresh: { visible: !!runtimeCapabilitiesSnapshot.canRefresh, primary: false },
+      save: { visible: !!runtimeCapabilitiesSnapshot.canSave, primary: false },
+      xlsx: { visible: !!xlsxVisible, primary: false },
+      close: { visible: !!runtimeCapabilitiesSnapshot.canClose, primary: false },
+    };
+    const primaryAction = buttons.save.visible
+      ? "save"
+      : buttons.xlsx.visible
+        ? "xlsx"
+        : buttons.refresh.visible
+          ? "refresh"
+          : buttons.close.visible
+            ? "close"
+            : null;
+    if (primaryAction && buttons[primaryAction]) {
+      buttons[primaryAction].primary = true;
+    }
+    return {
+      buttons: buttons,
+      chip: formatHeaderActionStatusChip(status),
+    };
   }
   function syncSnapshotActionButtonLabel(buttonEl, actionKind, status) {
     if (!buttonEl) return;
-    const baseHtml = buttonEl.dataset.baseHtml || buttonEl.innerHTML;
     const nextLabel = formatSnapshotActionLabel(status, actionKind);
-    const baseLabel = getSnapshotActionBaseLabel(actionKind);
-    if (nextLabel === baseLabel) {
-      buttonEl.innerHTML = baseHtml;
-      return;
-    }
-    buttonEl.textContent = nextLabel;
+    setHeaderActionButtonLabel(buttonEl, nextLabel);
   }
   function syncSnapshotActionButtons(status) {
+    const displayMeta = getHeaderActionDisplayMeta(status);
     syncSnapshotActionButtonLabel(document.getElementById("sadv-save-btn"), "save", status);
     syncSnapshotActionButtonLabel(document.getElementById("sadv-xlsx-btn"), "xlsx", status);
+    applyHeaderActionButtonPresentation(
+      document.getElementById("sadv-refresh-btn"),
+      displayMeta.buttons.refresh
+    );
+    applyHeaderActionButtonPresentation(
+      document.getElementById("sadv-save-btn"),
+      displayMeta.buttons.save
+    );
+    applyHeaderActionButtonPresentation(
+      document.getElementById("sadv-xlsx-btn"),
+      displayMeta.buttons.xlsx
+    );
+    applyHeaderActionButtonPresentation(
+      document.getElementById("sadv-x"),
+      displayMeta.buttons.close
+    );
+    syncHeaderActionStatusChip(status);
   }
   function resolveRuntimeCapabilities() {
     // stage 2 boundary:
@@ -803,18 +942,27 @@ function applyUiControlsTab(tab) {
       sadvRefreshBtnEl.addEventListener("click", async function () {
         if (this.disabled || this.dataset.busy === "true") return;
         const btn = this;
-        const originalHTML = btn.innerHTML;
+        const baseLabel = btn.dataset.baseLabel || "새로고침";
+        const originalTitle = btn.title || baseLabel;
+        const originalAriaLabel = btn.getAttribute("aria-label") || baseLabel;
         btn.dataset.busy = "true";
         btn.disabled = true;
         btn.classList.add("spinning");
-        btn.innerHTML = ICONS.refresh + " 로딩 중...";
+        btn.title = "새로고침 중";
+        btn.setAttribute("aria-label", "새로고침 중");
         try {
           await runFullRefreshPipeline({ trigger: "manual", button: btn });
         } finally {
           btn.classList.remove("spinning");
           btn.disabled = false;
           btn.dataset.busy = "false";
-          btn.innerHTML = originalHTML;
+          btn.title = originalTitle;
+          btn.setAttribute("aria-label", originalAriaLabel);
+          if (typeof syncSnapshotActionButtons === "function") {
+            syncSnapshotActionButtons(
+              typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null
+            );
+          }
           __sadvNotify();
         }
       });
@@ -825,7 +973,6 @@ function applyUiControlsTab(tab) {
 
   var sadvSaveBtnEl = document.getElementById("sadv-save-btn");
   if (sadvSaveBtnEl) {
-    sadvSaveBtnEl.dataset.baseHtml = sadvSaveBtnEl.innerHTML;
     if (!runtimeCapabilities.canSave) {
       sadvSaveBtnEl.style.display = "none";
       sadvSaveBtnEl.setAttribute("aria-hidden", "true");
@@ -854,7 +1001,6 @@ function applyUiControlsTab(tab) {
 
   var sadvXlsxBtnEl = document.getElementById("sadv-xlsx-btn");
   if (sadvXlsxBtnEl) {
-    sadvXlsxBtnEl.dataset.baseHtml = sadvXlsxBtnEl.innerHTML;
     // XLSX 상세 저장은 기존 CSV 수동 저장 자리를 완전히 대체한다.
     // 기본 public surface는 live interactive manual button이 정본이다.
     // 단, merge.py가 만든 read-only saved merged snapshot에서는
