@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-24T13:34:04Z";
-var __SADV_GIT_HEAD__="70dd1d5";
+var __SADV_BUILD_STAMP__="2026-03-24T13:57:14Z";
+var __SADV_GIT_HEAD__="262b274";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -3120,19 +3120,19 @@ if (initialShellStyleEl) {
 document.body.appendChild(p);
 
 const headerEl = document.getElementById("sadv-header");
-if (headerEl) {
-  const legacyTopRow = headerEl.firstElementChild;
-  const legacyLeft = legacyTopRow ? legacyTopRow.firstElementChild : null;
-  const legacyTitleRow = legacyLeft ? legacyLeft.firstElementChild : null;
-  const brandTitleEl = legacyTitleRow ? legacyTitleRow.firstElementChild : null;
-  const modeBarEl = document.getElementById("sadv-mode-bar");
-  const refreshBtnEl = document.getElementById("sadv-refresh-btn");
-  const saveBtnEl = document.getElementById("sadv-save-btn");
-  const xlsxBtnEl = document.getElementById("sadv-xlsx-btn");
-  const closeBtnEl = document.getElementById("sadv-x");
-  const accountBadgeEl = document.getElementById("sadv-account-badge");
-  const siteLabelMetaEl = document.getElementById("sadv-site-label");
-  const cacheMetaEl = document.getElementById("sadv-cache-meta");
+function normalizeHeaderActionShell(targetHeaderEl, options) {
+  if (!targetHeaderEl) return;
+  const doc = targetHeaderEl.ownerDocument || document;
+  const opts = options || {};
+  const modeBarEl = targetHeaderEl.querySelector("#sadv-mode-bar");
+  const refreshBtnEl = targetHeaderEl.querySelector("#sadv-refresh-btn");
+  const saveBtnEl = targetHeaderEl.querySelector("#sadv-save-btn");
+  const xlsxBtnEl = targetHeaderEl.querySelector("#sadv-xlsx-btn");
+  const closeBtnEl = targetHeaderEl.querySelector("#sadv-x");
+  const accountBadgeEl = targetHeaderEl.querySelector("#sadv-account-badge");
+  const siteLabelMetaEl = targetHeaderEl.querySelector("#sadv-site-label");
+  const cacheMetaEl = targetHeaderEl.querySelector("#sadv-cache-meta");
+  let actionStatusChipEl = targetHeaderEl.querySelector("#sadv-action-status-chip");
 
   function normalizeHeaderActionButton(buttonEl, label) {
     if (!buttonEl) return;
@@ -3159,28 +3159,68 @@ if (headerEl) {
   if (refreshBtnEl) refreshBtnEl.classList.add("sadv-btn-icon-only");
   if (closeBtnEl) closeBtnEl.classList.add("sadv-btn-icon-only");
 
-  if (legacyTopRow && brandTitleEl && modeBarEl) {
-    const headerTopEl = document.createElement("div");
+  if (siteLabelMetaEl && !siteLabelMetaEl.querySelector("span")) {
+    const siteLabelText = siteLabelMetaEl.textContent || "";
+    siteLabelMetaEl.textContent = "";
+    const siteLabelSpan = doc.createElement("span");
+    siteLabelSpan.textContent = siteLabelText;
+    siteLabelMetaEl.appendChild(siteLabelSpan);
+  }
+
+  if (!actionStatusChipEl) {
+    actionStatusChipEl = doc.createElement("span");
+    actionStatusChipEl.id = "sadv-action-status-chip";
+    actionStatusChipEl.className = "sadv-action-status-chip";
+    actionStatusChipEl.hidden = true;
+    actionStatusChipEl.setAttribute("aria-hidden", "true");
+    actionStatusChipEl.setAttribute("aria-live", "polite");
+  }
+
+  let headerTopEl = targetHeaderEl.querySelector(".sadv-header-top");
+  let metaRowEl = targetHeaderEl.querySelector(".sadv-header-meta");
+  let topActionsWrapEl = targetHeaderEl.querySelector(".sadv-header-top-actions");
+  let actionToolsEl = targetHeaderEl.querySelector("#sadv-header-action-row");
+  let saveHubWrapEl = targetHeaderEl.querySelector("#sadv-save-hub");
+  let saveHubBtnEl = targetHeaderEl.querySelector("#sadv-save-hub-btn");
+  let saveHubMenuEl = targetHeaderEl.querySelector("#sadv-save-hub-menu");
+
+  if (!headerTopEl || !metaRowEl || !topActionsWrapEl || !actionToolsEl) {
+    const legacyTopRow = targetHeaderEl.firstElementChild;
+    const legacyLeft = legacyTopRow ? legacyTopRow.firstElementChild : null;
+    const legacyTitleRow = legacyLeft ? legacyLeft.firstElementChild : null;
+    const brandTitleEl = legacyTitleRow
+      ? legacyTitleRow.firstElementChild
+      : targetHeaderEl.querySelector(".sadv-header-brand > :first-child");
+    if (!modeBarEl || !brandTitleEl) return;
+
+    headerTopEl = doc.createElement("div");
     headerTopEl.className = "sadv-header-top";
 
-    const brandWrapEl = document.createElement("div");
+    const brandWrapEl = doc.createElement("div");
     brandWrapEl.className = "sadv-header-brand";
     brandWrapEl.appendChild(brandTitleEl);
+
     const runtimeRef =
-      typeof window !== "undefined" && typeof window.__SEARCHADVISOR_RUNTIME_REF__ === "string"
-        ? window.__SEARCHADVISOR_RUNTIME_REF__.trim()
-        : "";
+      typeof opts.runtimeRef === "string"
+        ? opts.runtimeRef.trim()
+        : typeof window !== "undefined" &&
+            typeof window.__SEARCHADVISOR_RUNTIME_REF__ === "string"
+          ? window.__SEARCHADVISOR_RUNTIME_REF__.trim()
+          : "";
     const runtimeBuiltAt =
-      typeof window !== "undefined" && typeof window.__SEARCHADVISOR_RUNTIME_BUILD_AT__ === "string"
-        ? window.__SEARCHADVISOR_RUNTIME_BUILD_AT__.trim()
-        : "";
+      typeof opts.runtimeBuiltAt === "string"
+        ? opts.runtimeBuiltAt.trim()
+        : typeof window !== "undefined" &&
+            typeof window.__SEARCHADVISOR_RUNTIME_BUILD_AT__ === "string"
+          ? window.__SEARCHADVISOR_RUNTIME_BUILD_AT__.trim()
+          : "";
     const runtimeBadgeText = runtimeRef
       ? "@" + runtimeRef
       : runtimeBuiltAt
         ? runtimeBuiltAt.slice(5, 16).replace("T", " ")
         : "";
     if (runtimeBadgeText) {
-      const runtimeBadgeEl = document.createElement("span");
+      const runtimeBadgeEl = doc.createElement("span");
       runtimeBadgeEl.id = "sadv-runtime-badge";
       runtimeBadgeEl.textContent = runtimeBadgeText;
       runtimeBadgeEl.title = [
@@ -3192,81 +3232,74 @@ if (headerEl) {
       brandWrapEl.appendChild(runtimeBadgeEl);
     }
 
-    const topActionsWrapEl = document.createElement("div");
+    topActionsWrapEl = doc.createElement("div");
     topActionsWrapEl.className = "sadv-header-top-actions";
-    const actionToolsEl = document.createElement("div");
+    actionToolsEl = doc.createElement("div");
     actionToolsEl.id = "sadv-header-action-row";
     actionToolsEl.className = "sadv-header-action-tools";
+    topActionsWrapEl.appendChild(actionToolsEl);
 
-    const saveHubWrapEl = document.createElement("div");
-    saveHubWrapEl.id = "sadv-save-hub";
-    saveHubWrapEl.className = "sadv-save-hub";
-    const saveIconHtml = saveBtnEl && saveBtnEl.querySelector(".sadv-btn-icon")
-      ? saveBtnEl.querySelector(".sadv-btn-icon").innerHTML
-      : "";
-    const saveHubBtnEl = document.createElement("button");
-    saveHubBtnEl.id = "sadv-save-hub-btn";
-    saveHubBtnEl.type = "button";
-    saveHubBtnEl.className = "sadv-btn sadv-save-hub-btn";
-    saveHubBtnEl.dataset.baseLabel = "내보내기";
-    saveHubBtnEl.setAttribute("aria-label", "내보내기");
-    saveHubBtnEl.setAttribute("aria-haspopup", "menu");
-    saveHubBtnEl.setAttribute("aria-expanded", "false");
-    saveHubBtnEl.title = "내보내기";
-    saveHubBtnEl.innerHTML = sanitizeHTML(
-      `<span class="sadv-btn-icon" aria-hidden="true">${saveIconHtml}</span><span class="sadv-btn-label">내보내기</span><span class="sadv-save-hub-caret" aria-hidden="true">▾</span>`
-    );
-    const saveHubMenuEl = document.createElement("div");
-    saveHubMenuEl.id = "sadv-save-hub-menu";
-    saveHubMenuEl.className = "sadv-save-hub-menu";
-    saveHubMenuEl.hidden = true;
-    saveHubMenuEl.setAttribute("role", "menu");
-    if (saveBtnEl) {
-      saveBtnEl.classList.add("sadv-save-hub-item");
-      saveBtnEl.setAttribute("role", "menuitem");
-      saveHubMenuEl.appendChild(saveBtnEl);
-    }
-    if (xlsxBtnEl) {
-      xlsxBtnEl.classList.add("sadv-save-hub-item");
-      xlsxBtnEl.setAttribute("role", "menuitem");
-      saveHubMenuEl.appendChild(xlsxBtnEl);
-    }
-    saveHubWrapEl.appendChild(saveHubBtnEl);
-    saveHubWrapEl.appendChild(saveHubMenuEl);
-    actionToolsEl.appendChild(saveHubWrapEl);
-    if (refreshBtnEl) actionToolsEl.appendChild(refreshBtnEl);
-    if (closeBtnEl) actionToolsEl.appendChild(closeBtnEl);
-
-    const metaRowEl = document.createElement("div");
+    metaRowEl = doc.createElement("div");
     metaRowEl.className = "sadv-header-meta";
-
-    if (siteLabelMetaEl && !siteLabelMetaEl.querySelector("span")) {
-      const siteLabelText = siteLabelMetaEl.textContent || "";
-      siteLabelMetaEl.textContent = "";
-      const siteLabelSpan = document.createElement("span");
-      siteLabelSpan.textContent = siteLabelText;
-      siteLabelMetaEl.appendChild(siteLabelSpan);
-    }
-
-    const actionStatusChipEl = document.createElement("span");
-    actionStatusChipEl.id = "sadv-action-status-chip";
-    actionStatusChipEl.className = "sadv-action-status-chip";
-    actionStatusChipEl.hidden = true;
-    actionStatusChipEl.setAttribute("aria-hidden", "true");
-    actionStatusChipEl.setAttribute("aria-live", "polite");
-
-    [accountBadgeEl, siteLabelMetaEl, cacheMetaEl, actionStatusChipEl].forEach((node) => {
-      if (node) metaRowEl.appendChild(node);
-    });
 
     headerTopEl.appendChild(brandWrapEl);
     headerTopEl.appendChild(topActionsWrapEl);
-    topActionsWrapEl.appendChild(actionToolsEl);
 
-    legacyTopRow.remove();
-    headerEl.insertBefore(headerTopEl, modeBarEl);
-    headerEl.insertBefore(metaRowEl, modeBarEl);
+    if (legacyTopRow && legacyTopRow.parentNode === targetHeaderEl) legacyTopRow.remove();
+    targetHeaderEl.insertBefore(headerTopEl, modeBarEl);
+    targetHeaderEl.insertBefore(metaRowEl, modeBarEl);
   }
+
+  if (!saveHubWrapEl) {
+    saveHubWrapEl = doc.createElement("div");
+    saveHubWrapEl.id = "sadv-save-hub";
+    saveHubWrapEl.className = "sadv-save-hub";
+  }
+  if (!saveHubBtnEl) {
+    const saveIconHtml = saveBtnEl && saveBtnEl.querySelector(".sadv-btn-icon")
+      ? saveBtnEl.querySelector(".sadv-btn-icon").innerHTML
+      : "";
+    saveHubBtnEl = doc.createElement("button");
+    saveHubBtnEl.id = "sadv-save-hub-btn";
+    saveHubBtnEl.type = "button";
+    saveHubBtnEl.className = "sadv-btn sadv-save-hub-btn";
+    saveHubBtnEl.innerHTML = sanitizeHTML(
+      `<span class="sadv-btn-icon" aria-hidden="true">${saveIconHtml}</span><span class="sadv-btn-label">내보내기</span><span class="sadv-save-hub-caret" aria-hidden="true">▾</span>`
+    );
+  }
+  saveHubBtnEl.dataset.baseLabel = "내보내기";
+  saveHubBtnEl.setAttribute("aria-label", "내보내기");
+  saveHubBtnEl.setAttribute("aria-haspopup", "menu");
+  saveHubBtnEl.setAttribute("aria-expanded", "false");
+  saveHubBtnEl.title = "내보내기";
+
+  if (!saveHubMenuEl) {
+    saveHubMenuEl = doc.createElement("div");
+    saveHubMenuEl.id = "sadv-save-hub-menu";
+    saveHubMenuEl.className = "sadv-save-hub-menu";
+  }
+  saveHubMenuEl.hidden = true;
+  saveHubMenuEl.setAttribute("role", "menu");
+  [saveBtnEl, xlsxBtnEl].forEach((buttonEl) => {
+    if (!buttonEl) return;
+    buttonEl.classList.add("sadv-save-hub-item");
+    buttonEl.setAttribute("role", "menuitem");
+    if (buttonEl.parentNode !== saveHubMenuEl) saveHubMenuEl.appendChild(buttonEl);
+  });
+  if (saveHubBtnEl.parentNode !== saveHubWrapEl) saveHubWrapEl.appendChild(saveHubBtnEl);
+  if (saveHubMenuEl.parentNode !== saveHubWrapEl) saveHubWrapEl.appendChild(saveHubMenuEl);
+  if (saveHubWrapEl.parentNode !== actionToolsEl) actionToolsEl.insertBefore(saveHubWrapEl, actionToolsEl.firstChild || null);
+  if (refreshBtnEl && refreshBtnEl.parentNode !== actionToolsEl) actionToolsEl.appendChild(refreshBtnEl);
+  if (closeBtnEl && closeBtnEl.parentNode !== actionToolsEl) actionToolsEl.appendChild(closeBtnEl);
+
+  [accountBadgeEl, siteLabelMetaEl, cacheMetaEl, actionStatusChipEl].forEach((node) => {
+    if (!node || node.parentNode === metaRowEl) return;
+    metaRowEl.appendChild(node);
+  });
+}
+
+if (headerEl) {
+  normalizeHeaderActionShell(headerEl);
 }
 
 const requiredShellIds = [
@@ -15073,6 +15106,24 @@ function buildSnapshotSerializedHelperSection() {
     delete clone.dataset.sadvPrevPointerEvents;
     delete clone.dataset.sadvPrevBackground;
     delete clone.dataset.sadvPrevBorderLeftColor;
+    if (typeof normalizeHeaderActionShell === "function") {
+      // live와 saved/merge saved가 같은 header skeleton을 보도록,
+      // export 시점 clone도 현재 공통 header shell 정규화 경로를 먼저 탄다.
+      // 여기서 shell을 맞춰두지 않으면 buildSnapshotHtml 이후 산출물은
+      // 최신 helper를 포함해도 old top-right action cluster를 계속 끌고 갈 수 있다.
+      normalizeHeaderActionShell(clone, {
+        runtimeRef:
+          typeof window !== "undefined" &&
+          typeof window.__SEARCHADVISOR_RUNTIME_REF__ === "string"
+            ? window.__SEARCHADVISOR_RUNTIME_REF__
+            : "",
+        runtimeBuiltAt:
+          typeof window !== "undefined" &&
+          typeof window.__SEARCHADVISOR_RUNTIME_BUILD_AT__ === "string"
+            ? window.__SEARCHADVISOR_RUNTIME_BUILD_AT__
+            : "",
+      });
+    }
     const savedLabel = stampLabel(savedAt);
 
     // Handle V2 format for UI state

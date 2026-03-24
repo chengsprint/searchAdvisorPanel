@@ -2519,6 +2519,24 @@ function buildSnapshotSerializedHelperSection() {
     delete clone.dataset.sadvPrevPointerEvents;
     delete clone.dataset.sadvPrevBackground;
     delete clone.dataset.sadvPrevBorderLeftColor;
+    if (typeof normalizeHeaderActionShell === "function") {
+      // live와 saved/merge saved가 같은 header skeleton을 보도록,
+      // export 시점 clone도 현재 공통 header shell 정규화 경로를 먼저 탄다.
+      // 여기서 shell을 맞춰두지 않으면 buildSnapshotHtml 이후 산출물은
+      // 최신 helper를 포함해도 old top-right action cluster를 계속 끌고 갈 수 있다.
+      normalizeHeaderActionShell(clone, {
+        runtimeRef:
+          typeof window !== "undefined" &&
+          typeof window.__SEARCHADVISOR_RUNTIME_REF__ === "string"
+            ? window.__SEARCHADVISOR_RUNTIME_REF__
+            : "",
+        runtimeBuiltAt:
+          typeof window !== "undefined" &&
+          typeof window.__SEARCHADVISOR_RUNTIME_BUILD_AT__ === "string"
+            ? window.__SEARCHADVISOR_RUNTIME_BUILD_AT__
+            : "",
+      });
+    }
     const savedLabel = stampLabel(savedAt);
 
     // Handle V2 format for UI state
