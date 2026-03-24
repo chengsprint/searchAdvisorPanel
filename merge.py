@@ -38,6 +38,9 @@ MERGED_TEMPLATE_HELPERS = (
     "downloadMergedSnapshotXlsxCompat",
     "createMergedAccountsInfo",
 )
+MERGED_HEADER_SHELL_HELPERS = (
+    "normalizeHeaderActionShell",
+)
 DEFAULT_SOURCE_REF = "release"
 _CURRENT_SOURCE_REF = DEFAULT_SOURCE_REF
 
@@ -577,6 +580,10 @@ def load_snapshot_source_text() -> str:
     return load_merge_source_text_with_fallback("src/app/main/12-snapshot.js")
 
 
+def load_dom_init_source_text() -> str:
+    return load_merge_source_text_with_fallback("src/app/main/02-dom-init.js")
+
+
 def load_xlsx_source_text() -> str:
     source_text = load_merge_source_text_with_fallback("src/app/main/15-export-xlsx.js")
     cutoff = source_text.find("async function downloadSnapshotXlsx(")
@@ -626,6 +633,27 @@ def inject_missing_merge_helpers(html: str) -> str:
     return html + "\n<script>\n" + helper_block + "\n</script>\n"
 
 
+def inject_missing_merge_header_shell_helpers(html: str) -> str:
+    missing = [name for name in MERGED_HEADER_SHELL_HELPERS if not has_function_definition(html, name)]
+    if not missing:
+        return html
+    source_text = load_dom_init_source_text()
+    helper_block = "\n\n".join(extract_function_source(source_text, name) for name in missing).strip()
+    if not helper_block:
+        return html
+    anchors = (
+        "function getHeaderActionDisplayMeta(",
+        "function syncHeaderSaveHub(",
+        "function bindSnapshotManualXlsxButton(",
+        "</script>",
+    )
+    for anchor in anchors:
+        idx = html.find(anchor)
+        if idx >= 0:
+            return html[:idx] + helper_block + "\n\n" + html[idx:]
+    return html + "\n<script>\n" + helper_block + "\n</script>\n"
+
+
 def inject_missing_merge_xlsx_compat_pack(html: str) -> str:
     if "function buildSnapshotXlsxWorkbook(" in html and "function ensureSnapshotXlsxLibrary(" in html:
         return html
@@ -646,12 +674,25 @@ def inject_missing_merge_xlsx_compat_pack(html: str) -> str:
 
 
 def inject_missing_merge_xlsx_binding_call(html: str) -> str:
-    marker = 'bindSnapshotManualXlsxButton(document.getElementById("sadv-xlsx-btn"))'
+    marker = 'normalizeHeaderActionShell(document.getElementById("sadv-header")'
     if marker in html:
         return html
     binding_block = (
+        '\n    if (typeof normalizeHeaderActionShell === "function") {\n'
+        '      normalizeHeaderActionShell(document.getElementById("sadv-header"), {\n'
+        '        runtimeRef: typeof window !== "undefined" && typeof window.__SEARCHADVISOR_RUNTIME_REF__ === "string"\n'
+        '          ? window.__SEARCHADVISOR_RUNTIME_REF__\n'
+        '          : "",\n'
+        '        runtimeBuiltAt: typeof window !== "undefined" && typeof window.__SEARCHADVISOR_RUNTIME_BUILD_AT__ === "string"\n'
+        '          ? window.__SEARCHADVISOR_RUNTIME_BUILD_AT__\n'
+        '          : "",\n'
+        "      });\n"
+        "    }\n"
         '\n    if (typeof bindSnapshotManualXlsxButton === "function") {\n'
         '      bindSnapshotManualXlsxButton(document.getElementById("sadv-xlsx-btn"));\n'
+        "    }\n"
+        '    if (typeof syncSnapshotActionButtons === "function") {\n'
+        '      syncSnapshotActionButtons(typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null);\n'
         "    }\n"
     )
     anchors = (
@@ -672,6 +713,7 @@ def build_merged_html(template_html: str, payload: Dict[str, Any]) -> str:
     html = replace_snapshot_shell_state(html, build_snapshot_shell_state(payload))
     html = inject_missing_merge_xlsx_compat_pack(html)
     html = inject_missing_merge_helpers(html)
+    html = inject_missing_merge_header_shell_helpers(html)
     html = inject_missing_merge_xlsx_binding_call(html)
     return html
 
