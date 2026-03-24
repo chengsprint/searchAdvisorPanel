@@ -701,15 +701,142 @@ def build_saved_meta_pill(saved_label: str) -> str:
 
 
 def append_saved_meta_pill(cache_meta_html: str, saved_label: str) -> str:
+    normalized = re.sub(
+        r"<div\b[^>]*>\s*Saved [^<]+</div>",
+        "",
+        cache_meta_html or "",
+        flags=re.IGNORECASE | re.DOTALL,
+    )
     pill_html = build_saved_meta_pill(saved_label)
-    if not pill_html or "Saved " in cache_meta_html:
-        return cache_meta_html
-    return cache_meta_html.replace("</div>", pill_html + "</div>", 1)
+    if not pill_html:
+        return normalized
+    if "</div>" not in normalized:
+        return normalized + pill_html
+    return normalized.replace("</div>", pill_html + "</div>", 1)
+
+
+def resolve_merged_account_display_label(account: Dict[str, Any], index: int) -> Tuple[str, str]:
+    fallback_label = f"계정{index + 1}"
+    full_label = (
+        (account.get("label") if isinstance(account, dict) else None)
+        or (account.get("id") if isinstance(account, dict) else None)
+        or (
+            (account.get("encId") or "")[:8]
+            if isinstance(account, dict) and account.get("encId")
+            else ""
+        )
+        or fallback_label
+    )
+    short_label = full_label.split("@")[0] if "@" in full_label else full_label
+    return full_label, short_label
+
+
+def get_merged_display_meta(merged_meta: Optional[Dict[str, Any]], site_count: int) -> Optional[Dict[str, Any]]:
+    if not isinstance(merged_meta, dict) or not merged_meta.get("isMerged"):
+        return None
+    valid_accounts = [
+        account
+        for account in (merged_meta.get("accounts") or [])
+        if isinstance(account, dict)
+    ]
+    account_labels: List[str] = []
+    for index, account in enumerate(valid_accounts):
+        full_label, _short_label = resolve_merged_account_display_label(account, index)
+        if full_label:
+            account_labels.append(full_label)
+    account_count = len(valid_accounts)
+    return {
+        "accountCount": account_count,
+        "accountLabels": account_labels,
+        "accountBadgeLabel": f"병합 {account_count}개 계정" if account_count > 0 else "병합본",
+        "accountBadgeTitle": ", ".join(account_labels),
+        "runtimeBadgeLabel": "병합본",
+        "runtimeBadgeTitle": f"병합 대상 {account_count}개 계정 · {site_count}개 사이트",
+        "siteStatus": f"{site_count}개 사이트 등록됨" + (f" · {account_count}개 계정 병합" if account_count > 0 else ""),
+        "siteSummary": f"{site_count}개 사이트를 클릭 기준으로 정렬" + (f" · {account_count}개 계정 병합" if account_count > 0 else ""),
+    }
+
+
+def build_account_badge_html(account_label: str, title: Optional[str] = None) -> str:
+    if not account_label:
+        return '<div id="sadv-account-badge" style="display:none"></div>'
+    title_attr = f' title="{html.escape(title)}"' if title else ""
+    return (
+        '<div id="sadv-account-badge" style="display:inline-flex;padding:4px 12px;'
+        'border-radius:999px;border:1px solid rgba(255,212,0,0.2);color:#ffd400;'
+        'background:rgba(255,212,0,0.12);font-size:11px;font-weight:600;line-height:1.2;'
+        'overflow:hidden;text-overflow:ellipsis;white-space:nowrap"'
+        + title_attr
+        + ">"
+        + html.escape(account_label)
+        + "</div>"
+    )
+
+
+def build_site_label_html(primary_text: str, secondary_label: Optional[str] = None, title: Optional[str] = None) -> str:
+    title_attr = f' title="{html.escape(title)}"' if title else ""
+    inner = "<span>" + html.escape(primary_text) + "</span>"
+    if secondary_label:
+        inner += (
+            '<span style="display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;'
+            'border:1px solid rgba(255,212,0,0.2);color:#ffd400;background:rgba(32,22,0,0.72)">'
+            + html.escape(secondary_label)
+            + "</span>"
+        )
+    return (
+        '<div id="sadv-site-label" style="font-size:11px;color:#64748b;margin-top:4px;display:flex;align-items:center;gap:4px"'
+        + title_attr
+        + ">"
+        + inner
+        + "</div>"
+    )
+
+
+def replace_combo_label_html(site_bar_html: str, next_label: str) -> str:
+    if not site_bar_html or not next_label:
+        return site_bar_html
+    bounds = find_element_bounds_by_id(site_bar_html, "sadv-combo-label")
+    if not bounds:
+        return site_bar_html
+    start, end = bounds
+    replacement = '<span id="sadv-combo-label">' + html.escape(next_label) + "</span>"
+    return site_bar_html[:start] + replacement + site_bar_html[end:]
+
+
+def build_canonical_menu_action_button(
+    button_id: str,
+    label: str,
+    title: str,
+    icon_svg: str = "",
+    *,
+    hidden: bool = False,
+) -> str:
+    icon_part = (
+        '<span class="sadv-btn-icon" aria-hidden="true">' + icon_svg + "</span>"
+        if icon_svg
+        else ""
+    )
+    hidden_attrs = ' hidden aria-hidden="true" style="display:none"' if hidden else ""
+    return (
+        f'<button id="{button_id}" type="button" class="sadv-btn"{hidden_attrs} '
+        f'title="{html.escape(title)}" aria-label="{html.escape(label)}">'
+        + icon_part
+        + '<span class="sadv-btn-label">'
+        + html.escape(label)
+        + "</span></button>"
+    )
 
 
 def build_canonical_save_hub_markup(
     save_btn_html: Optional[str],
     xlsx_btn_html: Optional[str],
+    *,
+    direct_action: str = "",
+    hub_label: str = "내보내기",
+    hub_title: str = "내보내기",
+    save_visible: bool = True,
+    xlsx_visible: bool = True,
+    xlsx_title: Optional[str] = None,
 ) -> str:
     icon_svg = extract_first_svg_html(save_btn_html) or extract_first_svg_html(xlsx_btn_html)
     icon_part = (
@@ -717,19 +844,50 @@ def build_canonical_save_hub_markup(
         if icon_svg
         else ""
     )
+    direct_class = " sadv-save-hub-direct" if direct_action else ""
+    direct_attr = f' data-direct-action="{html.escape(direct_action)}"' if direct_action else ""
+    caret_style = ' style="display:none"' if direct_action else ""
     save_hub_btn_html = (
-        '<button id="sadv-save-hub-btn" type="button" class="sadv-btn sadv-save-hub-btn" '
-        'aria-label="내보내기" aria-haspopup="menu" aria-expanded="false" title="내보내기">'
+        '<button id="sadv-save-hub-btn" type="button" class="sadv-btn sadv-save-hub-btn'
+        + direct_class
+        + '" aria-label="'
+        + html.escape(hub_label)
+        + '" aria-haspopup="'
+        + ("false" if direct_action else "menu")
+        + '" aria-expanded="false" title="'
+        + html.escape(hub_title)
+        + '" data-base-label="'
+        + html.escape(hub_label)
+        + '"'
+        + direct_attr
+        + ">"
         + icon_part
-        + '<span class="sadv-btn-label">내보내기</span>'
-        + '<span class="sadv-save-hub-caret" aria-hidden="true">▾</span>'
+        + '<span class="sadv-btn-label">'
+        + html.escape(hub_label)
+        + "</span>"
+        + '<span class="sadv-save-hub-caret" aria-hidden="true"'
+        + caret_style
+        + ">▾</span>"
         "</button>"
     )
-    menu_parts: List[str] = []
-    if save_btn_html:
-        menu_parts.append(save_btn_html)
-    if xlsx_btn_html:
-        menu_parts.append(xlsx_btn_html)
+    save_icon_svg = extract_first_svg_html(save_btn_html) or icon_svg
+    xlsx_icon_svg = extract_first_svg_html(xlsx_btn_html) or icon_svg
+    menu_parts: List[str] = [
+        build_canonical_menu_action_button(
+            "sadv-save-btn",
+            "HTML 저장",
+            "HTML 저장",
+            save_icon_svg,
+            hidden=not save_visible,
+        ),
+        build_canonical_menu_action_button(
+            "sadv-xlsx-btn",
+            "엑셀 저장",
+            xlsx_title or "엑셀 저장",
+            xlsx_icon_svg,
+            hidden=not xlsx_visible,
+        ),
+    ]
     menu_html = (
         '<div id="sadv-save-hub-menu" class="sadv-save-hub-menu" role="menu" hidden>'
         + "".join(menu_parts)
@@ -743,36 +901,73 @@ def build_canonical_save_hub_markup(
     )
 
 
-def canonicalize_snapshot_header_shell(html: str, saved_label: str) -> str:
+def canonicalize_snapshot_header_shell(
+    html_text: str,
+    saved_label: str,
+    payload: Dict[str, Any],
+    shell_state: Dict[str, Any],
+) -> str:
     # Final fallback seam:
     # merge.py가 canonical shell artifact를 직접 쓰지 못하는 구형 입력 템플릿 상황에서도,
     # raw merged HTML source 레벨에서 old top-right action cluster를 걷어내고
     # current live shell family와 같은 header skeleton으로 정규화한다.
     # 이 단계는 payload/meta/data source는 그대로 두고, header ownership만 공통 구조로 맞춘다.
-    header_html = extract_element_html_by_id(html, "sadv-header")
+    header_html = extract_element_html_by_id(html_text, "sadv-header")
     if not header_html:
-        return html
+        return html_text
     if (
         'class="sadv-header-top"' in header_html
         and 'class="sadv-header-meta"' in header_html
         and 'id="sadv-save-hub-btn"' in header_html
         and 'class="sadv-header-actions"' not in header_html
     ):
-        return html
+        return html_text
 
     brand_title_html = extract_brand_title_html(header_html)
     if not brand_title_html:
-        return html
+        return html_text
+    all_sites = payload.get("allSites") if isinstance(payload.get("allSites"), list) else []
+    site_count = len([site for site in all_sites if isinstance(site, str) and site])
+    merged_display_meta = get_merged_display_meta(payload.get("mergedMeta"), site_count)
     runtime_badge_html = build_canonical_runtime_badge_html(
         extract_element_html_by_id(header_html, "sadv-runtime-badge") or ""
     )
-    account_badge_html = extract_element_html_by_id(header_html, "sadv-account-badge") or ""
-    site_label_html = extract_element_html_by_id(header_html, "sadv-site-label") or ""
+    if merged_display_meta:
+        runtime_badge_html = (
+            '<span id="sadv-runtime-badge" title="'
+            + html.escape(
+                merged_display_meta["runtimeBadgeTitle"]
+                + (" · ref: " + get_source_ref() if get_source_ref() else "")
+            )
+            + '">'
+            + html.escape(merged_display_meta["runtimeBadgeLabel"])
+            + "</span>"
+        )
+    account_badge_html = (
+        build_account_badge_html(
+            merged_display_meta["accountBadgeLabel"],
+            merged_display_meta["accountBadgeTitle"],
+        )
+        if merged_display_meta
+        else (extract_element_html_by_id(header_html, "sadv-account-badge") or "")
+    )
+    active_tab_label = "사이트별" if shell_state.get("curTab") == "site" else "전체현황"
+    site_label_html = (
+        build_site_label_html(
+            merged_display_meta["siteStatus"],
+            active_tab_label,
+            merged_display_meta["siteSummary"],
+        )
+        if merged_display_meta
+        else (extract_element_html_by_id(header_html, "sadv-site-label") or "")
+    )
     cache_meta_html = extract_element_html_by_id(header_html, "sadv-cache-meta") or '<div id="sadv-cache-meta"></div>'
     cache_meta_html = remove_elements_by_class(cache_meta_html, "sadv-header-actions")
     cache_meta_html = append_saved_meta_pill(cache_meta_html, saved_label)
     mode_bar_html = extract_element_html_by_id(header_html, "sadv-mode-bar") or ""
     site_bar_html = extract_element_html_by_id(header_html, "sadv-site-bar") or ""
+    if merged_display_meta and shell_state.get("curMode") != "site":
+        site_bar_html = replace_combo_label_html(site_bar_html, "사이트 선택")
     refresh_btn_html = extract_element_html_by_id(header_html, "sadv-refresh-btn") or ""
     save_btn_html = extract_element_html_by_id(header_html, "sadv-save-btn") or ""
     xlsx_btn_html = extract_element_html_by_id(header_html, "sadv-xlsx-btn") or ""
@@ -780,6 +975,24 @@ def canonicalize_snapshot_header_shell(html: str, saved_label: str) -> str:
     action_status_chip_html = extract_element_html_by_id(header_html, "sadv-action-status-chip") or (
         '<span id="sadv-action-status-chip" class="sadv-action-status-chip" hidden aria-hidden="true" aria-live="polite"></span>'
     )
+    allow_saved_merged_xlsx = bool(
+        isinstance(payload.get("mergedMeta"), dict)
+        and payload["mergedMeta"].get("isMerged")
+        and payload["mergedMeta"].get("generatedBy") == "merge.py"
+        and payload["mergedMeta"].get("xlsxAllowed")
+    )
+    canonical_save_hub_html = build_canonical_save_hub_markup(
+        save_btn_html,
+        xlsx_btn_html,
+        direct_action="xlsx" if allow_saved_merged_xlsx else "",
+        hub_label="엑셀 저장" if allow_saved_merged_xlsx else "내보내기",
+        hub_title="병합 데이터 엑셀 저장" if allow_saved_merged_xlsx else "내보내기",
+        save_visible=not allow_saved_merged_xlsx,
+        xlsx_visible=not allow_saved_merged_xlsx,
+        xlsx_title="병합 데이터 엑셀 저장" if allow_saved_merged_xlsx else "엑셀 저장",
+    )
+    if allow_saved_merged_xlsx:
+        refresh_btn_html = ""
 
     canonical_header_html = (
         '<div id="sadv-header">'
@@ -790,7 +1003,7 @@ def canonicalize_snapshot_header_shell(html: str, saved_label: str) -> str:
         + "</div>"
         '<div class="sadv-header-top-actions">'
         '<div id="sadv-header-action-row" class="sadv-header-action-tools">'
-        + build_canonical_save_hub_markup(save_btn_html, xlsx_btn_html)
+        + canonical_save_hub_html
         + refresh_btn_html
         + close_btn_html
         + "</div></div></div>"
@@ -804,7 +1017,7 @@ def canonicalize_snapshot_header_shell(html: str, saved_label: str) -> str:
         + site_bar_html
         + "</div>"
     )
-    return replace_element_html_by_id(html, "sadv-header", canonical_header_html)
+    return replace_element_html_by_id(html_text, "sadv-header", canonical_header_html)
 
 
 def has_function_definition(html: str, function_name: str) -> bool:
@@ -969,8 +1182,14 @@ def inject_missing_merge_xlsx_binding_call(html: str) -> str:
 def build_merged_html(template_html: str, payload: Dict[str, Any]) -> str:
     html = replace_payload_raw(template_html, payload)
     html = replace_first_saved_chip(html, format_saved_label(payload.get("savedAt") or ""))
-    html = replace_snapshot_shell_state(html, build_snapshot_shell_state(payload))
-    html = canonicalize_snapshot_header_shell(html, format_saved_label(payload.get("savedAt") or ""))
+    shell_state = build_snapshot_shell_state(payload)
+    html = replace_snapshot_shell_state(html, shell_state)
+    html = canonicalize_snapshot_header_shell(
+        html,
+        format_saved_label(payload.get("savedAt") or ""),
+        payload,
+        shell_state,
+    )
     html = inject_missing_merge_xlsx_compat_pack(html)
     html = inject_missing_merge_helpers(html)
     html = inject_missing_merge_header_shell_helpers(html)
