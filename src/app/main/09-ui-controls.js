@@ -324,6 +324,52 @@ function applyUiControlsTab(tab) {
       `<span style="${chipStyle}" title="${escHtml(titleParts.join(" · "))}">${escHtml(compactParts.join(" · "))}</span>`
     );
   }
+  function getSnapshotActionBaseLabel(actionKind) {
+    return actionKind === "xlsx" ? "엑셀" : "저장";
+  }
+  function getSnapshotActionStatusKind(status) {
+    return status && status.outputFormat === "xlsx" ? "xlsx" : "save";
+  }
+  function formatSnapshotActionLabel(status, actionKind) {
+    const baseLabel = getSnapshotActionBaseLabel(actionKind);
+    if (!status || typeof status !== "object") return baseLabel;
+    const statusKind = getSnapshotActionStatusKind(status);
+    if (statusKind !== actionKind) return baseLabel;
+    const entryPoint = typeof status.entryPoint === "string" ? status.entryPoint : "";
+    const expectedEntryPoint = actionKind === "xlsx" ? "button-xlsx" : "button-save";
+    if (entryPoint !== expectedEntryPoint) return baseLabel;
+    const state = typeof status.state === "string" ? status.state : "idle";
+    const progress = status.progress && typeof status.progress === "object" ? status.progress : {};
+    const done =
+      typeof progress.done === "number" && Number.isFinite(progress.done) ? progress.done : 0;
+    const total =
+      typeof progress.total === "number" && Number.isFinite(progress.total) ? progress.total : 0;
+    if (status.active) {
+      if (total > 0 && (state === "collecting" || done > 0)) {
+        return done + "/" + total;
+      }
+      return actionKind === "xlsx" ? "엑셀 준비" : "저장 준비";
+    }
+    if (state === "completed" || state === "completed-with-issues") {
+      return actionKind === "xlsx" ? "엑셀 완료" : "저장 완료";
+    }
+    return baseLabel;
+  }
+  function syncSnapshotActionButtonLabel(buttonEl, actionKind, status) {
+    if (!buttonEl) return;
+    const baseHtml = buttonEl.dataset.baseHtml || buttonEl.innerHTML;
+    const nextLabel = formatSnapshotActionLabel(status, actionKind);
+    const baseLabel = getSnapshotActionBaseLabel(actionKind);
+    if (nextLabel === baseLabel) {
+      buttonEl.innerHTML = baseHtml;
+      return;
+    }
+    buttonEl.textContent = nextLabel;
+  }
+  function syncSnapshotActionButtons(status) {
+    syncSnapshotActionButtonLabel(document.getElementById("sadv-save-btn"), "save", status);
+    syncSnapshotActionButtonLabel(document.getElementById("sadv-xlsx-btn"), "xlsx", status);
+  }
   function resolveRuntimeCapabilities() {
     // stage 2 boundary:
     // 버튼/행동 제어는 더 이상 "현재 런타임이 live일 것이다"를 가정하지 않는다.
@@ -779,6 +825,7 @@ function applyUiControlsTab(tab) {
 
   var sadvSaveBtnEl = document.getElementById("sadv-save-btn");
   if (sadvSaveBtnEl) {
+    sadvSaveBtnEl.dataset.baseHtml = sadvSaveBtnEl.innerHTML;
     if (!runtimeCapabilities.canSave) {
       sadvSaveBtnEl.style.display = "none";
       sadvSaveBtnEl.setAttribute("aria-hidden", "true");
@@ -792,7 +839,7 @@ function applyUiControlsTab(tab) {
           typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null;
         if (saveStatus && saveStatus.active) return;
         if (typeof runSnapshotSaveExecution === "function") {
-          runSnapshotSaveExecution({ entryPoint: "button" });
+          runSnapshotSaveExecution({ entryPoint: "button-save" });
           return;
         }
         // Compat safety net only:
@@ -807,6 +854,7 @@ function applyUiControlsTab(tab) {
 
   var sadvXlsxBtnEl = document.getElementById("sadv-xlsx-btn");
   if (sadvXlsxBtnEl) {
+    sadvXlsxBtnEl.dataset.baseHtml = sadvXlsxBtnEl.innerHTML;
     // XLSX 상세 저장은 기존 CSV 수동 저장 자리를 완전히 대체한다.
     // 기본 public surface는 live interactive manual button이 정본이다.
     // 단, merge.py가 만든 read-only saved merged snapshot에서는
@@ -845,7 +893,14 @@ function applyUiControlsTab(tab) {
         const inj = document.getElementById("sadv-inj");
         if (typeof stopCacheExpiryMonitor === "function") stopCacheExpiryMonitor();
         if (typeof removeSnapshotSaveOverlay === "function") removeSnapshotSaveOverlay();
+        if (typeof clearSnapshotSaveStatusResetTimer === "function") clearSnapshotSaveStatusResetTimer();
         if (typeof resetRuntimeSaveStatus === "function") resetRuntimeSaveStatus();
+        if (typeof window !== "undefined" && typeof window.__SADV_SYNC_ACTION_BUTTONS_UNSUB__ === "function") {
+          try {
+            window.__SADV_SYNC_ACTION_BUTTONS_UNSUB__();
+          } catch (_) {}
+          delete window.__SADV_SYNC_ACTION_BUTTONS_UNSUB__;
+        }
         if (panel) panel.remove();
         if (inj) inj.remove();
         if (typeof clearRuntimePublicApi === "function") clearRuntimePublicApi();
@@ -857,6 +912,19 @@ function applyUiControlsTab(tab) {
   }
 
   if (typeof window !== "undefined") {
+    if (typeof subscribeRuntimeSaveStatus === "function") {
+      if (typeof window.__SADV_SYNC_ACTION_BUTTONS_UNSUB__ === "function") {
+        try {
+          window.__SADV_SYNC_ACTION_BUTTONS_UNSUB__();
+        } catch (_) {}
+      }
+      window.__SADV_SYNC_ACTION_BUTTONS_UNSUB__ = subscribeRuntimeSaveStatus(function (status) {
+        syncSnapshotActionButtons(status);
+      });
+    }
+    syncSnapshotActionButtons(
+      typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null
+    );
     const publicApi = {
       getState: __sadvSnapshot,
       getCapabilities: function () {
@@ -1010,7 +1078,14 @@ function applyUiControlsTab(tab) {
         const inj = document.getElementById("sadv-inj");
         if (typeof stopCacheExpiryMonitor === "function") stopCacheExpiryMonitor();
         if (typeof removeSnapshotSaveOverlay === "function") removeSnapshotSaveOverlay();
+        if (typeof clearSnapshotSaveStatusResetTimer === "function") clearSnapshotSaveStatusResetTimer();
         if (typeof resetRuntimeSaveStatus === "function") resetRuntimeSaveStatus();
+        if (typeof window !== "undefined" && typeof window.__SADV_SYNC_ACTION_BUTTONS_UNSUB__ === "function") {
+          try {
+            window.__SADV_SYNC_ACTION_BUTTONS_UNSUB__();
+          } catch (_) {}
+          delete window.__SADV_SYNC_ACTION_BUTTONS_UNSUB__;
+        }
         if (panel) panel.remove();
         if (inj) inj.remove();
         if (typeof clearRuntimePublicApi === "function") clearRuntimePublicApi();

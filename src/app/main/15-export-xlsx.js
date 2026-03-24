@@ -959,6 +959,8 @@ async function downloadSnapshotXlsx(options) {
     options && options.cacheDecision && typeof options.cacheDecision === "object"
       ? options.cacheDecision
       : { neededRefresh: false, reason: null, missingSites: 0, expiredSites: 0 };
+  const entryPoint =
+    options && typeof options.entryPoint === "string" ? options.entryPoint : "";
   const btn = getSnapshotSaveTriggerButton("xlsx");
   const originalText = btn ? btn.textContent : "엑셀";
   setSnapshotSaveButtonBusy(btn, "엑셀");
@@ -983,6 +985,7 @@ async function downloadSnapshotXlsx(options) {
         completedAt: Date.now(),
         cacheDecision: cacheDecision,
         stats: saveBlockDecision.stats,
+        entryPoint: entryPoint,
         outputFormat: outputMeta.outputFormat,
         fileName: null,
         site: null,
@@ -1021,6 +1024,7 @@ async function downloadSnapshotXlsx(options) {
       stats: payload && payload.stats ? payload.stats : { success: 0, partial: 0, failed: 0, errors: [] },
       site: null,
       cacheDecision: cacheDecision,
+      entryPoint: entryPoint,
       outputFormat: outputMeta.outputFormat,
     });
 
@@ -1045,6 +1049,7 @@ async function downloadSnapshotXlsx(options) {
         "행을 포함한 상세 엑셀 파일 다운로드를 시작하고 있어요.",
       fileName: fileName,
       cacheDecision: cacheDecision,
+      entryPoint: entryPoint,
       outputFormat: outputMeta.outputFormat,
     });
 
@@ -1079,6 +1084,7 @@ async function downloadSnapshotXlsx(options) {
       completedAt: Date.now(),
       cacheDecision: cacheDecision,
       stats: saveStats,
+      entryPoint: entryPoint,
       outputFormat: outputMeta.outputFormat,
     });
     return {
@@ -1121,6 +1127,7 @@ async function downloadSnapshotXlsx(options) {
       detail: outputMeta.errorMessage,
       completedAt: Date.now(),
       cacheDecision: cacheDecision,
+      entryPoint: entryPoint,
       outputFormat: outputMeta.outputFormat,
       fileName: null,
       site: null,

@@ -22,6 +22,7 @@
 let snapshotSaveInFlightPromise = null;
 let snapshotSaveRequestInFlightPromise = null;
 let snapshotSaveOverlayCleanupTimer = null;
+let snapshotSaveStatusResetTimer = null;
 let snapshotSaveOverlaySuppressed = false;
 let snapshotBackgroundCleanupTimer = null;
 const SNAPSHOT_SAVE_BLOCK_FAILED_RATIO = 0.2;
@@ -101,11 +102,83 @@ function clearSnapshotSaveOverlayCleanupTimer() {
   }
 }
 
+function clearSnapshotSaveStatusResetTimer() {
+  if (snapshotSaveStatusResetTimer) {
+    clearTimeout(snapshotSaveStatusResetTimer);
+    snapshotSaveStatusResetTimer = null;
+  }
+}
+
+function scheduleSnapshotSaveStatusIdleReset(status) {
+  clearSnapshotSaveStatusResetTimer();
+  if (!status || status.active) return;
+  const state = typeof status.state === "string" ? status.state : "idle";
+  let delayMs = 0;
+  if (state === "completed" || state === "completed-with-issues") delayMs = 1600;
+  else if (state === "blocked") delayMs = 2600;
+  else if (state === "failed") delayMs = 2200;
+  if (!delayMs) return;
+  snapshotSaveStatusResetTimer = setTimeout(function () {
+    snapshotSaveStatusResetTimer = null;
+    if (typeof resetRuntimeSaveStatus === "function") {
+      resetRuntimeSaveStatus({
+        runtimeType:
+          status && typeof status.runtimeType === "string" ? status.runtimeType : "live",
+        uiHidden: !!(status && status.uiHidden),
+      });
+    }
+  }, delayMs);
+}
+
 function clearSnapshotBackgroundCleanupTimer() {
   if (snapshotBackgroundCleanupTimer) {
     clearTimeout(snapshotBackgroundCleanupTimer);
     snapshotBackgroundCleanupTimer = null;
   }
+}
+
+function resolveMergedAccountDisplayLabel(account, index) {
+  const fallbackLabel = "계정" + (index + 1);
+  const fullLabel =
+    (account && (account.label || account.id || (account.encId ? account.encId.slice(0, 8) : ""))) ||
+    fallbackLabel;
+  const shortLabel = fullLabel.indexOf("@") >= 0 ? fullLabel.split("@")[0] : fullLabel;
+  return { fullLabel, shortLabel };
+}
+
+function getMergedDisplayMeta(mergedMeta, siteCount) {
+  if (!mergedMeta || !mergedMeta.isMerged) return null;
+  const validAccounts = Array.isArray(mergedMeta.accounts) ? mergedMeta.accounts.filter(Boolean) : [];
+  const accountCount = validAccounts.length;
+  const accountLabels = validAccounts
+    .map(function (account, index) {
+      return resolveMergedAccountDisplayLabel(account, index).fullLabel;
+    })
+    .filter(Boolean);
+  return {
+    accountCount,
+    accountLabels,
+    accountBadgeLabel: accountCount > 0 ? "병합 " + accountCount + "개 계정" : "병합본",
+    accountBadgeTitle: accountLabels.join(", "),
+    snapshotTitle: "SearchAdvisor 병합 리포트",
+    runtimeBadgeLabel: "병합본",
+    runtimeBadgeTitle:
+      "병합 대상 " + accountCount + "개 계정 · " + siteCount + "개 사이트",
+    siteStatus:
+      siteCount +
+      "개 사이트 등록됨" +
+      (accountCount > 0 ? " · " + accountCount + "개 계정 병합" : ""),
+    siteSummary:
+      siteCount +
+      "개 사이트를 클릭 기준으로 정렬" +
+      (accountCount > 0 ? " · " + accountCount + "개 계정 병합" : ""),
+    panelCountLabel: accountCount + "개 계정",
+  };
+}
+
+function getMergedAccountsInfoIconSvg() {
+  if (typeof ICONS !== "undefined" && ICONS.layers) return ICONS.layers;
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffd400" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>';
 }
 
 function removeSnapshotSaveOverlay() {
@@ -197,6 +270,7 @@ function scheduleSnapshotBackgroundRuntimeCleanup(delayMs) {
     snapshotBackgroundCleanupTimer = null;
     const panel = document.getElementById("sadv-p");
     const inj = document.getElementById("sadv-inj");
+    clearSnapshotSaveStatusResetTimer();
     removeSnapshotSaveOverlay();
     if (typeof stopCacheExpiryMonitor === "function") stopCacheExpiryMonitor();
     if (panel) panel.remove();
@@ -707,6 +781,7 @@ function pushSnapshotSaveStatus(patch) {
       ? setRuntimeSaveStatus(patch)
       : (typeof cloneRuntimeSaveStatus === "function" ? cloneRuntimeSaveStatus(patch) : patch);
   renderSnapshotSaveOverlay(next);
+  scheduleSnapshotSaveStatusIdleReset(next);
   return next;
 }
 
@@ -715,6 +790,7 @@ function buildSnapshotWaitingStatePatch(requestContext, decision, state, title, 
     active: true,
     state: state,
     phase: state === "waiting-refresh" ? "refresh" : "prepare",
+    entryPoint: requestContext && typeof requestContext.entryPoint === "string" ? requestContext.entryPoint : "",
     uiHidden: requestContext.headlessMode,
     outputFormat: requestContext.outputMeta.outputFormat,
     stageLabel: title,
@@ -1340,6 +1416,8 @@ function restoreSnapshotSaveButton(btn, originalText) {
               expiredSites: 0,
             };
       const outputMeta = getSnapshotSaveOutputMeta(options && options.outputFormat);
+      const entryPoint =
+        options && typeof options.entryPoint === "string" ? options.entryPoint : "";
       const btn = getSnapshotSaveTriggerButton(outputMeta.outputFormat);
       const originalText = btn ? btn.textContent : (outputMeta.outputFormat === "xlsx" ? "엑셀" : "저장");
       setSnapshotSaveButtonBusy(btn, "0/" + runtimeSites.length);
@@ -1385,6 +1463,7 @@ function restoreSnapshotSaveButton(btn, originalText) {
             ? options.payload.stats
             : { success: 0, partial: 0, failed: 0, errors: [] },
         cacheDecision: cacheDecision,
+        entryPoint: entryPoint,
         outputFormat: outputMeta.outputFormat,
         fileName: null,
         site: null,
@@ -1429,6 +1508,7 @@ function restoreSnapshotSaveButton(btn, originalText) {
                 stats: stats || { success: 0, partial: 0, failed: 0, errors: [] },
                 site: site || null,
                 cacheDecision: cacheDecision,
+                entryPoint: entryPoint,
                 outputFormat: outputMeta.outputFormat,
               });
             },
@@ -1458,6 +1538,7 @@ function restoreSnapshotSaveButton(btn, originalText) {
           stats: payload && payload.stats ? payload.stats : { success: 0, partial: 0, failed: 0, errors: [] },
           site: null,
           cacheDecision: cacheDecision,
+          entryPoint: entryPoint,
           outputFormat: outputMeta.outputFormat,
         });
         const saveBlockDecision = buildSnapshotSaveBlockDecision(payload, runtimeSites);
@@ -1480,6 +1561,7 @@ function restoreSnapshotSaveButton(btn, originalText) {
             completedAt: Date.now(),
             cacheDecision: cacheDecision,
             stats: saveBlockDecision.stats,
+            entryPoint: entryPoint,
             outputFormat: outputMeta.outputFormat,
             fileName: null,
             site: null,
@@ -1507,6 +1589,7 @@ function restoreSnapshotSaveButton(btn, originalText) {
           detail: "브라우저 다운로드를 트리거하고 있어요.",
           fileName: fileName,
           cacheDecision: cacheDecision,
+          entryPoint: entryPoint,
           outputFormat: outputMeta.outputFormat,
         });
         const blob = new Blob([html], { type: "text/html;charset=utf-8" });
@@ -1537,6 +1620,7 @@ function restoreSnapshotSaveButton(btn, originalText) {
           completedAt: Date.now(),
           cacheDecision: cacheDecision,
           stats: saveStats,
+          entryPoint: entryPoint,
           outputFormat: outputMeta.outputFormat,
         });
         return {
@@ -1549,21 +1633,22 @@ function restoreSnapshotSaveButton(btn, originalText) {
           stats: saveStats,
         };
       } catch (e) {
-        pushSnapshotSaveStatus({
-          active: false,
-          state: "failed",
-          phase: "download",
-          stageLabel: outputMeta.failedTitle,
-          detail:
-            "저장 중 오류가 발생했어요. 상태 객체와 오류 배너를 확인한 뒤 다시 시도해 주세요.",
-          completedAt: Date.now(),
-          error: {
-            message: e && e.message ? e.message : String(e),
-            context: "downloadSnapshot",
-          },
-          cacheDecision: cacheDecision,
-          outputFormat: outputMeta.outputFormat,
-        });
+      pushSnapshotSaveStatus({
+        active: false,
+        state: "failed",
+        phase: "download",
+        stageLabel: outputMeta.failedTitle,
+        detail:
+          "저장 중 오류가 발생했어요. 상태 객체와 오류 배너를 확인한 뒤 다시 시도해 주세요.",
+        completedAt: Date.now(),
+        error: {
+          message: e && e.message ? e.message : String(e),
+          context: "downloadSnapshot",
+        },
+        cacheDecision: cacheDecision,
+        entryPoint: entryPoint,
+        outputFormat: outputMeta.outputFormat,
+      });
         showError(outputMeta.errorMessage, e, 'downloadSnapshot');
         bdEl.innerHTML = createInlineError(
           outputMeta.errorMessage,
@@ -1634,6 +1719,7 @@ async function runSnapshotSaveExecution(options) {
         active: false,
         state: "blocked",
         phase: "prepare",
+        entryPoint: requestContext.entryPoint,
         uiHidden: requestContext.headlessMode,
         outputFormat: requestContext.outputMeta.outputFormat,
         stageLabel: requestContext.outputMeta.blockedTitle,
@@ -1683,6 +1769,7 @@ async function runSnapshotSaveExecution(options) {
           active: true,
           state: "checking-cache",
           phase: "prepare",
+          entryPoint: requestContext.entryPoint,
           uiHidden: requestContext.headlessMode,
           outputFormat: requestContext.outputMeta.outputFormat,
           stageLabel: requestContext.outputMeta.preparingTitle,
@@ -1732,6 +1819,7 @@ async function runSnapshotSaveExecution(options) {
             active: true,
             state: "checking-cache",
             phase: "prepare",
+            entryPoint: requestContext.entryPoint,
             uiHidden: requestContext.headlessMode,
             outputFormat: requestContext.outputMeta.outputFormat,
             stageLabel: requestContext.outputMeta.preparingTitle,
@@ -1754,6 +1842,7 @@ async function runSnapshotSaveExecution(options) {
           cacheDecision: decision,
           selectionSnapshot: requestContext.selectionSnapshot,
           outputFormat: requestContext.outputMeta.outputFormat,
+          entryPoint: requestContext.entryPoint,
         };
         if (requestContext.outputMeta.outputFormat === "xlsx") {
           return await downloadSnapshotXlsx(commitOptions);
@@ -1770,6 +1859,7 @@ async function runSnapshotSaveExecution(options) {
             active: false,
             state: "blocked",
             phase: "refresh",
+            entryPoint: requestContext.entryPoint,
             uiHidden: requestContext.headlessMode,
             outputFormat: requestContext.outputMeta.outputFormat,
             stageLabel: "로그인 확인 필요",
@@ -2702,6 +2792,7 @@ function buildSnapshotSerializedHelperSection() {
       const mergedMeta = getMergedMetaState();
       if (!mergedMeta || !mergedMeta.isMerged) return null;
       const siteCount = Array.isArray(allSites) ? allSites.length : 0;
+      const displayMeta = getMergedDisplayMeta(mergedMeta, siteCount);
       const naverIds = Array.isArray(mergedMeta.naverIds) ? mergedMeta.naverIds.filter(Boolean) : [];
       const fileNames = Array.isArray(mergedMeta.fileNames) ? mergedMeta.fileNames.filter(Boolean) : [];
       const snapshotLines = [
@@ -2711,12 +2802,21 @@ function buildSnapshotSerializedHelperSection() {
       if (fileNames.length) snapshotLines.push("Sources: " + fileNames.join(", "));
       return {
         title: "SearchAdvisor Merged Report - " + siteCount + " sites",
-        snapshotTitle: "SearchAdvisor Merged Report",
+        snapshotTitle:
+          (displayMeta && displayMeta.snapshotTitle) || "SearchAdvisor Merged Report",
         snapshotLines,
-        accountBadge: "MERGED " + naverIds.length + " IDs",
-        accountTitle: naverIds.join(", "),
-        siteStatus: siteCount + " sites loaded",
-        siteSummary: "All " + siteCount + " sites sorted by clicks",
+        accountBadge:
+          (displayMeta && displayMeta.accountBadgeLabel) || ("MERGED " + naverIds.length + " IDs"),
+        accountTitle:
+          (displayMeta && displayMeta.accountBadgeTitle) || naverIds.join(", "),
+        runtimeBadgeLabel:
+          (displayMeta && displayMeta.runtimeBadgeLabel) || "병합본",
+        runtimeBadgeTitle:
+          (displayMeta && displayMeta.runtimeBadgeTitle) || ("Merged " + siteCount + " sites"),
+        siteStatus:
+          (displayMeta && displayMeta.siteStatus) || (siteCount + " sites loaded"),
+        siteSummary:
+          (displayMeta && displayMeta.siteSummary) || ("All " + siteCount + " sites sorted by clicks"),
         currentSite: curMode === "site" ? curSite || "" : "",
       };
     }
@@ -2738,6 +2838,19 @@ function buildSnapshotSerializedHelperSection() {
       if (accountBadgeEl && patch.accountBadge) {
         accountBadgeEl.textContent = patch.accountBadge;
         accountBadgeEl.title = patch.accountTitle || "";
+      }
+      let runtimeBadgeEl = document.getElementById("sadv-runtime-badge");
+      if (!runtimeBadgeEl && patch.runtimeBadgeLabel) {
+        const brandWrapEl = document.querySelector(".sadv-header-brand");
+        if (brandWrapEl) {
+          runtimeBadgeEl = document.createElement("span");
+          runtimeBadgeEl.id = "sadv-runtime-badge";
+          brandWrapEl.appendChild(runtimeBadgeEl);
+        }
+      }
+      if (runtimeBadgeEl && patch.runtimeBadgeLabel) {
+        runtimeBadgeEl.textContent = patch.runtimeBadgeLabel;
+        if (patch.runtimeBadgeTitle) runtimeBadgeEl.title = patch.runtimeBadgeTitle;
       }
       const siteLabelEl = document.querySelector("#sadv-site-label span");
       if (siteLabelEl && patch.siteStatus) siteLabelEl.textContent = patch.siteStatus;
@@ -2899,6 +3012,9 @@ function buildSnapshotSerializedHelperSection() {
     ${bindSnapshotManualXlsxButton.toString()}
     // merged saved snapshot의 전체현황 카드 상단은 createMergedAccountsInfo()를 직접 사용한다.
     // merge.py 산출물도 같은 공통 helper를 재사용하게 inline bootstrap에 함께 싣는다.
+    ${resolveMergedAccountDisplayLabel.toString()}
+    ${getMergedDisplayMeta.toString()}
+    ${getMergedAccountsInfoIconSvg.toString()}
     ${createMergedAccountsInfo.toString()}
     ${setAllSitesLabel.toString()}
     ${renderSnapshotAllSites.toString()}
@@ -3831,19 +3947,27 @@ function buildSnapshotSerializedHelperSection() {
   function createMergedAccountsInfo(mergedMeta) {
     const mergedInfo = document.createElement("div");
     mergedInfo.style.cssText = "background:linear-gradient(135deg,#17110a,#080808);border:1px solid #4a3b00;border-radius:0;padding:12px 16px;margin-bottom:16px";
-    const validAccounts = mergedMeta.accounts.filter(Boolean);
+    const validAccounts = Array.isArray(mergedMeta.accounts) ? mergedMeta.accounts.filter(Boolean) : [];
+    const displayMeta =
+      typeof getMergedDisplayMeta === "function"
+        ? getMergedDisplayMeta(mergedMeta, typeof allSites !== "undefined" && Array.isArray(allSites) ? allSites.length : validAccounts.length)
+        : null;
     const accountLabels = validAccounts.map((acc, i) => {
-      const fullLabel = acc.label || acc.encId?.slice(0, 8) || `계정${i + 1}`;
-      const shortLabel = fullLabel.includes('@') ? fullLabel.split('@')[0] : fullLabel;
+      const labelMeta =
+        typeof resolveMergedAccountDisplayLabel === "function"
+          ? resolveMergedAccountDisplayLabel(acc, i)
+          : { fullLabel: acc.label || acc.id || acc.encId?.slice(0, 8) || ("계정" + (i + 1)), shortLabel: acc.label || acc.id || acc.encId?.slice(0, 8) || ("계정" + (i + 1)) };
+      const fullLabel = labelMeta.fullLabel;
+      const shortLabel = labelMeta.shortLabel;
       return `<span tabindex="0" role="button" aria-describedby="merged-acc-full-${i}" style="display:inline-block;background:${T.accentSoftBg};color:${T.accentSoftText};padding:3px 8px;border:1px solid ${T.accentSoftBorder};border-radius:4px;font-size:11px;margin:2px;cursor:default" title="${escHtml(fullLabel)}">${escHtml(shortLabel)}<span id="merged-acc-full-${i}" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">전체: ${escHtml(fullLabel)}</span></span>`;
     }).join(" ");
     mergedInfo.setAttribute("role", "region");
     mergedInfo.setAttribute("aria-label", `병합된 계정 정보, ${validAccounts.length}개 계정`);
     mergedInfo.innerHTML = `
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-          <span style="font-size:16px" aria-hidden="true">🔀</span>
+          <span style="display:inline-flex;align-items:center;justify-content:center;opacity:0.95" aria-hidden="true">${typeof getMergedAccountsInfoIconSvg === "function" ? getMergedAccountsInfoIconSvg() : ""}</span>
           <span style="font-size:13px;font-weight:700;color:#fff8df">병합된 계정</span>
-          <span style="font-size:10px;color:${C.sub};background:${T.accentSoftBg};padding:2px 6px;border:1px solid ${T.accentSoftBorder};border-radius:4px">${validAccounts.length}개 계정</span>
+          <span style="font-size:10px;color:${C.sub};background:${T.accentSoftBg};padding:2px 6px;border:1px solid ${T.accentSoftBorder};border-radius:4px">${escHtml((displayMeta && displayMeta.panelCountLabel) || (validAccounts.length + "개 계정"))}</span>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:4px">${accountLabels}</div>
         <div style="font-size:9px;color:#d7bf78;margin-top:8px">병합 시각: ${mergedMeta.mergedAt ? new Date(mergedMeta.mergedAt).toLocaleString('ko-KR') : '-'}</div>
