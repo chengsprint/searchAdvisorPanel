@@ -40,3 +40,31 @@ npm-debug.log*
 # Temporary files
 *.tmp
 .cache/
+
+# Local/private artifacts that should never be pushed
+searchadvisor-*.html
+searchadvisor-*.xlsx
+searchadvisor-*.zip
+photo_*.jpg
+tmp_*
+docs-private/
+private-docs/
+
+# Private local docs / notes (never push)
+docs-private/
+private-notes/
+*.private.md
+
+# Personal local artifacts from manual testing / audits
+searchadvisor-*.html
+searchadvisor-*.xlsx
+searchadvisor-*.zip
+photo_*.jpg
+photo_*.jpeg
+photo_*.png
+tmp_*.png
+tmp_*.jpg
+tmp_*.jpeg
+
+# Local screenshots / audit captures
+screenshots/
