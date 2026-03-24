@@ -103,8 +103,8 @@ if (headerEl) {
   }
 
   normalizeHeaderActionButton(refreshBtnEl, "새로고침");
-  normalizeHeaderActionButton(saveBtnEl, "저장");
-  normalizeHeaderActionButton(xlsxBtnEl, "엑셀");
+  normalizeHeaderActionButton(saveBtnEl, "HTML 저장");
+  normalizeHeaderActionButton(xlsxBtnEl, "엑셀 저장");
   normalizeHeaderActionButton(closeBtnEl, "닫기");
 
   if (legacyTopRow && brandTitleEl && modeBarEl) {
@@ -140,18 +140,68 @@ if (headerEl) {
       brandWrapEl.appendChild(runtimeBadgeEl);
     }
 
-    const actionsWrapEl = document.createElement("div");
-    actionsWrapEl.className = "sadv-header-actions";
-    [refreshBtnEl, saveBtnEl, xlsxBtnEl, closeBtnEl].forEach((node) => {
-      if (node) actionsWrapEl.appendChild(node);
-    });
+    const topActionsWrapEl = document.createElement("div");
+    topActionsWrapEl.className = "sadv-header-top-actions";
+    if (closeBtnEl) topActionsWrapEl.appendChild(closeBtnEl);
+
+    const actionRowEl = document.createElement("div");
+    actionRowEl.id = "sadv-header-action-row";
+    actionRowEl.className = "sadv-header-action-row";
+
+    const actionHelperEl = document.createElement("div");
+    actionHelperEl.className = "sadv-header-action-helper";
+
+    const actionToolsEl = document.createElement("div");
+    actionToolsEl.className = "sadv-header-action-tools";
+
+    if (refreshBtnEl) actionToolsEl.appendChild(refreshBtnEl);
+
+    const saveHubWrapEl = document.createElement("div");
+    saveHubWrapEl.id = "sadv-save-hub";
+    saveHubWrapEl.className = "sadv-save-hub";
+    const saveIconHtml = saveBtnEl && saveBtnEl.querySelector(".sadv-btn-icon")
+      ? saveBtnEl.querySelector(".sadv-btn-icon").innerHTML
+      : "";
+    const saveHubBtnEl = document.createElement("button");
+    saveHubBtnEl.id = "sadv-save-hub-btn";
+    saveHubBtnEl.type = "button";
+    saveHubBtnEl.className = "sadv-btn sadv-save-hub-btn";
+    saveHubBtnEl.dataset.baseLabel = "저장본 만들기";
+    saveHubBtnEl.setAttribute("aria-label", "저장본 만들기");
+    saveHubBtnEl.setAttribute("aria-haspopup", "menu");
+    saveHubBtnEl.setAttribute("aria-expanded", "false");
+    saveHubBtnEl.title = "저장본 만들기";
+    saveHubBtnEl.innerHTML = sanitizeHTML(
+      `<span class="sadv-btn-icon" aria-hidden="true">${saveIconHtml}</span><span class="sadv-btn-label">저장본 만들기</span><span class="sadv-save-hub-caret" aria-hidden="true">▾</span>`
+    );
+    const saveHubMenuEl = document.createElement("div");
+    saveHubMenuEl.id = "sadv-save-hub-menu";
+    saveHubMenuEl.className = "sadv-save-hub-menu";
+    saveHubMenuEl.hidden = true;
+    saveHubMenuEl.setAttribute("role", "menu");
+    if (saveBtnEl) {
+      saveBtnEl.classList.add("sadv-save-hub-item");
+      saveBtnEl.setAttribute("role", "menuitem");
+      saveHubMenuEl.appendChild(saveBtnEl);
+    }
+    if (xlsxBtnEl) {
+      xlsxBtnEl.classList.add("sadv-save-hub-item");
+      xlsxBtnEl.setAttribute("role", "menuitem");
+      saveHubMenuEl.appendChild(xlsxBtnEl);
+    }
+    saveHubWrapEl.appendChild(saveHubBtnEl);
+    saveHubWrapEl.appendChild(saveHubMenuEl);
+    actionToolsEl.appendChild(saveHubWrapEl);
+
     const actionStatusChipEl = document.createElement("span");
     actionStatusChipEl.id = "sadv-action-status-chip";
     actionStatusChipEl.className = "sadv-action-status-chip";
     actionStatusChipEl.hidden = true;
     actionStatusChipEl.setAttribute("aria-hidden", "true");
     actionStatusChipEl.setAttribute("aria-live", "polite");
-    actionsWrapEl.appendChild(actionStatusChipEl);
+    actionHelperEl.appendChild(actionStatusChipEl);
+    actionRowEl.appendChild(actionHelperEl);
+    actionRowEl.appendChild(actionToolsEl);
 
     const metaRowEl = document.createElement("div");
     metaRowEl.className = "sadv-header-meta";
@@ -169,11 +219,12 @@ if (headerEl) {
     });
 
     headerTopEl.appendChild(brandWrapEl);
-    headerTopEl.appendChild(actionsWrapEl);
+    headerTopEl.appendChild(topActionsWrapEl);
 
     legacyTopRow.remove();
     headerEl.insertBefore(headerTopEl, modeBarEl);
     headerEl.insertBefore(metaRowEl, modeBarEl);
+    headerEl.insertBefore(actionRowEl, modeBarEl);
   }
 }
 
@@ -254,14 +305,36 @@ siteUiStyle.textContent = `
   white-space:nowrap !important;
   flex-shrink:0 !important;
 }
-.sadv-header-actions{
+.sadv-header-top-actions{
   display:flex !important;
-  gap:6px !important;
   align-items:center !important;
-  flex-wrap:nowrap !important;
   justify-content:flex-end !important;
-  white-space:nowrap !important;
+  gap:8px !important;
+  min-height:36px !important;
   flex-shrink:0 !important;
+}
+.sadv-header-action-row{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) auto !important;
+  align-items:center !important;
+  gap:12px !important;
+  margin-top:10px !important;
+}
+.sadv-header-action-helper{
+  min-width:0 !important;
+  min-height:22px !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-start !important;
+}
+.sadv-header-action-tools{
+  position:relative !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-end !important;
+  gap:8px !important;
+  min-height:36px !important;
+  flex-wrap:nowrap !important;
 }
 .sadv-btn-icon{
   display:inline-flex !important;
@@ -274,6 +347,62 @@ siteUiStyle.textContent = `
   display:inline-flex !important;
   align-items:center !important;
   line-height:1 !important;
+}
+.sadv-save-hub{
+  position:relative !important;
+  display:inline-flex !important;
+  flex-direction:column !important;
+  align-items:stretch !important;
+  justify-content:center !important;
+  flex-shrink:0 !important;
+}
+.sadv-save-hub-btn{
+  min-width:122px !important;
+}
+.sadv-save-hub-btn.sadv-save-hub-direct{
+  min-width:104px !important;
+}
+.sadv-save-hub-caret{
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  font-size:11px !important;
+  line-height:1 !important;
+  opacity:0.84 !important;
+  margin-left:2px !important;
+}
+.sadv-save-hub-menu{
+  position:absolute !important;
+  top:calc(100% + 6px) !important;
+  right:0 !important;
+  min-width:198px !important;
+  display:flex !important;
+  flex-direction:column !important;
+  padding:6px !important;
+  border:1px solid var(--sadv-border) !important;
+  background:var(--sadv-layer-01) !important;
+  box-shadow:0 18px 40px rgba(0,0,0,0.42) !important;
+  z-index:120 !important;
+}
+.sadv-save-hub-menu[hidden]{
+  display:none !important;
+}
+.sadv-save-hub-item{
+  width:100% !important;
+  min-height:38px !important;
+  padding:0 12px !important;
+  justify-content:flex-start !important;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  color:var(--sadv-text) !important;
+}
+.sadv-save-hub-item:hover{
+  background:var(--sadv-layer-02) !important;
+  color:var(--sadv-text) !important;
+}
+.sadv-save-hub-item[hidden]{
+  display:none !important;
 }
 .sadv-action-status-chip{
   display:inline-flex !important;
@@ -419,6 +548,7 @@ siteUiStyle.textContent = `
 }
 #sadv-combo-btn:focus-visible,
 #sadv-refresh-btn:focus-visible,
+#sadv-save-hub-btn:focus-visible,
 #sadv-save-btn:focus-visible,
 #sadv-xlsx-btn:focus-visible,
 #sadv-x:focus-visible,
@@ -571,8 +701,10 @@ siteUiStyle.textContent = `
   border-radius:0 !important;
 }
 #sadv-refresh-btn,
+#sadv-save-hub-btn,
 #sadv-save-btn,
-#sadv-xlsx-btn{
+#sadv-xlsx-btn,
+#sadv-x{
   display:inline-flex !important;
   align-items:center !important;
   justify-content:center !important;
@@ -584,34 +716,17 @@ siteUiStyle.textContent = `
   min-width:0 !important;
   font-size:12px !important;
 }
-#sadv-refresh-btn.sadv-action-btn-primary,
-#sadv-save-btn.sadv-action-btn-primary,
-#sadv-xlsx-btn.sadv-action-btn-primary{
-  min-width:70px !important;
-  padding:0 12px !important;
-}
-#sadv-refresh-btn.sadv-action-btn-secondary,
-#sadv-save-btn.sadv-action-btn-secondary,
-#sadv-xlsx-btn.sadv-action-btn-secondary,
-#sadv-x.sadv-action-btn-secondary{
-  width:36px !important;
-  min-width:36px !important;
-  padding:0 !important;
-  gap:0 !important;
-}
-#sadv-refresh-btn.sadv-action-btn-secondary .sadv-btn-label,
-#sadv-save-btn.sadv-action-btn-secondary .sadv-btn-label,
-#sadv-xlsx-btn.sadv-action-btn-secondary .sadv-btn-label{
-  display:none !important;
-}
 #sadv-refresh-btn.spinning .sadv-btn-icon svg,
 #sadv-save-btn.spinning .sadv-btn-icon svg,
-#sadv-xlsx-btn.spinning .sadv-btn-icon svg{
+#sadv-xlsx-btn.spinning .sadv-btn-icon svg,
+#sadv-save-hub-btn.spinning .sadv-btn-icon svg{
   animation:sadv-action-spin 0.9s linear infinite;
 }
 #sadv-refresh-btn:hover,
+#sadv-save-hub-btn:hover,
 #sadv-save-btn:hover,
-#sadv-xlsx-btn:hover{
+#sadv-xlsx-btn:hover,
+#sadv-x:hover{
   background:var(--sadv-layer-02) !important;
   border-color:var(--sadv-accent) !important;
   color:var(--sadv-text) !important;
@@ -620,8 +735,10 @@ siteUiStyle.textContent = `
   background:transparent !important;
   border:1px solid var(--sadv-border-subtle) !important;
   color:var(--sadv-text-secondary) !important;
-  width:36px !important;
+  width:auto !important;
   height:36px !important;
+  padding:0 10px !important;
+  min-width:0 !important;
 }
 #sadv-x:hover {
   border-color:var(--sadv-danger) !important;
@@ -663,10 +780,36 @@ siteUiStyle.textContent = `
     grid-template-columns:1fr !important;
     align-items:flex-start !important;
   }
-  .sadv-header-actions{
+  .sadv-header-top-actions{
     width:100%;
     justify-content:flex-start !important;
+  }
+  .sadv-header-action-row{
+    grid-template-columns:1fr !important;
+    gap:8px !important;
+  }
+  .sadv-header-action-helper{
+    order:2 !important;
+    justify-content:flex-start !important;
+  }
+  .sadv-header-action-tools{
+    order:1 !important;
+    width:100% !important;
+    justify-content:space-between !important;
     flex-wrap:wrap !important;
+  }
+  .sadv-save-hub{
+    width:100% !important;
+  }
+  .sadv-save-hub-btn{
+    width:100% !important;
+    justify-content:flex-start !important;
+    min-width:0 !important;
+  }
+  .sadv-save-hub-menu{
+    left:0 !important;
+    right:0 !important;
+    min-width:0 !important;
   }
   .sadv-header-meta{
     display:flex !important;

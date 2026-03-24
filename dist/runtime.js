@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-24T11:41:31Z";
-var __SADV_GIT_HEAD__="5426c11";
+var __SADV_BUILD_STAMP__="2026-03-24T12:28:36Z";
+var __SADV_GIT_HEAD__="a5e4bff";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -3153,8 +3153,8 @@ if (headerEl) {
   }
 
   normalizeHeaderActionButton(refreshBtnEl, "새로고침");
-  normalizeHeaderActionButton(saveBtnEl, "저장");
-  normalizeHeaderActionButton(xlsxBtnEl, "엑셀");
+  normalizeHeaderActionButton(saveBtnEl, "HTML 저장");
+  normalizeHeaderActionButton(xlsxBtnEl, "엑셀 저장");
   normalizeHeaderActionButton(closeBtnEl, "닫기");
 
   if (legacyTopRow && brandTitleEl && modeBarEl) {
@@ -3190,18 +3190,68 @@ if (headerEl) {
       brandWrapEl.appendChild(runtimeBadgeEl);
     }
 
-    const actionsWrapEl = document.createElement("div");
-    actionsWrapEl.className = "sadv-header-actions";
-    [refreshBtnEl, saveBtnEl, xlsxBtnEl, closeBtnEl].forEach((node) => {
-      if (node) actionsWrapEl.appendChild(node);
-    });
+    const topActionsWrapEl = document.createElement("div");
+    topActionsWrapEl.className = "sadv-header-top-actions";
+    if (closeBtnEl) topActionsWrapEl.appendChild(closeBtnEl);
+
+    const actionRowEl = document.createElement("div");
+    actionRowEl.id = "sadv-header-action-row";
+    actionRowEl.className = "sadv-header-action-row";
+
+    const actionHelperEl = document.createElement("div");
+    actionHelperEl.className = "sadv-header-action-helper";
+
+    const actionToolsEl = document.createElement("div");
+    actionToolsEl.className = "sadv-header-action-tools";
+
+    if (refreshBtnEl) actionToolsEl.appendChild(refreshBtnEl);
+
+    const saveHubWrapEl = document.createElement("div");
+    saveHubWrapEl.id = "sadv-save-hub";
+    saveHubWrapEl.className = "sadv-save-hub";
+    const saveIconHtml = saveBtnEl && saveBtnEl.querySelector(".sadv-btn-icon")
+      ? saveBtnEl.querySelector(".sadv-btn-icon").innerHTML
+      : "";
+    const saveHubBtnEl = document.createElement("button");
+    saveHubBtnEl.id = "sadv-save-hub-btn";
+    saveHubBtnEl.type = "button";
+    saveHubBtnEl.className = "sadv-btn sadv-save-hub-btn";
+    saveHubBtnEl.dataset.baseLabel = "저장본 만들기";
+    saveHubBtnEl.setAttribute("aria-label", "저장본 만들기");
+    saveHubBtnEl.setAttribute("aria-haspopup", "menu");
+    saveHubBtnEl.setAttribute("aria-expanded", "false");
+    saveHubBtnEl.title = "저장본 만들기";
+    saveHubBtnEl.innerHTML = sanitizeHTML(
+      `<span class="sadv-btn-icon" aria-hidden="true">${saveIconHtml}</span><span class="sadv-btn-label">저장본 만들기</span><span class="sadv-save-hub-caret" aria-hidden="true">▾</span>`
+    );
+    const saveHubMenuEl = document.createElement("div");
+    saveHubMenuEl.id = "sadv-save-hub-menu";
+    saveHubMenuEl.className = "sadv-save-hub-menu";
+    saveHubMenuEl.hidden = true;
+    saveHubMenuEl.setAttribute("role", "menu");
+    if (saveBtnEl) {
+      saveBtnEl.classList.add("sadv-save-hub-item");
+      saveBtnEl.setAttribute("role", "menuitem");
+      saveHubMenuEl.appendChild(saveBtnEl);
+    }
+    if (xlsxBtnEl) {
+      xlsxBtnEl.classList.add("sadv-save-hub-item");
+      xlsxBtnEl.setAttribute("role", "menuitem");
+      saveHubMenuEl.appendChild(xlsxBtnEl);
+    }
+    saveHubWrapEl.appendChild(saveHubBtnEl);
+    saveHubWrapEl.appendChild(saveHubMenuEl);
+    actionToolsEl.appendChild(saveHubWrapEl);
+
     const actionStatusChipEl = document.createElement("span");
     actionStatusChipEl.id = "sadv-action-status-chip";
     actionStatusChipEl.className = "sadv-action-status-chip";
     actionStatusChipEl.hidden = true;
     actionStatusChipEl.setAttribute("aria-hidden", "true");
     actionStatusChipEl.setAttribute("aria-live", "polite");
-    actionsWrapEl.appendChild(actionStatusChipEl);
+    actionHelperEl.appendChild(actionStatusChipEl);
+    actionRowEl.appendChild(actionHelperEl);
+    actionRowEl.appendChild(actionToolsEl);
 
     const metaRowEl = document.createElement("div");
     metaRowEl.className = "sadv-header-meta";
@@ -3219,11 +3269,12 @@ if (headerEl) {
     });
 
     headerTopEl.appendChild(brandWrapEl);
-    headerTopEl.appendChild(actionsWrapEl);
+    headerTopEl.appendChild(topActionsWrapEl);
 
     legacyTopRow.remove();
     headerEl.insertBefore(headerTopEl, modeBarEl);
     headerEl.insertBefore(metaRowEl, modeBarEl);
+    headerEl.insertBefore(actionRowEl, modeBarEl);
   }
 }
 
@@ -3304,14 +3355,36 @@ siteUiStyle.textContent = `
   white-space:nowrap !important;
   flex-shrink:0 !important;
 }
-.sadv-header-actions{
+.sadv-header-top-actions{
   display:flex !important;
-  gap:6px !important;
   align-items:center !important;
-  flex-wrap:nowrap !important;
   justify-content:flex-end !important;
-  white-space:nowrap !important;
+  gap:8px !important;
+  min-height:36px !important;
   flex-shrink:0 !important;
+}
+.sadv-header-action-row{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) auto !important;
+  align-items:center !important;
+  gap:12px !important;
+  margin-top:10px !important;
+}
+.sadv-header-action-helper{
+  min-width:0 !important;
+  min-height:22px !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-start !important;
+}
+.sadv-header-action-tools{
+  position:relative !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-end !important;
+  gap:8px !important;
+  min-height:36px !important;
+  flex-wrap:nowrap !important;
 }
 .sadv-btn-icon{
   display:inline-flex !important;
@@ -3324,6 +3397,62 @@ siteUiStyle.textContent = `
   display:inline-flex !important;
   align-items:center !important;
   line-height:1 !important;
+}
+.sadv-save-hub{
+  position:relative !important;
+  display:inline-flex !important;
+  flex-direction:column !important;
+  align-items:stretch !important;
+  justify-content:center !important;
+  flex-shrink:0 !important;
+}
+.sadv-save-hub-btn{
+  min-width:122px !important;
+}
+.sadv-save-hub-btn.sadv-save-hub-direct{
+  min-width:104px !important;
+}
+.sadv-save-hub-caret{
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  font-size:11px !important;
+  line-height:1 !important;
+  opacity:0.84 !important;
+  margin-left:2px !important;
+}
+.sadv-save-hub-menu{
+  position:absolute !important;
+  top:calc(100% + 6px) !important;
+  right:0 !important;
+  min-width:198px !important;
+  display:flex !important;
+  flex-direction:column !important;
+  padding:6px !important;
+  border:1px solid var(--sadv-border) !important;
+  background:var(--sadv-layer-01) !important;
+  box-shadow:0 18px 40px rgba(0,0,0,0.42) !important;
+  z-index:120 !important;
+}
+.sadv-save-hub-menu[hidden]{
+  display:none !important;
+}
+.sadv-save-hub-item{
+  width:100% !important;
+  min-height:38px !important;
+  padding:0 12px !important;
+  justify-content:flex-start !important;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  color:var(--sadv-text) !important;
+}
+.sadv-save-hub-item:hover{
+  background:var(--sadv-layer-02) !important;
+  color:var(--sadv-text) !important;
+}
+.sadv-save-hub-item[hidden]{
+  display:none !important;
 }
 .sadv-action-status-chip{
   display:inline-flex !important;
@@ -3469,6 +3598,7 @@ siteUiStyle.textContent = `
 }
 #sadv-combo-btn:focus-visible,
 #sadv-refresh-btn:focus-visible,
+#sadv-save-hub-btn:focus-visible,
 #sadv-save-btn:focus-visible,
 #sadv-xlsx-btn:focus-visible,
 #sadv-x:focus-visible,
@@ -3621,8 +3751,10 @@ siteUiStyle.textContent = `
   border-radius:0 !important;
 }
 #sadv-refresh-btn,
+#sadv-save-hub-btn,
 #sadv-save-btn,
-#sadv-xlsx-btn{
+#sadv-xlsx-btn,
+#sadv-x{
   display:inline-flex !important;
   align-items:center !important;
   justify-content:center !important;
@@ -3634,34 +3766,17 @@ siteUiStyle.textContent = `
   min-width:0 !important;
   font-size:12px !important;
 }
-#sadv-refresh-btn.sadv-action-btn-primary,
-#sadv-save-btn.sadv-action-btn-primary,
-#sadv-xlsx-btn.sadv-action-btn-primary{
-  min-width:70px !important;
-  padding:0 12px !important;
-}
-#sadv-refresh-btn.sadv-action-btn-secondary,
-#sadv-save-btn.sadv-action-btn-secondary,
-#sadv-xlsx-btn.sadv-action-btn-secondary,
-#sadv-x.sadv-action-btn-secondary{
-  width:36px !important;
-  min-width:36px !important;
-  padding:0 !important;
-  gap:0 !important;
-}
-#sadv-refresh-btn.sadv-action-btn-secondary .sadv-btn-label,
-#sadv-save-btn.sadv-action-btn-secondary .sadv-btn-label,
-#sadv-xlsx-btn.sadv-action-btn-secondary .sadv-btn-label{
-  display:none !important;
-}
 #sadv-refresh-btn.spinning .sadv-btn-icon svg,
 #sadv-save-btn.spinning .sadv-btn-icon svg,
-#sadv-xlsx-btn.spinning .sadv-btn-icon svg{
+#sadv-xlsx-btn.spinning .sadv-btn-icon svg,
+#sadv-save-hub-btn.spinning .sadv-btn-icon svg{
   animation:sadv-action-spin 0.9s linear infinite;
 }
 #sadv-refresh-btn:hover,
+#sadv-save-hub-btn:hover,
 #sadv-save-btn:hover,
-#sadv-xlsx-btn:hover{
+#sadv-xlsx-btn:hover,
+#sadv-x:hover{
   background:var(--sadv-layer-02) !important;
   border-color:var(--sadv-accent) !important;
   color:var(--sadv-text) !important;
@@ -3670,8 +3785,10 @@ siteUiStyle.textContent = `
   background:transparent !important;
   border:1px solid var(--sadv-border-subtle) !important;
   color:var(--sadv-text-secondary) !important;
-  width:36px !important;
+  width:auto !important;
   height:36px !important;
+  padding:0 10px !important;
+  min-width:0 !important;
 }
 #sadv-x:hover {
   border-color:var(--sadv-danger) !important;
@@ -3713,10 +3830,36 @@ siteUiStyle.textContent = `
     grid-template-columns:1fr !important;
     align-items:flex-start !important;
   }
-  .sadv-header-actions{
+  .sadv-header-top-actions{
     width:100%;
     justify-content:flex-start !important;
+  }
+  .sadv-header-action-row{
+    grid-template-columns:1fr !important;
+    gap:8px !important;
+  }
+  .sadv-header-action-helper{
+    order:2 !important;
+    justify-content:flex-start !important;
+  }
+  .sadv-header-action-tools{
+    order:1 !important;
+    width:100% !important;
+    justify-content:space-between !important;
     flex-wrap:wrap !important;
+  }
+  .sadv-save-hub{
+    width:100% !important;
+  }
+  .sadv-save-hub-btn{
+    width:100% !important;
+    justify-content:flex-start !important;
+    min-width:0 !important;
+  }
+  .sadv-save-hub-menu{
+    left:0 !important;
+    right:0 !important;
+    min-width:0 !important;
   }
   .sadv-header-meta{
     display:flex !important;
@@ -10535,16 +10678,16 @@ function applyUiControlsTab(tab) {
     );
   }
   function getSnapshotActionBaseLabel(actionKind) {
-    return actionKind === "xlsx" ? "엑셀" : "저장";
+    if (actionKind === "xlsx") return "엑셀 저장";
+    if (actionKind === "refresh") return "새로고침";
+    if (actionKind === "close") return "닫기";
+    return "HTML 저장";
   }
   function getSnapshotActionStatusKind(status) {
     return status && status.outputFormat === "xlsx" ? "xlsx" : "save";
   }
   function formatSnapshotActionLabel(status, actionKind) {
-    const baseLabel = getSnapshotActionBaseLabel(actionKind);
-    if (!status || typeof status !== "object") return baseLabel;
-    const statusKind = getSnapshotActionStatusKind(status);
-    return baseLabel;
+    return getSnapshotActionBaseLabel(actionKind);
   }
   function setHeaderActionButtonLabel(buttonEl, label) {
     if (!buttonEl) return;
@@ -10638,9 +10781,6 @@ function applyUiControlsTab(tab) {
       return;
     }
     buttonEl.removeAttribute("aria-hidden");
-    const isPrimary = !!presentation.primary;
-    buttonEl.classList.toggle("sadv-action-btn-primary", isPrimary);
-    buttonEl.classList.toggle("sadv-action-btn-secondary", !isPrimary);
     const accessibleLabel =
       buttonEl.dataset.baseLabel ||
       buttonEl.dataset.currentLabel ||
@@ -10653,29 +10793,114 @@ function applyUiControlsTab(tab) {
       }
     }
   }
+  function getHeaderSaveHubElements() {
+    return {
+      wrap: document.getElementById("sadv-save-hub"),
+      button: document.getElementById("sadv-save-hub-btn"),
+      menu: document.getElementById("sadv-save-hub-menu"),
+      save: document.getElementById("sadv-save-btn"),
+      xlsx: document.getElementById("sadv-xlsx-btn"),
+    };
+  }
+  function closeHeaderSaveHubMenu() {
+    const refs = getHeaderSaveHubElements();
+    if (!refs.menu || !refs.button || !refs.wrap) return;
+    refs.wrap.dataset.open = "false";
+    refs.menu.hidden = true;
+    refs.button.setAttribute("aria-expanded", "false");
+  }
+  function setHeaderSaveHubButtonMeta(buttonEl, label, title, directAction) {
+    if (!buttonEl) return;
+    const nextLabel = typeof label === "string" && label.trim() ? label.trim() : "저장본 만들기";
+    setHeaderActionButtonLabel(buttonEl, nextLabel);
+    buttonEl.dataset.baseLabel = nextLabel;
+    buttonEl.dataset.directAction = directAction || "";
+    buttonEl.setAttribute("aria-label", nextLabel);
+    buttonEl.title = title || nextLabel;
+    const caretEl = buttonEl.querySelector(".sadv-save-hub-caret");
+    const isDirect = !!directAction;
+    if (caretEl) caretEl.style.display = isDirect ? "none" : "";
+    buttonEl.classList.toggle("sadv-save-hub-direct", isDirect);
+    buttonEl.setAttribute("aria-haspopup", isDirect ? "false" : "menu");
+    if (isDirect) buttonEl.setAttribute("aria-expanded", "false");
+  }
+  function syncHeaderSaveHub(displayMeta) {
+    const refs = getHeaderSaveHubElements();
+    if (!refs.wrap || !refs.button) return;
+    const hubMeta = displayMeta && displayMeta.hub ? displayMeta.hub : null;
+    if (!hubMeta || !hubMeta.visible) {
+      refs.wrap.style.display = "none";
+      refs.wrap.setAttribute("aria-hidden", "true");
+      closeHeaderSaveHubMenu();
+      return;
+    }
+    refs.wrap.style.display = "";
+    refs.wrap.removeAttribute("aria-hidden");
+    setHeaderSaveHubButtonMeta(
+      refs.button,
+      hubMeta.label,
+      hubMeta.title,
+      hubMeta.directAction
+    );
+    if (refs.save) {
+      const showSaveItem = !!(hubMeta.menuVisible && hubMeta.items && hubMeta.items.save);
+      refs.save.hidden = !showSaveItem;
+      refs.save.style.display = showSaveItem ? "" : "none";
+      refs.save.setAttribute("aria-hidden", showSaveItem ? "false" : "true");
+    }
+    if (refs.xlsx) {
+      const showXlsxItem = !!(hubMeta.menuVisible && hubMeta.items && hubMeta.items.xlsx);
+      refs.xlsx.hidden = !showXlsxItem;
+      refs.xlsx.style.display = showXlsxItem ? "" : "none";
+      refs.xlsx.setAttribute("aria-hidden", showXlsxItem ? "false" : "true");
+    }
+    if (refs.menu) {
+      if (!hubMeta.menuVisible) {
+        closeHeaderSaveHubMenu();
+      } else if (refs.wrap.dataset.open !== "true") {
+        refs.menu.hidden = true;
+        refs.button.setAttribute("aria-expanded", "false");
+      }
+    }
+  }
   function getHeaderActionDisplayMeta(status) {
     const runtimeCapabilitiesSnapshot = getHeaderActionRuntimeCapabilitiesSnapshot();
     const xlsxVisible = canCurrentRuntimeManualXlsxExport(runtimeCapabilitiesSnapshot);
+    const saveVisible = !!runtimeCapabilitiesSnapshot.canSave;
     const buttons = {
-      refresh: { visible: !!runtimeCapabilitiesSnapshot.canRefresh, primary: false },
-      save: { visible: !!runtimeCapabilitiesSnapshot.canSave, primary: false },
-      xlsx: { visible: !!xlsxVisible, primary: false },
-      close: { visible: !!runtimeCapabilitiesSnapshot.canClose, primary: false },
+      refresh: { visible: !!runtimeCapabilitiesSnapshot.canRefresh },
+      save: { visible: saveVisible },
+      xlsx: { visible: !!xlsxVisible },
+      close: { visible: !!runtimeCapabilitiesSnapshot.canClose },
     };
-    const primaryAction = buttons.save.visible
-      ? "save"
-      : buttons.xlsx.visible
-        ? "xlsx"
-        : buttons.refresh.visible
-          ? "refresh"
-          : buttons.close.visible
-            ? "close"
-            : null;
-    if (primaryAction && buttons[primaryAction]) {
-      buttons[primaryAction].primary = true;
-    }
+    const hubVisible = saveVisible || xlsxVisible;
+    const hubDirectAction =
+      hubVisible && !(saveVisible && xlsxVisible)
+        ? (saveVisible ? "save" : "xlsx")
+        : "";
+    const hubLabel = saveVisible && xlsxVisible
+      ? "저장본 만들기"
+      : saveVisible
+        ? "HTML 저장"
+        : xlsxVisible
+          ? "엑셀 저장"
+          : "";
+    const hubTitle = saveVisible && xlsxVisible
+      ? "저장본 만들기"
+      : hubLabel;
     return {
       buttons: buttons,
+      hub: {
+        visible: hubVisible,
+        label: hubLabel,
+        title: hubTitle,
+        directAction: hubDirectAction,
+        menuVisible: !!(saveVisible && xlsxVisible),
+        items: {
+          save: saveVisible,
+          xlsx: !!xlsxVisible,
+        },
+      },
       chip: formatHeaderActionStatusChip(status),
     };
   }
@@ -10693,17 +10918,10 @@ function applyUiControlsTab(tab) {
       displayMeta.buttons.refresh
     );
     applyHeaderActionButtonPresentation(
-      document.getElementById("sadv-save-btn"),
-      displayMeta.buttons.save
-    );
-    applyHeaderActionButtonPresentation(
-      document.getElementById("sadv-xlsx-btn"),
-      displayMeta.buttons.xlsx
-    );
-    applyHeaderActionButtonPresentation(
       document.getElementById("sadv-x"),
       displayMeta.buttons.close
     );
+    syncHeaderSaveHub(displayMeta);
     syncHeaderActionStatusChip(status);
   }
   function resolveRuntimeCapabilities() {
@@ -11175,6 +11393,7 @@ function applyUiControlsTab(tab) {
       sadvSaveBtnEl.setAttribute("aria-hidden", "true");
     } else {
       sadvSaveBtnEl.addEventListener("click", function () {
+        if (typeof closeHeaderSaveHubMenu === "function") closeHeaderSaveHubMenu();
         // Canonical save entry:
         // 저장 버튼도 directSave/background save와 같은 save execution contract를 타야 한다.
         // 여기서 downloadSnapshot()로 바로 내려가면 runtime bootstrap lease / refresh lease /
@@ -11205,6 +11424,7 @@ function applyUiControlsTab(tab) {
     // 일반 saved/read-only snapshot과 live merge UI는 계속 보수적으로 숨긴다.
     syncXlsxButtonVisibility();
     sadvXlsxBtnEl.addEventListener("click", function () {
+      if (typeof closeHeaderSaveHubMenu === "function") closeHeaderSaveHubMenu();
       if (sadvXlsxBtnEl.disabled) return;
       const saveStatus =
         typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null;
@@ -11223,6 +11443,40 @@ function applyUiControlsTab(tab) {
     });
   } else {
     console.warn("[UI Controls] #sadv-xlsx-btn not found during initialization");
+  }
+
+  var sadvSaveHubBtnEl = document.getElementById("sadv-save-hub-btn");
+  if (sadvSaveHubBtnEl) {
+    sadvSaveHubBtnEl.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      const refs = typeof getHeaderSaveHubElements === "function" ? getHeaderSaveHubElements() : null;
+      if (!refs || !refs.button) return;
+      const directAction = refs.button.dataset.directAction || "";
+      if (directAction === "save" && sadvSaveBtnEl) {
+        sadvSaveBtnEl.click();
+        return;
+      }
+      if (directAction === "xlsx" && sadvXlsxBtnEl) {
+        sadvXlsxBtnEl.click();
+        return;
+      }
+      if (!refs.menu) return;
+      const nextOpen = refs.wrap && refs.wrap.dataset.open === "true" ? "false" : "true";
+      refs.wrap.dataset.open = nextOpen;
+      refs.menu.hidden = nextOpen !== "true";
+      refs.button.setAttribute("aria-expanded", nextOpen === "true" ? "true" : "false");
+    });
+    document.addEventListener("click", function (e) {
+      const refs = typeof getHeaderSaveHubElements === "function" ? getHeaderSaveHubElements() : null;
+      if (!refs || !refs.wrap) return;
+      if (!refs.wrap.contains(e.target)) closeHeaderSaveHubMenu();
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && typeof closeHeaderSaveHubMenu === "function") {
+        closeHeaderSaveHubMenu();
+      }
+    });
   }
 
   var sadvCloseBtnEl = document.getElementById("sadv-x");
@@ -12722,6 +12976,15 @@ function bindSnapshotManualXlsxButton(buttonEl) {
     syncSnapshotActionButtons(
       typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null
     );
+  }
+  const saveHubBtnEl =
+    typeof document !== "undefined" ? document.getElementById("sadv-save-hub-btn") : null;
+  if (saveHubBtnEl && saveHubBtnEl.dataset.snapshotHubBound !== "true") {
+    saveHubBtnEl.dataset.snapshotHubBound = "true";
+    saveHubBtnEl.addEventListener("click", function () {
+      if ((saveHubBtnEl.dataset.directAction || "") !== "xlsx") return;
+      buttonEl.click();
+    });
   }
   buttonEl.addEventListener("click", function () {
     if (buttonEl.disabled) return;
@@ -14873,6 +15136,9 @@ function buildSnapshotSerializedHelperSection() {
     }
     const allowSavedMergedXlsx =
       !!(payload && payload.mergedMeta && payload.mergedMeta.isMerged);
+    const saveHubWrapEl = clone.querySelector("#sadv-save-hub");
+    const saveHubBtnEl = clone.querySelector("#sadv-save-hub-btn");
+    const saveHubMenuEl = clone.querySelector("#sadv-save-hub-menu");
     const actionStatusChipEl = clone.querySelector("#sadv-action-status-chip");
     if (actionStatusChipEl) {
       actionStatusChipEl.hidden = true;
@@ -14886,17 +15152,35 @@ function buildSnapshotSerializedHelperSection() {
       if (el) el.remove();
     });
     if (!allowSavedMergedXlsx) {
+      if (saveHubWrapEl) saveHubWrapEl.remove();
       const xlsxEl = clone.querySelector("#sadv-xlsx-btn");
       if (xlsxEl) xlsxEl.remove();
     } else {
       const xlsxEl = clone.querySelector("#sadv-xlsx-btn");
+      if (saveHubWrapEl) {
+        saveHubWrapEl.style.display = "";
+        saveHubWrapEl.removeAttribute("aria-hidden");
+      }
+      if (saveHubBtnEl) {
+        setHeaderActionButtonLabel(saveHubBtnEl, "엑셀 저장");
+        saveHubBtnEl.dataset.baseLabel = "엑셀 저장";
+        saveHubBtnEl.dataset.directAction = "xlsx";
+        saveHubBtnEl.setAttribute("aria-label", "엑셀 저장");
+        saveHubBtnEl.title = "병합 데이터 엑셀 저장";
+        saveHubBtnEl.classList.add("sadv-save-hub-direct");
+        saveHubBtnEl.setAttribute("aria-haspopup", "false");
+        saveHubBtnEl.setAttribute("aria-expanded", "false");
+        const caretEl = saveHubBtnEl.querySelector(".sadv-save-hub-caret");
+        if (caretEl) caretEl.style.display = "none";
+      }
+      if (saveHubMenuEl) saveHubMenuEl.hidden = true;
       if (xlsxEl) {
-        xlsxEl.style.display = "inline-flex";
-        xlsxEl.removeAttribute("aria-hidden");
+        xlsxEl.style.display = "none";
+        xlsxEl.setAttribute("aria-hidden", "true");
+        xlsxEl.hidden = true;
         xlsxEl.disabled = false;
         xlsxEl.title = "병합 데이터 엑셀 저장";
-        xlsxEl.setAttribute("aria-label", "엑셀");
-        xlsxEl.classList.add("sadv-action-btn-primary");
+        xlsxEl.setAttribute("aria-label", "엑셀 저장");
         xlsxEl.classList.remove("sadv-action-btn-secondary", "spinning");
       }
     }
@@ -14907,7 +15191,7 @@ function buildSnapshotSerializedHelperSection() {
       meta.textContent = "Saved " + savedLabel;
       if (allowSavedMergedXlsx) {
         const actions = topRow.lastElementChild;
-        actions.className = "sadv-header-actions";
+        actions.className = "sadv-header-top-actions";
         actions.appendChild(meta);
       } else {
         topRow.lastElementChild.replaceWith(meta);
@@ -15352,6 +15636,10 @@ function buildSnapshotSerializedHelperSection() {
     ${formatHeaderActionStatusChip.toString()}
     ${syncHeaderActionStatusChip.toString()}
     ${applyHeaderActionButtonPresentation.toString()}
+    ${getHeaderSaveHubElements.toString()}
+    ${closeHeaderSaveHubMenu.toString()}
+    ${setHeaderSaveHubButtonMeta.toString()}
+    ${syncHeaderSaveHub.toString()}
     ${getHeaderActionDisplayMeta.toString()}
     ${syncSnapshotActionButtonLabel.toString()}
     ${syncSnapshotActionButtons.toString()}

@@ -414,6 +414,15 @@ function bindSnapshotManualXlsxButton(buttonEl) {
       typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null
     );
   }
+  const saveHubBtnEl =
+    typeof document !== "undefined" ? document.getElementById("sadv-save-hub-btn") : null;
+  if (saveHubBtnEl && saveHubBtnEl.dataset.snapshotHubBound !== "true") {
+    saveHubBtnEl.dataset.snapshotHubBound = "true";
+    saveHubBtnEl.addEventListener("click", function () {
+      if ((saveHubBtnEl.dataset.directAction || "") !== "xlsx") return;
+      buttonEl.click();
+    });
+  }
   buttonEl.addEventListener("click", function () {
     if (buttonEl.disabled) return;
     const saveStatus =
@@ -2564,6 +2573,9 @@ function buildSnapshotSerializedHelperSection() {
     }
     const allowSavedMergedXlsx =
       !!(payload && payload.mergedMeta && payload.mergedMeta.isMerged);
+    const saveHubWrapEl = clone.querySelector("#sadv-save-hub");
+    const saveHubBtnEl = clone.querySelector("#sadv-save-hub-btn");
+    const saveHubMenuEl = clone.querySelector("#sadv-save-hub-menu");
     const actionStatusChipEl = clone.querySelector("#sadv-action-status-chip");
     if (actionStatusChipEl) {
       actionStatusChipEl.hidden = true;
@@ -2577,17 +2589,35 @@ function buildSnapshotSerializedHelperSection() {
       if (el) el.remove();
     });
     if (!allowSavedMergedXlsx) {
+      if (saveHubWrapEl) saveHubWrapEl.remove();
       const xlsxEl = clone.querySelector("#sadv-xlsx-btn");
       if (xlsxEl) xlsxEl.remove();
     } else {
       const xlsxEl = clone.querySelector("#sadv-xlsx-btn");
+      if (saveHubWrapEl) {
+        saveHubWrapEl.style.display = "";
+        saveHubWrapEl.removeAttribute("aria-hidden");
+      }
+      if (saveHubBtnEl) {
+        setHeaderActionButtonLabel(saveHubBtnEl, "엑셀 저장");
+        saveHubBtnEl.dataset.baseLabel = "엑셀 저장";
+        saveHubBtnEl.dataset.directAction = "xlsx";
+        saveHubBtnEl.setAttribute("aria-label", "엑셀 저장");
+        saveHubBtnEl.title = "병합 데이터 엑셀 저장";
+        saveHubBtnEl.classList.add("sadv-save-hub-direct");
+        saveHubBtnEl.setAttribute("aria-haspopup", "false");
+        saveHubBtnEl.setAttribute("aria-expanded", "false");
+        const caretEl = saveHubBtnEl.querySelector(".sadv-save-hub-caret");
+        if (caretEl) caretEl.style.display = "none";
+      }
+      if (saveHubMenuEl) saveHubMenuEl.hidden = true;
       if (xlsxEl) {
-        xlsxEl.style.display = "inline-flex";
-        xlsxEl.removeAttribute("aria-hidden");
+        xlsxEl.style.display = "none";
+        xlsxEl.setAttribute("aria-hidden", "true");
+        xlsxEl.hidden = true;
         xlsxEl.disabled = false;
         xlsxEl.title = "병합 데이터 엑셀 저장";
-        xlsxEl.setAttribute("aria-label", "엑셀");
-        xlsxEl.classList.add("sadv-action-btn-primary");
+        xlsxEl.setAttribute("aria-label", "엑셀 저장");
         xlsxEl.classList.remove("sadv-action-btn-secondary", "spinning");
       }
     }
@@ -2598,7 +2628,7 @@ function buildSnapshotSerializedHelperSection() {
       meta.textContent = "Saved " + savedLabel;
       if (allowSavedMergedXlsx) {
         const actions = topRow.lastElementChild;
-        actions.className = "sadv-header-actions";
+        actions.className = "sadv-header-top-actions";
         actions.appendChild(meta);
       } else {
         topRow.lastElementChild.replaceWith(meta);
@@ -3043,6 +3073,10 @@ function buildSnapshotSerializedHelperSection() {
     ${formatHeaderActionStatusChip.toString()}
     ${syncHeaderActionStatusChip.toString()}
     ${applyHeaderActionButtonPresentation.toString()}
+    ${getHeaderSaveHubElements.toString()}
+    ${closeHeaderSaveHubMenu.toString()}
+    ${setHeaderSaveHubButtonMeta.toString()}
+    ${syncHeaderSaveHub.toString()}
     ${getHeaderActionDisplayMeta.toString()}
     ${syncSnapshotActionButtonLabel.toString()}
     ${syncSnapshotActionButtons.toString()}
