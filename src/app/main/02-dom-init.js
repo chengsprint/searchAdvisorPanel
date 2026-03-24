@@ -300,8 +300,8 @@ siteUiStyle.textContent = `
   display:flex !important;
   align-items:center !important;
   justify-content:flex-end !important;
-  gap:10px !important;
-  min-height:36px !important;
+  gap:8px !important;
+  min-height:34px !important;
   flex-shrink:0 !important;
 }
 .sadv-header-action-tools{
@@ -309,9 +309,12 @@ siteUiStyle.textContent = `
   display:flex !important;
   align-items:center !important;
   justify-content:flex-end !important;
-  gap:6px !important;
-  min-height:36px !important;
+  gap:5px !important;
+  min-height:34px !important;
   flex-wrap:nowrap !important;
+}
+.sadv-header-action-tools > *{
+  align-self:center !important;
 }
 .sadv-btn-icon{
   display:inline-flex !important;
@@ -334,20 +337,32 @@ siteUiStyle.textContent = `
   flex-shrink:0 !important;
 }
 .sadv-save-hub-btn{
-  min-width:92px !important;
-  padding:0 12px !important;
+  min-width:90px !important;
+  height:34px !important;
+  min-height:34px !important;
+  padding:0 11px !important;
+  gap:5px !important;
 }
 .sadv-save-hub-btn.sadv-save-hub-direct{
   min-width:96px !important;
+}
+.sadv-save-hub-btn .sadv-btn-label{
+  transform:translateY(-0.5px) !important;
+}
+.sadv-save-hub-btn .sadv-btn-icon svg,
+.sadv-btn-icon-only .sadv-btn-icon svg{
+  width:14px !important;
+  height:14px !important;
 }
 .sadv-save-hub-caret{
   display:inline-flex !important;
   align-items:center !important;
   justify-content:center !important;
-  font-size:11px !important;
+  font-size:10px !important;
   line-height:1 !important;
-  opacity:0.84 !important;
-  margin-left:2px !important;
+  opacity:0.72 !important;
+  margin-left:0 !important;
+  transform:translateY(-1px) !important;
 }
 .sadv-save-hub-menu{
   position:absolute !important;
@@ -676,7 +691,8 @@ siteUiStyle.textContent = `
 #sadv-save-btn,
 #sadv-xlsx-btn,
 #sadv-x{
-  min-height:36px !important;
+  min-height:34px !important;
+  height:34px !important;
   border-radius:0 !important;
 }
 #sadv-refresh-btn,
@@ -698,6 +714,7 @@ siteUiStyle.textContent = `
 .sadv-btn-icon-only{
   width:34px !important;
   min-width:34px !important;
+  height:34px !important;
   padding:0 !important;
   gap:0 !important;
 }
@@ -724,7 +741,7 @@ siteUiStyle.textContent = `
   border:1px solid var(--sadv-border-subtle) !important;
   color:var(--sadv-text-secondary) !important;
   width:auto !important;
-  height:36px !important;
+  height:34px !important;
   padding:0 10px !important;
   min-width:0 !important;
 }
