@@ -2551,6 +2551,7 @@ function buildSnapshotSerializedHelperSection() {
         : allSites.length + "\uac1c \uc0ac\uc774\ud2b8";
     const topRow = clone.querySelector("#sadv-header > div");
     const siteLabelEl = clone.querySelector("#sadv-site-label");
+    const cacheMetaHostEl = clone.querySelector("#sadv-cache-meta");
     const comboWrap = clone.querySelector("#sadv-combo-wrap");
     if (comboWrap) comboWrap.classList.remove("open");
     // 저장 직전 라이브 패널은 renderTab() 경로에서 본문 id를
@@ -2598,18 +2599,6 @@ function buildSnapshotSerializedHelperSection() {
         saveHubWrapEl.style.display = "";
         saveHubWrapEl.removeAttribute("aria-hidden");
       }
-      if (saveHubBtnEl) {
-        setHeaderActionButtonLabel(saveHubBtnEl, "엑셀 저장");
-        saveHubBtnEl.dataset.baseLabel = "엑셀 저장";
-        saveHubBtnEl.dataset.directAction = "xlsx";
-        saveHubBtnEl.setAttribute("aria-label", "엑셀 저장");
-        saveHubBtnEl.title = "병합 데이터 엑셀 저장";
-        saveHubBtnEl.classList.add("sadv-save-hub-direct");
-        saveHubBtnEl.setAttribute("aria-haspopup", "false");
-        saveHubBtnEl.setAttribute("aria-expanded", "false");
-        const caretEl = saveHubBtnEl.querySelector(".sadv-save-hub-caret");
-        if (caretEl) caretEl.style.display = "none";
-      }
       if (saveHubMenuEl) saveHubMenuEl.hidden = true;
       if (xlsxEl) {
         xlsxEl.style.display = "none";
@@ -2618,21 +2607,21 @@ function buildSnapshotSerializedHelperSection() {
         xlsxEl.disabled = false;
         xlsxEl.title = "병합 데이터 엑셀 저장";
         xlsxEl.setAttribute("aria-label", "엑셀 저장");
-        xlsxEl.classList.remove("sadv-action-btn-secondary", "spinning");
+        xlsxEl.classList.remove("spinning");
       }
     }
-    if (topRow && topRow.lastElementChild) {
+    if (cacheMetaHostEl) {
       const meta = document.createElement("div");
       meta.style.cssText =
         "display:flex;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid " + T.accentSoftBorder + ";color:" + T.accentSoftText + ";background:" + T.warmDarkBg + ";font-size:10px;font-weight:800";
       meta.textContent = "Saved " + savedLabel;
-      if (allowSavedMergedXlsx) {
-        const actions = topRow.lastElementChild;
-        actions.className = "sadv-header-top-actions";
-        actions.appendChild(meta);
-      } else {
-        topRow.lastElementChild.replaceWith(meta);
-      }
+      cacheMetaHostEl.appendChild(meta);
+    } else if (topRow && topRow.lastElementChild) {
+      const meta = document.createElement("div");
+      meta.style.cssText =
+        "display:flex;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid " + T.accentSoftBorder + ";color:" + T.accentSoftText + ";background:" + T.warmDarkBg + ";font-size:10px;font-weight:800";
+      meta.textContent = "Saved " + savedLabel;
+      topRow.lastElementChild.appendChild(meta);
     }
     const exportPayloadJson = stringifyForInlineJson(payload);
     const html = `<!doctype html>
