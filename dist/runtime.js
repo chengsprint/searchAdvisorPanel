@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-24T12:28:36Z";
-var __SADV_GIT_HEAD__="a5e4bff";
+var __SADV_BUILD_STAMP__="2026-03-24T12:46:03Z";
+var __SADV_GIT_HEAD__="1e52c91";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -3156,6 +3156,8 @@ if (headerEl) {
   normalizeHeaderActionButton(saveBtnEl, "HTML 저장");
   normalizeHeaderActionButton(xlsxBtnEl, "엑셀 저장");
   normalizeHeaderActionButton(closeBtnEl, "닫기");
+  if (refreshBtnEl) refreshBtnEl.classList.add("sadv-btn-icon-only");
+  if (closeBtnEl) closeBtnEl.classList.add("sadv-btn-icon-only");
 
   if (legacyTopRow && brandTitleEl && modeBarEl) {
     const headerTopEl = document.createElement("div");
@@ -3192,19 +3194,9 @@ if (headerEl) {
 
     const topActionsWrapEl = document.createElement("div");
     topActionsWrapEl.className = "sadv-header-top-actions";
-    if (closeBtnEl) topActionsWrapEl.appendChild(closeBtnEl);
-
-    const actionRowEl = document.createElement("div");
-    actionRowEl.id = "sadv-header-action-row";
-    actionRowEl.className = "sadv-header-action-row";
-
-    const actionHelperEl = document.createElement("div");
-    actionHelperEl.className = "sadv-header-action-helper";
-
     const actionToolsEl = document.createElement("div");
+    actionToolsEl.id = "sadv-header-action-row";
     actionToolsEl.className = "sadv-header-action-tools";
-
-    if (refreshBtnEl) actionToolsEl.appendChild(refreshBtnEl);
 
     const saveHubWrapEl = document.createElement("div");
     saveHubWrapEl.id = "sadv-save-hub";
@@ -3216,13 +3208,13 @@ if (headerEl) {
     saveHubBtnEl.id = "sadv-save-hub-btn";
     saveHubBtnEl.type = "button";
     saveHubBtnEl.className = "sadv-btn sadv-save-hub-btn";
-    saveHubBtnEl.dataset.baseLabel = "저장본 만들기";
-    saveHubBtnEl.setAttribute("aria-label", "저장본 만들기");
+    saveHubBtnEl.dataset.baseLabel = "내보내기";
+    saveHubBtnEl.setAttribute("aria-label", "내보내기");
     saveHubBtnEl.setAttribute("aria-haspopup", "menu");
     saveHubBtnEl.setAttribute("aria-expanded", "false");
-    saveHubBtnEl.title = "저장본 만들기";
+    saveHubBtnEl.title = "내보내기";
     saveHubBtnEl.innerHTML = sanitizeHTML(
-      `<span class="sadv-btn-icon" aria-hidden="true">${saveIconHtml}</span><span class="sadv-btn-label">저장본 만들기</span><span class="sadv-save-hub-caret" aria-hidden="true">▾</span>`
+      `<span class="sadv-btn-icon" aria-hidden="true">${saveIconHtml}</span><span class="sadv-btn-label">내보내기</span><span class="sadv-save-hub-caret" aria-hidden="true">▾</span>`
     );
     const saveHubMenuEl = document.createElement("div");
     saveHubMenuEl.id = "sadv-save-hub-menu";
@@ -3242,16 +3234,8 @@ if (headerEl) {
     saveHubWrapEl.appendChild(saveHubBtnEl);
     saveHubWrapEl.appendChild(saveHubMenuEl);
     actionToolsEl.appendChild(saveHubWrapEl);
-
-    const actionStatusChipEl = document.createElement("span");
-    actionStatusChipEl.id = "sadv-action-status-chip";
-    actionStatusChipEl.className = "sadv-action-status-chip";
-    actionStatusChipEl.hidden = true;
-    actionStatusChipEl.setAttribute("aria-hidden", "true");
-    actionStatusChipEl.setAttribute("aria-live", "polite");
-    actionHelperEl.appendChild(actionStatusChipEl);
-    actionRowEl.appendChild(actionHelperEl);
-    actionRowEl.appendChild(actionToolsEl);
+    if (refreshBtnEl) actionToolsEl.appendChild(refreshBtnEl);
+    if (closeBtnEl) actionToolsEl.appendChild(closeBtnEl);
 
     const metaRowEl = document.createElement("div");
     metaRowEl.className = "sadv-header-meta";
@@ -3264,17 +3248,24 @@ if (headerEl) {
       siteLabelMetaEl.appendChild(siteLabelSpan);
     }
 
-    [accountBadgeEl, siteLabelMetaEl, cacheMetaEl].forEach((node) => {
+    const actionStatusChipEl = document.createElement("span");
+    actionStatusChipEl.id = "sadv-action-status-chip";
+    actionStatusChipEl.className = "sadv-action-status-chip";
+    actionStatusChipEl.hidden = true;
+    actionStatusChipEl.setAttribute("aria-hidden", "true");
+    actionStatusChipEl.setAttribute("aria-live", "polite");
+
+    [accountBadgeEl, siteLabelMetaEl, cacheMetaEl, actionStatusChipEl].forEach((node) => {
       if (node) metaRowEl.appendChild(node);
     });
 
     headerTopEl.appendChild(brandWrapEl);
     headerTopEl.appendChild(topActionsWrapEl);
+    topActionsWrapEl.appendChild(actionToolsEl);
 
     legacyTopRow.remove();
     headerEl.insertBefore(headerTopEl, modeBarEl);
     headerEl.insertBefore(metaRowEl, modeBarEl);
-    headerEl.insertBefore(actionRowEl, modeBarEl);
   }
 }
 
@@ -3359,30 +3350,16 @@ siteUiStyle.textContent = `
   display:flex !important;
   align-items:center !important;
   justify-content:flex-end !important;
-  gap:8px !important;
+  gap:10px !important;
   min-height:36px !important;
   flex-shrink:0 !important;
-}
-.sadv-header-action-row{
-  display:grid !important;
-  grid-template-columns:minmax(0,1fr) auto !important;
-  align-items:center !important;
-  gap:12px !important;
-  margin-top:10px !important;
-}
-.sadv-header-action-helper{
-  min-width:0 !important;
-  min-height:22px !important;
-  display:flex !important;
-  align-items:center !important;
-  justify-content:flex-start !important;
 }
 .sadv-header-action-tools{
   position:relative !important;
   display:flex !important;
   align-items:center !important;
   justify-content:flex-end !important;
-  gap:8px !important;
+  gap:6px !important;
   min-height:36px !important;
   flex-wrap:nowrap !important;
 }
@@ -3407,10 +3384,11 @@ siteUiStyle.textContent = `
   flex-shrink:0 !important;
 }
 .sadv-save-hub-btn{
-  min-width:122px !important;
+  min-width:92px !important;
+  padding:0 12px !important;
 }
 .sadv-save-hub-btn.sadv-save-hub-direct{
-  min-width:104px !important;
+  min-width:96px !important;
 }
 .sadv-save-hub-caret{
   display:inline-flex !important;
@@ -3460,9 +3438,9 @@ siteUiStyle.textContent = `
   min-height:22px !important;
   padding:2px 8px !important;
   border-radius:999px !important;
-  border:1px solid rgba(255,212,0,0.16) !important;
-  background:rgba(255,212,0,0.09) !important;
-  color:#ffe082 !important;
+  border:1px solid rgba(255,212,0,0.12) !important;
+  background:rgba(255,212,0,0.06) !important;
+  color:#f5dd92 !important;
   font-size:10px !important;
   font-weight:700 !important;
   line-height:1.1 !important;
@@ -3488,8 +3466,8 @@ siteUiStyle.textContent = `
   color:#ffe0b2 !important;
 }
 .sadv-header-meta{
-  display:grid !important;
-  grid-template-columns:auto minmax(0,1fr) auto !important;
+  display:flex !important;
+  flex-wrap:wrap !important;
   align-items:center !important;
   gap:8px !important;
   margin-top:10px !important;
@@ -3510,6 +3488,7 @@ siteUiStyle.textContent = `
   text-overflow:ellipsis !important;
   white-space:nowrap !important;
   line-height:1.2 !important;
+  flex:1 1 auto !important;
 }
 #sadv-site-label.sadv-meta-hidden{
   display:none !important;
@@ -3766,6 +3745,15 @@ siteUiStyle.textContent = `
   min-width:0 !important;
   font-size:12px !important;
 }
+.sadv-btn-icon-only{
+  width:34px !important;
+  min-width:34px !important;
+  padding:0 !important;
+  gap:0 !important;
+}
+.sadv-btn-icon-only .sadv-btn-label{
+  display:none !important;
+}
 #sadv-refresh-btn.spinning .sadv-btn-icon svg,
 #sadv-save-btn.spinning .sadv-btn-icon svg,
 #sadv-xlsx-btn.spinning .sadv-btn-icon svg,
@@ -3827,39 +3815,25 @@ siteUiStyle.textContent = `
     padding:18px 16px 14px !important;
   }
   .sadv-header-top{
-    grid-template-columns:1fr !important;
+    grid-template-columns:minmax(0,1fr) auto !important;
     align-items:flex-start !important;
   }
   .sadv-header-top-actions{
-    width:100%;
-    justify-content:flex-start !important;
-  }
-  .sadv-header-action-row{
-    grid-template-columns:1fr !important;
-    gap:8px !important;
-  }
-  .sadv-header-action-helper{
-    order:2 !important;
-    justify-content:flex-start !important;
+    flex-shrink:0 !important;
   }
   .sadv-header-action-tools{
-    order:1 !important;
-    width:100% !important;
-    justify-content:space-between !important;
-    flex-wrap:wrap !important;
+    gap:6px !important;
   }
   .sadv-save-hub{
-    width:100% !important;
+    width:auto !important;
   }
   .sadv-save-hub-btn{
-    width:100% !important;
-    justify-content:flex-start !important;
-    min-width:0 !important;
+    min-width:84px !important;
   }
   .sadv-save-hub-menu{
-    left:0 !important;
     right:0 !important;
-    min-width:0 !important;
+    left:auto !important;
+    min-width:178px !important;
   }
   .sadv-header-meta{
     display:flex !important;
@@ -10811,7 +10785,7 @@ function applyUiControlsTab(tab) {
   }
   function setHeaderSaveHubButtonMeta(buttonEl, label, title, directAction) {
     if (!buttonEl) return;
-    const nextLabel = typeof label === "string" && label.trim() ? label.trim() : "저장본 만들기";
+    const nextLabel = typeof label === "string" && label.trim() ? label.trim() : "내보내기";
     setHeaderActionButtonLabel(buttonEl, nextLabel);
     buttonEl.dataset.baseLabel = nextLabel;
     buttonEl.dataset.directAction = directAction || "";
@@ -10879,14 +10853,14 @@ function applyUiControlsTab(tab) {
         ? (saveVisible ? "save" : "xlsx")
         : "";
     const hubLabel = saveVisible && xlsxVisible
-      ? "저장본 만들기"
+      ? "내보내기"
       : saveVisible
         ? "HTML 저장"
         : xlsxVisible
           ? "엑셀 저장"
           : "";
     const hubTitle = saveVisible && xlsxVisible
-      ? "저장본 만들기"
+      ? "내보내기"
       : hubLabel;
     return {
       buttons: buttons,

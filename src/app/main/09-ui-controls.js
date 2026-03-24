@@ -471,7 +471,7 @@ function applyUiControlsTab(tab) {
   }
   function setHeaderSaveHubButtonMeta(buttonEl, label, title, directAction) {
     if (!buttonEl) return;
-    const nextLabel = typeof label === "string" && label.trim() ? label.trim() : "저장본 만들기";
+    const nextLabel = typeof label === "string" && label.trim() ? label.trim() : "내보내기";
     setHeaderActionButtonLabel(buttonEl, nextLabel);
     buttonEl.dataset.baseLabel = nextLabel;
     buttonEl.dataset.directAction = directAction || "";
@@ -539,14 +539,14 @@ function applyUiControlsTab(tab) {
         ? (saveVisible ? "save" : "xlsx")
         : "";
     const hubLabel = saveVisible && xlsxVisible
-      ? "저장본 만들기"
+      ? "내보내기"
       : saveVisible
         ? "HTML 저장"
         : xlsxVisible
           ? "엑셀 저장"
           : "";
     const hubTitle = saveVisible && xlsxVisible
-      ? "저장본 만들기"
+      ? "내보내기"
       : hubLabel;
     return {
       buttons: buttons,
