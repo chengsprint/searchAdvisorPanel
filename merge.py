@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import html
 import json
 import re
 import sys
@@ -548,6 +549,264 @@ def replace_snapshot_shell_state(html: str, shell_state: Dict[str, Any]) -> str:
     return html[:start_idx] + replacement + html[end_idx:]
 
 
+def find_element_bounds_by_id(html: str, element_id: str) -> Optional[Tuple[int, int]]:
+    pattern = re.compile(
+        r'\bid\s*=\s*(["\'])' + re.escape(element_id) + r'\1',
+        re.IGNORECASE,
+    )
+    match = pattern.search(html)
+    if not match:
+        return None
+    start = html.rfind("<", 0, match.start())
+    if start < 0:
+        return None
+    tag_match = re.match(r"<([A-Za-z][A-Za-z0-9:-]*)\b", html[start:])
+    if not tag_match:
+        return None
+    tag_name = tag_match.group(1)
+    token_re = re.compile(r"</?" + re.escape(tag_name) + r"\b[^>]*?>", re.IGNORECASE | re.DOTALL)
+    depth = 0
+    for token_match in token_re.finditer(html, start):
+        token = token_match.group(0)
+        is_close = token.startswith("</")
+        is_self_closing = token.endswith("/>")
+        if is_close:
+            depth -= 1
+            if depth == 0:
+                return (start, token_match.end())
+        elif is_self_closing:
+            if depth == 0 and token_match.start() == start:
+                return (start, token_match.end())
+        else:
+            depth += 1
+    return None
+
+
+def extract_element_html_by_id(html: str, element_id: str) -> Optional[str]:
+    bounds = find_element_bounds_by_id(html, element_id)
+    if not bounds:
+        return None
+    start, end = bounds
+    return html[start:end]
+
+
+def replace_element_html_by_id(html: str, element_id: str, replacement: str) -> str:
+    bounds = find_element_bounds_by_id(html, element_id)
+    if not bounds:
+        return html
+    start, end = bounds
+    return html[:start] + replacement + html[end:]
+
+
+def remove_elements_by_class(html: str, class_name: str) -> str:
+    class_pattern = re.compile(
+        r'\bclass\s*=\s*(["\'])(?=[^"\']*\b' + re.escape(class_name) + r'\b)([^"\']*)\1',
+        re.IGNORECASE,
+    )
+    cursor = 0
+    parts: List[str] = []
+    while True:
+        match = class_pattern.search(html, cursor)
+        if not match:
+            parts.append(html[cursor:])
+            return "".join(parts)
+        start = html.rfind("<", 0, match.start())
+        if start < 0:
+            parts.append(html[cursor:])
+            return "".join(parts)
+        tag_match = re.match(r"<([A-Za-z][A-Za-z0-9:-]*)\b", html[start:])
+        if not tag_match:
+            cursor = match.end()
+            continue
+        tag_name = tag_match.group(1)
+        token_re = re.compile(r"</?" + re.escape(tag_name) + r"\b[^>]*?>", re.IGNORECASE | re.DOTALL)
+        depth = 0
+        end = None
+        for token_match in token_re.finditer(html, start):
+            token = token_match.group(0)
+            is_close = token.startswith("</")
+            is_self_closing = token.endswith("/>")
+            if is_close:
+                depth -= 1
+                if depth == 0:
+                    end = token_match.end()
+                    break
+            elif is_self_closing:
+                if depth == 0 and token_match.start() == start:
+                    end = token_match.end()
+                    break
+            else:
+                depth += 1
+        if end is None:
+            parts.append(html[cursor:])
+            return "".join(parts)
+        parts.append(html[cursor:start])
+        cursor = end
+
+
+def extract_brand_title_html(header_html: str) -> Optional[str]:
+    pattern = re.compile(
+        r'(<div[^>]*style="display:flex;align-items:center;gap:7px;font-size:18px;font-weight:800;letter-spacing:-0\.03em"[^>]*>.*?Search<span style="color:#ffd400">Advisor</span></div>)',
+        re.DOTALL,
+    )
+    match = pattern.search(header_html)
+    return match.group(1) if match else None
+
+
+def extract_first_svg_html(button_html: Optional[str]) -> str:
+    if not button_html:
+        return ""
+    match = re.search(r"(<svg\b.*?</svg>)", button_html, re.DOTALL | re.IGNORECASE)
+    return match.group(1) if match else ""
+
+
+def strip_runtime_badge_html(brand_html: str) -> str:
+    return re.sub(
+        r'<span id="sadv-runtime-badge"[^>]*>.*?</span>',
+        "",
+        brand_html,
+        flags=re.DOTALL,
+    )
+
+
+def build_canonical_runtime_badge_html(existing_badge_html: str) -> str:
+    current_ref = get_source_ref().strip()
+    if not current_ref:
+        return existing_badge_html
+    built_match = re.search(r"built:\s*([^\"<]+)", existing_badge_html or "", re.IGNORECASE)
+    title_parts = [f"ref: {current_ref}"]
+    if built_match:
+        title_parts.append("built: " + built_match.group(1).strip())
+    title_attr = " · ".join(title_parts)
+    return (
+        '<span id="sadv-runtime-badge" title="'
+        + html.escape(title_attr)
+        + '">@'
+        + html.escape(current_ref)
+        + "</span>"
+    )
+
+
+def build_saved_meta_pill(saved_label: str) -> str:
+    if not saved_label:
+        return ""
+    return (
+        '<div style="display:flex;align-items:center;padding:6px 10px;'
+        'border-radius:999px;border:1px solid rgba(255, 212, 0, 0.24);'
+        'color:rgb(255, 212, 0);background:rgba(32, 22, 0, 0.72);'
+        'font-size:10px;font-weight:800;">'
+        + html.escape("Saved " + saved_label)
+        + "</div>"
+    )
+
+
+def append_saved_meta_pill(cache_meta_html: str, saved_label: str) -> str:
+    pill_html = build_saved_meta_pill(saved_label)
+    if not pill_html or "Saved " in cache_meta_html:
+        return cache_meta_html
+    return cache_meta_html.replace("</div>", pill_html + "</div>", 1)
+
+
+def build_canonical_save_hub_markup(
+    save_btn_html: Optional[str],
+    xlsx_btn_html: Optional[str],
+) -> str:
+    icon_svg = extract_first_svg_html(save_btn_html) or extract_first_svg_html(xlsx_btn_html)
+    icon_part = (
+        '<span class="sadv-btn-icon" aria-hidden="true">' + icon_svg + "</span>"
+        if icon_svg
+        else ""
+    )
+    save_hub_btn_html = (
+        '<button id="sadv-save-hub-btn" type="button" class="sadv-btn sadv-save-hub-btn" '
+        'aria-label="내보내기" aria-haspopup="menu" aria-expanded="false" title="내보내기">'
+        + icon_part
+        + '<span class="sadv-btn-label">내보내기</span>'
+        + '<span class="sadv-save-hub-caret" aria-hidden="true">▾</span>'
+        "</button>"
+    )
+    menu_parts: List[str] = []
+    if save_btn_html:
+        menu_parts.append(save_btn_html)
+    if xlsx_btn_html:
+        menu_parts.append(xlsx_btn_html)
+    menu_html = (
+        '<div id="sadv-save-hub-menu" class="sadv-save-hub-menu" role="menu" hidden>'
+        + "".join(menu_parts)
+        + "</div>"
+    )
+    return (
+        '<div id="sadv-save-hub" class="sadv-save-hub">'
+        + save_hub_btn_html
+        + menu_html
+        + "</div>"
+    )
+
+
+def canonicalize_snapshot_header_shell(html: str, saved_label: str) -> str:
+    # Final fallback seam:
+    # merge.py가 canonical shell artifact를 직접 쓰지 못하는 구형 입력 템플릿 상황에서도,
+    # raw merged HTML source 레벨에서 old top-right action cluster를 걷어내고
+    # current live shell family와 같은 header skeleton으로 정규화한다.
+    # 이 단계는 payload/meta/data source는 그대로 두고, header ownership만 공통 구조로 맞춘다.
+    header_html = extract_element_html_by_id(html, "sadv-header")
+    if not header_html:
+        return html
+    if (
+        'class="sadv-header-top"' in header_html
+        and 'class="sadv-header-meta"' in header_html
+        and 'id="sadv-save-hub-btn"' in header_html
+        and 'class="sadv-header-actions"' not in header_html
+    ):
+        return html
+
+    brand_title_html = extract_brand_title_html(header_html)
+    if not brand_title_html:
+        return html
+    runtime_badge_html = build_canonical_runtime_badge_html(
+        extract_element_html_by_id(header_html, "sadv-runtime-badge") or ""
+    )
+    account_badge_html = extract_element_html_by_id(header_html, "sadv-account-badge") or ""
+    site_label_html = extract_element_html_by_id(header_html, "sadv-site-label") or ""
+    cache_meta_html = extract_element_html_by_id(header_html, "sadv-cache-meta") or '<div id="sadv-cache-meta"></div>'
+    cache_meta_html = remove_elements_by_class(cache_meta_html, "sadv-header-actions")
+    cache_meta_html = append_saved_meta_pill(cache_meta_html, saved_label)
+    mode_bar_html = extract_element_html_by_id(header_html, "sadv-mode-bar") or ""
+    site_bar_html = extract_element_html_by_id(header_html, "sadv-site-bar") or ""
+    refresh_btn_html = extract_element_html_by_id(header_html, "sadv-refresh-btn") or ""
+    save_btn_html = extract_element_html_by_id(header_html, "sadv-save-btn") or ""
+    xlsx_btn_html = extract_element_html_by_id(header_html, "sadv-xlsx-btn") or ""
+    close_btn_html = extract_element_html_by_id(header_html, "sadv-x") or ""
+    action_status_chip_html = extract_element_html_by_id(header_html, "sadv-action-status-chip") or (
+        '<span id="sadv-action-status-chip" class="sadv-action-status-chip" hidden aria-hidden="true" aria-live="polite"></span>'
+    )
+
+    canonical_header_html = (
+        '<div id="sadv-header">'
+        '<div class="sadv-header-top">'
+        '<div class="sadv-header-brand">'
+        + strip_runtime_badge_html(brand_title_html)
+        + runtime_badge_html
+        + "</div>"
+        '<div class="sadv-header-top-actions">'
+        '<div id="sadv-header-action-row" class="sadv-header-action-tools">'
+        + build_canonical_save_hub_markup(save_btn_html, xlsx_btn_html)
+        + refresh_btn_html
+        + close_btn_html
+        + "</div></div></div>"
+        '<div class="sadv-header-meta">'
+        + account_badge_html
+        + site_label_html
+        + cache_meta_html
+        + action_status_chip_html
+        + "</div>"
+        + mode_bar_html
+        + site_bar_html
+        + "</div>"
+    )
+    return replace_element_html_by_id(html, "sadv-header", canonical_header_html)
+
+
 def has_function_definition(html: str, function_name: str) -> bool:
     return f"function {function_name}(" in html
 
@@ -711,6 +970,7 @@ def build_merged_html(template_html: str, payload: Dict[str, Any]) -> str:
     html = replace_payload_raw(template_html, payload)
     html = replace_first_saved_chip(html, format_saved_label(payload.get("savedAt") or ""))
     html = replace_snapshot_shell_state(html, build_snapshot_shell_state(payload))
+    html = canonicalize_snapshot_header_shell(html, format_saved_label(payload.get("savedAt") or ""))
     html = inject_missing_merge_xlsx_compat_pack(html)
     html = inject_missing_merge_helpers(html)
     html = inject_missing_merge_header_shell_helpers(html)
@@ -814,14 +1074,14 @@ def merge_current_directory(directory: Path) -> int:
             log(
                 "  ⚠️ 선택된 최신 HTML이 모두 구형 saved template이라 merged HTML에서 엑셀 버튼 동작은 best-effort일 수 있습니다."
             )
-        elif not merged_helper_capable_entries:
-            log(
-                "  ⚠️ 선택된 최신 HTML에 merged helper pack이 없어 현재 코드 기준 helper를 보강 주입합니다."
-            )
         else:
             log(
-                "  ⚠️ canonical header shell 템플릿이 없어 legacy saved template를 사용하되 current ref shell normalizer bridge를 같이 주입합니다."
+                "  ⚠️ canonical header shell 템플릿이 없어 legacy saved template를 사용하되 current ref shell normalizer bridge와 source-level header canonicalization fallback을 같이 적용합니다."
             )
+            if not merged_helper_capable_entries:
+                log(
+                    "  ⚠️ 선택된 최신 HTML에 merged helper pack이 없어 현재 코드 기준 helper를 보강 주입합니다."
+                )
         merged_html = build_merged_html(template_entry.template_html, merged_payload)
         merged_output_path = directory / f"searchadvisor-MERGED-{target_month}.html"
         merged_output_path.write_text(merged_html, encoding="utf-8")
