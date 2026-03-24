@@ -7,8 +7,11 @@ import sys
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
+from urllib.error import URLError
+from urllib.request import urlopen
 
 
 SOURCE_HTML_RE = re.compile(
@@ -33,6 +36,12 @@ MERGED_TEMPLATE_HELPERS = (
     "triggerSnapshotMergedXlsxCompatDownload",
     "downloadMergedSnapshotXlsxCompat",
     "createMergedAccountsInfo",
+)
+MERGE_PY_SOURCE_REF = "9aeca58"
+MERGE_PY_REMOTE_BASE_URL = (
+    "https://raw.githubusercontent.com/chengsprint/searchAdvisorPanel/"
+    + MERGE_PY_SOURCE_REF
+    + "/"
 )
 
 
@@ -522,14 +531,35 @@ def has_function_definition(html: str, function_name: str) -> bool:
     return f"function {function_name}(" in html
 
 
+def fetch_remote_source_text(relative_path: str) -> str:
+    remote_url = MERGE_PY_REMOTE_BASE_URL + relative_path
+    with urlopen(remote_url, timeout=10) as response:
+        return response.read().decode("utf-8")
+
+
+@lru_cache(maxsize=None)
+def load_merge_source_text_with_fallback(relative_path: str) -> str:
+    local_path = Path(__file__).resolve().parent / relative_path
+    if local_path.exists():
+        return local_path.read_text(encoding="utf-8")
+    try:
+        log(
+            f"  ℹ️ 로컬 source 미발견, GitHub raw fallback 사용: {relative_path} @ {MERGE_PY_SOURCE_REF}"
+        )
+        return fetch_remote_source_text(relative_path)
+    except (OSError, URLError) as error:
+        raise FileNotFoundError(
+            f"standalone merge.py 실행에 필요한 source helper를 찾지 못했습니다: {relative_path} "
+            f"(로컬 repo 없음, remote fallback 실패: {error})"
+        ) from error
+
+
 def load_snapshot_source_text() -> str:
-    return (Path(__file__).resolve().parent / "src/app/main/12-snapshot.js").read_text(encoding="utf-8")
+    return load_merge_source_text_with_fallback("src/app/main/12-snapshot.js")
 
 
 def load_xlsx_source_text() -> str:
-    source_text = (Path(__file__).resolve().parent / "src/app/main/15-export-xlsx.js").read_text(
-        encoding="utf-8"
-    )
+    source_text = load_merge_source_text_with_fallback("src/app/main/15-export-xlsx.js")
     cutoff = source_text.find("async function downloadSnapshotXlsx(")
     if cutoff < 0:
         raise ValueError("downloadSnapshotXlsx adapter boundary not found in 15-export-xlsx.js")
