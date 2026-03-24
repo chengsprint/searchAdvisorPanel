@@ -1097,6 +1097,43 @@ def extract_function_source(source_text: str, function_name: str) -> str:
     return snippet.rstrip()
 
 
+def extract_braced_function_source(source_text: str, function_name: str) -> str:
+    async_sig = f"async function {function_name}("
+    plain_sig = f"function {function_name}("
+    start = source_text.find(async_sig)
+    if start < 0:
+        start = source_text.find(plain_sig)
+    if start < 0:
+        raise ValueError(f"function {function_name} not found")
+    brace_start = source_text.find("{", start)
+    if brace_start < 0:
+        raise ValueError(f"function {function_name} body start not found")
+    depth = 0
+    in_string: Optional[str] = None
+    escaped = False
+    for idx in range(brace_start, len(source_text)):
+        ch = source_text[idx]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == in_string:
+                in_string = None
+            continue
+        if ch in ("'", '"', "`"):
+            in_string = ch
+            continue
+        if ch == "{":
+            depth += 1
+            continue
+        if ch == "}":
+            depth -= 1
+            if depth == 0:
+                return source_text[start : idx + 1].rstrip()
+    raise ValueError(f"function {function_name} body end not found")
+
+
 def inject_missing_merge_helpers(html: str) -> str:
     missing = [name for name in MERGED_TEMPLATE_HELPERS if not has_function_definition(html, name)]
     if not missing:
@@ -1124,7 +1161,7 @@ def inject_missing_merge_header_shell_helpers(html: str) -> str:
     if not missing:
         return html
     source_text = load_dom_init_source_text()
-    helper_block = "\n\n".join(extract_function_source(source_text, name) for name in missing).strip()
+    helper_block = "\n\n".join(extract_braced_function_source(source_text, name) for name in missing).strip()
     if not helper_block:
         return html
     anchors = (
@@ -1176,6 +1213,23 @@ def inject_missing_merge_xlsx_binding_call(html: str) -> str:
         "    }\n"
         '\n    if (typeof bindSnapshotManualXlsxButton === "function") {\n'
         '      bindSnapshotManualXlsxButton(document.getElementById("sadv-xlsx-btn"));\n'
+        "    }\n"
+        '\n    var sadvMergeHubBtn = document.getElementById("sadv-save-hub-btn");\n'
+        '    if (sadvMergeHubBtn && sadvMergeHubBtn.dataset && sadvMergeHubBtn.dataset.sadvMergeHubBound !== "true") {\n'
+        '      sadvMergeHubBtn.dataset.sadvMergeHubBound = "true";\n'
+        '      sadvMergeHubBtn.addEventListener("click", function (event) {\n'
+        '        var directAction = sadvMergeHubBtn.dataset ? sadvMergeHubBtn.dataset.directAction || "" : "";\n'
+        '        if (directAction !== "xlsx") {\n'
+        "          return;\n"
+        "        }\n"
+        '        var mergedXlsxBtn = document.getElementById("sadv-xlsx-btn");\n'
+        '        if (!mergedXlsxBtn || mergedXlsxBtn.disabled) {\n'
+        "          return;\n"
+        "        }\n"
+        "        event.preventDefault();\n"
+        "        event.stopPropagation();\n"
+        "        mergedXlsxBtn.click();\n"
+        "      });\n"
         "    }\n"
         '    if (typeof syncSnapshotActionButtons === "function") {\n'
         '      syncSnapshotActionButtons(typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null);\n'
