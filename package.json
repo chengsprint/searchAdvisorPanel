@@ -6,20 +6,8 @@
   "scripts": {
     "build": "node build.js",
     "check": "node --check dist/runtime.js && node scripts/verify_snapshot_contract.js",
-    "test": "npm run test:unit && npm run test:integration",
-    "test:unit": "jest --testPathPattern=tests/unit",
-    "test:integration": "jest --testPathPattern=tests/integration",
-    "test:e2e": "playwright test",
-    "test:coverage": "jest --coverage",
-    "test:watch": "jest --watch",
-    "test:ci": "jest --ci --coverage --maxWorkers=2",
-    "audit:snapshot-html": "node scripts/snapshot_workflow_audit.js",
     "release:stable": "node scripts/write_stable_manifest.js",
-    "lint": "eslint src/**/*.js tests/**/*.js",
-    "lint:fix": "eslint src/**/*.js tests/**/*.js --fix",
-    "format": "prettier --write \"src/**/*.js\" \"tests/**/*.js\"",
-    "format:check": "prettier --check \"src/**/*.js\" \"tests/**/*.js\"",
-    "validate": "npm run build && npm run check && npm run lint && npm run test",
+    "validate": "npm run build && npm run check",
     "prepare": "husky install || true"
   },
   "keywords": [

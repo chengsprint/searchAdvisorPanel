@@ -84,3 +84,31 @@ tests/
 capture-*
 run-capture-*
 *screenshot-capture*.js
+
+# Internal helper / debug / validation scripts stay local-only
+check-*
+inspect-*
+debug-*
+test-*
+verify-*
+demo-*
+real-browser-check.js
+comprehensive-validation.js
+integrate-v2-helpers.sh
+run-e2e-tests.sh
+send-v2-screenshots-telegram.sh
+make-demo.js
+V2_CONSTANTS_TO_ADD.js
+V2_HELPERS_FINAL.js
+*_SUMMARY.txt
+VERIFICATION_REPORT.txt
+
+# Public dist should keep only release artifacts
+dist/check.html
+dist/demo.html
+dist/quick-test.html
+dist/test-*.html
+dist/saved-*.html
+dist/saved-*.json
+dist/widget.html
+dist/runtime-browser.js
