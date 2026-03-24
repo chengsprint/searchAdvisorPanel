@@ -68,3 +68,5 @@ tmp_*.jpeg
 
 # Local screenshots / audit captures
 screenshots/
+__pycache__/
+*.pyc
