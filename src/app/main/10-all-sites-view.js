@@ -181,38 +181,16 @@ function buildAllSitesDisplayWrap(baseRows) {
   }
   wrap.appendChild(buildAllSitesPeriodToolbar(periodDays));
 
-  const isMobile = window.innerWidth <= 768;
   const kpiData = [
     { label: "전체 클릭", value: fmt(summary.totalClicks), sub: periodLabel + " 합계", color: C.green },
     { label: "전체 노출", value: fmt(summary.totalExposes), sub: periodLabel + " 합계", color: C.blue },
     { label: "평균CTR", value: summary.avgCtr.toFixed(2) + "%", sub: periodLabel + " 평균", color: C.amber },
     { label: "활성사이트", value: summary.activeSites + "개", sub: periodLabel + " 클릭 발생", color: C.teal },
   ];
-
-  if (isMobile) {
-    const mobileKpiWrapper = document.createElement("div");
-    mobileKpiWrapper.style.cssText = "display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px";
-    kpiData.forEach(function (kpi) {
-      const kpiCard = document.createElement("div");
-      kpiCard.style.cssText =
-        "background:var(--sadv-layer-01,#262626);border:1px solid var(--sadv-border-subtle,#393939);border-radius:0;padding:16px 18px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,0.18);overflow:hidden;display:flex;flex-direction:column;align-items:center";
-      kpiCard.innerHTML = sanitizeHTML(
-        '<div style="width:100%;font-size:11px;color:var(--sadv-text-tertiary,#8d8d8d);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em;text-align:center">' +
-          escHtml(kpi.label) +
-          '</div><div style="width:100%;font-size:17px;font-weight:650;color:' +
-          kpi.color +
-          ';line-height:1.06;margin-bottom:6px;letter-spacing:-0.01em;word-break:keep-all;text-align:center">' +
-          escHtml(kpi.value) +
-          '</div><div style="width:100%;font-size:11px;color:var(--sadv-text-secondary,#c6c6c6);text-align:center">' +
-          escHtml(kpi.sub) +
-          "</div>"
-      );
-      mobileKpiWrapper.appendChild(kpiCard);
-    });
-    wrap.appendChild(mobileKpiWrapper);
-  } else {
-    wrap.appendChild(kpiGrid(kpiData));
-  }
+  // 전체현황 KPI는 모바일/데스크톱 모두 공통 kpiGrid 정렬 규칙을 사용한다.
+  // 별도 모바일 카드 구현을 두면 line-height / min-height / 세로 중심축이 갈라져
+  // 같은 데이터라도 화면마다 위로 쏠리거나 들쭉날쭉해 보이는 회귀가 생기기 쉽다.
+  wrap.appendChild(kpiGrid(kpiData));
 
   wrap.appendChild(
     secTitle(
@@ -269,6 +247,20 @@ function buildAllSitesDisplayWrap(baseRows) {
     const fontSizeValue = compact ? "font-size:13px" : "font-size:15px";
     const fontSizeLabel = compact ? "font-size:9px" : "font-size:10px";
     const statSpanStyle = compact ? "grid-column:1 / -1;" : "";
+    const statMinHeight = compact ? "58px" : "64px";
+    const statGap = compact ? "3px" : "4px";
+    const statBoxBase =
+      "display:flex;flex-direction:column;align-items:center;justify-content:center;gap:" +
+      statGap +
+      ";text-align:center;min-width:0;min-height:" +
+      statMinHeight +
+      ";background:" +
+      toneBg +
+      ";border:1px solid " +
+      toneBorder +
+      ";" +
+      paddingStyle +
+      ';border-radius:8px';
 
     card.innerHTML = sanitizeHTML(
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="display:flex;align-items:center;gap:8px;min-width:0"><div style="width:10px;height:10px;border-radius:50%;background:' +
@@ -281,13 +273,9 @@ function buildAllSitesDisplayWrap(baseRows) {
         accountBadge +
         '</div></div><div style="display:grid;' +
         gridTemplate +
-        ';margin-bottom:12px"><div style="text-align:center;min-width:0;background:' +
-        toneBg +
-        ';border:1px solid ' +
-        toneBorder +
-        ";" +
-        paddingStyle +
-        ';border-radius:8px"><div style="' +
+        ';margin-bottom:12px"><div style="' +
+        statBoxBase +
+        '"><div style="' +
         fontSizeValue +
         ';font-weight:800;line-height:1.1;color:' +
         col +
@@ -295,13 +283,9 @@ function buildAllSitesDisplayWrap(baseRows) {
         escHtml(fmt(r.totalC)) +
         '</div><div style="' +
         fontSizeLabel +
-        ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">클릭</div></div><div style="text-align:center;min-width:0;background:' +
-        toneBg +
-        ';border:1px solid ' +
-        toneBorder +
-        ";" +
-        paddingStyle +
-        ';border-radius:8px"><div style="' +
+        ';line-height:1.35;color:var(--sadv-text-tertiary,#b9a55a)">클릭</div></div><div style="' +
+        statBoxBase +
+        '"><div style="' +
         fontSizeValue +
         ';font-weight:800;line-height:1.1;color:' +
         col +
@@ -309,15 +293,10 @@ function buildAllSitesDisplayWrap(baseRows) {
         escHtml((r.totalE / 10000).toFixed(1)) +
         '만</div><div style="' +
         fontSizeLabel +
-        ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">노출</div></div><div style="' +
+        ';line-height:1.35;color:var(--sadv-text-tertiary,#b9a55a)">노출</div></div><div style="' +
         statSpanStyle +
-        'text-align:center;min-width:0;background:' +
-        toneBg +
-        ';border:1px solid ' +
-        toneBorder +
-        ";" +
-        paddingStyle +
-        ';border-radius:8px"><div style="' +
+        statBoxBase +
+        '"><div style="' +
         fontSizeValue +
         ';font-weight:800;line-height:1.1;color:' +
         col +
@@ -325,7 +304,7 @@ function buildAllSitesDisplayWrap(baseRows) {
         escHtml(r.avgCtr) +
         '%</div><div style="' +
         fontSizeLabel +
-        ';line-height:1.4;color:var(--sadv-text-tertiary,#b9a55a);margin-top:4px">CTR</div></div></div>'
+        ';line-height:1.35;color:var(--sadv-text-tertiary,#b9a55a)">CTR</div></div></div>'
     );
     card.setAttribute("tabindex", "0");
     card.setAttribute("role", "button");
@@ -579,6 +558,9 @@ async function renderAllSites() {
       }
     }
   };
+  if (typeof clearFatalAuthAbortState === "function") {
+    clearFatalAuthAbortState();
+  }
   const exposeResults = [];
   for (let i = 0; i < sitesToLoad.length; i += ALL_SITES_BATCH) {
     const batchSites = sitesToLoad.slice(i, i + ALL_SITES_BATCH);
@@ -616,6 +598,20 @@ async function renderAllSites() {
         loadingMeta.textContent = `${failedCount}개 사이트 실패 · 나머지 데이터로 계속 진행합니다.`;
       }
     }
+    const fatalAuthState =
+      typeof getFatalAuthAbortState === "function" ? getFatalAuthAbortState() : null;
+    if (fatalAuthState) {
+      setProgress(
+        "로그인/권한 문제로 전체현황 갱신을 중단했습니다.",
+        CONFIG.PROGRESS.BASE_RATIO_START + (Math.min(i + batchSites.length, sitesToLoad.length) / sitesToLoad.length) * CONFIG.PROGRESS.EXPOSE_PHASE_RATIO_RANGE,
+        "남은 사이트 요청은 보내지 않았습니다. 다시 로그인한 뒤 새로고침 후 재시도해 주세요.",
+      );
+      if (loadingMeta) {
+        loadingMeta.textContent =
+          "로그인/권한 문제를 감지해 남은 사이트 요청을 중단했습니다.";
+      }
+      return;
+    }
   }
   const metaSitesToLoad = sitesToLoad.filter(function (site) {
     return !hasDiagnosisMetaSnapshot(siteDataBySite[site] || null);
@@ -642,6 +638,20 @@ async function renderAllSites() {
         siteDataBySite[batchSites[offset]] = result.value;
       }
     });
+    const fatalAuthState =
+      typeof getFatalAuthAbortState === "function" ? getFatalAuthAbortState() : null;
+    if (fatalAuthState) {
+      setProgress(
+        "로그인/권한 문제로 색인 진단 갱신을 중단했습니다.",
+        CONFIG.PROGRESS.META_PHASE_RATIO_START + (metaLoaded / Math.max(1, metaSitesToLoad.length)) * CONFIG.PROGRESS.META_PHASE_RATIO_RANGE,
+        "남은 사이트 요청은 보내지 않았습니다. 다시 로그인한 뒤 새로고침 후 재시도해 주세요.",
+      );
+      if (loadingMeta) {
+        loadingMeta.textContent =
+          "로그인/권한 문제를 감지해 남은 사이트 요청을 중단했습니다.";
+      }
+      return;
+    }
     setProgress(
       "색인 진단 " + metaLoaded + " / " + metaSitesToLoad.length,
       CONFIG.PROGRESS.META_PHASE_RATIO_START + (metaLoaded / Math.max(1, metaSitesToLoad.length)) * CONFIG.PROGRESS.META_PHASE_RATIO_RANGE,
@@ -692,6 +702,9 @@ async function renderAllSites() {
  * );
  */
 async function collectExportData(onProgress, options) {
+  if (typeof clearFatalAuthAbortState === "function") {
+    clearFatalAuthAbortState();
+  }
   const dataBySite = {};
   const summaryRows = [];
   const batchSize = FULL_REFRESH_BATCH_SIZE;
@@ -714,6 +727,18 @@ async function collectExportData(onProgress, options) {
   let done = 0;
   const stats = { success: 0, partial: 0, failed: 0, errors: [] };
   for (let i = 0; i < exportSites.length; i += batchSize) {
+    const fatalAuthBeforeBatch =
+      typeof getFatalAuthAbortState === "function" ? getFatalAuthAbortState() : null;
+    if (fatalAuthBeforeBatch) {
+      const abortError =
+        typeof buildFatalAuthAbortErrorFromState === "function"
+          ? buildFatalAuthAbortErrorFromState(fatalAuthBeforeBatch)
+          : new Error(fatalAuthBeforeBatch.userMessage || ERROR_MESSAGES.INVALID_ENCID);
+      abortError.authAbortStats = { ...stats };
+      abortError.authAbortDone = done;
+      abortError.authAbortTotal = total;
+      throw abortError;
+    }
     const batch = exportSites.slice(i, i + batchSize);
     const results = await Promise.allSettled(
       batch.map(function (site) {
@@ -764,6 +789,18 @@ async function collectExportData(onProgress, options) {
       done++;
       if (onProgress) onProgress(done, total, site, stats);
     });
+    const fatalAuthState =
+      typeof getFatalAuthAbortState === "function" ? getFatalAuthAbortState() : null;
+    if (fatalAuthState) {
+      const abortError =
+        typeof buildFatalAuthAbortErrorFromState === "function"
+          ? buildFatalAuthAbortErrorFromState(fatalAuthState)
+          : new Error(fatalAuthState.userMessage || ERROR_MESSAGES.INVALID_ENCID);
+      abortError.authAbortStats = { ...stats };
+      abortError.authAbortDone = done;
+      abortError.authAbortTotal = total;
+      throw abortError;
+    }
     if (refreshMode === "refresh" && i + batchSize < exportSites.length) {
       const jitter = Math.floor(Math.random() * FULL_REFRESH_JITTER_MS);
       await new Promise(function (resolve) {

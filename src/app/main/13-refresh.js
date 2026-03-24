@@ -511,6 +511,29 @@ async function runFullRefreshPipeline(options = {}) {
   try {
     return await fullRefreshInFlightPromise;
   } catch (e) {
+    const fatalAuthState =
+      (typeof isFatalAuthAbortError === "function" && isFatalAuthAbortError(e) && e.authAbortState)
+        ? e.authAbortState
+        : (typeof getFatalAuthAbortState === "function" ? getFatalAuthAbortState() : null);
+    if (fatalAuthState) {
+      const authDetail =
+        "로그인/권한 문제를 감지해 남은 사이트 요청을 중단했습니다. 네이버/서치어드바이저에 다시 로그인한 뒤 새로고침 후 재시도해 주세요.";
+      if (fullRefreshInFlightMeta && fullRefreshInFlightMeta.progress) {
+        fullRefreshInFlightMeta.progress = {
+          ...fullRefreshInFlightMeta.progress,
+          state: "blocked",
+          label: "로그인 확인 필요",
+          detail: authDetail,
+          updatedAt: Date.now(),
+        };
+      }
+      if (typeof renderFullRefreshProgress === "function") {
+        renderFullRefreshProgress("로그인 확인 필요", authDetail, 0, e && e.authAbortStats ? e.authAbortStats : null);
+      }
+      if (typeof labelEl !== "undefined" && labelEl) {
+        labelEl.innerHTML = sanitizeHTML("<span>로그인 확인 필요</span>");
+      }
+    }
     recordRuntimeEvent("full-refresh-failure", {
       trigger: options && options.trigger ? options.trigger : "manual",
       message: e && e.message ? e.message : String(e),

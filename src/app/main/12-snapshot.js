@@ -22,6 +22,7 @@
 let snapshotSaveInFlightPromise = null;
 let snapshotSaveRequestInFlightPromise = null;
 let snapshotSaveOverlayCleanupTimer = null;
+let snapshotSaveStatusResetTimer = null;
 let snapshotSaveOverlaySuppressed = false;
 let snapshotBackgroundCleanupTimer = null;
 const SNAPSHOT_SAVE_BLOCK_FAILED_RATIO = 0.2;
@@ -42,9 +43,55 @@ function createIdleDirectSaveStatus() {
     mirroredProgress: null,
     stats: { success: 0, partial: 0, failed: 0, errors: [] },
     cacheDecision: { neededRefresh: false, reason: null, missingSites: 0, expiredSites: 0 },
+    outputFormat: null,
     fileName: null,
     site: null,
     error: null,
+  };
+}
+
+function normalizeSnapshotSaveOutputFormat(format) {
+  // output target은 HTML과 XLSX 두 가지만 canonical public surface로 유지한다.
+  // CSV phase는 feature branch 실험에서 폐기됐고, 이후 save contract는
+  // "같은 orchestration + 다른 commit adapter" 원칙만 남긴다.
+  return format === "xlsx" ? "xlsx" : "html";
+}
+
+function getSnapshotSaveOutputMeta(format) {
+  const outputFormat = normalizeSnapshotSaveOutputFormat(format);
+  if (outputFormat === "xlsx") {
+    return {
+      outputFormat: "xlsx",
+      triggerButtonId: "sadv-xlsx-btn",
+      preparingTitle: "엑셀 저장 준비 중",
+      collectingTitle: "엑셀 저장 데이터 수집 중",
+      buildingTitle: "엑셀 파일 생성 중",
+      buildingDetail: "상세 분석용 XLSX 파일을 여러 시트로 조립하고 있어요.",
+      triggeringTitle: "엑셀 다운로드 시작 중",
+      completedTitle: "엑셀 저장 완료",
+      completedWithIssuesTitle: "엑셀 저장 완료 · 이슈 있음",
+      blockedTitle: "엑셀 저장 중단",
+      failedTitle: "엑셀 저장 실패",
+      errorMessage: ERROR_MESSAGES.XLSX_SAVE_ERROR,
+      fileExtension: "xlsx",
+      fileKindLabel: "엑셀 파일",
+    };
+  }
+  return {
+    outputFormat: "html",
+    triggerButtonId: "sadv-save-btn",
+    preparingTitle: "저장 준비 중",
+    collectingTitle: "저장 데이터 수집 중",
+    buildingTitle: "HTML 저장본 생성 중",
+    buildingDetail: "오프라인에서도 열리는 단일 HTML 파일을 조립하고 있어요.",
+    triggeringTitle: "다운로드 시작 중",
+    completedTitle: "저장 완료",
+    completedWithIssuesTitle: "저장 완료 · 이슈 있음",
+    blockedTitle: "저장 중단",
+    failedTitle: "저장 실패",
+    errorMessage: ERROR_MESSAGES.HTML_SAVE_ERROR,
+      fileExtension: "html",
+      fileKindLabel: "저장본",
   };
 }
 
@@ -55,11 +102,83 @@ function clearSnapshotSaveOverlayCleanupTimer() {
   }
 }
 
+function clearSnapshotSaveStatusResetTimer() {
+  if (snapshotSaveStatusResetTimer) {
+    clearTimeout(snapshotSaveStatusResetTimer);
+    snapshotSaveStatusResetTimer = null;
+  }
+}
+
+function scheduleSnapshotSaveStatusIdleReset(status) {
+  clearSnapshotSaveStatusResetTimer();
+  if (!status || status.active) return;
+  const state = typeof status.state === "string" ? status.state : "idle";
+  let delayMs = 0;
+  if (state === "completed" || state === "completed-with-issues") delayMs = 1600;
+  else if (state === "blocked") delayMs = 2600;
+  else if (state === "failed") delayMs = 2200;
+  if (!delayMs) return;
+  snapshotSaveStatusResetTimer = setTimeout(function () {
+    snapshotSaveStatusResetTimer = null;
+    if (typeof resetRuntimeSaveStatus === "function") {
+      resetRuntimeSaveStatus({
+        runtimeType:
+          status && typeof status.runtimeType === "string" ? status.runtimeType : "live",
+        uiHidden: !!(status && status.uiHidden),
+      });
+    }
+  }, delayMs);
+}
+
 function clearSnapshotBackgroundCleanupTimer() {
   if (snapshotBackgroundCleanupTimer) {
     clearTimeout(snapshotBackgroundCleanupTimer);
     snapshotBackgroundCleanupTimer = null;
   }
+}
+
+function resolveMergedAccountDisplayLabel(account, index) {
+  const fallbackLabel = "계정" + (index + 1);
+  const fullLabel =
+    (account && (account.label || account.id || (account.encId ? account.encId.slice(0, 8) : ""))) ||
+    fallbackLabel;
+  const shortLabel = fullLabel.indexOf("@") >= 0 ? fullLabel.split("@")[0] : fullLabel;
+  return { fullLabel, shortLabel };
+}
+
+function getMergedDisplayMeta(mergedMeta, siteCount) {
+  if (!mergedMeta || !mergedMeta.isMerged) return null;
+  const validAccounts = Array.isArray(mergedMeta.accounts) ? mergedMeta.accounts.filter(Boolean) : [];
+  const accountCount = validAccounts.length;
+  const accountLabels = validAccounts
+    .map(function (account, index) {
+      return resolveMergedAccountDisplayLabel(account, index).fullLabel;
+    })
+    .filter(Boolean);
+  return {
+    accountCount,
+    accountLabels,
+    accountBadgeLabel: accountCount > 0 ? "병합 " + accountCount + "개 계정" : "병합본",
+    accountBadgeTitle: accountLabels.join(", "),
+    snapshotTitle: "SearchAdvisor 병합 리포트",
+    runtimeBadgeLabel: "병합본",
+    runtimeBadgeTitle:
+      "병합 대상 " + accountCount + "개 계정 · " + siteCount + "개 사이트",
+    siteStatus:
+      siteCount +
+      "개 사이트 등록됨" +
+      (accountCount > 0 ? " · " + accountCount + "개 계정 병합" : ""),
+    siteSummary:
+      siteCount +
+      "개 사이트를 클릭 기준으로 정렬" +
+      (accountCount > 0 ? " · " + accountCount + "개 계정 병합" : ""),
+    panelCountLabel: accountCount + "개 계정",
+  };
+}
+
+function getMergedAccountsInfoIconSvg() {
+  if (typeof ICONS !== "undefined" && ICONS.layers) return ICONS.layers;
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffd400" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>';
 }
 
 function removeSnapshotSaveOverlay() {
@@ -151,6 +270,7 @@ function scheduleSnapshotBackgroundRuntimeCleanup(delayMs) {
     snapshotBackgroundCleanupTimer = null;
     const panel = document.getElementById("sadv-p");
     const inj = document.getElementById("sadv-inj");
+    clearSnapshotSaveStatusResetTimer();
     removeSnapshotSaveOverlay();
     if (typeof stopCacheExpiryMonitor === "function") stopCacheExpiryMonitor();
     if (panel) panel.remove();
@@ -189,6 +309,200 @@ function getSnapshotSaveRuntimeType() {
   return "live";
 }
 
+function getSnapshotMergedMetaHint() {
+  return (
+    (typeof getMergedMetaState === "function" ? getMergedMetaState() : null) ||
+    (typeof getRuntimeShellState === "function" ? getRuntimeShellState()?.mergedMeta : null) ||
+    (typeof window !== "undefined" && window.__sadvMergedData ? { isMerged: true } : null) ||
+    (typeof window !== "undefined" &&
+    window.__SEARCHADVISOR_EXPORT_PAYLOAD__ &&
+    window.__SEARCHADVISOR_EXPORT_PAYLOAD__.mergedMeta
+      ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__.mergedMeta
+      : null)
+  );
+}
+
+function isSavedMergedSnapshotRuntime() {
+  const runtimeKind =
+    typeof window !== "undefined" && window.__SEARCHADVISOR_RUNTIME_KIND__
+      ? window.__SEARCHADVISOR_RUNTIME_KIND__
+      : "live";
+  const capabilities =
+    typeof getRuntimeCapabilities === "function" ? getRuntimeCapabilities() : null;
+  const mergedMeta = getSnapshotMergedMetaHint();
+  return !!(
+    runtimeKind === "snapshot" &&
+    capabilities &&
+    capabilities.isReadOnly &&
+    capabilities.canXlsxSave &&
+    mergedMeta &&
+    mergedMeta.isMerged &&
+    mergedMeta.generatedBy === "merge.py" &&
+    mergedMeta.xlsxAllowed
+  );
+}
+
+function canManualXlsxExportInCurrentRuntime() {
+  const runtimeKind =
+    typeof window !== "undefined" && window.__SEARCHADVISOR_RUNTIME_KIND__
+      ? window.__SEARCHADVISOR_RUNTIME_KIND__
+      : "live";
+  const capabilities =
+    typeof getRuntimeCapabilities === "function" ? getRuntimeCapabilities() : null;
+  const mergedMeta = getSnapshotMergedMetaHint();
+  const mergeVisible = !!(
+    (typeof isMergedReport === "function" && isMergedReport()) ||
+    (mergedMeta && mergedMeta.isMerged)
+  );
+  if (isSavedMergedSnapshotRuntime()) return true;
+  return !!(
+    runtimeKind === "live" &&
+    capabilities &&
+    capabilities.canSave &&
+    capabilities.canXlsxSave &&
+    !capabilities.isReadOnly &&
+    !mergeVisible
+  );
+}
+
+function isSavedMergedSnapshotXlsxRequestAllowed(requestContext) {
+  const capabilities = requestContext && requestContext.capabilities ? requestContext.capabilities : null;
+  const entryPoint =
+    requestContext && typeof requestContext.entryPoint === "string" ? requestContext.entryPoint : "";
+  return !!(
+    isSavedMergedSnapshotRuntime() &&
+    capabilities &&
+    capabilities.canXlsxSave &&
+    capabilities.isReadOnly &&
+    !requestContext.headlessMode &&
+    entryPoint === "button-xlsx"
+  );
+}
+
+function buildSnapshotManualXlsxExecutionOptions() {
+  if (!isSavedMergedSnapshotRuntime()) return {};
+  const payload =
+    typeof window !== "undefined" && window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+      ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+      : null;
+  return {
+    payload: payload,
+    cacheDecision: { neededRefresh: false, reason: null, missingSites: 0, expiredSites: 0 },
+  };
+}
+
+function bindSnapshotManualXlsxButton(buttonEl) {
+  if (!buttonEl || buttonEl.dataset.snapshotXlsxBound === "true") return;
+  buttonEl.dataset.snapshotXlsxBound = "true";
+  if (typeof syncXlsxButtonVisibility === "function") {
+    syncXlsxButtonVisibility();
+  }
+  buttonEl.addEventListener("click", function () {
+    if (buttonEl.disabled) return;
+    const saveStatus =
+      typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null;
+    if (saveStatus && saveStatus.active) return;
+    if (typeof runSnapshotSaveExecution === "function") {
+      const manualOptions =
+        typeof buildSnapshotManualXlsxExecutionOptions === "function"
+          ? buildSnapshotManualXlsxExecutionOptions()
+          : {};
+      runSnapshotSaveExecution({
+        entryPoint: "button-xlsx",
+        outputFormat: "xlsx",
+        ...(manualOptions || {}),
+      });
+      return;
+    }
+    if (typeof downloadMergedSnapshotXlsxCompat === "function") {
+      downloadMergedSnapshotXlsxCompat(buttonEl);
+    }
+  });
+}
+
+function formatSnapshotMergedXlsxCompatStamp(date) {
+  const safeDate = date instanceof Date && !Number.isNaN(date.getTime()) ? date : new Date();
+  const yyyy = safeDate.getFullYear();
+  const mm = String(safeDate.getMonth() + 1).padStart(2, "0");
+  const dd = String(safeDate.getDate()).padStart(2, "0");
+  const hh = String(safeDate.getHours()).padStart(2, "0");
+  const mi = String(safeDate.getMinutes()).padStart(2, "0");
+  const ss = String(safeDate.getSeconds()).padStart(2, "0");
+  return { month: `${yyyy}${mm}`, stamp: `${yyyy}${mm}${dd}-${hh}${mi}${ss}` };
+}
+
+function buildSnapshotMergedXlsxCompatFileName(savedAt, payload) {
+  const parts = formatSnapshotMergedXlsxCompatStamp(savedAt);
+  const mergedMeta = payload && payload.mergedMeta && typeof payload.mergedMeta === "object"
+    ? payload.mergedMeta
+    : null;
+  const targetMonth =
+    mergedMeta && typeof mergedMeta.targetDate === "string" && /^\d{6}$/.test(mergedMeta.targetDate)
+      ? mergedMeta.targetDate
+      : parts.month;
+  return `searchadvisor-MERGED-${targetMonth}-${parts.stamp.slice(6)}.xlsx`;
+}
+
+function triggerSnapshotMergedXlsxCompatDownload(fileName, workbookBytes) {
+  const blob = new Blob([workbookBytes], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.rel = "noopener";
+  anchor.style.display = "none";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  setTimeout(function () {
+    URL.revokeObjectURL(url);
+  }, 1000);
+}
+
+async function downloadMergedSnapshotXlsxCompat(buttonEl) {
+  if (!isSavedMergedSnapshotRuntime()) return false;
+  if (
+    typeof ensureSnapshotXlsxLibrary !== "function" ||
+    typeof buildSnapshotXlsxWorkbook !== "function"
+  ) {
+    console.warn("[Snapshot XLSX Compat] XLSX helper pack is unavailable in this saved template");
+    return false;
+  }
+  const payload =
+    typeof window !== "undefined" && window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+      ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+      : null;
+  if (!payload) return false;
+  const originalText = buttonEl ? buttonEl.textContent : "엑셀";
+  if (buttonEl) {
+    buttonEl.disabled = true;
+    buttonEl.textContent = "엑셀 준비 중";
+  }
+  try {
+    await ensureSnapshotXlsxLibrary();
+    const savedAt = new Date();
+    const workbookBundle = buildSnapshotXlsxWorkbook(savedAt, payload);
+    const workbookBytes = window.XLSX.write(workbookBundle.workbook, {
+      bookType: "xlsx",
+      type: "array",
+      compression: true,
+    });
+    const fileName = buildSnapshotMergedXlsxCompatFileName(savedAt, payload);
+    triggerSnapshotMergedXlsxCompatDownload(fileName, workbookBytes);
+    return { ok: true, downloaded: true, fileName: fileName, outputFormat: "xlsx" };
+  } catch (error) {
+    console.error("[Snapshot XLSX Compat] merged saved snapshot xlsx export failed:", error);
+    return { ok: false, downloaded: false, error: String(error), outputFormat: "xlsx" };
+  } finally {
+    if (buttonEl) {
+      buttonEl.disabled = false;
+      buttonEl.textContent = originalText;
+    }
+  }
+}
+
 function buildSnapshotSaveRuntimeTypeLabel(runtimeType) {
   if (runtimeType === "saved") return "SAVED";
   if (runtimeType === "merge") return "MERGE";
@@ -212,20 +526,21 @@ function ensureSnapshotSaveOverlay() {
 
 function buildSnapshotSaveOverlayTitle(status) {
   const state = status && typeof status.state === "string" ? status.state : "idle";
+  const outputMeta = getSnapshotSaveOutputMeta(status && status.outputFormat);
   if (status && status.stageLabel) return status.stageLabel;
-  if (state === "checking-cache") return "저장 준비 중";
+  if (state === "checking-cache") return outputMeta.preparingTitle;
   if (state === "waiting-runtime") return "현재 화면 데이터 대기 중";
   if (state === "starting-refresh") return "최신 데이터 갱신 시작 중";
   if (state === "waiting-refresh") return "자동 갱신 결과 대기 중";
   if (state === "refreshing") return "최신 데이터 갱신 중";
-  if (state === "collecting") return "저장 데이터 수집 중";
-  if (state === "building-html") return "HTML 저장본 생성 중";
-  if (state === "triggering-download") return "다운로드 시작 중";
-  if (state === "completed-with-issues") return "저장 완료 · 이슈 있음";
-  if (state === "completed") return "저장 완료";
-  if (state === "blocked") return "저장 중단";
-  if (state === "failed") return "저장 실패";
-  return "저장 대기 중";
+  if (state === "collecting") return outputMeta.collectingTitle;
+  if (state === "building-html") return outputMeta.buildingTitle;
+  if (state === "triggering-download") return outputMeta.triggeringTitle;
+  if (state === "completed-with-issues") return outputMeta.completedWithIssuesTitle;
+  if (state === "completed") return outputMeta.completedTitle;
+  if (state === "blocked") return outputMeta.blockedTitle;
+  if (state === "failed") return outputMeta.failedTitle;
+  return outputMeta.preparingTitle;
 }
 
 function buildSnapshotSaveOverlayAccent(status) {
@@ -334,6 +649,10 @@ function renderSnapshotSaveOverlay(status) {
   overlay.dataset.state = status.state || "idle";
   overlay.dataset.phase = status.phase || "";
   overlay.dataset.runtimeType = runtimeType;
+  overlay.dataset.outputFormat =
+    status && typeof status.outputFormat === "string" && status.outputFormat
+      ? status.outputFormat
+      : "";
   overlay.dataset.uiHidden = status.uiHidden ? "true" : "false";
   overlay.dataset.active = status.active ? "true" : "false";
   overlay.dataset.current =
@@ -462,6 +781,7 @@ function pushSnapshotSaveStatus(patch) {
       ? setRuntimeSaveStatus(patch)
       : (typeof cloneRuntimeSaveStatus === "function" ? cloneRuntimeSaveStatus(patch) : patch);
   renderSnapshotSaveOverlay(next);
+  scheduleSnapshotSaveStatusIdleReset(next);
   return next;
 }
 
@@ -470,7 +790,9 @@ function buildSnapshotWaitingStatePatch(requestContext, decision, state, title, 
     active: true,
     state: state,
     phase: state === "waiting-refresh" ? "refresh" : "prepare",
+    entryPoint: requestContext && typeof requestContext.entryPoint === "string" ? requestContext.entryPoint : "",
     uiHidden: requestContext.headlessMode,
+    outputFormat: requestContext.outputMeta.outputFormat,
     stageLabel: title,
     detail: detail,
     cacheDecision: decision,
@@ -534,7 +856,12 @@ function resolveSnapshotSaveRequestContext(options) {
     typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
   return {
     options: options || {},
+    entryPoint:
+      options && typeof options.entryPoint === "string" && options.entryPoint
+        ? options.entryPoint
+        : "unknown",
     runtimeSites: runtimeSites,
+    runtimeType: getSnapshotSaveRuntimeType(),
     startedAt:
       options && typeof options.startedAt === "number" ? options.startedAt : Date.now(),
     headlessMode: getDirectSaveHeadlessMode(options),
@@ -542,9 +869,60 @@ function resolveSnapshotSaveRequestContext(options) {
       options && options.selectionSnapshot
         ? options.selectionSnapshot
         : buildSnapshotSaveSelectionSnapshot(runtimeSites),
+    outputMeta: getSnapshotSaveOutputMeta(options && options.outputFormat),
     capabilities:
       typeof getRuntimeCapabilities === "function" ? getRuntimeCapabilities() : null,
   };
+}
+
+function buildSnapshotOutputAvailabilityDecision(requestContext) {
+  const outputFormat =
+    requestContext &&
+    requestContext.outputMeta &&
+    typeof requestContext.outputMeta.outputFormat === "string"
+      ? requestContext.outputMeta.outputFormat
+      : "html";
+  if (outputFormat !== "xlsx") {
+    return { allowed: true, reason: null, detail: "", userMessage: "", technicalMessage: "" };
+  }
+  const runtimeType =
+    requestContext && typeof requestContext.runtimeType === "string"
+      ? requestContext.runtimeType
+      : getSnapshotSaveRuntimeType();
+  const savedMergedSnapshotXlsxAllowed =
+    outputFormat === "xlsx" && isSavedMergedSnapshotXlsxRequestAllowed(requestContext);
+  if (runtimeType !== "live" && !savedMergedSnapshotXlsxAllowed) {
+    return {
+      allowed: false,
+      reason: "xlsx-live-only",
+      detail: "엑셀 저장은 라이브 패널 또는 병합 저장본의 엑셀 버튼에서만 지원해요.",
+      userMessage: "엑셀 저장은 라이브 패널 또는 병합 저장본의 엑셀 버튼에서만 지원해요.",
+      technicalMessage: "xlsx export is restricted to live runtime",
+    };
+  }
+  if (requestContext && requestContext.headlessMode) {
+    return {
+      allowed: false,
+      reason: "xlsx-manual-only",
+      detail: "엑셀 저장은 라이브 패널에서 직접 눌러 저장할 때만 지원해요.",
+      userMessage: "엑셀 저장은 라이브 패널에서 직접 눌러 저장할 때만 지원해요.",
+      technicalMessage: "xlsx export is restricted to visible manual live entry",
+    };
+  }
+  const entryPoint =
+    requestContext && typeof requestContext.entryPoint === "string"
+      ? requestContext.entryPoint
+      : "";
+  if (entryPoint !== "button-xlsx") {
+    return {
+      allowed: false,
+      reason: "xlsx-manual-only",
+      detail: "엑셀 저장은 라이브 패널의 엑셀 버튼에서만 지원해요.",
+      userMessage: "엑셀 저장은 라이브 패널의 엑셀 버튼에서만 지원해요.",
+      technicalMessage: "xlsx export is restricted to button-xlsx entry",
+    };
+  }
+  return { allowed: true, reason: null, detail: "", userMessage: "", technicalMessage: "" };
 }
 
 function resolveSnapshotSaveRefreshLease(decision, options) {
@@ -598,11 +976,12 @@ function resolveSnapshotRuntimeBootstrapLeaseForSave(requestContext) {
   return { reusable: false, kind: null, promise: null };
 }
 
-function buildSnapshotWaitingRuntimeDetail(runtimeLease) {
+function buildSnapshotWaitingRuntimeDetail(runtimeLease, outputFormat) {
+  const outputMeta = getSnapshotSaveOutputMeta(outputFormat);
   if (runtimeLease && runtimeLease.kind === "site-view-load") {
-    return "현재 사이트 상세 데이터를 이미 불러오는 중입니다. 같은 요청을 다시 시작하지 않고, 현재 화면 준비가 끝나면 바로 저장합니다.";
+    return "현재 사이트 상세 데이터를 이미 불러오는 중입니다. 같은 요청을 다시 시작하지 않고, 현재 화면 준비가 끝나면 바로 " + outputMeta.fileKindLabel + "을 생성합니다.";
   }
-  return "현재 화면에 필요한 기본 데이터를 이미 불러오는 중입니다. 같은 요청을 다시 시작하지 않고, 화면 준비가 끝나면 바로 저장합니다.";
+  return "현재 화면에 필요한 기본 데이터를 이미 불러오는 중입니다. 같은 요청을 다시 시작하지 않고, 화면 준비가 끝나면 바로 " + outputMeta.fileKindLabel + "을 생성합니다.";
 }
 
 async function collectSnapshotSavePayloadCacheFirst(requestContext, decision, btn) {
@@ -621,7 +1000,7 @@ async function collectSnapshotSavePayloadCacheFirst(requestContext, decision, bt
         state: "collecting",
         phase: "download",
         uiHidden: requestContext.headlessMode,
-        stageLabel: "저장 데이터 수집 중",
+        stageLabel: requestContext.outputMeta.collectingTitle,
         detail:
           done +
           " / " +
@@ -638,6 +1017,7 @@ async function collectSnapshotSavePayloadCacheFirst(requestContext, decision, bt
         stats: stats || { success: 0, partial: 0, failed: 0, errors: [] },
         site: site || null,
         cacheDecision: decision,
+        outputFormat: requestContext.outputMeta.outputFormat,
       });
     },
     { refreshMode: "cache-first" },
@@ -674,7 +1054,7 @@ async function acquireSnapshotSavePayloadForExecution(requestContext, decision, 
           decision,
           "waiting-refresh",
           "자동 갱신 결과 대기 중",
-          buildSnapshotWaitingRefreshDetail(),
+          buildSnapshotWaitingRefreshDetail(requestContext.outputMeta.outputFormat),
           mirroredProgress,
         ),
       );
@@ -702,9 +1082,10 @@ async function acquireSnapshotSavePayloadForExecution(requestContext, decision, 
       phase: "refresh",
       uiHidden: requestContext.headlessMode,
       stageLabel: "최신 데이터 갱신 시작 중",
-      detail: buildDirectSaveDecisionDetail(decision),
+      detail: buildDirectSaveDecisionDetail(decision, requestContext.outputMeta.outputFormat),
       cacheDecision: decision,
       mirroredProgress: null,
+      outputFormat: requestContext.outputMeta.outputFormat,
     });
     if (typeof acquireFullRefreshPayloadForSave === "function") {
       return await acquireFullRefreshPayloadForSave(refreshLease, {
@@ -732,6 +1113,7 @@ async function acquireSnapshotSavePayloadForExecution(requestContext, decision, 
             stats: stats || { success: 0, partial: 0, failed: 0, errors: [] },
             site: site || null,
             cacheDecision: decision,
+            outputFormat: requestContext.outputMeta.outputFormat,
           });
         },
       });
@@ -805,8 +1187,13 @@ function getSnapshotReusableRefreshStatusForSave() {
     : { reusable: false, trigger: null, startedAt: null, context: null };
 }
 
-function buildSnapshotWaitingRefreshDetail() {
-  return "이미 진행 중인 자동 갱신이 끝나면 바로 저장합니다. 새로운 수집을 다시 시작하지 않고, 현재 갱신 결과를 그대로 재사용합니다.";
+function buildSnapshotWaitingRefreshDetail(outputFormat) {
+  const outputMeta = getSnapshotSaveOutputMeta(outputFormat);
+  return "이미 진행 중인 자동 갱신이 끝나면 바로 " + outputMeta.fileKindLabel + "을 생성합니다. 새로운 수집을 다시 시작하지 않고, 현재 갱신 결과를 그대로 재사용합니다.";
+}
+
+function buildSnapshotFatalAuthAbortDetail() {
+  return "로그인/권한 문제를 감지해 남은 사이트 요청을 중단했습니다. 네이버/서치어드바이저에 다시 로그인한 뒤 새로고침 후 다시 시도해 주세요.";
 }
 
 function getSnapshotPayloadSiteCount(payload, fallbackCount) {
@@ -898,24 +1285,27 @@ function buildSnapshotSaveBlockDecision(payload, runtimeSites) {
   };
 }
 
-function buildDirectSaveDecisionDetail(decision) {
+function buildDirectSaveDecisionDetail(decision, outputFormat) {
+  const outputMeta = getSnapshotSaveOutputMeta(outputFormat);
   if (!decision || !decision.neededRefresh) {
-    return "현재 캐시를 사용해 바로 저장을 시작합니다.";
+    return "현재 캐시를 사용해 바로 " + outputMeta.fileKindLabel + " 생성을 시작합니다. HTML 저장과 동일한 데이터 검증 경로를 사용합니다.";
   }
   if (decision.reason === "site-list-missing") {
-    return "사이트 목록 캐시가 없어 전체 데이터를 다시 수집한 뒤 저장합니다.";
+    return "사이트 목록 캐시가 없어 전체 데이터를 다시 수집한 뒤 " + outputMeta.fileKindLabel + "을 생성합니다. HTML 저장과 동일한 데이터 검증 경로를 사용합니다.";
   }
   if (decision.reason === "site-list-expired") {
-    return "사이트 목록 캐시가 만료되어 최신 데이터를 다시 수집한 뒤 저장합니다.";
+    return "사이트 목록 캐시가 만료되어 최신 데이터를 다시 수집한 뒤 " + outputMeta.fileKindLabel + "을 생성합니다. HTML 저장과 동일한 데이터 검증 경로를 사용합니다.";
   }
   if (decision.reason === "site-data-missing") {
     return (
       "저장에 필요한 사이트 데이터가 일부 비어 있어 " +
       String(decision.missingSites || 0) +
-      "개 사이트를 포함해 전체 데이터를 갱신한 뒤 저장합니다."
+      "개 사이트를 포함해 전체 데이터를 갱신한 뒤 " +
+      outputMeta.fileKindLabel +
+      "을 생성합니다. HTML 저장과 동일한 데이터 검증 경로를 사용합니다."
     );
   }
-  return "캐시가 만료되었거나 불완전해서 최신 데이터를 갱신한 뒤 저장합니다.";
+  return "캐시가 만료되었거나 불완전해서 최신 데이터를 갱신한 뒤 " + outputMeta.fileKindLabel + "을 생성합니다. HTML 저장과 동일한 데이터 검증 경로를 사용합니다.";
 }
 
 function hasSnapshotSaveIssues(stats) {
@@ -927,7 +1317,8 @@ function hasSnapshotSaveIssues(stats) {
   );
 }
 
-function buildSnapshotSaveIssuesDetail(stats, fileName) {
+function buildSnapshotSaveIssuesDetail(stats, fileName, outputFormat) {
+  const outputMeta = getSnapshotSaveOutputMeta(outputFormat);
   const safeStats = stats || { failed: 0, partial: 0 };
   const summary =
     "실패 " +
@@ -936,19 +1327,24 @@ function buildSnapshotSaveIssuesDetail(stats, fileName) {
     String(safeStats.partial || 0) +
     "개";
   if (fileName) {
-    return "일부 요청 이슈가 있었지만 저장본은 생성되었습니다. " + summary + " · " + fileName;
+    return "일부 요청 이슈가 있었지만 " + outputMeta.fileKindLabel + "은 생성되었습니다. " + summary + " · " + fileName;
   }
-  return "일부 요청 이슈가 있었지만 저장본은 생성되었습니다. " + summary;
+  return "일부 요청 이슈가 있었지만 " + outputMeta.fileKindLabel + "은 생성되었습니다. " + summary;
 }
 
-function buildSnapshotDownloadFileName(savedAt) {
+function buildSnapshotDownloadFileName(savedAt, extension) {
   return (
     "searchadvisor-" +
     accountIdFromLabel(accountLabel) +
     "-" +
     stampFile(savedAt) +
-    ".html"
+    "." +
+    (extension || "html")
   );
+}
+
+function getSnapshotSaveTriggerButton(outputFormat) {
+  return document.getElementById(getSnapshotSaveOutputMeta(outputFormat).triggerButtonId);
 }
 
 function setSnapshotSaveButtonBusy(btn, text) {
@@ -1019,8 +1415,11 @@ function restoreSnapshotSaveButton(btn, originalText) {
               missingSites: 0,
               expiredSites: 0,
             };
-      const btn = document.getElementById("sadv-save-btn");
-      const originalText = btn ? btn.textContent : "저장";
+      const outputMeta = getSnapshotSaveOutputMeta(options && options.outputFormat);
+      const entryPoint =
+        options && typeof options.entryPoint === "string" ? options.entryPoint : "";
+      const btn = getSnapshotSaveTriggerButton(outputMeta.outputFormat);
+      const originalText = btn ? btn.textContent : (outputMeta.outputFormat === "xlsx" ? "엑셀" : "저장");
       setSnapshotSaveButtonBusy(btn, "0/" + runtimeSites.length);
       const reusableRefreshHandle =
         !options || !options.payload ? getSnapshotReusableRefreshStatusForSave() : { reusable: false };
@@ -1036,16 +1435,16 @@ function restoreSnapshotSaveButton(btn, originalText) {
         phase: reusableRefreshHandle.reusable ? "refresh" : "download",
         stageLabel:
           options && options.payload
-            ? "HTML 저장본 생성 중"
+            ? outputMeta.buildingTitle
             : reusableRefreshHandle.reusable
               ? "자동 갱신 결과 대기 중"
-              : "저장 데이터 수집 중",
+              : outputMeta.collectingTitle,
         detail:
           options && options.payload
-            ? "최신 데이터 수집은 이미 끝났고, 오프라인 HTML 저장본을 조립하고 있어요."
+            ? outputMeta.buildingDetail
             : reusableRefreshHandle.reusable
-              ? buildSnapshotWaitingRefreshDetail()
-              : "저장본에 들어갈 사이트 데이터를 순서대로 수집하고 있어요.",
+              ? buildSnapshotWaitingRefreshDetail(outputMeta.outputFormat)
+              : "저장에 들어갈 사이트 데이터를 순서대로 수집하고 있어요.",
         startedAt: startedAt,
         completedAt: null,
         progress: {
@@ -1064,6 +1463,8 @@ function restoreSnapshotSaveButton(btn, originalText) {
             ? options.payload.stats
             : { success: 0, partial: 0, failed: 0, errors: [] },
         cacheDecision: cacheDecision,
+        entryPoint: entryPoint,
+        outputFormat: outputMeta.outputFormat,
         fileName: null,
         site: null,
         error: null,
@@ -1091,7 +1492,7 @@ function restoreSnapshotSaveButton(btn, originalText) {
                 active: true,
                 state: "collecting",
                 phase: "download",
-                stageLabel: "저장 데이터 수집 중",
+                stageLabel: outputMeta.collectingTitle,
                 detail:
                   done +
                   " / " +
@@ -1107,6 +1508,8 @@ function restoreSnapshotSaveButton(btn, originalText) {
                 stats: stats || { success: 0, partial: 0, failed: 0, errors: [] },
                 site: site || null,
                 cacheDecision: cacheDecision,
+                entryPoint: entryPoint,
+                outputFormat: outputMeta.outputFormat,
               });
             },
             { refreshMode: refreshMode },
@@ -1124,8 +1527,8 @@ function restoreSnapshotSaveButton(btn, originalText) {
           active: true,
           state: "building-html",
           phase: "download",
-          stageLabel: "HTML 저장본 생성 중",
-          detail: "오프라인에서도 열리는 단일 HTML 파일을 조립하고 있어요.",
+          stageLabel: outputMeta.buildingTitle,
+          detail: outputMeta.buildingDetail,
           progress: {
             done: runtimeSites.length,
             total: runtimeSites.length,
@@ -1135,6 +1538,8 @@ function restoreSnapshotSaveButton(btn, originalText) {
           stats: payload && payload.stats ? payload.stats : { success: 0, partial: 0, failed: 0, errors: [] },
           site: null,
           cacheDecision: cacheDecision,
+          entryPoint: entryPoint,
+          outputFormat: outputMeta.outputFormat,
         });
         const saveBlockDecision = buildSnapshotSaveBlockDecision(payload, runtimeSites);
         if (saveBlockDecision.blocked) {
@@ -1151,11 +1556,13 @@ function restoreSnapshotSaveButton(btn, originalText) {
             active: false,
             state: "blocked",
             phase: "download",
-            stageLabel: "저장 중단",
+            stageLabel: outputMeta.blockedTitle,
             detail: saveBlockDecision.detail,
             completedAt: Date.now(),
             cacheDecision: cacheDecision,
             stats: saveBlockDecision.stats,
+            entryPoint: entryPoint,
+            outputFormat: outputMeta.outputFormat,
             fileName: null,
             site: null,
             error: {
@@ -1173,15 +1580,17 @@ function restoreSnapshotSaveButton(btn, originalText) {
           };
         }
         const html = injectSnapshotReactShell(buildSnapshotHtml(savedAt, payload), payload);
-        const fileName = buildSnapshotDownloadFileName(savedAt);
+        const fileName = buildSnapshotDownloadFileName(savedAt, "html");
         pushSnapshotSaveStatus({
           active: true,
           state: "triggering-download",
           phase: "download",
-          stageLabel: "다운로드 시작 중",
+          stageLabel: outputMeta.triggeringTitle,
           detail: "브라우저 다운로드를 트리거하고 있어요.",
           fileName: fileName,
           cacheDecision: cacheDecision,
+          entryPoint: entryPoint,
+          outputFormat: outputMeta.outputFormat,
         });
         const blob = new Blob([html], { type: "text/html;charset=utf-8" });
         const link = document.createElement("a");
@@ -1203,41 +1612,46 @@ function restoreSnapshotSaveButton(btn, originalText) {
           active: false,
           state: hasIssues ? "completed-with-issues" : "completed",
           phase: "download",
-          stageLabel: hasIssues ? "저장 완료 · 이슈 있음" : "저장 완료",
+          stageLabel: hasIssues ? outputMeta.completedWithIssuesTitle : outputMeta.completedTitle,
           detail: hasIssues
-            ? buildSnapshotSaveIssuesDetail(saveStats, fileName)
+            ? buildSnapshotSaveIssuesDetail(saveStats, fileName, outputMeta.outputFormat)
             : "브라우저 다운로드 요청을 전송했어요.",
           fileName: fileName,
           completedAt: Date.now(),
           cacheDecision: cacheDecision,
           stats: saveStats,
+          entryPoint: entryPoint,
+          outputFormat: outputMeta.outputFormat,
         });
         return {
           ok: true,
           status: hasIssues ? "completed-with-issues" : "completed",
           hasIssues: hasIssues,
+          outputFormat: outputMeta.outputFormat,
           fileName: fileName,
           payload: payload,
           stats: saveStats,
         };
       } catch (e) {
-        pushSnapshotSaveStatus({
-          active: false,
-          state: "failed",
-          phase: "download",
-          stageLabel: "저장 실패",
-          detail:
-            "저장 중 오류가 발생했어요. 상태 객체와 오류 배너를 확인한 뒤 다시 시도해 주세요.",
-          completedAt: Date.now(),
-          error: {
-            message: e && e.message ? e.message : String(e),
-            context: "downloadSnapshot",
-          },
-          cacheDecision: cacheDecision,
-        });
-        showError(ERROR_MESSAGES.HTML_SAVE_ERROR, e, 'downloadSnapshot');
+      pushSnapshotSaveStatus({
+        active: false,
+        state: "failed",
+        phase: "download",
+        stageLabel: outputMeta.failedTitle,
+        detail:
+          "저장 중 오류가 발생했어요. 상태 객체와 오류 배너를 확인한 뒤 다시 시도해 주세요.",
+        completedAt: Date.now(),
+        error: {
+          message: e && e.message ? e.message : String(e),
+          context: "downloadSnapshot",
+        },
+        cacheDecision: cacheDecision,
+        entryPoint: entryPoint,
+        outputFormat: outputMeta.outputFormat,
+      });
+        showError(outputMeta.errorMessage, e, 'downloadSnapshot');
         bdEl.innerHTML = createInlineError(
-          ERROR_MESSAGES.HTML_SAVE_ERROR,
+          outputMeta.errorMessage,
           function () {
             runSnapshotSaveExecution();
           },
@@ -1268,14 +1682,74 @@ async function runSnapshotSaveExecution(options) {
   // 2) resolveSnapshotRuntimeBootstrapLeaseForSave() 로 현재 화면 초기 로딩(all-sites/site-view) 재사용 여부 판단
   // 3) resolveSnapshotSaveRefreshLease() 로 refresh owner lease 재사용/시작 여부 판단
   // 4) acquireSnapshotSavePayloadForExecution() 으로 payload 획득
-  // 5) downloadSnapshot() 으로 최종 blocked 검사 + HTML commit/downloader 실행
+  // 5) output adapter(downloadSnapshot / downloadSnapshotXlsx)로
+  //    최종 blocked 검사 + 파일 생성 + downloader commit 실행
   //
   // 중요:
   // - decision recompute는 runtime bootstrap wait 이후 1회만 허용한다.
   // - 그 이후에는 캡처한 lease/payload만 소비해야 하며, entrypoint별 별도 save policy를 다시 만들면 안 된다.
   if (snapshotSaveRequestInFlightPromise) return snapshotSaveRequestInFlightPromise;
   const requestContext = resolveSnapshotSaveRequestContext(options);
-    if (requestContext.capabilities && !requestContext.capabilities.canSave) return false;
+    const outputAvailabilityDecision = buildSnapshotOutputAvailabilityDecision(requestContext);
+    const canStartSaveExecution = requestContext.capabilities
+      ? requestContext.outputMeta.outputFormat === "xlsx"
+        ? !!(
+            requestContext.capabilities.canSave ||
+            isSavedMergedSnapshotXlsxRequestAllowed(requestContext)
+          )
+        : !!requestContext.capabilities.canSave
+      : true;
+    if (!canStartSaveExecution) return false;
+    if (!outputAvailabilityDecision.allowed) {
+      showError(
+        outputAvailabilityDecision.userMessage,
+        outputAvailabilityDecision.technicalMessage,
+        "runSnapshotSaveExecution-output-not-allowed",
+        {
+          dedupeKey:
+            "runSnapshotSaveExecution-output-not-allowed::" +
+            requestContext.outputMeta.outputFormat +
+            "::" +
+            outputAvailabilityDecision.reason,
+          dedupeWindowMs: 1500,
+        },
+      );
+      pushSnapshotSaveStatus({
+        __replace: true,
+        active: false,
+        state: "blocked",
+        phase: "prepare",
+        entryPoint: requestContext.entryPoint,
+        uiHidden: requestContext.headlessMode,
+        outputFormat: requestContext.outputMeta.outputFormat,
+        stageLabel: requestContext.outputMeta.blockedTitle,
+        detail: outputAvailabilityDecision.detail,
+        startedAt: requestContext.startedAt,
+        completedAt: Date.now(),
+        progress: {
+          done: 0,
+          total: requestContext.runtimeSites.length,
+          ratio: 0,
+          percent: 0,
+        },
+        mirroredProgress: null,
+        stats: { success: 0, partial: 0, failed: 0, errors: [] },
+        cacheDecision: null,
+        fileName: null,
+        site: null,
+        error: {
+          message: outputAvailabilityDecision.userMessage,
+          context: "runSnapshotSaveExecution-output-not-allowed",
+        },
+      });
+      return {
+        ok: false,
+        status: "blocked",
+        reason: outputAvailabilityDecision.reason,
+        downloaded: false,
+        outputFormat: requestContext.outputMeta.outputFormat,
+      };
+    }
     snapshotSaveRequestInFlightPromise = (async function () {
       const restoreHeadlessUi = requestContext.headlessMode
         ? createSnapshotHeadlessUiRestore()
@@ -1287,7 +1761,7 @@ async function runSnapshotSaveExecution(options) {
           ? requestContext.options.cacheDecision
           : null;
       let decision = explicitDecision || buildDirectSaveRefreshDecision();
-      const btn = document.getElementById("sadv-save-btn");
+      const btn = getSnapshotSaveTriggerButton(requestContext.outputMeta.outputFormat);
       try {
         setSnapshotSaveOverlaySuppressed(requestContext.headlessMode);
         pushSnapshotSaveStatus({
@@ -1295,9 +1769,11 @@ async function runSnapshotSaveExecution(options) {
           active: true,
           state: "checking-cache",
           phase: "prepare",
+          entryPoint: requestContext.entryPoint,
           uiHidden: requestContext.headlessMode,
-          stageLabel: "저장 준비 중",
-          detail: buildDirectSaveDecisionDetail(decision),
+          outputFormat: requestContext.outputMeta.outputFormat,
+          stageLabel: requestContext.outputMeta.preparingTitle,
+          detail: buildDirectSaveDecisionDetail(decision, requestContext.outputMeta.outputFormat),
           startedAt: requestContext.startedAt,
           completedAt: null,
           progress: {
@@ -1324,7 +1800,10 @@ async function runSnapshotSaveExecution(options) {
                   decision,
                   "waiting-runtime",
                   "현재 화면 데이터 대기 중",
-                  buildSnapshotWaitingRuntimeDetail(runtimeBootstrapLease),
+                  buildSnapshotWaitingRuntimeDetail(
+                    runtimeBootstrapLease,
+                    requestContext.outputMeta.outputFormat
+                  ),
                   mirroredProgress,
                 ),
               );
@@ -1340,9 +1819,11 @@ async function runSnapshotSaveExecution(options) {
             active: true,
             state: "checking-cache",
             phase: "prepare",
+            entryPoint: requestContext.entryPoint,
             uiHidden: requestContext.headlessMode,
-            stageLabel: "저장 준비 중",
-            detail: buildDirectSaveDecisionDetail(decision),
+            outputFormat: requestContext.outputMeta.outputFormat,
+            stageLabel: requestContext.outputMeta.preparingTitle,
+            detail: buildDirectSaveDecisionDetail(decision, requestContext.outputMeta.outputFormat),
             cacheDecision: decision,
             mirroredProgress: null,
           });
@@ -1354,13 +1835,71 @@ async function runSnapshotSaveExecution(options) {
           refreshLease,
           btn,
         );
-        return await downloadSnapshot({
+        const commitOptions = {
           payload: payload,
           refreshMode: decision.neededRefresh ? "refresh" : "cache-first",
           startedAt: requestContext.startedAt,
           cacheDecision: decision,
           selectionSnapshot: requestContext.selectionSnapshot,
-        });
+          outputFormat: requestContext.outputMeta.outputFormat,
+          entryPoint: requestContext.entryPoint,
+        };
+        if (requestContext.outputMeta.outputFormat === "xlsx") {
+          return await downloadSnapshotXlsx(commitOptions);
+        }
+        return await downloadSnapshot(commitOptions);
+      } catch (e) {
+        const fatalAuthState =
+          (typeof isFatalAuthAbortError === "function" && isFatalAuthAbortError(e) && e.authAbortState)
+            ? e.authAbortState
+            : (typeof getFatalAuthAbortState === "function" ? getFatalAuthAbortState() : null);
+        if (fatalAuthState) {
+          pushSnapshotSaveStatus({
+            __replace: true,
+            active: false,
+            state: "blocked",
+            phase: "refresh",
+            entryPoint: requestContext.entryPoint,
+            uiHidden: requestContext.headlessMode,
+            outputFormat: requestContext.outputMeta.outputFormat,
+            stageLabel: "로그인 확인 필요",
+            detail: buildSnapshotFatalAuthAbortDetail(),
+            startedAt: requestContext.startedAt,
+            completedAt: Date.now(),
+            progress: {
+              done:
+                e && typeof e.authAbortDone === "number"
+                  ? e.authAbortDone
+                  : 0,
+              total:
+                e && typeof e.authAbortTotal === "number"
+                  ? e.authAbortTotal
+                  : requestContext.runtimeSites.length,
+              ratio: 0,
+              percent: 0,
+            },
+            mirroredProgress: null,
+            stats:
+              e && e.authAbortStats
+                ? e.authAbortStats
+                : { success: 0, partial: 0, failed: 0, errors: [] },
+            cacheDecision: decision,
+            fileName: null,
+            site: null,
+            error: {
+              message: fatalAuthState.userMessage || ERROR_MESSAGES.INVALID_ENCID,
+              context: "runSnapshotSaveExecution-fatal-auth",
+            },
+          });
+          return {
+            ok: false,
+            status: "blocked",
+            reason: fatalAuthState.reason || "invalid-encid",
+            downloaded: false,
+            outputFormat: requestContext.outputMeta.outputFormat,
+          };
+        }
+        throw e;
       } finally {
         setSnapshotSaveOverlaySuppressed(false);
         if (typeof restoreHeadlessUi === "function") {
@@ -1825,6 +2364,41 @@ const SNAPSHOT_UI_CONTROLS_HELPER_PACK = [
   applyUiControlsTab,
 ];
 
+const SNAPSHOT_SAVED_MERGED_XLSX_COMPAT_HELPER_PACK = [
+  hasUsableSnapshotXlsxGlobal,
+  ensureSnapshotXlsxLibrary,
+  formatSnapshotXlsxSourceAccount,
+  getSnapshotXlsxPrimaryAccountInfo,
+  buildSnapshotXlsxAccountFallbackContext,
+  getSnapshotXlsxRowAccountLabel,
+  getSnapshotXlsxRowSourceAccount,
+  formatSnapshotXlsxDiagRange,
+  normalizeSnapshotXlsxDate,
+  normalizeSnapshotXlsxNumber,
+  getSnapshotXlsxExportedAt,
+  getSnapshotXlsxPeriodDays,
+  getSnapshotXlsxRuntimeType,
+  getSnapshotXlsxRuntimeTypeLabel,
+  getSnapshotXlsxSummaryRows,
+  getSnapshotXlsxSiteEntries,
+  buildSnapshotXlsxSiteDailyRows,
+  buildSnapshotXlsxSiteSummaryRows,
+  buildSnapshotXlsxSiteMetaRows,
+  buildSnapshotXlsxQueryRows,
+  buildSnapshotXlsxPageRows,
+  buildSnapshotXlsxIndexedRows,
+  buildSnapshotXlsxCrawlRows,
+  buildSnapshotXlsxBacklinkRows,
+  getSnapshotXlsxSheetColumns,
+  buildSnapshotXlsxDataSheet,
+  buildSnapshotXlsxReadmeSheet,
+  buildSnapshotXlsxWorkbook,
+  formatSnapshotMergedXlsxCompatStamp,
+  buildSnapshotMergedXlsxCompatFileName,
+  triggerSnapshotMergedXlsxCompatDownload,
+  downloadMergedSnapshotXlsxCompat,
+];
+
 const SNAPSHOT_SHELL_NODE_IDS = ["sadv-header", "sadv-mode-bar", "sadv-site-bar", "sadv-tabs"];
 
 function serializeSnapshotHelperPack(helperPack) {
@@ -1869,6 +2443,19 @@ function buildSnapshotSerializedHelperSection() {
       "// live는 번들 전체가 한 스코프에 있지만, saved는 allowlist에 넣은 함수만",
       "// 포함되므로 여기서 빠지면 saved-only is-not-defined 회귀가 생긴다.",
       serializeSnapshotHelperPack(SNAPSHOT_UI_CONTROLS_HELPER_PACK),
+    ].join("\n"),
+    [
+      "// Saved merged snapshot XLSX compat pack:",
+      "// 일반 saved snapshot은 여전히 read-only지만, merge.py가 만든 merged saved snapshot은",
+      "// 수동 엑셀 버튼만 예외적으로 다시 연다.",
+      "// live save orchestration 전체를 직렬화하지 않고, 현재 source-of-truth workbook builder와",
+      "// standalone loader를 그대로 재사용하는 좁은 compat leaf만 같이 싣는다.",
+      `const SNAPSHOT_XLSX_STANDALONE_URL = ${JSON.stringify(SNAPSHOT_XLSX_STANDALONE_URL)};`,
+      `const SNAPSHOT_XLSX_LIBRARY_TIMEOUT_MS = ${JSON.stringify(SNAPSHOT_XLSX_LIBRARY_TIMEOUT_MS)};`,
+      `let snapshotXlsxLibraryPromise = null;`,
+      `const SNAPSHOT_XLSX_SHEET_NAMES = Object.freeze(${JSON.stringify(SNAPSHOT_XLSX_SHEET_NAMES)});`,
+      `const SNAPSHOT_XLSX_RUNTIME_LABELS = Object.freeze(${JSON.stringify(SNAPSHOT_XLSX_RUNTIME_LABELS)});`,
+      serializeSnapshotHelperPack(SNAPSHOT_SAVED_MERGED_XLSX_COMPAT_HELPER_PACK),
     ].join("\n"),
   ].join("\n");
 }
@@ -1958,16 +2545,36 @@ function buildSnapshotSerializedHelperSection() {
     if (siteLabelEl) {
       siteLabelEl.innerHTML = `<span>${escHtml(siteLabel)}</span><span style="display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;border:1px solid ${T.accentSoftBorderStrong};color:${T.accentSoftText};background:${T.warmDarkBg}">${escHtml(activeTabLabel)}</span>`;
     }
+    const allowSavedMergedXlsx =
+      !!(payload && payload.mergedMeta && payload.mergedMeta.isMerged);
     ["sadv-refresh-btn", "sadv-save-btn", "sadv-x"].forEach(function (id) {
       const el = clone.querySelector("#" + id);
       if (el) el.remove();
     });
+    if (!allowSavedMergedXlsx) {
+      const xlsxEl = clone.querySelector("#sadv-xlsx-btn");
+      if (xlsxEl) xlsxEl.remove();
+    } else {
+      const xlsxEl = clone.querySelector("#sadv-xlsx-btn");
+      if (xlsxEl) {
+        xlsxEl.style.display = "inline-flex";
+        xlsxEl.removeAttribute("aria-hidden");
+        xlsxEl.disabled = false;
+        xlsxEl.title = "병합 데이터 엑셀 저장";
+      }
+    }
     if (topRow && topRow.lastElementChild) {
       const meta = document.createElement("div");
       meta.style.cssText =
         "display:flex;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid " + T.accentSoftBorder + ";color:" + T.accentSoftText + ";background:" + T.warmDarkBg + ";font-size:10px;font-weight:800";
       meta.textContent = "Saved " + savedLabel;
-      topRow.lastElementChild.replaceWith(meta);
+      if (allowSavedMergedXlsx) {
+        const actions = topRow.lastElementChild;
+        actions.className = "sadv-header-actions";
+        actions.appendChild(meta);
+      } else {
+        topRow.lastElementChild.replaceWith(meta);
+      }
     }
     const exportPayloadJson = stringifyForInlineJson(payload);
     const html = `<!doctype html>
@@ -2185,6 +2792,7 @@ function buildSnapshotSerializedHelperSection() {
       const mergedMeta = getMergedMetaState();
       if (!mergedMeta || !mergedMeta.isMerged) return null;
       const siteCount = Array.isArray(allSites) ? allSites.length : 0;
+      const displayMeta = getMergedDisplayMeta(mergedMeta, siteCount);
       const naverIds = Array.isArray(mergedMeta.naverIds) ? mergedMeta.naverIds.filter(Boolean) : [];
       const fileNames = Array.isArray(mergedMeta.fileNames) ? mergedMeta.fileNames.filter(Boolean) : [];
       const snapshotLines = [
@@ -2194,12 +2802,21 @@ function buildSnapshotSerializedHelperSection() {
       if (fileNames.length) snapshotLines.push("Sources: " + fileNames.join(", "));
       return {
         title: "SearchAdvisor Merged Report - " + siteCount + " sites",
-        snapshotTitle: "SearchAdvisor Merged Report",
+        snapshotTitle:
+          (displayMeta && displayMeta.snapshotTitle) || "SearchAdvisor Merged Report",
         snapshotLines,
-        accountBadge: "MERGED " + naverIds.length + " IDs",
-        accountTitle: naverIds.join(", "),
-        siteStatus: siteCount + " sites loaded",
-        siteSummary: "All " + siteCount + " sites sorted by clicks",
+        accountBadge:
+          (displayMeta && displayMeta.accountBadgeLabel) || ("MERGED " + naverIds.length + " IDs"),
+        accountTitle:
+          (displayMeta && displayMeta.accountBadgeTitle) || naverIds.join(", "),
+        runtimeBadgeLabel:
+          (displayMeta && displayMeta.runtimeBadgeLabel) || "병합본",
+        runtimeBadgeTitle:
+          (displayMeta && displayMeta.runtimeBadgeTitle) || ("Merged " + siteCount + " sites"),
+        siteStatus:
+          (displayMeta && displayMeta.siteStatus) || (siteCount + " sites loaded"),
+        siteSummary:
+          (displayMeta && displayMeta.siteSummary) || ("All " + siteCount + " sites sorted by clicks"),
         currentSite: curMode === "site" ? curSite || "" : "",
       };
     }
@@ -2221,6 +2838,19 @@ function buildSnapshotSerializedHelperSection() {
       if (accountBadgeEl && patch.accountBadge) {
         accountBadgeEl.textContent = patch.accountBadge;
         accountBadgeEl.title = patch.accountTitle || "";
+      }
+      let runtimeBadgeEl = document.getElementById("sadv-runtime-badge");
+      if (!runtimeBadgeEl && patch.runtimeBadgeLabel) {
+        const brandWrapEl = document.querySelector(".sadv-header-brand");
+        if (brandWrapEl) {
+          runtimeBadgeEl = document.createElement("span");
+          runtimeBadgeEl.id = "sadv-runtime-badge";
+          brandWrapEl.appendChild(runtimeBadgeEl);
+        }
+      }
+      if (runtimeBadgeEl && patch.runtimeBadgeLabel) {
+        runtimeBadgeEl.textContent = patch.runtimeBadgeLabel;
+        if (patch.runtimeBadgeTitle) runtimeBadgeEl.title = patch.runtimeBadgeTitle;
       }
       const siteLabelEl = document.querySelector("#sadv-site-label span");
       if (siteLabelEl && patch.siteStatus) siteLabelEl.textContent = patch.siteStatus;
@@ -2372,6 +3002,20 @@ function buildSnapshotSerializedHelperSection() {
     ${renderAllSitesFromCanonicalRows.toString()}
     ${renderTab.toString()}
     ${switchMode.toString()}
+    // setAllSitesLabel()가 공통 helper syncXlsxButtonVisibility()를 호출하므로
+    // saved snapshot inline bootstrap도 같은 helper pack을 함께 직렬화해야 한다.
+    // 누락되면 reopen 시 pageerror가 나고 shell/API selection parity까지 흔들릴 수 있다.
+    ${syncXlsxButtonVisibility.toString()}
+    // merge.py 산출물은 read-only saved snapshot에서도 공통 xlsx save orchestration을
+    // 그대로 재사용해야 하므로, 실행 옵션/버튼 바인딩 helper도 함께 직렬화한다.
+    ${buildSnapshotManualXlsxExecutionOptions.toString()}
+    ${bindSnapshotManualXlsxButton.toString()}
+    // merged saved snapshot의 전체현황 카드 상단은 createMergedAccountsInfo()를 직접 사용한다.
+    // merge.py 산출물도 같은 공통 helper를 재사용하게 inline bootstrap에 함께 싣는다.
+    ${resolveMergedAccountDisplayLabel.toString()}
+    ${getMergedDisplayMeta.toString()}
+    ${getMergedAccountsInfoIconSvg.toString()}
+    ${createMergedAccountsInfo.toString()}
     ${setAllSitesLabel.toString()}
     ${renderSnapshotAllSites.toString()}
     const renderAllSites = renderSnapshotAllSites;
@@ -2712,6 +3356,9 @@ function buildSnapshotSerializedHelperSection() {
         switchMode(m.dataset.m);
       });
     }
+    if (typeof bindSnapshotManualXlsxButton === "function") {
+      bindSnapshotManualXlsxButton(document.getElementById("sadv-xlsx-btn"));
+    }
     function bindSnapshotAllCardLinks() {
       document.querySelectorAll(".sadv-allcard[data-site]").forEach(function (card) {
         if (card.dataset.snapshotBound === "true") return;
@@ -2737,12 +3384,15 @@ function buildSnapshotSerializedHelperSection() {
     const snapshotApi = {
       getState: cloneSnapshotShellState,
       getCapabilities: function () {
+        const mergedMeta =
+          typeof getMergedMetaState === "function" ? getMergedMetaState() : MERGED_META;
         return typeof getRuntimeCapabilities === "function"
           ? getRuntimeCapabilities()
           : {
               mode: "snapshot",
               canRefresh: false,
               canSave: false,
+              canXlsxSave: !!(mergedMeta && mergedMeta.isMerged),
               canClose: false,
               isReadOnly: true,
             };
@@ -3119,6 +3769,9 @@ function buildSnapshotSerializedHelperSection() {
 
   function buildSnapshotApiCompatNoopActionLines() {
     return [
+      '    getCapabilities: function () { return { mode: "snapshot", canRefresh: false, canSave: false, canXlsxSave: ' +
+        '(snapshotState && snapshotState.mergedMeta && snapshotState.mergedMeta.isMerged ? true : false)' +
+        ', canClose: false, isReadOnly: true }; },',
       '    getSaveStatus: function () { return ' + JSON.stringify({ ...createIdleDirectSaveStatus(), runtimeType: "saved" }) + '; },',
       '    subscribeSaveStatus: function () { return function () {}; },',
       '    refresh: function () { return false; },',
@@ -3294,19 +3947,27 @@ function buildSnapshotSerializedHelperSection() {
   function createMergedAccountsInfo(mergedMeta) {
     const mergedInfo = document.createElement("div");
     mergedInfo.style.cssText = "background:linear-gradient(135deg,#17110a,#080808);border:1px solid #4a3b00;border-radius:0;padding:12px 16px;margin-bottom:16px";
-    const validAccounts = mergedMeta.accounts.filter(Boolean);
+    const validAccounts = Array.isArray(mergedMeta.accounts) ? mergedMeta.accounts.filter(Boolean) : [];
+    const displayMeta =
+      typeof getMergedDisplayMeta === "function"
+        ? getMergedDisplayMeta(mergedMeta, typeof allSites !== "undefined" && Array.isArray(allSites) ? allSites.length : validAccounts.length)
+        : null;
     const accountLabels = validAccounts.map((acc, i) => {
-      const fullLabel = acc.label || acc.encId?.slice(0, 8) || `계정${i + 1}`;
-      const shortLabel = fullLabel.includes('@') ? fullLabel.split('@')[0] : fullLabel;
+      const labelMeta =
+        typeof resolveMergedAccountDisplayLabel === "function"
+          ? resolveMergedAccountDisplayLabel(acc, i)
+          : { fullLabel: acc.label || acc.id || acc.encId?.slice(0, 8) || ("계정" + (i + 1)), shortLabel: acc.label || acc.id || acc.encId?.slice(0, 8) || ("계정" + (i + 1)) };
+      const fullLabel = labelMeta.fullLabel;
+      const shortLabel = labelMeta.shortLabel;
       return `<span tabindex="0" role="button" aria-describedby="merged-acc-full-${i}" style="display:inline-block;background:${T.accentSoftBg};color:${T.accentSoftText};padding:3px 8px;border:1px solid ${T.accentSoftBorder};border-radius:4px;font-size:11px;margin:2px;cursor:default" title="${escHtml(fullLabel)}">${escHtml(shortLabel)}<span id="merged-acc-full-${i}" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">전체: ${escHtml(fullLabel)}</span></span>`;
     }).join(" ");
     mergedInfo.setAttribute("role", "region");
     mergedInfo.setAttribute("aria-label", `병합된 계정 정보, ${validAccounts.length}개 계정`);
     mergedInfo.innerHTML = `
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-          <span style="font-size:16px" aria-hidden="true">🔀</span>
+          <span style="display:inline-flex;align-items:center;justify-content:center;opacity:0.95" aria-hidden="true">${typeof getMergedAccountsInfoIconSvg === "function" ? getMergedAccountsInfoIconSvg() : ""}</span>
           <span style="font-size:13px;font-weight:700;color:#fff8df">병합된 계정</span>
-          <span style="font-size:10px;color:${C.sub};background:${T.accentSoftBg};padding:2px 6px;border:1px solid ${T.accentSoftBorder};border-radius:4px">${validAccounts.length}개 계정</span>
+          <span style="font-size:10px;color:${C.sub};background:${T.accentSoftBg};padding:2px 6px;border:1px solid ${T.accentSoftBorder};border-radius:4px">${escHtml((displayMeta && displayMeta.panelCountLabel) || (validAccounts.length + "개 계정"))}</span>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:4px">${accountLabels}</div>
         <div style="font-size:9px;color:#d7bf78;margin-top:8px">병합 시각: ${mergedMeta.mergedAt ? new Date(mergedMeta.mergedAt).toLocaleString('ko-KR') : '-'}</div>
