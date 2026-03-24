@@ -1116,6 +1116,10 @@ function buildSnapshotWaitingRefreshDetail(outputFormat) {
   return "이미 진행 중인 자동 갱신이 끝나면 바로 " + outputMeta.fileKindLabel + "을 생성합니다. 새로운 수집을 다시 시작하지 않고, 현재 갱신 결과를 그대로 재사용합니다.";
 }
 
+function buildSnapshotFatalAuthAbortDetail() {
+  return "로그인/권한 문제를 감지해 남은 사이트 요청을 중단했습니다. 네이버/서치어드바이저에 다시 로그인한 뒤 새로고침 후 다시 시도해 주세요.";
+}
+
 function getSnapshotPayloadSiteCount(payload, fallbackCount) {
   if (payload && payload.__meta && payload.accounts && typeof payload.accounts === "object") {
     const accountKeys = Object.keys(payload.accounts);
@@ -1755,6 +1759,57 @@ async function runSnapshotSaveExecution(options) {
           return await downloadSnapshotXlsx(commitOptions);
         }
         return await downloadSnapshot(commitOptions);
+      } catch (e) {
+        const fatalAuthState =
+          (typeof isFatalAuthAbortError === "function" && isFatalAuthAbortError(e) && e.authAbortState)
+            ? e.authAbortState
+            : (typeof getFatalAuthAbortState === "function" ? getFatalAuthAbortState() : null);
+        if (fatalAuthState) {
+          pushSnapshotSaveStatus({
+            __replace: true,
+            active: false,
+            state: "blocked",
+            phase: "refresh",
+            uiHidden: requestContext.headlessMode,
+            outputFormat: requestContext.outputMeta.outputFormat,
+            stageLabel: "로그인 확인 필요",
+            detail: buildSnapshotFatalAuthAbortDetail(),
+            startedAt: requestContext.startedAt,
+            completedAt: Date.now(),
+            progress: {
+              done:
+                e && typeof e.authAbortDone === "number"
+                  ? e.authAbortDone
+                  : 0,
+              total:
+                e && typeof e.authAbortTotal === "number"
+                  ? e.authAbortTotal
+                  : requestContext.runtimeSites.length,
+              ratio: 0,
+              percent: 0,
+            },
+            mirroredProgress: null,
+            stats:
+              e && e.authAbortStats
+                ? e.authAbortStats
+                : { success: 0, partial: 0, failed: 0, errors: [] },
+            cacheDecision: decision,
+            fileName: null,
+            site: null,
+            error: {
+              message: fatalAuthState.userMessage || ERROR_MESSAGES.INVALID_ENCID,
+              context: "runSnapshotSaveExecution-fatal-auth",
+            },
+          });
+          return {
+            ok: false,
+            status: "blocked",
+            reason: fatalAuthState.reason || "invalid-encid",
+            downloaded: false,
+            outputFormat: requestContext.outputMeta.outputFormat,
+          };
+        }
+        throw e;
       } finally {
         setSnapshotSaveOverlaySuppressed(false);
         if (typeof restoreHeadlessUi === "function") {

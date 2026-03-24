@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-23T18:00:53Z";
-var __SADV_GIT_HEAD__="afaad3a";
+var __SADV_BUILD_STAMP__="2026-03-24T05:58:24Z";
+var __SADV_GIT_HEAD__="b84ba20";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -6110,6 +6110,7 @@ const inflightCrawl = {};
 const inflightBacklink = {};
 const inflightDiagnosisMeta = {};
 const inflightDetail = {};
+let fatalAuthAbortState = null;
 
 /**
  * Resolve the latest available encId at request time.
@@ -6129,6 +6130,74 @@ function getActiveEncId() {
   return typeof encId === "string" ? encId : "";
 }
 
+function getFatalAuthAbortState() {
+  return fatalAuthAbortState ? { ...fatalAuthAbortState } : null;
+}
+
+function clearFatalAuthAbortState() {
+  fatalAuthAbortState = null;
+}
+
+function markFatalAuthAbortState(reason, source, options) {
+  const next = {
+    reason: reason || "invalid-encid",
+    source: source || "unknown",
+    userMessage:
+      options && typeof options.userMessage === "string" && options.userMessage
+        ? options.userMessage
+        : ERROR_MESSAGES.INVALID_ENCID,
+    technicalMessage:
+      options && typeof options.technicalMessage === "string" && options.technicalMessage
+        ? options.technicalMessage
+        : null,
+    status: options && typeof options.status === "number" ? options.status : null,
+    at: Date.now(),
+  };
+  if (!fatalAuthAbortState) fatalAuthAbortState = next;
+  return getFatalAuthAbortState();
+}
+
+function buildFatalAuthAbortErrorFromState(state) {
+  const authState = state || getFatalAuthAbortState();
+  const error = new Error(
+    (authState && authState.userMessage) || ERROR_MESSAGES.INVALID_ENCID,
+  );
+  error.name = "SearchAdvisorFatalAuthError";
+  error.code = (authState && authState.reason) || "invalid-encid";
+  error.fatalAuth = true;
+  error.authAbortState = authState || null;
+  return error;
+}
+
+function isFatalAuthAbortError(error) {
+  return !!(error && error.fatalAuth);
+}
+
+function signalFatalAuthAbort(reason, source, options) {
+  const state = markFatalAuthAbortState(reason, source, options);
+  showError(
+    state.userMessage || ERROR_MESSAGES.INVALID_ENCID,
+    state.technicalMessage,
+    source || "fatal-auth-abort",
+    { dedupeKey: "invalid-encid" },
+  );
+  return state;
+}
+
+function signalFatalAuthAbortForMissingEncId(source) {
+  return signalFatalAuthAbort("invalid-encid", source, {
+    technicalMessage: "active encId missing",
+  });
+}
+
+function signalFatalAuthAbortForResponseStatus(status, source) {
+  if (status !== 401 && status !== 403) return null;
+  return signalFatalAuthAbort("invalid-encid", source, {
+    technicalMessage: "HTTP " + status,
+    status: status,
+  });
+}
+
 /**
  * Fetch expose data for a site
  * @param {string} site - Site URL
@@ -6138,7 +6207,7 @@ function getActiveEncId() {
 async function fetchExposeData(site, options) {
   const activeEncId = getActiveEncId();
   if (!activeEncId || typeof activeEncId !== 'string') {
-    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchExposeData', { dedupeKey: 'invalid-encid' });
+    signalFatalAuthAbortForMissingEncId('fetchExposeData');
     return null;
   }
   if (memCache[site] && !shouldFetchField(memCache[site], "expose", options)) {
@@ -6159,6 +6228,7 @@ async function fetchExposeData(site, options) {
         base + "/expose/" + activeEncId + "?site=" + enc + "&period=90&device=&topN=50",
         { credentials: "include", headers: { accept: "application/json" } },
       );
+      signalFatalAuthAbortForResponseStatus(exposeRes.status, 'fetchExposeData');
       const expose = exposeRes.ok ? await safeParseJson(exposeRes, 'EXPOSE') : null;
       return persistSiteData(site, {
         expose: exposeRes.ok ? expose : null,
@@ -6192,10 +6262,13 @@ async function fetchExposeData(site, options) {
 async function fetchCrawlData(site, options) {
   const activeEncId = getActiveEncId();
   if (!activeEncId || typeof activeEncId !== 'string') {
-    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchCrawlData', { dedupeKey: 'invalid-encid' });
+    signalFatalAuthAbortForMissingEncId('fetchCrawlData');
     return null;
   }
   const baseData = await fetchExposeData(site, options);
+  // 로그인/권한 실패는 사이트별 부분 실패가 아니라 전역 중단 조건이다.
+  // expose 단계에서 fatal auth가 감지되면 crawl/backlink 추가 요청을 보내지 않는다.
+  if (getFatalAuthAbortState()) return baseData;
   if (!shouldFetchField(baseData, "crawl", options)) return baseData;
   if (!(options && options.force) && inflightCrawl[site]) return inflightCrawl[site];
 
@@ -6223,6 +6296,7 @@ async function fetchCrawlData(site, options) {
           "&isAlly=false&count=5",
         { credentials: "include", headers: { accept: "application/json" } },
       );
+      signalFatalAuthAbortForResponseStatus(crawlRes.status, 'fetchCrawlData');
       const crawl = crawlRes.ok ? await safeParseJson(crawlRes, 'CRAWL') : null;
       return persistSiteData(site, {
         ...baseData,
@@ -6259,10 +6333,12 @@ async function fetchCrawlData(site, options) {
 async function fetchBacklinkData(site, options) {
   const activeEncId = getActiveEncId();
   if (!activeEncId || typeof activeEncId !== 'string') {
-    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchBacklinkData', { dedupeKey: 'invalid-encid' });
+    signalFatalAuthAbortForMissingEncId('fetchBacklinkData');
     return null;
   }
   const baseData = await fetchExposeData(site, options);
+  // expose 단계에서 fatal auth가 감지되면 backlink 추가 요청을 보내지 않는다.
+  if (getFatalAuthAbortState()) return baseData;
   if (!shouldFetchField(baseData, "backlink", options)) return baseData;
   if (!(options && options.force) && inflightBacklink[site]) return inflightBacklink[site];
 
@@ -6289,6 +6365,7 @@ async function fetchBacklinkData(site, options) {
           today,
         { credentials: "include", headers: { accept: "application/json" } },
       );
+      signalFatalAuthAbortForResponseStatus(backlinkRes.status, 'fetchBacklinkData');
       const backlink = backlinkRes.ok ? await safeParseJson(backlinkRes, 'BACKLINK') : null;
       return persistSiteData(site, {
         ...baseData,
@@ -6325,10 +6402,13 @@ async function fetchBacklinkData(site, options) {
 async function fetchSiteData(site, options) {
   const activeEncId = getActiveEncId();
   if (!activeEncId || typeof activeEncId !== 'string') {
-    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchSiteData', { dedupeKey: 'invalid-encid' });
+    signalFatalAuthAbortForMissingEncId('fetchSiteData');
     return null;
   }
   const baseData = await fetchDiagnosisMeta(site, null, options);
+  // expose/diagnosis-meta 단계에서 전역 auth 중단이 감지되면
+  // 같은 사이트의 crawl/backlink 상세 요청도 보내지 않는다.
+  if (getFatalAuthAbortState()) return baseData;
   const needCrawl = shouldFetchField(baseData, "crawl", options);
   const needBacklink = shouldFetchField(baseData, "backlink", options);
   if (!needCrawl && !needBacklink) return baseData;
@@ -6342,87 +6422,102 @@ async function fetchSiteData(site, options) {
     .replace(/-/g, "");
   inflightDetail[site] = (async function () {
     try {
-      const requests = await Promise.all([
-        needCrawl
-              ? fetchWithRetry(
-                base +
-                  "/crawl/" +
-                activeEncId +
-                "?site=" +
-                enc +
-                "&start_date=" +
-                d90 +
-                "&end_date=" +
-                today +
-                "&isAlly=false&count=5",
-              { credentials: "include", headers: { accept: "application/json" } },
-            )
-              .then(async function (response) {
-                return {
-                  key: "crawl",
-                  ok: response.ok,
-                  status: response.status,
-                  data: response.ok ? await safeParseJson(response, 'CRAWL') : null,
-                  fetchedAt: Date.now(),
-                };
-              })
-              .catch(function (e) {
-                showError(ERROR_MESSAGES.DETAIL_DATA_MISSING, e, 'fetchSiteData-crawl');
-                return {
-                  key: "crawl",
-                  ok: false,
-                  status: null,
-                  data: null,
-                  fetchedAt: Date.now(),
-                };
-              })
-          : Promise.resolve({
+      const requests = [];
+      if (needCrawl) {
+        const crawlResult = await fetchWithRetry(
+          base +
+            "/crawl/" +
+            activeEncId +
+            "?site=" +
+            enc +
+            "&start_date=" +
+            d90 +
+            "&end_date=" +
+            today +
+            "&isAlly=false&count=5",
+          { credentials: "include", headers: { accept: "application/json" } },
+        )
+          .then(async function (response) {
+            signalFatalAuthAbortForResponseStatus(response.status, 'fetchSiteData-crawl');
+            return {
               key: "crawl",
-              ok: hasSuccessfulFieldSnapshot(baseData, "crawl"),
-              status: baseData.crawlStatus ?? null,
-              data: baseData.crawl ?? null,
-              fetchedAt: baseData.crawlFetchedAt ?? null,
-            }),
-        needBacklink
-            ? fetchWithRetry(
-                base +
-                  "/backlink/" +
-                activeEncId +
-                "?site=" +
-                enc +
-                "&start_date=" +
-                d90 +
-                "&end_date=" +
-                today,
-              { credentials: "include", headers: { accept: "application/json" } },
-            )
-              .then(async function (response) {
-                return {
-                  key: "backlink",
-                  ok: response.ok,
-                  status: response.status,
-                  data: response.ok ? await safeParseJson(response, 'BACKLINK') : null,
-                  fetchedAt: Date.now(),
-                };
-              })
-              .catch(function (e) {
-                showError(ERROR_MESSAGES.DETAIL_DATA_MISSING, e, 'fetchSiteData-backlink');
-                return {
-                  key: "backlink",
-                  ok: false,
-                  status: null,
-                  data: null,
-                  fetchedAt: Date.now(),
-                };
-              })
-          : Promise.resolve({
+              ok: response.ok,
+              status: response.status,
+              data: response.ok ? await safeParseJson(response, 'CRAWL') : null,
+              fetchedAt: Date.now(),
+            };
+          })
+          .catch(function (e) {
+            showError(ERROR_MESSAGES.DETAIL_DATA_MISSING, e, 'fetchSiteData-crawl');
+            return {
+              key: "crawl",
+              ok: false,
+              status: null,
+              data: null,
+              fetchedAt: Date.now(),
+            };
+          });
+        requests.push(crawlResult);
+      } else {
+        requests.push({
+          key: "crawl",
+          ok: hasSuccessfulFieldSnapshot(baseData, "crawl"),
+          status: baseData.crawlStatus ?? null,
+          data: baseData.crawl ?? null,
+          fetchedAt: baseData.crawlFetchedAt ?? null,
+        });
+      }
+      if (getFatalAuthAbortState()) {
+        requests.push({
+          key: "backlink",
+          ok: hasSuccessfulFieldSnapshot(baseData, "backlink"),
+          status: baseData.backlinkStatus ?? null,
+          data: baseData.backlink ?? null,
+          fetchedAt: baseData.backlinkFetchedAt ?? null,
+        });
+      } else if (needBacklink) {
+        const backlinkResult = await fetchWithRetry(
+          base +
+            "/backlink/" +
+            activeEncId +
+            "?site=" +
+            enc +
+            "&start_date=" +
+            d90 +
+            "&end_date=" +
+            today,
+          { credentials: "include", headers: { accept: "application/json" } },
+        )
+          .then(async function (response) {
+            signalFatalAuthAbortForResponseStatus(response.status, 'fetchSiteData-backlink');
+            return {
               key: "backlink",
-              ok: hasSuccessfulFieldSnapshot(baseData, "backlink"),
-              status: baseData.backlinkStatus ?? null,
-              data: baseData.backlink ?? null,
-              fetchedAt: baseData.backlinkFetchedAt ?? null,
-            }),
-      ]);
+              ok: response.ok,
+              status: response.status,
+              data: response.ok ? await safeParseJson(response, 'BACKLINK') : null,
+              fetchedAt: Date.now(),
+            };
+          })
+          .catch(function (e) {
+            showError(ERROR_MESSAGES.DETAIL_DATA_MISSING, e, 'fetchSiteData-backlink');
+            return {
+              key: "backlink",
+              ok: false,
+              status: null,
+              data: null,
+              fetchedAt: Date.now(),
+            };
+          });
+        requests.push(backlinkResult);
+      } else {
+        requests.push({
+          key: "backlink",
+          ok: hasSuccessfulFieldSnapshot(baseData, "backlink"),
+          status: baseData.backlinkStatus ?? null,
+          data: baseData.backlink ?? null,
+          fetchedAt: baseData.backlinkFetchedAt ?? null,
+        });
+      }
       const next = { ...baseData };
       requests.forEach(function (result) {
         next[result.key] = result.ok ? result.data : null;
@@ -6469,10 +6564,12 @@ async function resolveExportSiteData(site, options) {
 async function fetchDiagnosisMeta(site, seedData, options) {
   const activeEncId = getActiveEncId();
   if (!activeEncId || typeof activeEncId !== 'string') {
-    showError(ERROR_MESSAGES.INVALID_ENCID, null, 'fetchDiagnosisMeta', { dedupeKey: 'invalid-encid' });
+    signalFatalAuthAbortForMissingEncId('fetchDiagnosisMeta');
     return null;
   }
   const baseData = seedData || (await fetchExposeData(site, options));
+  // expose 단계에서 fatal auth가 감지되면 diagnosis meta 요청도 보내지 않는다.
+  if (getFatalAuthAbortState()) return baseData;
   if (!shouldFetchDiagnosisMeta(baseData, options)) return baseData;
   if (!(options && options.force) && inflightDiagnosisMeta[site]) return inflightDiagnosisMeta[site];
   const enc = encodeURIComponent(site),
@@ -6497,6 +6594,7 @@ async function fetchDiagnosisMeta(site, seedData, options) {
             range.endDate,
           { credentials: "include", headers: { accept: "application/json" } },
         );
+        signalFatalAuthAbortForResponseStatus(response.status, 'fetchDiagnosisMeta');
         diagnosisMeta = response.ok ? await safeParseJson(response, 'DIAGNOSIS_META') : null;
         if (response.ok && diagnosisMeta && diagnosisMeta.code === 0) {
           diagnosisMetaFetchState = "success";
@@ -11572,6 +11670,9 @@ async function renderAllSites() {
       }
     }
   };
+  if (typeof clearFatalAuthAbortState === "function") {
+    clearFatalAuthAbortState();
+  }
   const exposeResults = [];
   for (let i = 0; i < sitesToLoad.length; i += ALL_SITES_BATCH) {
     const batchSites = sitesToLoad.slice(i, i + ALL_SITES_BATCH);
@@ -11609,6 +11710,20 @@ async function renderAllSites() {
         loadingMeta.textContent = `${failedCount}개 사이트 실패 · 나머지 데이터로 계속 진행합니다.`;
       }
     }
+    const fatalAuthState =
+      typeof getFatalAuthAbortState === "function" ? getFatalAuthAbortState() : null;
+    if (fatalAuthState) {
+      setProgress(
+        "로그인/권한 문제로 전체현황 갱신을 중단했습니다.",
+        CONFIG.PROGRESS.BASE_RATIO_START + (Math.min(i + batchSites.length, sitesToLoad.length) / sitesToLoad.length) * CONFIG.PROGRESS.EXPOSE_PHASE_RATIO_RANGE,
+        "남은 사이트 요청은 보내지 않았습니다. 다시 로그인한 뒤 새로고침 후 재시도해 주세요.",
+      );
+      if (loadingMeta) {
+        loadingMeta.textContent =
+          "로그인/권한 문제를 감지해 남은 사이트 요청을 중단했습니다.";
+      }
+      return;
+    }
   }
   const metaSitesToLoad = sitesToLoad.filter(function (site) {
     return !hasDiagnosisMetaSnapshot(siteDataBySite[site] || null);
@@ -11635,6 +11750,20 @@ async function renderAllSites() {
         siteDataBySite[batchSites[offset]] = result.value;
       }
     });
+    const fatalAuthState =
+      typeof getFatalAuthAbortState === "function" ? getFatalAuthAbortState() : null;
+    if (fatalAuthState) {
+      setProgress(
+        "로그인/권한 문제로 색인 진단 갱신을 중단했습니다.",
+        CONFIG.PROGRESS.META_PHASE_RATIO_START + (metaLoaded / Math.max(1, metaSitesToLoad.length)) * CONFIG.PROGRESS.META_PHASE_RATIO_RANGE,
+        "남은 사이트 요청은 보내지 않았습니다. 다시 로그인한 뒤 새로고침 후 재시도해 주세요.",
+      );
+      if (loadingMeta) {
+        loadingMeta.textContent =
+          "로그인/권한 문제를 감지해 남은 사이트 요청을 중단했습니다.";
+      }
+      return;
+    }
     setProgress(
       "색인 진단 " + metaLoaded + " / " + metaSitesToLoad.length,
       CONFIG.PROGRESS.META_PHASE_RATIO_START + (metaLoaded / Math.max(1, metaSitesToLoad.length)) * CONFIG.PROGRESS.META_PHASE_RATIO_RANGE,
@@ -11685,6 +11814,9 @@ async function renderAllSites() {
  * );
  */
 async function collectExportData(onProgress, options) {
+  if (typeof clearFatalAuthAbortState === "function") {
+    clearFatalAuthAbortState();
+  }
   const dataBySite = {};
   const summaryRows = [];
   const batchSize = FULL_REFRESH_BATCH_SIZE;
@@ -11707,6 +11839,18 @@ async function collectExportData(onProgress, options) {
   let done = 0;
   const stats = { success: 0, partial: 0, failed: 0, errors: [] };
   for (let i = 0; i < exportSites.length; i += batchSize) {
+    const fatalAuthBeforeBatch =
+      typeof getFatalAuthAbortState === "function" ? getFatalAuthAbortState() : null;
+    if (fatalAuthBeforeBatch) {
+      const abortError =
+        typeof buildFatalAuthAbortErrorFromState === "function"
+          ? buildFatalAuthAbortErrorFromState(fatalAuthBeforeBatch)
+          : new Error(fatalAuthBeforeBatch.userMessage || ERROR_MESSAGES.INVALID_ENCID);
+      abortError.authAbortStats = { ...stats };
+      abortError.authAbortDone = done;
+      abortError.authAbortTotal = total;
+      throw abortError;
+    }
     const batch = exportSites.slice(i, i + batchSize);
     const results = await Promise.allSettled(
       batch.map(function (site) {
@@ -11757,6 +11901,18 @@ async function collectExportData(onProgress, options) {
       done++;
       if (onProgress) onProgress(done, total, site, stats);
     });
+    const fatalAuthState =
+      typeof getFatalAuthAbortState === "function" ? getFatalAuthAbortState() : null;
+    if (fatalAuthState) {
+      const abortError =
+        typeof buildFatalAuthAbortErrorFromState === "function"
+          ? buildFatalAuthAbortErrorFromState(fatalAuthState)
+          : new Error(fatalAuthState.userMessage || ERROR_MESSAGES.INVALID_ENCID);
+      abortError.authAbortStats = { ...stats };
+      abortError.authAbortDone = done;
+      abortError.authAbortTotal = total;
+      throw abortError;
+    }
     if (refreshMode === "refresh" && i + batchSize < exportSites.length) {
       const jitter = Math.floor(Math.random() * FULL_REFRESH_JITTER_MS);
       await new Promise(function (resolve) {
@@ -12939,6 +13095,10 @@ function buildSnapshotWaitingRefreshDetail(outputFormat) {
   return "이미 진행 중인 자동 갱신이 끝나면 바로 " + outputMeta.fileKindLabel + "을 생성합니다. 새로운 수집을 다시 시작하지 않고, 현재 갱신 결과를 그대로 재사용합니다.";
 }
 
+function buildSnapshotFatalAuthAbortDetail() {
+  return "로그인/권한 문제를 감지해 남은 사이트 요청을 중단했습니다. 네이버/서치어드바이저에 다시 로그인한 뒤 새로고침 후 다시 시도해 주세요.";
+}
+
 function getSnapshotPayloadSiteCount(payload, fallbackCount) {
   if (payload && payload.__meta && payload.accounts && typeof payload.accounts === "object") {
     const accountKeys = Object.keys(payload.accounts);
@@ -13578,6 +13738,57 @@ async function runSnapshotSaveExecution(options) {
           return await downloadSnapshotXlsx(commitOptions);
         }
         return await downloadSnapshot(commitOptions);
+      } catch (e) {
+        const fatalAuthState =
+          (typeof isFatalAuthAbortError === "function" && isFatalAuthAbortError(e) && e.authAbortState)
+            ? e.authAbortState
+            : (typeof getFatalAuthAbortState === "function" ? getFatalAuthAbortState() : null);
+        if (fatalAuthState) {
+          pushSnapshotSaveStatus({
+            __replace: true,
+            active: false,
+            state: "blocked",
+            phase: "refresh",
+            uiHidden: requestContext.headlessMode,
+            outputFormat: requestContext.outputMeta.outputFormat,
+            stageLabel: "로그인 확인 필요",
+            detail: buildSnapshotFatalAuthAbortDetail(),
+            startedAt: requestContext.startedAt,
+            completedAt: Date.now(),
+            progress: {
+              done:
+                e && typeof e.authAbortDone === "number"
+                  ? e.authAbortDone
+                  : 0,
+              total:
+                e && typeof e.authAbortTotal === "number"
+                  ? e.authAbortTotal
+                  : requestContext.runtimeSites.length,
+              ratio: 0,
+              percent: 0,
+            },
+            mirroredProgress: null,
+            stats:
+              e && e.authAbortStats
+                ? e.authAbortStats
+                : { success: 0, partial: 0, failed: 0, errors: [] },
+            cacheDecision: decision,
+            fileName: null,
+            site: null,
+            error: {
+              message: fatalAuthState.userMessage || ERROR_MESSAGES.INVALID_ENCID,
+              context: "runSnapshotSaveExecution-fatal-auth",
+            },
+          });
+          return {
+            ok: false,
+            status: "blocked",
+            reason: fatalAuthState.reason || "invalid-encid",
+            downloaded: false,
+            outputFormat: requestContext.outputMeta.outputFormat,
+          };
+        }
+        throw e;
       } finally {
         setSnapshotSaveOverlaySuppressed(false);
         if (typeof restoreHeadlessUi === "function") {
@@ -16418,6 +16629,29 @@ async function runFullRefreshPipeline(options = {}) {
   try {
     return await fullRefreshInFlightPromise;
   } catch (e) {
+    const fatalAuthState =
+      (typeof isFatalAuthAbortError === "function" && isFatalAuthAbortError(e) && e.authAbortState)
+        ? e.authAbortState
+        : (typeof getFatalAuthAbortState === "function" ? getFatalAuthAbortState() : null);
+    if (fatalAuthState) {
+      const authDetail =
+        "로그인/권한 문제를 감지해 남은 사이트 요청을 중단했습니다. 네이버/서치어드바이저에 다시 로그인한 뒤 새로고침 후 재시도해 주세요.";
+      if (fullRefreshInFlightMeta && fullRefreshInFlightMeta.progress) {
+        fullRefreshInFlightMeta.progress = {
+          ...fullRefreshInFlightMeta.progress,
+          state: "blocked",
+          label: "로그인 확인 필요",
+          detail: authDetail,
+          updatedAt: Date.now(),
+        };
+      }
+      if (typeof renderFullRefreshProgress === "function") {
+        renderFullRefreshProgress("로그인 확인 필요", authDetail, 0, e && e.authAbortStats ? e.authAbortStats : null);
+      }
+      if (typeof labelEl !== "undefined" && labelEl) {
+        labelEl.innerHTML = sanitizeHTML("<span>로그인 확인 필요</span>");
+      }
+    }
     recordRuntimeEvent("full-refresh-failure", {
       trigger: options && options.trigger ? options.trigger : "manual",
       message: e && e.message ? e.message : String(e),

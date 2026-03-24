@@ -558,6 +558,9 @@ async function renderAllSites() {
       }
     }
   };
+  if (typeof clearFatalAuthAbortState === "function") {
+    clearFatalAuthAbortState();
+  }
   const exposeResults = [];
   for (let i = 0; i < sitesToLoad.length; i += ALL_SITES_BATCH) {
     const batchSites = sitesToLoad.slice(i, i + ALL_SITES_BATCH);
@@ -595,6 +598,20 @@ async function renderAllSites() {
         loadingMeta.textContent = `${failedCount}개 사이트 실패 · 나머지 데이터로 계속 진행합니다.`;
       }
     }
+    const fatalAuthState =
+      typeof getFatalAuthAbortState === "function" ? getFatalAuthAbortState() : null;
+    if (fatalAuthState) {
+      setProgress(
+        "로그인/권한 문제로 전체현황 갱신을 중단했습니다.",
+        CONFIG.PROGRESS.BASE_RATIO_START + (Math.min(i + batchSites.length, sitesToLoad.length) / sitesToLoad.length) * CONFIG.PROGRESS.EXPOSE_PHASE_RATIO_RANGE,
+        "남은 사이트 요청은 보내지 않았습니다. 다시 로그인한 뒤 새로고침 후 재시도해 주세요.",
+      );
+      if (loadingMeta) {
+        loadingMeta.textContent =
+          "로그인/권한 문제를 감지해 남은 사이트 요청을 중단했습니다.";
+      }
+      return;
+    }
   }
   const metaSitesToLoad = sitesToLoad.filter(function (site) {
     return !hasDiagnosisMetaSnapshot(siteDataBySite[site] || null);
@@ -621,6 +638,20 @@ async function renderAllSites() {
         siteDataBySite[batchSites[offset]] = result.value;
       }
     });
+    const fatalAuthState =
+      typeof getFatalAuthAbortState === "function" ? getFatalAuthAbortState() : null;
+    if (fatalAuthState) {
+      setProgress(
+        "로그인/권한 문제로 색인 진단 갱신을 중단했습니다.",
+        CONFIG.PROGRESS.META_PHASE_RATIO_START + (metaLoaded / Math.max(1, metaSitesToLoad.length)) * CONFIG.PROGRESS.META_PHASE_RATIO_RANGE,
+        "남은 사이트 요청은 보내지 않았습니다. 다시 로그인한 뒤 새로고침 후 재시도해 주세요.",
+      );
+      if (loadingMeta) {
+        loadingMeta.textContent =
+          "로그인/권한 문제를 감지해 남은 사이트 요청을 중단했습니다.";
+      }
+      return;
+    }
     setProgress(
       "색인 진단 " + metaLoaded + " / " + metaSitesToLoad.length,
       CONFIG.PROGRESS.META_PHASE_RATIO_START + (metaLoaded / Math.max(1, metaSitesToLoad.length)) * CONFIG.PROGRESS.META_PHASE_RATIO_RANGE,
@@ -671,6 +702,9 @@ async function renderAllSites() {
  * );
  */
 async function collectExportData(onProgress, options) {
+  if (typeof clearFatalAuthAbortState === "function") {
+    clearFatalAuthAbortState();
+  }
   const dataBySite = {};
   const summaryRows = [];
   const batchSize = FULL_REFRESH_BATCH_SIZE;
@@ -693,6 +727,18 @@ async function collectExportData(onProgress, options) {
   let done = 0;
   const stats = { success: 0, partial: 0, failed: 0, errors: [] };
   for (let i = 0; i < exportSites.length; i += batchSize) {
+    const fatalAuthBeforeBatch =
+      typeof getFatalAuthAbortState === "function" ? getFatalAuthAbortState() : null;
+    if (fatalAuthBeforeBatch) {
+      const abortError =
+        typeof buildFatalAuthAbortErrorFromState === "function"
+          ? buildFatalAuthAbortErrorFromState(fatalAuthBeforeBatch)
+          : new Error(fatalAuthBeforeBatch.userMessage || ERROR_MESSAGES.INVALID_ENCID);
+      abortError.authAbortStats = { ...stats };
+      abortError.authAbortDone = done;
+      abortError.authAbortTotal = total;
+      throw abortError;
+    }
     const batch = exportSites.slice(i, i + batchSize);
     const results = await Promise.allSettled(
       batch.map(function (site) {
@@ -743,6 +789,18 @@ async function collectExportData(onProgress, options) {
       done++;
       if (onProgress) onProgress(done, total, site, stats);
     });
+    const fatalAuthState =
+      typeof getFatalAuthAbortState === "function" ? getFatalAuthAbortState() : null;
+    if (fatalAuthState) {
+      const abortError =
+        typeof buildFatalAuthAbortErrorFromState === "function"
+          ? buildFatalAuthAbortErrorFromState(fatalAuthState)
+          : new Error(fatalAuthState.userMessage || ERROR_MESSAGES.INVALID_ENCID);
+      abortError.authAbortStats = { ...stats };
+      abortError.authAbortDone = done;
+      abortError.authAbortTotal = total;
+      throw abortError;
+    }
     if (refreshMode === "refresh" && i + batchSize < exportSites.length) {
       const jitter = Math.floor(Math.random() * FULL_REFRESH_JITTER_MS);
       await new Promise(function (resolve) {
