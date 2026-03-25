@@ -264,11 +264,7 @@ function sparkline(vals, labels, H, col, unit, opts) {
     rng = mx - mn || 1;
   const showYAxisGuides = H >= CONFIG.CHART.MIN_HEIGHT;
   const formatAxisValue = function (value) {
-    const rounded =
-      Math.abs(value - Math.round(value)) < 0.05
-        ? Math.round(value)
-        : Math.round(value * 10) / 10;
-    return fmt(rounded) + unit;
+    return fmt(Math.round(Number(value) || 0)) + unit;
   };
   const uid = "g" + Math.random().toString(36).slice(2, 6),
     cid = "c" + uid,
@@ -447,11 +443,7 @@ function barchart(vals, labels, H, col, unit) {
     bw = Math.max(CONFIG.CHART.MIN_BAR_WIDTH, (W2 - gap * (vals.length + 1)) / vals.length);
   const showYAxisGuides = H >= CONFIG.CHART.MIN_HEIGHT;
   const formatAxisValue = function (value) {
-    const rounded =
-      Math.abs(value - Math.round(value)) < 0.05
-        ? Math.round(value)
-        : Math.round(value * 10) / 10;
-    return fmt(rounded) + unit;
+    return fmt(Math.round(Number(value) || 0)) + unit;
   };
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("width", "100%");

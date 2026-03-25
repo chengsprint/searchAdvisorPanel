@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-25T07:19:43Z";
-var __SADV_GIT_HEAD__="5e8ee7d";
+var __SADV_BUILD_STAMP__="2026-03-25T11:24:22Z";
+var __SADV_GIT_HEAD__="7671fd4";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -2011,11 +2011,7 @@ function sparkline(vals, labels, H, col, unit, opts) {
     rng = mx - mn || 1;
   const showYAxisGuides = H >= CONFIG.CHART.MIN_HEIGHT;
   const formatAxisValue = function (value) {
-    const rounded =
-      Math.abs(value - Math.round(value)) < 0.05
-        ? Math.round(value)
-        : Math.round(value * 10) / 10;
-    return fmt(rounded) + unit;
+    return fmt(Math.round(Number(value) || 0)) + unit;
   };
   const uid = "g" + Math.random().toString(36).slice(2, 6),
     cid = "c" + uid,
@@ -2194,11 +2190,7 @@ function barchart(vals, labels, H, col, unit) {
     bw = Math.max(CONFIG.CHART.MIN_BAR_WIDTH, (W2 - gap * (vals.length + 1)) / vals.length);
   const showYAxisGuides = H >= CONFIG.CHART.MIN_HEIGHT;
   const formatAxisValue = function (value) {
-    const rounded =
-      Math.abs(value - Math.round(value)) < 0.05
-        ? Math.round(value)
-        : Math.round(value * 10) / 10;
-    return fmt(rounded) + unit;
+    return fmt(Math.round(Number(value) || 0)) + unit;
   };
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("width", "100%");
