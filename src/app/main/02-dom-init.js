@@ -246,6 +246,32 @@ function normalizeHeaderActionShell(targetHeaderEl, options) {
     if (!node || node.parentNode === metaRowEl) return;
     metaRowEl.appendChild(node);
   });
+
+  if (modeBarEl) {
+    const modeButtons = Array.prototype.slice.call(modeBarEl.querySelectorAll(".sadv-mode"));
+    const modeOrder = ["all", "site"];
+    let activeAssigned = false;
+    modeButtons.forEach(function (buttonEl, index) {
+      if (!buttonEl) return;
+      const modeValue = buttonEl.getAttribute("data-m") || modeOrder[index] || "";
+      if (modeValue) buttonEl.setAttribute("data-m", modeValue);
+      buttonEl.setAttribute("role", "tab");
+      if (!buttonEl.classList.contains("on") && !activeAssigned && modeValue === "all") {
+        buttonEl.classList.add("on");
+      }
+      const isActive = buttonEl.classList.contains("on");
+      if (isActive) activeAssigned = true;
+      buttonEl.setAttribute("aria-selected", isActive ? "true" : "false");
+    });
+    if (!activeAssigned && modeButtons.length) {
+      modeButtons[0].classList.add("on");
+      modeButtons[0].setAttribute("aria-selected", "true");
+      for (let i = 1; i < modeButtons.length; i += 1) {
+        modeButtons[i].classList.remove("on");
+        modeButtons[i].setAttribute("aria-selected", "false");
+      }
+    }
+  }
 }
 
 if (headerEl) {
