@@ -79,6 +79,9 @@ tests/
 *.md
 !README.md
 !CHANGELOG.md
+!docs/
+!docs/**
+!**/README.md
 
 # Internal capture / screenshot helper scripts should stay local-only
 capture-*
