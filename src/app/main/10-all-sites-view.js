@@ -707,6 +707,7 @@ async function collectExportData(onProgress, options) {
   }
   const dataBySite = {};
   const summaryRows = [];
+  const siteOwnershipBySite = {};
   const batchSize = FULL_REFRESH_BATCH_SIZE;
   const refreshMode = options && options.refreshMode === "refresh" ? "refresh" : "cache-first";
   const selectionState = getAllSitesSelectionState();
@@ -773,19 +774,35 @@ async function collectExportData(onProgress, options) {
           stats.errors.push({ site, error: "request rejected" });
         }
       }
-      dataBySite[site] = {
-        ...siteData,
-        __source: {
-          accountLabel: exportAccountLabel || "unknown",
-          accountEncId: exportEncId,
-          fetchedAt:
-            siteData && typeof siteData.__cacheSavedAt === "number"
-              ? siteData.__cacheSavedAt
-              : new Date().toISOString(),
-          exportedAt: savedAtIso(new Date()),
-        }
+      const sourceAccountInfo = {
+        accountLabel: exportAccountLabel || "unknown",
+        accountEncId: exportEncId,
+        fetchedAt:
+          siteData && typeof siteData.__cacheSavedAt === "number"
+            ? siteData.__cacheSavedAt
+            : new Date().toISOString(),
+        exportedAt: savedAtIso(new Date()),
       };
-      summaryRows.push(buildSiteSummaryRow(site, siteData));
+      const normalizedSiteData = {
+        ...siteData,
+        __source: sourceAccountInfo,
+      };
+      dataBySite[site] = normalizedSiteData;
+      const summaryRow = buildSiteSummaryRow(site, normalizedSiteData);
+      if (!summaryRow.accountLabel && sourceAccountInfo.accountLabel) {
+        summaryRow.accountLabel = sourceAccountInfo.accountLabel;
+      }
+      if (!summaryRow.sourceAccount) {
+        summaryRow.sourceAccount = sourceAccountInfo;
+      }
+      summaryRows.push(summaryRow);
+      if (!siteOwnershipBySite[site]) siteOwnershipBySite[site] = [];
+      if (
+        sourceAccountInfo.accountLabel &&
+        siteOwnershipBySite[site].indexOf(sourceAccountInfo.accountLabel) === -1
+      ) {
+        siteOwnershipBySite[site].push(sourceAccountInfo.accountLabel);
+      }
       done++;
       if (onProgress) onProgress(done, total, site, stats);
     });
@@ -844,6 +861,7 @@ async function collectExportData(onProgress, options) {
       typeof getRuntimeMergedMeta === "function"
         ? getRuntimeMergedMeta()
         : (typeof getMergedMetaState === "function" ? getMergedMetaState() : null),
+    siteOwnershipBySite: siteOwnershipBySite,
     summaryRows,
     stats
   };

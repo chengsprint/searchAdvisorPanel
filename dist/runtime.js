@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-25T12:34:26Z";
-var __SADV_GIT_HEAD__="65f23c2";
+var __SADV_BUILD_STAMP__="2026-03-25T12:54:13Z";
+var __SADV_GIT_HEAD__="6142dda";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -12445,6 +12445,7 @@ async function collectExportData(onProgress, options) {
   }
   const dataBySite = {};
   const summaryRows = [];
+  const siteOwnershipBySite = {};
   const batchSize = FULL_REFRESH_BATCH_SIZE;
   const refreshMode = options && options.refreshMode === "refresh" ? "refresh" : "cache-first";
   const selectionState = getAllSitesSelectionState();
@@ -12511,19 +12512,35 @@ async function collectExportData(onProgress, options) {
           stats.errors.push({ site, error: "request rejected" });
         }
       }
-      dataBySite[site] = {
-        ...siteData,
-        __source: {
-          accountLabel: exportAccountLabel || "unknown",
-          accountEncId: exportEncId,
-          fetchedAt:
-            siteData && typeof siteData.__cacheSavedAt === "number"
-              ? siteData.__cacheSavedAt
-              : new Date().toISOString(),
-          exportedAt: savedAtIso(new Date()),
-        }
+      const sourceAccountInfo = {
+        accountLabel: exportAccountLabel || "unknown",
+        accountEncId: exportEncId,
+        fetchedAt:
+          siteData && typeof siteData.__cacheSavedAt === "number"
+            ? siteData.__cacheSavedAt
+            : new Date().toISOString(),
+        exportedAt: savedAtIso(new Date()),
       };
-      summaryRows.push(buildSiteSummaryRow(site, siteData));
+      const normalizedSiteData = {
+        ...siteData,
+        __source: sourceAccountInfo,
+      };
+      dataBySite[site] = normalizedSiteData;
+      const summaryRow = buildSiteSummaryRow(site, normalizedSiteData);
+      if (!summaryRow.accountLabel && sourceAccountInfo.accountLabel) {
+        summaryRow.accountLabel = sourceAccountInfo.accountLabel;
+      }
+      if (!summaryRow.sourceAccount) {
+        summaryRow.sourceAccount = sourceAccountInfo;
+      }
+      summaryRows.push(summaryRow);
+      if (!siteOwnershipBySite[site]) siteOwnershipBySite[site] = [];
+      if (
+        sourceAccountInfo.accountLabel &&
+        siteOwnershipBySite[site].indexOf(sourceAccountInfo.accountLabel) === -1
+      ) {
+        siteOwnershipBySite[site].push(sourceAccountInfo.accountLabel);
+      }
       done++;
       if (onProgress) onProgress(done, total, site, stats);
     });
@@ -12582,6 +12599,7 @@ async function collectExportData(onProgress, options) {
       typeof getRuntimeMergedMeta === "function"
         ? getRuntimeMergedMeta()
         : (typeof getMergedMetaState === "function" ? getMergedMetaState() : null),
+    siteOwnershipBySite: siteOwnershipBySite,
     summaryRows,
     stats
   };
@@ -14721,6 +14739,126 @@ async function runSnapshotSaveExecution(options) {
 
   function normalizeSnapshotPayloadForOfflineShell(sourcePayload) {
     const sourceState = extractSnapshotSourceState(sourcePayload);
+    function pushOwnership(ownershipMap, site, label) {
+      if (!site || !label) return;
+      if (!ownershipMap[site]) ownershipMap[site] = [];
+      if (ownershipMap[site].indexOf(label) === -1) ownershipMap[site].push(label);
+    }
+    function sourceAccountLabel(sourceAccount) {
+      if (!sourceAccount) return "";
+      if (typeof sourceAccount === "string") return sourceAccount;
+      if (typeof sourceAccount === "object") {
+        if (typeof sourceAccount.accountLabel === "string" && sourceAccount.accountLabel) {
+          return sourceAccount.accountLabel;
+        }
+        if (typeof sourceAccount.email === "string" && sourceAccount.email) {
+          return sourceAccount.email;
+        }
+      }
+      return "";
+    }
+    function sourceAccountValue(siteData) {
+      if (!siteData || typeof siteData !== "object") return null;
+      return (
+        (siteData.__source && typeof siteData.__source === "object" && siteData.__source) ||
+        (siteData.__meta && siteData.__meta.__source ? siteData.__meta.__source : null) ||
+        (siteData._merge && siteData._merge.__source ? siteData._merge.__source : null) ||
+        null
+      );
+    }
+    function buildOwnershipMap() {
+      const ownership = {};
+      const rawTopLevelOwnership =
+        sourcePayload && sourcePayload.siteOwnershipBySite && typeof sourcePayload.siteOwnershipBySite === "object"
+          ? sourcePayload.siteOwnershipBySite
+          : {};
+      Object.keys(rawTopLevelOwnership).forEach(function (site) {
+        const labels = Array.isArray(rawTopLevelOwnership[site])
+          ? rawTopLevelOwnership[site]
+          : [rawTopLevelOwnership[site]];
+        labels.forEach(function (label) {
+          if (typeof label === "string" && label) pushOwnership(ownership, site, label);
+        });
+      });
+      const rawMergedOwnership =
+        sourceState.mergedMeta &&
+        sourceState.mergedMeta.siteOwnershipBySite &&
+        typeof sourceState.mergedMeta.siteOwnershipBySite === "object"
+          ? sourceState.mergedMeta.siteOwnershipBySite
+          : {};
+      Object.keys(rawMergedOwnership).forEach(function (site) {
+        const labels = Array.isArray(rawMergedOwnership[site])
+          ? rawMergedOwnership[site]
+          : [rawMergedOwnership[site]];
+        labels.forEach(function (label) {
+          if (typeof label === "string" && label) pushOwnership(ownership, site, label);
+        });
+      });
+      const accounts =
+        sourcePayload && sourcePayload.accounts && typeof sourcePayload.accounts === "object"
+          ? sourcePayload.accounts
+          : {};
+      Object.keys(accounts).forEach(function (accountKey) {
+        const account = accounts[accountKey] || {};
+        const accountDisplay =
+          (typeof account.accountLabel === "string" && account.accountLabel) || accountKey || "";
+        const sites = Array.isArray(account.sites) ? account.sites : [];
+        sites.forEach(function (site) {
+          pushOwnership(ownership, site, accountDisplay);
+        });
+      });
+      const dataBySite =
+        sourceState && sourceState.dataBySite && typeof sourceState.dataBySite === "object"
+          ? sourceState.dataBySite
+          : {};
+      Object.keys(dataBySite).forEach(function (site) {
+        const label = sourceAccountLabel(sourceAccountValue(dataBySite[site]));
+        if (label) pushOwnership(ownership, site, label);
+      });
+      (sourceState.summaryRows || []).forEach(function (row) {
+        if (!row || typeof row !== "object") return;
+        const site = typeof row.site === "string" ? row.site : "";
+        if (!site) return;
+        if (typeof row.accountLabel === "string" && row.accountLabel) {
+          pushOwnership(ownership, site, row.accountLabel);
+          return;
+        }
+        const label = sourceAccountLabel(row.sourceAccount);
+        if (label) pushOwnership(ownership, site, label);
+      });
+      return ownership;
+    }
+    function getOwnershipLabel(site, ownershipMap) {
+      const owners = site && ownershipMap && Array.isArray(ownershipMap[site]) ? ownershipMap[site] : [];
+      const validOwners = owners.filter(function (label) {
+        return typeof label === "string" && label;
+      });
+      if (!validOwners.length) return "";
+      if (validOwners.length > 1) return validOwners[0] + " (+" + (validOwners.length - 1) + ")";
+      return validOwners[0];
+    }
+    const siteOwnershipBySite = buildOwnershipMap();
+    const normalizedSummaryRows = (sourceState.summaryRows || []).map(function (row) {
+      if (!row || typeof row !== "object") return row;
+      const nextRow = Object.assign({}, row);
+      const site = typeof nextRow.site === "string" ? nextRow.site : "";
+      const siteData =
+        site && sourceState.dataBySite && typeof sourceState.dataBySite[site] === "object"
+          ? sourceState.dataBySite[site]
+          : null;
+      const sourceAccount = nextRow.sourceAccount || sourceAccountValue(siteData);
+      if (!nextRow.sourceAccount && sourceAccount) {
+        nextRow.sourceAccount = sourceAccount;
+      }
+      if (!(typeof nextRow.accountLabel === "string" && nextRow.accountLabel)) {
+        nextRow.accountLabel =
+          sourceAccountLabel(sourceAccount) ||
+          getOwnershipLabel(site, siteOwnershipBySite) ||
+          sourceState.accountLabel ||
+          "";
+      }
+      return nextRow;
+    });
     const legacyBasePayload =
       sourcePayload &&
       typeof sourcePayload === "object" &&
@@ -14734,10 +14872,11 @@ async function runSnapshotSaveExecution(options) {
       generatorVersion: sourceState.generatorVersion,
       exportFormat: sourceState.exportFormat || "snapshot-v2",
       allSites: sourceState.allSites,
-      summaryRows: sourceState.summaryRows,
+      summaryRows: normalizedSummaryRows,
       dataBySite: sourceState.dataBySite,
       siteMeta: sourceState.siteMeta,
       mergedMeta: sourceState.mergedMeta,
+      siteOwnershipBySite: siteOwnershipBySite,
       allSitesPeriodDays: normalizeAllSitesPeriodDays(sourceState.allSitesPeriodDays),
       curMode: sourceState.curMode,
       curSite: sourceState.curSite,
@@ -16712,6 +16851,57 @@ function buildSnapshotSerializedHelperSection() {
     };
   }
 
+  function getSiteOwnershipLabelsForDisplay(site) {
+    if (!site) return [];
+    const labels = [];
+    function pushLabel(label) {
+      if (typeof label !== "string" || !label) return;
+      if (labels.indexOf(label) === -1) labels.push(label);
+    }
+    const initOwnership =
+      window.__sadvInitData &&
+      window.__sadvInitData.siteOwnership &&
+      window.__sadvInitData.siteOwnership[site];
+    if (Array.isArray(initOwnership)) initOwnership.forEach(pushLabel);
+    const payloadOwnership =
+      typeof window !== "undefined" &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__ &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.siteOwnershipBySite &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.siteOwnershipBySite[site];
+    if (Array.isArray(payloadOwnership)) payloadOwnership.forEach(pushLabel);
+    const mergedOwnership =
+      typeof window !== "undefined" &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__ &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.mergedMeta &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.mergedMeta.siteOwnershipBySite &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.mergedMeta.siteOwnershipBySite[site];
+    if (Array.isArray(mergedOwnership)) mergedOwnership.forEach(pushLabel);
+    return labels;
+  }
+
+  function getSourceAccountLabelForDisplay(sourceAccount) {
+    if (!sourceAccount) return "";
+    if (typeof sourceAccount === "string") return sourceAccount;
+    if (typeof sourceAccount === "object") {
+      if (typeof sourceAccount.accountLabel === "string" && sourceAccount.accountLabel) {
+        return sourceAccount.accountLabel;
+      }
+      if (typeof sourceAccount.email === "string" && sourceAccount.email) {
+        return sourceAccount.email;
+      }
+    }
+    return "";
+  }
+
+  function formatSiteOwnershipLabelForDisplay(site, sourceAccount) {
+    const owners = getSiteOwnershipLabelsForDisplay(site);
+    if (owners.length > 1) {
+      return `${owners[0]} (+${owners.length - 1})`;
+    }
+    if (owners.length === 1) return owners[0];
+    return getSourceAccountLabelForDisplay(sourceAccount);
+  }
+
   async function loadSiteView(site) {
     // 사이트별 상세는 live/snapshot이 최대한 같은 renderer 경로를 타야 하는 핵심 영역이다.
     // 목표는 snapshot 전용 site UI가 아니라, 같은 site UI를 다른 provider에서 그리는 것이다.
@@ -16749,16 +16939,18 @@ function buildSnapshotSerializedHelperSection() {
     const requestPromise = (async function () {
 
     // Get account label from siteOwnership for display
-    let accountLabel = null;
-    if (window.__sadvInitData && window.__sadvInitData.siteOwnership) {
-      const owners = window.__sadvInitData.siteOwnership[site];
-      if (owners && owners.length > 0) {
-        accountLabel = owners[0];
-        if (owners.length > 1) {
-          accountLabel = `${owners[0]} (+${owners.length - 1})`;
-        }
-      }
-    }
+    const payloadSiteData =
+      (typeof window !== "undefined" &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__ &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.dataBySite)
+        ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__.dataBySite[site]
+        : null;
+    const payloadSourceAccount =
+      (payloadSiteData && payloadSiteData.__source) ||
+      (payloadSiteData && payloadSiteData.__meta && payloadSiteData.__meta.__source) ||
+      (payloadSiteData && payloadSiteData._merge && payloadSiteData._merge.__source) ||
+      null;
+    const accountLabel = formatSiteOwnershipLabelForDisplay(site, payloadSourceAccount);
 
     // Keep header meta concise in site mode; current site is already visible in the combo box.
     labelEl.innerHTML = sanitizeHTML(`<span></span>`);
@@ -16893,25 +17085,7 @@ function buildSnapshotSerializedHelperSection() {
       (initSiteData && initSiteData.__meta && initSiteData.__meta.__source) ||
       null;
 
-    // Get account ownership from siteOwnership (V2 multi-account)
-    let accountLabel = null;
-    if (typeof window !== "undefined" && window.__sadvInitData && window.__sadvInitData.siteOwnership) {
-      const owners = window.__sadvInitData.siteOwnership[site];
-      if (owners && owners.length > 0) {
-        // Use first owner email as account label
-        accountLabel = owners[0];
-        // If multiple accounts, show count
-        if (owners.length > 1) {
-          accountLabel = `${owners[0]} (+${owners.length - 1})`;
-        }
-      }
-    }
-    // Fallback to sourceAccount if available
-    if (!accountLabel && sourceAccount) {
-      accountLabel = typeof sourceAccount === "object" && sourceAccount.accountLabel
-        ? sourceAccount.accountLabel
-        : sourceAccount;
-    }
+    const accountLabel = formatSiteOwnershipLabelForDisplay(site, sourceAccount);
 
     return {
       site,
@@ -17741,6 +17915,10 @@ function buildSnapshotXlsxAccountFallbackContext(payload) {
   const primaryAccount = getSnapshotXlsxPrimaryAccountInfo(payload);
   const accounts =
     payload && payload.accounts && typeof payload.accounts === "object" ? payload.accounts : {};
+  const siteOwnershipBySite =
+    payload && payload.siteOwnershipBySite && typeof payload.siteOwnershipBySite === "object"
+      ? payload.siteOwnershipBySite
+      : {};
   const bySite = {};
   Object.keys(accounts).forEach(function (accountKey) {
     const account = accounts[accountKey];
@@ -17768,6 +17946,28 @@ function buildSnapshotXlsxAccountFallbackContext(payload) {
         sourceAccount: sourceAccount,
       };
     });
+  });
+  Object.keys(siteOwnershipBySite).forEach(function (site) {
+    if (!site) return;
+    const owners = Array.isArray(siteOwnershipBySite[site])
+      ? siteOwnershipBySite[site].filter(Boolean)
+      : [];
+    if (!owners.length) return;
+    const ownerLabel =
+      owners.length > 1 ? owners[0] + " (+" + (owners.length - 1) + ")" : owners[0];
+    if (!bySite[site]) {
+      bySite[site] = {
+        accountLabel: ownerLabel,
+        sourceAccount: ownerLabel,
+      };
+      return;
+    }
+    if (!bySite[site].accountLabel) {
+      bySite[site].accountLabel = ownerLabel;
+    }
+    if (!bySite[site].sourceAccount) {
+      bySite[site].sourceAccount = ownerLabel;
+    }
   });
   return {
     primaryAccount: primaryAccount,

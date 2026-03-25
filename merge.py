@@ -287,6 +287,94 @@ def build_summary_row_map(rows: Iterable[Dict[str, Any]]) -> Dict[str, Dict[str,
     return mapped
 
 
+def extract_source_account_from_site_data(site_data: Any) -> Any:
+    if not isinstance(site_data, dict):
+        return None
+    if isinstance(site_data.get("__source"), dict):
+        return site_data.get("__source")
+    meta = site_data.get("__meta")
+    if isinstance(meta, dict) and meta.get("__source") is not None:
+        return meta.get("__source")
+    merge_meta = site_data.get("_merge")
+    if isinstance(merge_meta, dict) and merge_meta.get("__source") is not None:
+        return merge_meta.get("__source")
+    return None
+
+
+def extract_account_label_from_source_account(source_account: Any) -> str:
+    if isinstance(source_account, str):
+        return source_account
+    if isinstance(source_account, dict):
+        for key in ("accountLabel", "email", "accountEncId", "encId"):
+            value = source_account.get(key)
+            if isinstance(value, str) and value:
+                return value
+    return ""
+
+
+def build_site_ownership_by_site(
+    entries: List[ParsedSnapshot], winners: Dict[str, ParsedSnapshot]
+) -> Dict[str, List[str]]:
+    ownership: Dict[str, List[str]] = {}
+    for site, winner in winners.items():
+        label = ""
+        winner_site_data = (winner.source_state.get("dataBySite") or {}).get(site, {})
+        winner_source_account = extract_source_account_from_site_data(winner_site_data)
+        label = extract_account_label_from_source_account(winner_source_account)
+        if not label:
+            row = build_summary_row_map(winner.source_state.get("summaryRows") or []).get(site) or {}
+            label = row.get("accountLabel") if isinstance(row, dict) else ""
+            if not label and isinstance(row, dict):
+                label = extract_account_label_from_source_account(row.get("sourceAccount"))
+        if not label:
+            label = winner.source_state.get("accountLabel") or winner.source_file.account_key
+        ownership[site] = [label] if label else []
+    for entry in entries:
+        state = entry.source_state
+        accounts = state.get("accounts")
+        if not isinstance(accounts, dict):
+            continue
+        for account_key, account_payload in accounts.items():
+            if not isinstance(account_payload, dict):
+                continue
+            display_label = (
+                account_payload.get("accountLabel")
+                or state.get("accountLabel")
+                or account_key
+            )
+            for site in account_payload.get("sites") or []:
+                if not isinstance(site, str) or not site:
+                    continue
+                labels = ownership.setdefault(site, [])
+                if display_label and display_label not in labels:
+                    labels.append(display_label)
+    return ownership
+
+
+def backfill_summary_row_ownership(
+    row: Dict[str, Any],
+    site: str,
+    site_data: Any,
+    ownership_labels: List[str],
+    fallback_label: str,
+) -> Dict[str, Any]:
+    next_row = deepcopy(row) if isinstance(row, dict) else {"site": site}
+    source_account = next_row.get("sourceAccount")
+    if source_account is None:
+        source_account = extract_source_account_from_site_data(site_data)
+        if source_account is not None:
+            next_row["sourceAccount"] = deepcopy(source_account)
+    primary_owner = ownership_labels[0] if ownership_labels else ""
+    if not next_row.get("accountLabel"):
+        next_row["accountLabel"] = (
+            extract_account_label_from_source_account(source_account)
+            or primary_owner
+            or fallback_label
+            or ""
+        )
+    return next_row
+
+
 def build_retained_accounts(
     entries: List[ParsedSnapshot], winners: Dict[str, ParsedSnapshot]
 ) -> Tuple[Dict[str, Any], List[Dict[str, Any]], Dict[str, str], Dict[str, str]]:
@@ -334,6 +422,7 @@ def merge_payloads(entries: List[ParsedSnapshot], target_month: str) -> Dict[str
         raise ValueError("no readable snapshots selected for merge")
 
     winners = choose_site_winners(entries)
+    site_ownership_by_site = build_site_ownership_by_site(entries, winners)
     row_maps = {
         entry.source_file.account_key: build_summary_row_map(entry.source_state.get("summaryRows") or [])
         for entry in entries
@@ -356,7 +445,15 @@ def merge_payloads(entries: List[ParsedSnapshot], target_month: str) -> Dict[str
                 continue
             if winners.get(site) is not entry:
                 continue
-            merged_rows.append(deepcopy(row))
+            merged_rows.append(
+                backfill_summary_row_ownership(
+                    row,
+                    site,
+                    (entry.source_state.get("dataBySite") or {}).get(site, {}),
+                    site_ownership_by_site.get(site) or [],
+                    entry.source_state.get("accountLabel") or entry.source_file.account_key,
+                )
+            )
             seen_sites.add(site)
 
     for site, winner in sorted(winners.items()):
@@ -364,15 +461,28 @@ def merge_payloads(entries: List[ParsedSnapshot], target_month: str) -> Dict[str
             continue
         row = (row_maps.get(winner.source_file.account_key) or {}).get(site)
         if row:
-            merged_rows.append(deepcopy(row))
+            merged_rows.append(
+                backfill_summary_row_ownership(
+                    row,
+                    site,
+                    (winner.source_state.get("dataBySite") or {}).get(site, {}),
+                    site_ownership_by_site.get(site) or [],
+                    winner.source_state.get("accountLabel") or winner.source_file.account_key,
+                )
+            )
             seen_sites.add(site)
             continue
         merged_rows.append(
-            {
-                "site": site,
-                "siteLabel": site,
-                "accountLabel": winner.source_state.get("accountLabel") or winner.source_file.account_key,
-            }
+            backfill_summary_row_ownership(
+                {
+                    "site": site,
+                    "siteLabel": site,
+                },
+                site,
+                (winner.source_state.get("dataBySite") or {}).get(site, {}),
+                site_ownership_by_site.get(site) or [],
+                winner.source_state.get("accountLabel") or winner.source_file.account_key,
+            )
         )
         seen_sites.add(site)
 
@@ -381,6 +491,19 @@ def merge_payloads(entries: List[ParsedSnapshot], target_month: str) -> Dict[str
     for site, winner in winners.items():
         merged_data_by_site[site] = deepcopy((winner.source_state.get("dataBySite") or {}).get(site, {}))
         merged_site_meta[site] = deepcopy((winner.source_state.get("siteMeta") or {}).get(site, {}))
+
+    merged_rows = [
+        backfill_summary_row_ownership(
+            row,
+            row.get("site"),
+            merged_data_by_site.get(row.get("site"), {}),
+            site_ownership_by_site.get(row.get("site")) or [],
+            "",
+        )
+        if isinstance(row, dict) and isinstance(row.get("site"), str)
+        else row
+        for row in merged_rows
+    ]
 
     accounts_payload, merged_accounts, selected_files_by_id, selected_dates_by_id = build_retained_accounts(
         entries,
@@ -407,6 +530,7 @@ def merge_payloads(entries: List[ParsedSnapshot], target_month: str) -> Dict[str
         "selectedDatesById": selected_dates_by_id,
         "strategyUsed": "newer-filename",
         "siteCount": len(merged_rows),
+        "siteOwnershipBySite": site_ownership_by_site,
     }
 
     merged_payload = {
@@ -420,6 +544,7 @@ def merge_payloads(entries: List[ParsedSnapshot], target_month: str) -> Dict[str
         "dataBySite": merged_data_by_site,
         "siteMeta": merged_site_meta,
         "mergedMeta": merged_meta,
+        "siteOwnershipBySite": site_ownership_by_site,
         "allSitesPeriodDays": max(period_days_candidates) if period_days_candidates else 90,
         "curMode": "all",
         "curSite": None,

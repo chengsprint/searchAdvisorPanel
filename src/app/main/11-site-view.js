@@ -49,6 +49,57 @@
     };
   }
 
+  function getSiteOwnershipLabelsForDisplay(site) {
+    if (!site) return [];
+    const labels = [];
+    function pushLabel(label) {
+      if (typeof label !== "string" || !label) return;
+      if (labels.indexOf(label) === -1) labels.push(label);
+    }
+    const initOwnership =
+      window.__sadvInitData &&
+      window.__sadvInitData.siteOwnership &&
+      window.__sadvInitData.siteOwnership[site];
+    if (Array.isArray(initOwnership)) initOwnership.forEach(pushLabel);
+    const payloadOwnership =
+      typeof window !== "undefined" &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__ &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.siteOwnershipBySite &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.siteOwnershipBySite[site];
+    if (Array.isArray(payloadOwnership)) payloadOwnership.forEach(pushLabel);
+    const mergedOwnership =
+      typeof window !== "undefined" &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__ &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.mergedMeta &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.mergedMeta.siteOwnershipBySite &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.mergedMeta.siteOwnershipBySite[site];
+    if (Array.isArray(mergedOwnership)) mergedOwnership.forEach(pushLabel);
+    return labels;
+  }
+
+  function getSourceAccountLabelForDisplay(sourceAccount) {
+    if (!sourceAccount) return "";
+    if (typeof sourceAccount === "string") return sourceAccount;
+    if (typeof sourceAccount === "object") {
+      if (typeof sourceAccount.accountLabel === "string" && sourceAccount.accountLabel) {
+        return sourceAccount.accountLabel;
+      }
+      if (typeof sourceAccount.email === "string" && sourceAccount.email) {
+        return sourceAccount.email;
+      }
+    }
+    return "";
+  }
+
+  function formatSiteOwnershipLabelForDisplay(site, sourceAccount) {
+    const owners = getSiteOwnershipLabelsForDisplay(site);
+    if (owners.length > 1) {
+      return `${owners[0]} (+${owners.length - 1})`;
+    }
+    if (owners.length === 1) return owners[0];
+    return getSourceAccountLabelForDisplay(sourceAccount);
+  }
+
   async function loadSiteView(site) {
     // 사이트별 상세는 live/snapshot이 최대한 같은 renderer 경로를 타야 하는 핵심 영역이다.
     // 목표는 snapshot 전용 site UI가 아니라, 같은 site UI를 다른 provider에서 그리는 것이다.
@@ -86,16 +137,18 @@
     const requestPromise = (async function () {
 
     // Get account label from siteOwnership for display
-    let accountLabel = null;
-    if (window.__sadvInitData && window.__sadvInitData.siteOwnership) {
-      const owners = window.__sadvInitData.siteOwnership[site];
-      if (owners && owners.length > 0) {
-        accountLabel = owners[0];
-        if (owners.length > 1) {
-          accountLabel = `${owners[0]} (+${owners.length - 1})`;
-        }
-      }
-    }
+    const payloadSiteData =
+      (typeof window !== "undefined" &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__ &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.dataBySite)
+        ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__.dataBySite[site]
+        : null;
+    const payloadSourceAccount =
+      (payloadSiteData && payloadSiteData.__source) ||
+      (payloadSiteData && payloadSiteData.__meta && payloadSiteData.__meta.__source) ||
+      (payloadSiteData && payloadSiteData._merge && payloadSiteData._merge.__source) ||
+      null;
+    const accountLabel = formatSiteOwnershipLabelForDisplay(site, payloadSourceAccount);
 
     // Keep header meta concise in site mode; current site is already visible in the combo box.
     labelEl.innerHTML = sanitizeHTML(`<span></span>`);
@@ -230,25 +283,7 @@
       (initSiteData && initSiteData.__meta && initSiteData.__meta.__source) ||
       null;
 
-    // Get account ownership from siteOwnership (V2 multi-account)
-    let accountLabel = null;
-    if (typeof window !== "undefined" && window.__sadvInitData && window.__sadvInitData.siteOwnership) {
-      const owners = window.__sadvInitData.siteOwnership[site];
-      if (owners && owners.length > 0) {
-        // Use first owner email as account label
-        accountLabel = owners[0];
-        // If multiple accounts, show count
-        if (owners.length > 1) {
-          accountLabel = `${owners[0]} (+${owners.length - 1})`;
-        }
-      }
-    }
-    // Fallback to sourceAccount if available
-    if (!accountLabel && sourceAccount) {
-      accountLabel = typeof sourceAccount === "object" && sourceAccount.accountLabel
-        ? sourceAccount.accountLabel
-        : sourceAccount;
-    }
+    const accountLabel = formatSiteOwnershipLabelForDisplay(site, sourceAccount);
 
     return {
       site,

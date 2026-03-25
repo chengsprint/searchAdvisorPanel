@@ -2116,6 +2116,126 @@ async function runSnapshotSaveExecution(options) {
 
   function normalizeSnapshotPayloadForOfflineShell(sourcePayload) {
     const sourceState = extractSnapshotSourceState(sourcePayload);
+    function pushOwnership(ownershipMap, site, label) {
+      if (!site || !label) return;
+      if (!ownershipMap[site]) ownershipMap[site] = [];
+      if (ownershipMap[site].indexOf(label) === -1) ownershipMap[site].push(label);
+    }
+    function sourceAccountLabel(sourceAccount) {
+      if (!sourceAccount) return "";
+      if (typeof sourceAccount === "string") return sourceAccount;
+      if (typeof sourceAccount === "object") {
+        if (typeof sourceAccount.accountLabel === "string" && sourceAccount.accountLabel) {
+          return sourceAccount.accountLabel;
+        }
+        if (typeof sourceAccount.email === "string" && sourceAccount.email) {
+          return sourceAccount.email;
+        }
+      }
+      return "";
+    }
+    function sourceAccountValue(siteData) {
+      if (!siteData || typeof siteData !== "object") return null;
+      return (
+        (siteData.__source && typeof siteData.__source === "object" && siteData.__source) ||
+        (siteData.__meta && siteData.__meta.__source ? siteData.__meta.__source : null) ||
+        (siteData._merge && siteData._merge.__source ? siteData._merge.__source : null) ||
+        null
+      );
+    }
+    function buildOwnershipMap() {
+      const ownership = {};
+      const rawTopLevelOwnership =
+        sourcePayload && sourcePayload.siteOwnershipBySite && typeof sourcePayload.siteOwnershipBySite === "object"
+          ? sourcePayload.siteOwnershipBySite
+          : {};
+      Object.keys(rawTopLevelOwnership).forEach(function (site) {
+        const labels = Array.isArray(rawTopLevelOwnership[site])
+          ? rawTopLevelOwnership[site]
+          : [rawTopLevelOwnership[site]];
+        labels.forEach(function (label) {
+          if (typeof label === "string" && label) pushOwnership(ownership, site, label);
+        });
+      });
+      const rawMergedOwnership =
+        sourceState.mergedMeta &&
+        sourceState.mergedMeta.siteOwnershipBySite &&
+        typeof sourceState.mergedMeta.siteOwnershipBySite === "object"
+          ? sourceState.mergedMeta.siteOwnershipBySite
+          : {};
+      Object.keys(rawMergedOwnership).forEach(function (site) {
+        const labels = Array.isArray(rawMergedOwnership[site])
+          ? rawMergedOwnership[site]
+          : [rawMergedOwnership[site]];
+        labels.forEach(function (label) {
+          if (typeof label === "string" && label) pushOwnership(ownership, site, label);
+        });
+      });
+      const accounts =
+        sourcePayload && sourcePayload.accounts && typeof sourcePayload.accounts === "object"
+          ? sourcePayload.accounts
+          : {};
+      Object.keys(accounts).forEach(function (accountKey) {
+        const account = accounts[accountKey] || {};
+        const accountDisplay =
+          (typeof account.accountLabel === "string" && account.accountLabel) || accountKey || "";
+        const sites = Array.isArray(account.sites) ? account.sites : [];
+        sites.forEach(function (site) {
+          pushOwnership(ownership, site, accountDisplay);
+        });
+      });
+      const dataBySite =
+        sourceState && sourceState.dataBySite && typeof sourceState.dataBySite === "object"
+          ? sourceState.dataBySite
+          : {};
+      Object.keys(dataBySite).forEach(function (site) {
+        const label = sourceAccountLabel(sourceAccountValue(dataBySite[site]));
+        if (label) pushOwnership(ownership, site, label);
+      });
+      (sourceState.summaryRows || []).forEach(function (row) {
+        if (!row || typeof row !== "object") return;
+        const site = typeof row.site === "string" ? row.site : "";
+        if (!site) return;
+        if (typeof row.accountLabel === "string" && row.accountLabel) {
+          pushOwnership(ownership, site, row.accountLabel);
+          return;
+        }
+        const label = sourceAccountLabel(row.sourceAccount);
+        if (label) pushOwnership(ownership, site, label);
+      });
+      return ownership;
+    }
+    function getOwnershipLabel(site, ownershipMap) {
+      const owners = site && ownershipMap && Array.isArray(ownershipMap[site]) ? ownershipMap[site] : [];
+      const validOwners = owners.filter(function (label) {
+        return typeof label === "string" && label;
+      });
+      if (!validOwners.length) return "";
+      if (validOwners.length > 1) return validOwners[0] + " (+" + (validOwners.length - 1) + ")";
+      return validOwners[0];
+    }
+    const siteOwnershipBySite = buildOwnershipMap();
+    const normalizedSummaryRows = (sourceState.summaryRows || []).map(function (row) {
+      if (!row || typeof row !== "object") return row;
+      const nextRow = Object.assign({}, row);
+      const site = typeof nextRow.site === "string" ? nextRow.site : "";
+      const siteData =
+        site && sourceState.dataBySite && typeof sourceState.dataBySite[site] === "object"
+          ? sourceState.dataBySite[site]
+          : null;
+      const sourceAccount = nextRow.sourceAccount || sourceAccountValue(siteData);
+      if (!nextRow.sourceAccount && sourceAccount) {
+        nextRow.sourceAccount = sourceAccount;
+      }
+      if (!(typeof nextRow.accountLabel === "string" && nextRow.accountLabel)) {
+        nextRow.accountLabel =
+          sourceAccountLabel(sourceAccount) ||
+          getOwnershipLabel(site, siteOwnershipBySite) ||
+          sourceState.accountLabel ||
+          "";
+      }
+      return nextRow;
+    });
     const legacyBasePayload =
       sourcePayload &&
       typeof sourcePayload === "object" &&
@@ -2129,10 +2249,11 @@ async function runSnapshotSaveExecution(options) {
       generatorVersion: sourceState.generatorVersion,
       exportFormat: sourceState.exportFormat || "snapshot-v2",
       allSites: sourceState.allSites,
-      summaryRows: sourceState.summaryRows,
+      summaryRows: normalizedSummaryRows,
       dataBySite: sourceState.dataBySite,
       siteMeta: sourceState.siteMeta,
       mergedMeta: sourceState.mergedMeta,
+      siteOwnershipBySite: siteOwnershipBySite,
       allSitesPeriodDays: normalizeAllSitesPeriodDays(sourceState.allSitesPeriodDays),
       curMode: sourceState.curMode,
       curSite: sourceState.curSite,
