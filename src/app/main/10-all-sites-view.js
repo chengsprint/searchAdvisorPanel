@@ -103,6 +103,13 @@ function setAllSitesSelectedSite(site) {
   return getAllSitesSelectionState();
 }
 
+function openAllSitesSelectedSite(site) {
+  if (!site) return;
+  setAllSitesSelectedSite(site);
+  if (typeof setComboSite === "function") setComboSite(site);
+  if (typeof switchMode === "function") switchMode("site");
+}
+
 function buildAllSitesPeriodToolbar(periodDays) {
   const currentDays = normalizeAllSitesPeriodDays(periodDays);
   const bar = document.createElement("div");
@@ -174,6 +181,7 @@ function buildAllSitesDisplayWrap(baseRows) {
   }
 
   const wrap = document.createElement("div");
+  wrap.className = "sadv-allsites-wrap";
   const mergedMeta =
     typeof getRuntimeMergedMeta === "function" ? getRuntimeMergedMeta() : getMergedMetaState();
   if (isMergedReport() && mergedMeta && mergedMeta.accounts) {
@@ -234,10 +242,13 @@ function buildAllSitesDisplayWrap(baseRows) {
     card.style.borderTop = "2px solid " + col + "44";
     const shortName =
       typeof getSiteLabel === "function" ? getSiteLabel(r.site) : r.site.replace(/^https?:\/\//, "");
-    const displayAccount = r.accountLabel || r.sourceAccount;
+    const ownershipDisplay =
+      typeof resolveSiteOwnershipDisplay === "function"
+        ? resolveSiteOwnershipDisplay(r.site, r)
+        : { fullLabel: "", compactLabel: "" };
     const accountBadge =
-      displayAccount && (typeof displayAccount === "string" ? displayAccount.trim() : "")
-        ? `<span style="font-size:10px;color:${T.accentSoftText};background:${T.accentSoftBg};padding:3px 8px;border-radius:999px;margin-left:8px;white-space:nowrap;border:1px solid ${T.accentSoftBorder}" title="${escHtml(displayAccount)}">${escHtml(displayAccount.includes("@") ? displayAccount.split("@")[0] : displayAccount)}</span>`
+      typeof renderOwnerTagHTML === "function"
+        ? renderOwnerTagHTML(ownershipDisplay, "card")
         : "";
     const compact = window.innerWidth <= 768;
     const gridTemplate = compact
@@ -373,10 +384,10 @@ function buildAllSitesDisplayWrap(baseRows) {
     }
     const card = e.target.closest(".sadv-allcard");
     if (card && card.dataset.site) {
-      setAllSitesSelectedSite(card.dataset.site);
-      switchMode("site");
+      openAllSitesSelectedSite(card.dataset.site);
     }
   });
+  wrap.__sadvCardDelegateBound = true;
   wrap.addEventListener("mouseenter", function (e) {
     const card = e.target.closest(".sadv-allcard");
     if (card && card.dataset.col) {

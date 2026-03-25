@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-25T12:54:13Z";
-var __SADV_GIT_HEAD__="6142dda";
+var __SADV_BUILD_STAMP__="2026-03-25T13:18:23Z";
+var __SADV_GIT_HEAD__="060acc3";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -2981,6 +2981,103 @@ function getSiteOwnership(payload) {
   return summary.siteOwnership || {};
 }
 
+function getSourceAccountLabelDisplayText(sourceAccount) {
+  if (!sourceAccount) return "";
+  if (typeof sourceAccount === "string") return sourceAccount.trim();
+  if (typeof sourceAccount === "object") {
+    if (typeof sourceAccount.accountLabel === "string" && sourceAccount.accountLabel.trim()) {
+      return sourceAccount.accountLabel.trim();
+    }
+    if (typeof sourceAccount.email === "string" && sourceAccount.email.trim()) {
+      return sourceAccount.email.trim();
+    }
+  }
+  return "";
+}
+
+function getSiteOwnershipLabelsFromPayload(site, payload, row, sourceAccount) {
+  if (!site) return [];
+  const labels = [];
+  function pushLabel(label) {
+    if (typeof label !== "string") return;
+    const normalized = label.trim();
+    if (!normalized) return;
+    if (labels.indexOf(normalized) === -1) labels.push(normalized);
+  }
+  const safePayload =
+    payload ||
+    (typeof window !== "undefined" ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__ || null : null);
+  const safeInitOwnership =
+    typeof window !== "undefined" &&
+    window.__sadvInitData &&
+    window.__sadvInitData.siteOwnership &&
+    typeof window.__sadvInitData.siteOwnership === "object"
+      ? window.__sadvInitData.siteOwnership
+      : null;
+  if (safeInitOwnership && Array.isArray(safeInitOwnership[site])) {
+    safeInitOwnership[site].forEach(pushLabel);
+  }
+  if (
+    safePayload &&
+    safePayload.siteOwnershipBySite &&
+    typeof safePayload.siteOwnershipBySite === "object" &&
+    Array.isArray(safePayload.siteOwnershipBySite[site])
+  ) {
+    safePayload.siteOwnershipBySite[site].forEach(pushLabel);
+  }
+  if (
+    safePayload &&
+    safePayload.mergedMeta &&
+    safePayload.mergedMeta.siteOwnershipBySite &&
+    typeof safePayload.mergedMeta.siteOwnershipBySite === "object" &&
+    Array.isArray(safePayload.mergedMeta.siteOwnershipBySite[site])
+  ) {
+    safePayload.mergedMeta.siteOwnershipBySite[site].forEach(pushLabel);
+  }
+  if (row && typeof row.accountLabel === "string") pushLabel(row.accountLabel);
+  if (row && row.sourceAccount) pushLabel(getSourceAccountLabelDisplayText(row.sourceAccount));
+  if (sourceAccount) pushLabel(getSourceAccountLabelDisplayText(sourceAccount));
+  return labels;
+}
+
+function formatCompactOwnerDisplayLabel(label) {
+  if (typeof label !== "string") return "";
+  const trimmed = label.trim();
+  if (!trimmed) return "";
+  const suffixMatch = trimmed.match(/\s*\(\+\d+\)$/);
+  const suffix = suffixMatch ? suffixMatch[0].trim() : "";
+  let base = suffixMatch ? trimmed.slice(0, -suffixMatch[0].length).trim() : trimmed;
+  if (base.includes("@")) base = base.split("@")[0] || base;
+  return suffix ? `${base} ${suffix}` : base;
+}
+
+function resolveSiteOwnershipDisplay(site, row, payload, sourceAccount) {
+  const labels = getSiteOwnershipLabelsFromPayload(site, payload, row, sourceAccount);
+  const fallbackLabel =
+    getSourceAccountLabelDisplayText(sourceAccount) ||
+    (row ? getSourceAccountLabelDisplayText(row.sourceAccount) : "") ||
+    (row && typeof row.accountLabel === "string" ? row.accountLabel : "");
+  const fullLabel =
+    labels.length > 1 ? `${labels[0]} (+${labels.length - 1})` : labels.length === 1 ? labels[0] : fallbackLabel;
+  return {
+    labels: labels,
+    ownerCount: labels.length || (fullLabel ? 1 : 0),
+    fullLabel: fullLabel || "",
+    compactLabel: formatCompactOwnerDisplayLabel(fullLabel || ""),
+  };
+}
+
+function renderOwnerTagHTML(display, variant) {
+  if (!display || typeof display !== "object") return "";
+  const fullLabel = typeof display.fullLabel === "string" ? display.fullLabel.trim() : "";
+  const compactLabel =
+    typeof display.compactLabel === "string" ? display.compactLabel.trim() : "";
+  if (!fullLabel || !compactLabel) return "";
+  const classes = ["sadv-owner-tag"];
+  if (variant) classes.push(`sadv-owner-tag--${variant}`);
+  return `<span class="${classes.join(" ")}" title="${escHtml(fullLabel)}">${escHtml(compactLabel)}</span>`;
+}
+
 // ============================================================
 // MIGRATION HELPERS (Big Bang - no v1 support)
 // ============================================================
@@ -3736,10 +3833,47 @@ siteUiStyle.textContent = `
   overflow:hidden;
   text-overflow:ellipsis;
 }
+.sadv-combo-item-side{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  justify-content:center;
+  gap:3px;
+}
 .sadv-combo-item-click{
-  font-size:12px;
+  font-size:11px;
   font-weight:700;
   white-space:nowrap;
+}
+.sadv-owner-tag{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:13px;
+  max-width:100%;
+  padding:1px 4px;
+  border-radius:6px;
+  border:1px solid rgba(255,212,0,0.14);
+  background:rgba(255,212,0,0.05);
+  color:var(--sadv-text-tertiary,#b9a55a);
+  font-size:7px;
+  font-weight:700;
+  line-height:1.1;
+  letter-spacing:-0.01em;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.sadv-owner-tag--card{
+  margin-left:6px;
+  max-width:96px;
+}
+.sadv-owner-tag--combo{
+  max-width:112px;
+}
+.sadv-owner-tag--site{
+  max-width:128px;
 }
 #sadv-tabs{
   position:relative !important;
@@ -11040,6 +11174,10 @@ function applyUiControlsTab(tab) {
     orderedSites.forEach(function (s) {
       const selectionState = getUiControlsSelectionState();
       const activeSite = selectionState.curSite;
+      const exportPayload =
+        typeof window !== "undefined" && window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+          ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+          : null;
       const col = SITE_COLORS_MAP[s] || C.muted,
         fullLabel = getSiteLabel(s),
         shortName = getSiteShortName(s),
@@ -11047,14 +11185,26 @@ function applyUiControlsTab(tab) {
         row = rowsMap[s],
         clickStr = row ? fmt(row.totalC) + "\uD074\uB9AD" : "—",
         clickCol = row ? C.green : C.muted;
+      const ownershipDisplay =
+        typeof resolveSiteOwnershipDisplay === "function"
+          ? resolveSiteOwnershipDisplay(s, row || null, exportPayload, row ? row.sourceAccount : null)
+          : { fullLabel: "", compactLabel: "" };
+      const ownerTagHtml =
+        typeof renderOwnerTagHTML === "function"
+          ? renderOwnerTagHTML(ownershipDisplay, "combo")
+          : "";
       const item = document.createElement("div");
       item.className = "sadv-combo-item sadv-copt" + (s === activeSite ? " active" : "");
       item.dataset.site = s;
       item.setAttribute("tabindex", "0");
       item.setAttribute("role", "option");
       item.setAttribute("aria-selected", s === activeSite ? "true" : "false");
+      item.dataset.ownerLabel =
+        ownershipDisplay && typeof ownershipDisplay.fullLabel === "string"
+          ? ownershipDisplay.fullLabel
+          : "";
       item.style.cursor = "pointer";
-      item.innerHTML = `<div class="sadv-combo-item-dot" style="background:${col}"></div><div class="sadv-combo-item-info"><div class="sadv-combo-item-name">${escHtml(shortName || fullLabel || s)}</div><div class="sadv-combo-item-url">${escHtml(siteUrlLabel || fullLabel || s)}</div></div><div class="sadv-combo-item-click" style="color:${clickCol}">${escHtml(clickStr)}</div>`;
+      item.innerHTML = `<div class="sadv-combo-item-dot" style="background:${col}"></div><div class="sadv-combo-item-info"><div class="sadv-combo-item-name">${escHtml(shortName || fullLabel || s)}</div><div class="sadv-combo-item-url">${escHtml(siteUrlLabel || fullLabel || s)}</div></div><div class="sadv-combo-item-side">${ownerTagHtml}<div class="sadv-combo-item-click" style="color:${clickCol}">${escHtml(clickStr)}</div></div>`;
       item.addEventListener("click", function () {
         setComboSite(s);
         const wrap = document.getElementById("sadv-combo-wrap");
@@ -11164,10 +11314,15 @@ function applyUiControlsTab(tab) {
                   // Combo rows are styled as CSS grid in the shell theme.
                   // When search filtering shows them again, restore `grid` instead of `flex`
                   // to avoid subtle layout drift between normal and filtered states.
-                  const isVisible =
+                  const siteMatch =
                     !q ||
                     (((el.dataset.site || "") + " " + getSiteLabel(el.dataset.site || "")).toLowerCase().includes(q));
-                  el.style.setProperty("display", isVisible ? "grid" : "none", "important");
+                  const ownerMatch = ((el.dataset.ownerLabel || "") + "").toLowerCase().includes(q);
+                  el.style.setProperty(
+                    "display",
+                    siteMatch || ownerMatch ? "grid" : "none",
+                    "important"
+                  );
                 });
             };
           }
@@ -11841,6 +11996,13 @@ function setAllSitesSelectedSite(site) {
   return getAllSitesSelectionState();
 }
 
+function openAllSitesSelectedSite(site) {
+  if (!site) return;
+  setAllSitesSelectedSite(site);
+  if (typeof setComboSite === "function") setComboSite(site);
+  if (typeof switchMode === "function") switchMode("site");
+}
+
 function buildAllSitesPeriodToolbar(periodDays) {
   const currentDays = normalizeAllSitesPeriodDays(periodDays);
   const bar = document.createElement("div");
@@ -11912,6 +12074,7 @@ function buildAllSitesDisplayWrap(baseRows) {
   }
 
   const wrap = document.createElement("div");
+  wrap.className = "sadv-allsites-wrap";
   const mergedMeta =
     typeof getRuntimeMergedMeta === "function" ? getRuntimeMergedMeta() : getMergedMetaState();
   if (isMergedReport() && mergedMeta && mergedMeta.accounts) {
@@ -11972,10 +12135,13 @@ function buildAllSitesDisplayWrap(baseRows) {
     card.style.borderTop = "2px solid " + col + "44";
     const shortName =
       typeof getSiteLabel === "function" ? getSiteLabel(r.site) : r.site.replace(/^https?:\/\//, "");
-    const displayAccount = r.accountLabel || r.sourceAccount;
+    const ownershipDisplay =
+      typeof resolveSiteOwnershipDisplay === "function"
+        ? resolveSiteOwnershipDisplay(r.site, r)
+        : { fullLabel: "", compactLabel: "" };
     const accountBadge =
-      displayAccount && (typeof displayAccount === "string" ? displayAccount.trim() : "")
-        ? `<span style="font-size:10px;color:${T.accentSoftText};background:${T.accentSoftBg};padding:3px 8px;border-radius:999px;margin-left:8px;white-space:nowrap;border:1px solid ${T.accentSoftBorder}" title="${escHtml(displayAccount)}">${escHtml(displayAccount.includes("@") ? displayAccount.split("@")[0] : displayAccount)}</span>`
+      typeof renderOwnerTagHTML === "function"
+        ? renderOwnerTagHTML(ownershipDisplay, "card")
         : "";
     const compact = window.innerWidth <= 768;
     const gridTemplate = compact
@@ -12111,10 +12277,10 @@ function buildAllSitesDisplayWrap(baseRows) {
     }
     const card = e.target.closest(".sadv-allcard");
     if (card && card.dataset.site) {
-      setAllSitesSelectedSite(card.dataset.site);
-      switchMode("site");
+      openAllSitesSelectedSite(card.dataset.site);
     }
   });
+  wrap.__sadvCardDelegateBound = true;
   wrap.addEventListener("mouseenter", function (e) {
     const card = e.target.closest(".sadv-allcard");
     if (card && card.dataset.col) {
@@ -16185,23 +16351,46 @@ function buildSnapshotSerializedHelperSection() {
       bindSnapshotManualXlsxButton(document.getElementById("sadv-xlsx-btn"));
     }
     function bindSnapshotAllCardLinks() {
-      document.querySelectorAll(".sadv-allcard[data-site]").forEach(function (card) {
-        if (card.dataset.snapshotBound === "true") return;
-        card.dataset.snapshotBound = "true";
+      const cards = Array.from(document.querySelectorAll(".sadv-allcard[data-site]"));
+      cards.forEach(function (card) {
+        if (card.__sadvSnapshotKeyboardBound === true) return;
+        card.__sadvSnapshotKeyboardBound = true;
         card.setAttribute("tabindex", card.getAttribute("tabindex") || "0");
         card.setAttribute("role", card.getAttribute("role") || "button");
-        const openSite = function () {
-          const site = card.getAttribute("data-site") || "";
-          if (!site) return;
-          curSite = site;
-          if (typeof setComboSite === "function") setComboSite(site);
-          switchMode("site");
-        };
-        card.addEventListener("click", openSite);
         card.addEventListener("keydown", function (event) {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
-            openSite();
+            const site = card.getAttribute("data-site") || "";
+            if (!site) return;
+            if (typeof openAllSitesSelectedSite === "function") {
+              openAllSitesSelectedSite(site);
+            } else {
+              curSite = site;
+              if (typeof setComboSite === "function") setComboSite(site);
+              switchMode("site");
+            }
+          }
+        });
+      });
+      const wraps = [];
+      cards.forEach(function (card) {
+        const wrap = card.closest(".sadv-allsites-wrap") || card.parentElement;
+        if (wrap && wraps.indexOf(wrap) === -1) wraps.push(wrap);
+      });
+      wraps.forEach(function (wrap) {
+        if (!wrap || wrap.__sadvCardDelegateBound === true) return;
+        wrap.__sadvCardDelegateBound = true;
+        wrap.addEventListener("click", function (event) {
+          const card = event.target.closest(".sadv-allcard[data-site]");
+          if (!card) return;
+          const site = card.getAttribute("data-site") || "";
+          if (!site) return;
+          if (typeof openAllSitesSelectedSite === "function") {
+            openAllSitesSelectedSite(site);
+          } else {
+            curSite = site;
+            if (typeof setComboSite === "function") setComboSite(site);
+            switchMode("site");
           }
         });
       });
@@ -16852,53 +17041,31 @@ function buildSnapshotSerializedHelperSection() {
   }
 
   function getSiteOwnershipLabelsForDisplay(site) {
-    if (!site) return [];
-    const labels = [];
-    function pushLabel(label) {
-      if (typeof label !== "string" || !label) return;
-      if (labels.indexOf(label) === -1) labels.push(label);
+    if (typeof getSiteOwnershipLabelsFromPayload === "function") {
+      return getSiteOwnershipLabelsFromPayload(site);
     }
-    const initOwnership =
-      window.__sadvInitData &&
-      window.__sadvInitData.siteOwnership &&
-      window.__sadvInitData.siteOwnership[site];
-    if (Array.isArray(initOwnership)) initOwnership.forEach(pushLabel);
-    const payloadOwnership =
-      typeof window !== "undefined" &&
-      window.__SEARCHADVISOR_EXPORT_PAYLOAD__ &&
-      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.siteOwnershipBySite &&
-      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.siteOwnershipBySite[site];
-    if (Array.isArray(payloadOwnership)) payloadOwnership.forEach(pushLabel);
-    const mergedOwnership =
-      typeof window !== "undefined" &&
-      window.__SEARCHADVISOR_EXPORT_PAYLOAD__ &&
-      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.mergedMeta &&
-      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.mergedMeta.siteOwnershipBySite &&
-      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.mergedMeta.siteOwnershipBySite[site];
-    if (Array.isArray(mergedOwnership)) mergedOwnership.forEach(pushLabel);
-    return labels;
+    return [];
   }
 
   function getSourceAccountLabelForDisplay(sourceAccount) {
-    if (!sourceAccount) return "";
-    if (typeof sourceAccount === "string") return sourceAccount;
-    if (typeof sourceAccount === "object") {
-      if (typeof sourceAccount.accountLabel === "string" && sourceAccount.accountLabel) {
-        return sourceAccount.accountLabel;
-      }
-      if (typeof sourceAccount.email === "string" && sourceAccount.email) {
-        return sourceAccount.email;
-      }
+    if (typeof getSourceAccountLabelDisplayText === "function") {
+      return getSourceAccountLabelDisplayText(sourceAccount);
     }
     return "";
   }
 
   function formatSiteOwnershipLabelForDisplay(site, sourceAccount) {
-    const owners = getSiteOwnershipLabelsForDisplay(site);
-    if (owners.length > 1) {
-      return `${owners[0]} (+${owners.length - 1})`;
+    if (typeof resolveSiteOwnershipDisplay === "function") {
+      const resolved = resolveSiteOwnershipDisplay(
+        site,
+        { sourceAccount: sourceAccount, accountLabel: getSourceAccountLabelForDisplay(sourceAccount) },
+        null,
+        sourceAccount
+      );
+      return resolved && typeof resolved.fullLabel === "string"
+        ? resolved.fullLabel
+        : getSourceAccountLabelForDisplay(sourceAccount);
     }
-    if (owners.length === 1) return owners[0];
     return getSourceAccountLabelForDisplay(sourceAccount);
   }
 

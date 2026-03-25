@@ -50,53 +50,31 @@
   }
 
   function getSiteOwnershipLabelsForDisplay(site) {
-    if (!site) return [];
-    const labels = [];
-    function pushLabel(label) {
-      if (typeof label !== "string" || !label) return;
-      if (labels.indexOf(label) === -1) labels.push(label);
+    if (typeof getSiteOwnershipLabelsFromPayload === "function") {
+      return getSiteOwnershipLabelsFromPayload(site);
     }
-    const initOwnership =
-      window.__sadvInitData &&
-      window.__sadvInitData.siteOwnership &&
-      window.__sadvInitData.siteOwnership[site];
-    if (Array.isArray(initOwnership)) initOwnership.forEach(pushLabel);
-    const payloadOwnership =
-      typeof window !== "undefined" &&
-      window.__SEARCHADVISOR_EXPORT_PAYLOAD__ &&
-      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.siteOwnershipBySite &&
-      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.siteOwnershipBySite[site];
-    if (Array.isArray(payloadOwnership)) payloadOwnership.forEach(pushLabel);
-    const mergedOwnership =
-      typeof window !== "undefined" &&
-      window.__SEARCHADVISOR_EXPORT_PAYLOAD__ &&
-      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.mergedMeta &&
-      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.mergedMeta.siteOwnershipBySite &&
-      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.mergedMeta.siteOwnershipBySite[site];
-    if (Array.isArray(mergedOwnership)) mergedOwnership.forEach(pushLabel);
-    return labels;
+    return [];
   }
 
   function getSourceAccountLabelForDisplay(sourceAccount) {
-    if (!sourceAccount) return "";
-    if (typeof sourceAccount === "string") return sourceAccount;
-    if (typeof sourceAccount === "object") {
-      if (typeof sourceAccount.accountLabel === "string" && sourceAccount.accountLabel) {
-        return sourceAccount.accountLabel;
-      }
-      if (typeof sourceAccount.email === "string" && sourceAccount.email) {
-        return sourceAccount.email;
-      }
+    if (typeof getSourceAccountLabelDisplayText === "function") {
+      return getSourceAccountLabelDisplayText(sourceAccount);
     }
     return "";
   }
 
   function formatSiteOwnershipLabelForDisplay(site, sourceAccount) {
-    const owners = getSiteOwnershipLabelsForDisplay(site);
-    if (owners.length > 1) {
-      return `${owners[0]} (+${owners.length - 1})`;
+    if (typeof resolveSiteOwnershipDisplay === "function") {
+      const resolved = resolveSiteOwnershipDisplay(
+        site,
+        { sourceAccount: sourceAccount, accountLabel: getSourceAccountLabelForDisplay(sourceAccount) },
+        null,
+        sourceAccount
+      );
+      return resolved && typeof resolved.fullLabel === "string"
+        ? resolved.fullLabel
+        : getSourceAccountLabelForDisplay(sourceAccount);
     }
-    if (owners.length === 1) return owners[0];
     return getSourceAccountLabelForDisplay(sourceAccount);
   }
 

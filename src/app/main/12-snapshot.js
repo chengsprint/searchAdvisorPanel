@@ -3562,23 +3562,46 @@ function buildSnapshotSerializedHelperSection() {
       bindSnapshotManualXlsxButton(document.getElementById("sadv-xlsx-btn"));
     }
     function bindSnapshotAllCardLinks() {
-      document.querySelectorAll(".sadv-allcard[data-site]").forEach(function (card) {
-        if (card.dataset.snapshotBound === "true") return;
-        card.dataset.snapshotBound = "true";
+      const cards = Array.from(document.querySelectorAll(".sadv-allcard[data-site]"));
+      cards.forEach(function (card) {
+        if (card.__sadvSnapshotKeyboardBound === true) return;
+        card.__sadvSnapshotKeyboardBound = true;
         card.setAttribute("tabindex", card.getAttribute("tabindex") || "0");
         card.setAttribute("role", card.getAttribute("role") || "button");
-        const openSite = function () {
-          const site = card.getAttribute("data-site") || "";
-          if (!site) return;
-          curSite = site;
-          if (typeof setComboSite === "function") setComboSite(site);
-          switchMode("site");
-        };
-        card.addEventListener("click", openSite);
         card.addEventListener("keydown", function (event) {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
-            openSite();
+            const site = card.getAttribute("data-site") || "";
+            if (!site) return;
+            if (typeof openAllSitesSelectedSite === "function") {
+              openAllSitesSelectedSite(site);
+            } else {
+              curSite = site;
+              if (typeof setComboSite === "function") setComboSite(site);
+              switchMode("site");
+            }
+          }
+        });
+      });
+      const wraps = [];
+      cards.forEach(function (card) {
+        const wrap = card.closest(".sadv-allsites-wrap") || card.parentElement;
+        if (wrap && wraps.indexOf(wrap) === -1) wraps.push(wrap);
+      });
+      wraps.forEach(function (wrap) {
+        if (!wrap || wrap.__sadvCardDelegateBound === true) return;
+        wrap.__sadvCardDelegateBound = true;
+        wrap.addEventListener("click", function (event) {
+          const card = event.target.closest(".sadv-allcard[data-site]");
+          if (!card) return;
+          const site = card.getAttribute("data-site") || "";
+          if (!site) return;
+          if (typeof openAllSitesSelectedSite === "function") {
+            openAllSitesSelectedSite(site);
+          } else {
+            curSite = site;
+            if (typeof setComboSite === "function") setComboSite(site);
+            switchMode("site");
           }
         });
       });

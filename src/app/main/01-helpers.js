@@ -1234,6 +1234,103 @@ function getSiteOwnership(payload) {
   return summary.siteOwnership || {};
 }
 
+function getSourceAccountLabelDisplayText(sourceAccount) {
+  if (!sourceAccount) return "";
+  if (typeof sourceAccount === "string") return sourceAccount.trim();
+  if (typeof sourceAccount === "object") {
+    if (typeof sourceAccount.accountLabel === "string" && sourceAccount.accountLabel.trim()) {
+      return sourceAccount.accountLabel.trim();
+    }
+    if (typeof sourceAccount.email === "string" && sourceAccount.email.trim()) {
+      return sourceAccount.email.trim();
+    }
+  }
+  return "";
+}
+
+function getSiteOwnershipLabelsFromPayload(site, payload, row, sourceAccount) {
+  if (!site) return [];
+  const labels = [];
+  function pushLabel(label) {
+    if (typeof label !== "string") return;
+    const normalized = label.trim();
+    if (!normalized) return;
+    if (labels.indexOf(normalized) === -1) labels.push(normalized);
+  }
+  const safePayload =
+    payload ||
+    (typeof window !== "undefined" ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__ || null : null);
+  const safeInitOwnership =
+    typeof window !== "undefined" &&
+    window.__sadvInitData &&
+    window.__sadvInitData.siteOwnership &&
+    typeof window.__sadvInitData.siteOwnership === "object"
+      ? window.__sadvInitData.siteOwnership
+      : null;
+  if (safeInitOwnership && Array.isArray(safeInitOwnership[site])) {
+    safeInitOwnership[site].forEach(pushLabel);
+  }
+  if (
+    safePayload &&
+    safePayload.siteOwnershipBySite &&
+    typeof safePayload.siteOwnershipBySite === "object" &&
+    Array.isArray(safePayload.siteOwnershipBySite[site])
+  ) {
+    safePayload.siteOwnershipBySite[site].forEach(pushLabel);
+  }
+  if (
+    safePayload &&
+    safePayload.mergedMeta &&
+    safePayload.mergedMeta.siteOwnershipBySite &&
+    typeof safePayload.mergedMeta.siteOwnershipBySite === "object" &&
+    Array.isArray(safePayload.mergedMeta.siteOwnershipBySite[site])
+  ) {
+    safePayload.mergedMeta.siteOwnershipBySite[site].forEach(pushLabel);
+  }
+  if (row && typeof row.accountLabel === "string") pushLabel(row.accountLabel);
+  if (row && row.sourceAccount) pushLabel(getSourceAccountLabelDisplayText(row.sourceAccount));
+  if (sourceAccount) pushLabel(getSourceAccountLabelDisplayText(sourceAccount));
+  return labels;
+}
+
+function formatCompactOwnerDisplayLabel(label) {
+  if (typeof label !== "string") return "";
+  const trimmed = label.trim();
+  if (!trimmed) return "";
+  const suffixMatch = trimmed.match(/\s*\(\+\d+\)$/);
+  const suffix = suffixMatch ? suffixMatch[0].trim() : "";
+  let base = suffixMatch ? trimmed.slice(0, -suffixMatch[0].length).trim() : trimmed;
+  if (base.includes("@")) base = base.split("@")[0] || base;
+  return suffix ? `${base} ${suffix}` : base;
+}
+
+function resolveSiteOwnershipDisplay(site, row, payload, sourceAccount) {
+  const labels = getSiteOwnershipLabelsFromPayload(site, payload, row, sourceAccount);
+  const fallbackLabel =
+    getSourceAccountLabelDisplayText(sourceAccount) ||
+    (row ? getSourceAccountLabelDisplayText(row.sourceAccount) : "") ||
+    (row && typeof row.accountLabel === "string" ? row.accountLabel : "");
+  const fullLabel =
+    labels.length > 1 ? `${labels[0]} (+${labels.length - 1})` : labels.length === 1 ? labels[0] : fallbackLabel;
+  return {
+    labels: labels,
+    ownerCount: labels.length || (fullLabel ? 1 : 0),
+    fullLabel: fullLabel || "",
+    compactLabel: formatCompactOwnerDisplayLabel(fullLabel || ""),
+  };
+}
+
+function renderOwnerTagHTML(display, variant) {
+  if (!display || typeof display !== "object") return "";
+  const fullLabel = typeof display.fullLabel === "string" ? display.fullLabel.trim() : "";
+  const compactLabel =
+    typeof display.compactLabel === "string" ? display.compactLabel.trim() : "";
+  if (!fullLabel || !compactLabel) return "";
+  const classes = ["sadv-owner-tag"];
+  if (variant) classes.push(`sadv-owner-tag--${variant}`);
+  return `<span class="${classes.join(" ")}" title="${escHtml(fullLabel)}">${escHtml(compactLabel)}</span>`;
+}
+
 // ============================================================
 // MIGRATION HELPERS (Big Bang - no v1 support)
 // ============================================================

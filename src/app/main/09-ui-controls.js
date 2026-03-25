@@ -658,6 +658,10 @@ function applyUiControlsTab(tab) {
     orderedSites.forEach(function (s) {
       const selectionState = getUiControlsSelectionState();
       const activeSite = selectionState.curSite;
+      const exportPayload =
+        typeof window !== "undefined" && window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+          ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+          : null;
       const col = SITE_COLORS_MAP[s] || C.muted,
         fullLabel = getSiteLabel(s),
         shortName = getSiteShortName(s),
@@ -665,14 +669,26 @@ function applyUiControlsTab(tab) {
         row = rowsMap[s],
         clickStr = row ? fmt(row.totalC) + "\uD074\uB9AD" : "—",
         clickCol = row ? C.green : C.muted;
+      const ownershipDisplay =
+        typeof resolveSiteOwnershipDisplay === "function"
+          ? resolveSiteOwnershipDisplay(s, row || null, exportPayload, row ? row.sourceAccount : null)
+          : { fullLabel: "", compactLabel: "" };
+      const ownerTagHtml =
+        typeof renderOwnerTagHTML === "function"
+          ? renderOwnerTagHTML(ownershipDisplay, "combo")
+          : "";
       const item = document.createElement("div");
       item.className = "sadv-combo-item sadv-copt" + (s === activeSite ? " active" : "");
       item.dataset.site = s;
       item.setAttribute("tabindex", "0");
       item.setAttribute("role", "option");
       item.setAttribute("aria-selected", s === activeSite ? "true" : "false");
+      item.dataset.ownerLabel =
+        ownershipDisplay && typeof ownershipDisplay.fullLabel === "string"
+          ? ownershipDisplay.fullLabel
+          : "";
       item.style.cursor = "pointer";
-      item.innerHTML = `<div class="sadv-combo-item-dot" style="background:${col}"></div><div class="sadv-combo-item-info"><div class="sadv-combo-item-name">${escHtml(shortName || fullLabel || s)}</div><div class="sadv-combo-item-url">${escHtml(siteUrlLabel || fullLabel || s)}</div></div><div class="sadv-combo-item-click" style="color:${clickCol}">${escHtml(clickStr)}</div>`;
+      item.innerHTML = `<div class="sadv-combo-item-dot" style="background:${col}"></div><div class="sadv-combo-item-info"><div class="sadv-combo-item-name">${escHtml(shortName || fullLabel || s)}</div><div class="sadv-combo-item-url">${escHtml(siteUrlLabel || fullLabel || s)}</div></div><div class="sadv-combo-item-side">${ownerTagHtml}<div class="sadv-combo-item-click" style="color:${clickCol}">${escHtml(clickStr)}</div></div>`;
       item.addEventListener("click", function () {
         setComboSite(s);
         const wrap = document.getElementById("sadv-combo-wrap");
@@ -782,10 +798,15 @@ function applyUiControlsTab(tab) {
                   // Combo rows are styled as CSS grid in the shell theme.
                   // When search filtering shows them again, restore `grid` instead of `flex`
                   // to avoid subtle layout drift between normal and filtered states.
-                  const isVisible =
+                  const siteMatch =
                     !q ||
                     (((el.dataset.site || "") + " " + getSiteLabel(el.dataset.site || "")).toLowerCase().includes(q));
-                  el.style.setProperty("display", isVisible ? "grid" : "none", "important");
+                  const ownerMatch = ((el.dataset.ownerLabel || "") + "").toLowerCase().includes(q);
+                  el.style.setProperty(
+                    "display",
+                    siteMatch || ownerMatch ? "grid" : "none",
+                    "important"
+                  );
                 });
             };
           }

@@ -694,10 +694,47 @@ siteUiStyle.textContent = `
   overflow:hidden;
   text-overflow:ellipsis;
 }
+.sadv-combo-item-side{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  justify-content:center;
+  gap:3px;
+}
 .sadv-combo-item-click{
-  font-size:12px;
+  font-size:11px;
   font-weight:700;
   white-space:nowrap;
+}
+.sadv-owner-tag{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:13px;
+  max-width:100%;
+  padding:1px 4px;
+  border-radius:6px;
+  border:1px solid rgba(255,212,0,0.14);
+  background:rgba(255,212,0,0.05);
+  color:var(--sadv-text-tertiary,#b9a55a);
+  font-size:7px;
+  font-weight:700;
+  line-height:1.1;
+  letter-spacing:-0.01em;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.sadv-owner-tag--card{
+  margin-left:6px;
+  max-width:96px;
+}
+.sadv-owner-tag--combo{
+  max-width:112px;
+}
+.sadv-owner-tag--site{
+  max-width:128px;
 }
 #sadv-tabs{
   position:relative !important;
