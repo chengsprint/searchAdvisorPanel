@@ -107,6 +107,9 @@ function openAllSitesSelectedSite(site) {
   const runtimeSites =
     typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
   if (!site || (Array.isArray(runtimeSites) && runtimeSites.length && !runtimeSites.includes(site))) return;
+  const selectionState = getAllSitesSelectionState();
+  const sameSite = selectionState.curSite === site;
+  if (selectionState.curMode === CONFIG.MODE.SITE && sameSite) return;
   setAllSitesSelectedSite(site);
   if (typeof setComboSite === "function") setComboSite(site);
   if (typeof switchMode === "function") switchMode("site");
@@ -244,9 +247,13 @@ function buildAllSitesDisplayWrap(baseRows) {
     card.style.borderTop = "2px solid " + col + "44";
     const shortName =
       typeof getSiteLabel === "function" ? getSiteLabel(r.site) : r.site.replace(/^https?:\/\//, "");
+    const exportPayload =
+      typeof window !== "undefined" && window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+        ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+        : null;
     const ownershipDisplay =
       typeof resolveSiteOwnershipDisplay === "function"
-        ? resolveSiteOwnershipDisplay(r.site, r)
+        ? resolveSiteOwnershipDisplay(r.site, r, exportPayload, r ? r.sourceAccount : null)
         : { fullLabel: "", compactLabel: "" };
     const accountBadge =
       typeof renderOwnerTagHTML === "function"

@@ -1328,7 +1328,11 @@ function renderOwnerTagHTML(display, variant) {
   if (!fullLabel || !compactLabel) return "";
   const classes = ["sadv-owner-tag"];
   if (variant) classes.push(`sadv-owner-tag--${variant}`);
-  return `<span class="${classes.join(" ")}" title="${escHtml(fullLabel)}">${escHtml(compactLabel)}</span>`;
+  const ownerCount =
+    typeof display.ownerCount === "number" && Number.isFinite(display.ownerCount)
+      ? Math.max(0, display.ownerCount)
+      : 0;
+  return `<span class="${classes.join(" ")}" title="${escHtml(fullLabel)}" aria-label="${escHtml(fullLabel)}" data-owner-count="${ownerCount}">${escHtml(compactLabel)}</span>`;
 }
 
 // ============================================================

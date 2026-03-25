@@ -63,14 +63,18 @@
     return "";
   }
 
-  function formatSiteOwnershipLabelForDisplay(site, sourceAccount) {
-    if (typeof resolveSiteOwnershipDisplay === "function") {
-      const resolved = resolveSiteOwnershipDisplay(
-        site,
-        { sourceAccount: sourceAccount, accountLabel: getSourceAccountLabelForDisplay(sourceAccount) },
-        null,
-        sourceAccount
-      );
+function formatSiteOwnershipLabelForDisplay(site, sourceAccount) {
+  if (typeof resolveSiteOwnershipDisplay === "function") {
+    const exportPayload =
+      typeof window !== "undefined" && window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+        ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+        : null;
+    const resolved = resolveSiteOwnershipDisplay(
+      site,
+      { sourceAccount: sourceAccount, accountLabel: getSourceAccountLabelForDisplay(sourceAccount) },
+      exportPayload,
+      sourceAccount
+    );
       return resolved && typeof resolved.fullLabel === "string"
         ? resolved.fullLabel
         : getSourceAccountLabelForDisplay(sourceAccount);

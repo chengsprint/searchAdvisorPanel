@@ -3689,16 +3689,24 @@ function buildSnapshotSerializedHelperSection() {
         switchMode(mode);
       },
       setSite: function (site) {
-        setComboSite(site);
-        if (curMode !== "site") switchMode("site");
+        if (typeof openAllSitesSelectedSite === "function") {
+          openAllSitesSelectedSite(site);
+        } else {
+          setComboSite(site);
+          if (curMode !== "site") switchMode("site");
+        }
       },
       switchSite: function (site) {
         // Phase 2 convergence:
         // public facade canonical action은 "site 선택 + site mode 진입"으로 정의한다.
         // 기존 setSite를 그대로 유지해 saved HTML compatibility는 보존하고,
         // switchSite를 추가해 live/saved가 같은 intent 이름을 공유하게 만든다.
-        setComboSite(site);
-        if (curMode !== "site") switchMode("site");
+        if (typeof openAllSitesSelectedSite === "function") {
+          openAllSitesSelectedSite(site);
+        } else {
+          setComboSite(site);
+          if (curMode !== "site") switchMode("site");
+        }
       },
       setTab: function (tab) {
         setTab(tab);
@@ -4007,13 +4015,13 @@ function buildSnapshotSerializedHelperSection() {
   // compat bridge의 site action fallback은 setSite/switchSite가 같은 body를 공유한다.
   // 이 단계에서는 alias 관계를 바꾸지 않고 문자열 조립 책임만 분리해,
   // dormant bridge의 중복을 줄이면서 external caller 호환성을 유지한다.
-  function buildSnapshotApiCompatSiteActionLines(actionName) {
-    return [
+function buildSnapshotApiCompatSiteActionLines(actionName) {
+  return [
       '    ' +
         actionName +
-        ': function (site) { if (typeof setComboSite === "function") setComboSite(site); else { const items = Array.from(document.querySelectorAll(".sadv-combo-item")); const button = items.find(function (item) { return (item.getAttribute("data-site") || "") === site; }); if (button) button.click(); } if (typeof switchMode === "function") switchMode("site"); scheduleSync(); },',
+        ': function (site) { if (typeof openAllSitesSelectedSite === "function") openAllSitesSelectedSite(site); else if (typeof setComboSite === "function") { setComboSite(site); if (typeof switchMode === "function") switchMode("site"); } else { const items = Array.from(document.querySelectorAll(".sadv-combo-item")); const button = items.find(function (item) { return (item.getAttribute("data-site") || "") === site; }); if (button) button.click(); } scheduleSync(); },',
     ];
-  }
+}
 
   function buildSnapshotApiCompatTabActionLines() {
     return [

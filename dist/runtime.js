@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-25T13:31:35Z";
-var __SADV_GIT_HEAD__="6295b23";
+var __SADV_BUILD_STAMP__="2026-03-25T13:47:49Z";
+var __SADV_GIT_HEAD__="c3dcd58";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -3075,7 +3075,11 @@ function renderOwnerTagHTML(display, variant) {
   if (!fullLabel || !compactLabel) return "";
   const classes = ["sadv-owner-tag"];
   if (variant) classes.push(`sadv-owner-tag--${variant}`);
-  return `<span class="${classes.join(" ")}" title="${escHtml(fullLabel)}">${escHtml(compactLabel)}</span>`;
+  const ownerCount =
+    typeof display.ownerCount === "number" && Number.isFinite(display.ownerCount)
+      ? Math.max(0, display.ownerCount)
+      : 0;
+  return `<span class="${classes.join(" ")}" title="${escHtml(fullLabel)}" aria-label="${escHtml(fullLabel)}" data-owner-count="${ownerCount}">${escHtml(compactLabel)}</span>`;
 }
 
 // ============================================================
@@ -3839,10 +3843,10 @@ siteUiStyle.textContent = `
   flex-direction:column;
   align-items:flex-end;
   justify-content:center;
-  gap:3px;
+  gap:2px;
 }
 .sadv-combo-item-click{
-  font-size:11px;
+  font-size:10px;
   font-weight:700;
   white-space:nowrap;
 }
@@ -3850,30 +3854,30 @@ siteUiStyle.textContent = `
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  min-height:13px;
+  min-height:11px;
   max-width:100%;
-  padding:1px 4px;
-  border-radius:6px;
-  border:1px solid rgba(255,212,0,0.14);
-  background:rgba(255,212,0,0.05);
+  padding:0 3px;
+  border-radius:4px;
+  border:1px solid rgba(255,212,0,0.12);
+  background:rgba(255,212,0,0.035);
   color:var(--sadv-text-tertiary,#b9a55a);
-  font-size:7px;
+  font-size:6px;
   font-weight:700;
   line-height:1.1;
-  letter-spacing:-0.01em;
+  letter-spacing:0;
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
 }
 .sadv-owner-tag--card{
-  margin-left:6px;
-  max-width:96px;
+  margin-left:4px;
+  max-width:84px;
 }
 .sadv-owner-tag--combo{
-  max-width:112px;
+  max-width:92px;
 }
 .sadv-owner-tag--site{
-  max-width:128px;
+  max-width:108px;
 }
 #sadv-tabs{
   position:relative !important;
@@ -11206,7 +11210,15 @@ function applyUiControlsTab(tab) {
       item.style.cursor = "pointer";
       item.innerHTML = `<div class="sadv-combo-item-dot" style="background:${col}"></div><div class="sadv-combo-item-info"><div class="sadv-combo-item-name">${escHtml(shortName || fullLabel || s)}</div><div class="sadv-combo-item-url">${escHtml(siteUrlLabel || fullLabel || s)}</div></div><div class="sadv-combo-item-side">${ownerTagHtml}<div class="sadv-combo-item-click" style="color:${clickCol}">${escHtml(clickStr)}</div></div>`;
       item.addEventListener("click", function () {
-        setComboSite(s);
+        if (typeof openAllSitesSelectedSite === "function") {
+          openAllSitesSelectedSite(s);
+        } else {
+          setComboSite(s);
+          const selectionState = getUiControlsSelectionState();
+          if (selectionState.curMode !== CONFIG.MODE.SITE && typeof switchMode === "function") {
+            switchMode(CONFIG.MODE.SITE);
+          }
+        }
         const wrap = document.getElementById("sadv-combo-wrap");
         if (wrap) {
           wrap.classList.remove("open");
@@ -11217,7 +11229,15 @@ function applyUiControlsTab(tab) {
       item.addEventListener('keydown', function(e) {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          setComboSite(s);
+          if (typeof openAllSitesSelectedSite === "function") {
+            openAllSitesSelectedSite(s);
+          } else {
+            setComboSite(s);
+            const selectionState = getUiControlsSelectionState();
+            if (selectionState.curMode !== CONFIG.MODE.SITE && typeof switchMode === "function") {
+              switchMode(CONFIG.MODE.SITE);
+            }
+          }
           const wrap = document.getElementById("sadv-combo-wrap");
           if (wrap) {
             wrap.classList.remove("open");
@@ -12000,6 +12020,9 @@ function openAllSitesSelectedSite(site) {
   const runtimeSites =
     typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
   if (!site || (Array.isArray(runtimeSites) && runtimeSites.length && !runtimeSites.includes(site))) return;
+  const selectionState = getAllSitesSelectionState();
+  const sameSite = selectionState.curSite === site;
+  if (selectionState.curMode === CONFIG.MODE.SITE && sameSite) return;
   setAllSitesSelectedSite(site);
   if (typeof setComboSite === "function") setComboSite(site);
   if (typeof switchMode === "function") switchMode("site");
@@ -12137,9 +12160,13 @@ function buildAllSitesDisplayWrap(baseRows) {
     card.style.borderTop = "2px solid " + col + "44";
     const shortName =
       typeof getSiteLabel === "function" ? getSiteLabel(r.site) : r.site.replace(/^https?:\/\//, "");
+    const exportPayload =
+      typeof window !== "undefined" && window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+        ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+        : null;
     const ownershipDisplay =
       typeof resolveSiteOwnershipDisplay === "function"
-        ? resolveSiteOwnershipDisplay(r.site, r)
+        ? resolveSiteOwnershipDisplay(r.site, r, exportPayload, r ? r.sourceAccount : null)
         : { fullLabel: "", compactLabel: "" };
     const accountBadge =
       typeof renderOwnerTagHTML === "function"
@@ -16480,16 +16507,24 @@ function buildSnapshotSerializedHelperSection() {
         switchMode(mode);
       },
       setSite: function (site) {
-        setComboSite(site);
-        if (curMode !== "site") switchMode("site");
+        if (typeof openAllSitesSelectedSite === "function") {
+          openAllSitesSelectedSite(site);
+        } else {
+          setComboSite(site);
+          if (curMode !== "site") switchMode("site");
+        }
       },
       switchSite: function (site) {
         // Phase 2 convergence:
         // public facade canonical action은 "site 선택 + site mode 진입"으로 정의한다.
         // 기존 setSite를 그대로 유지해 saved HTML compatibility는 보존하고,
         // switchSite를 추가해 live/saved가 같은 intent 이름을 공유하게 만든다.
-        setComboSite(site);
-        if (curMode !== "site") switchMode("site");
+        if (typeof openAllSitesSelectedSite === "function") {
+          openAllSitesSelectedSite(site);
+        } else {
+          setComboSite(site);
+          if (curMode !== "site") switchMode("site");
+        }
       },
       setTab: function (tab) {
         setTab(tab);
@@ -16798,13 +16833,13 @@ function buildSnapshotSerializedHelperSection() {
   // compat bridge의 site action fallback은 setSite/switchSite가 같은 body를 공유한다.
   // 이 단계에서는 alias 관계를 바꾸지 않고 문자열 조립 책임만 분리해,
   // dormant bridge의 중복을 줄이면서 external caller 호환성을 유지한다.
-  function buildSnapshotApiCompatSiteActionLines(actionName) {
-    return [
+function buildSnapshotApiCompatSiteActionLines(actionName) {
+  return [
       '    ' +
         actionName +
-        ': function (site) { if (typeof setComboSite === "function") setComboSite(site); else { const items = Array.from(document.querySelectorAll(".sadv-combo-item")); const button = items.find(function (item) { return (item.getAttribute("data-site") || "") === site; }); if (button) button.click(); } if (typeof switchMode === "function") switchMode("site"); scheduleSync(); },',
+        ': function (site) { if (typeof openAllSitesSelectedSite === "function") openAllSitesSelectedSite(site); else if (typeof setComboSite === "function") { setComboSite(site); if (typeof switchMode === "function") switchMode("site"); } else { const items = Array.from(document.querySelectorAll(".sadv-combo-item")); const button = items.find(function (item) { return (item.getAttribute("data-site") || "") === site; }); if (button) button.click(); } scheduleSync(); },',
     ];
-  }
+}
 
   function buildSnapshotApiCompatTabActionLines() {
     return [
@@ -17085,14 +17120,18 @@ function buildSnapshotSerializedHelperSection() {
     return "";
   }
 
-  function formatSiteOwnershipLabelForDisplay(site, sourceAccount) {
-    if (typeof resolveSiteOwnershipDisplay === "function") {
-      const resolved = resolveSiteOwnershipDisplay(
-        site,
-        { sourceAccount: sourceAccount, accountLabel: getSourceAccountLabelForDisplay(sourceAccount) },
-        null,
-        sourceAccount
-      );
+function formatSiteOwnershipLabelForDisplay(site, sourceAccount) {
+  if (typeof resolveSiteOwnershipDisplay === "function") {
+    const exportPayload =
+      typeof window !== "undefined" && window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+        ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+        : null;
+    const resolved = resolveSiteOwnershipDisplay(
+      site,
+      { sourceAccount: sourceAccount, accountLabel: getSourceAccountLabelForDisplay(sourceAccount) },
+      exportPayload,
+      sourceAccount
+    );
       return resolved && typeof resolved.fullLabel === "string"
         ? resolved.fullLabel
         : getSourceAccountLabelForDisplay(sourceAccount);

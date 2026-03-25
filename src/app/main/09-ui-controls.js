@@ -690,7 +690,15 @@ function applyUiControlsTab(tab) {
       item.style.cursor = "pointer";
       item.innerHTML = `<div class="sadv-combo-item-dot" style="background:${col}"></div><div class="sadv-combo-item-info"><div class="sadv-combo-item-name">${escHtml(shortName || fullLabel || s)}</div><div class="sadv-combo-item-url">${escHtml(siteUrlLabel || fullLabel || s)}</div></div><div class="sadv-combo-item-side">${ownerTagHtml}<div class="sadv-combo-item-click" style="color:${clickCol}">${escHtml(clickStr)}</div></div>`;
       item.addEventListener("click", function () {
-        setComboSite(s);
+        if (typeof openAllSitesSelectedSite === "function") {
+          openAllSitesSelectedSite(s);
+        } else {
+          setComboSite(s);
+          const selectionState = getUiControlsSelectionState();
+          if (selectionState.curMode !== CONFIG.MODE.SITE && typeof switchMode === "function") {
+            switchMode(CONFIG.MODE.SITE);
+          }
+        }
         const wrap = document.getElementById("sadv-combo-wrap");
         if (wrap) {
           wrap.classList.remove("open");
@@ -701,7 +709,15 @@ function applyUiControlsTab(tab) {
       item.addEventListener('keydown', function(e) {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          setComboSite(s);
+          if (typeof openAllSitesSelectedSite === "function") {
+            openAllSitesSelectedSite(s);
+          } else {
+            setComboSite(s);
+            const selectionState = getUiControlsSelectionState();
+            if (selectionState.curMode !== CONFIG.MODE.SITE && typeof switchMode === "function") {
+              switchMode(CONFIG.MODE.SITE);
+            }
+          }
           const wrap = document.getElementById("sadv-combo-wrap");
           if (wrap) {
             wrap.classList.remove("open");

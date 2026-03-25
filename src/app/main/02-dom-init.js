@@ -700,10 +700,10 @@ siteUiStyle.textContent = `
   flex-direction:column;
   align-items:flex-end;
   justify-content:center;
-  gap:3px;
+  gap:2px;
 }
 .sadv-combo-item-click{
-  font-size:11px;
+  font-size:10px;
   font-weight:700;
   white-space:nowrap;
 }
@@ -711,30 +711,30 @@ siteUiStyle.textContent = `
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  min-height:13px;
+  min-height:11px;
   max-width:100%;
-  padding:1px 4px;
-  border-radius:6px;
-  border:1px solid rgba(255,212,0,0.14);
-  background:rgba(255,212,0,0.05);
+  padding:0 3px;
+  border-radius:4px;
+  border:1px solid rgba(255,212,0,0.12);
+  background:rgba(255,212,0,0.035);
   color:var(--sadv-text-tertiary,#b9a55a);
-  font-size:7px;
+  font-size:6px;
   font-weight:700;
   line-height:1.1;
-  letter-spacing:-0.01em;
+  letter-spacing:0;
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
 }
 .sadv-owner-tag--card{
-  margin-left:6px;
-  max-width:96px;
+  margin-left:4px;
+  max-width:84px;
 }
 .sadv-owner-tag--combo{
-  max-width:112px;
+  max-width:92px;
 }
 .sadv-owner-tag--site{
-  max-width:128px;
+  max-width:108px;
 }
 #sadv-tabs{
   position:relative !important;
