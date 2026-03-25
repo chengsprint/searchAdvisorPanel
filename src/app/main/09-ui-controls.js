@@ -195,6 +195,35 @@ function applyUiControlsTab(tab) {
     else labelEl.textContent = summary;
     labelEl.title = summary;
     syncXlsxButtonVisibility();
+    syncSnapshotActionButtons(
+      typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null
+    );
+  }
+  function getHeaderActionRuntimeCapabilitiesSnapshot() {
+    return typeof getRuntimeCapabilities === "function"
+      ? getRuntimeCapabilities()
+      : typeof runtimeCapabilities !== "undefined"
+        ? runtimeCapabilities
+        : typeof resolveRuntimeCapabilities === "function"
+          ? resolveRuntimeCapabilities()
+          : {
+              canRefresh: false,
+              canSave: false,
+              canClose: false,
+              canXlsxSave: false,
+              isReadOnly: true,
+            };
+  }
+  function canCurrentRuntimeManualXlsxExport(runtimeCapabilitiesSnapshot) {
+    if (typeof canManualXlsxExportInCurrentRuntime === "function") {
+      return !!canManualXlsxExportInCurrentRuntime();
+    }
+    return !!(
+      runtimeCapabilitiesSnapshot &&
+      runtimeCapabilitiesSnapshot.canSave &&
+      runtimeCapabilitiesSnapshot.canXlsxSave &&
+      !runtimeCapabilitiesSnapshot.isReadOnly
+    );
   }
   function syncXlsxButtonVisibility() {
     const xlsxBtnEl = document.getElementById("sadv-xlsx-btn");
@@ -203,24 +232,8 @@ function applyUiControlsTab(tab) {
     // 따라서 live initialize()의 closure(runtimeCapabilities)에만 의존하면
     // reopen 시 ReferenceError/undefined 접근으로 회귀가 날 수 있다.
     // 공통 helper를 그대로 재사용하되, closure가 없을 때도 self-contained 하게 capability snapshot을 읽는다.
-    const runtimeCapabilitiesSnapshot =
-      typeof getRuntimeCapabilities === "function"
-        ? getRuntimeCapabilities()
-        : typeof runtimeCapabilities !== "undefined"
-          ? runtimeCapabilities
-          : {
-              canSave: false,
-              canXlsxSave: false,
-              isReadOnly: true,
-            };
-    const canManualXlsxSave =
-      typeof canManualXlsxExportInCurrentRuntime === "function"
-        ? canManualXlsxExportInCurrentRuntime()
-        : !!(
-            runtimeCapabilitiesSnapshot.canSave &&
-            runtimeCapabilitiesSnapshot.canXlsxSave &&
-            !runtimeCapabilitiesSnapshot.isReadOnly
-          );
+    const runtimeCapabilitiesSnapshot = getHeaderActionRuntimeCapabilitiesSnapshot();
+    const canManualXlsxSave = canCurrentRuntimeManualXlsxExport(runtimeCapabilitiesSnapshot);
     if (!canManualXlsxSave) {
       xlsxBtnEl.style.display = "none";
       xlsxBtnEl.setAttribute("aria-hidden", "true");
@@ -325,50 +338,251 @@ function applyUiControlsTab(tab) {
     );
   }
   function getSnapshotActionBaseLabel(actionKind) {
-    return actionKind === "xlsx" ? "엑셀" : "저장";
+    if (actionKind === "xlsx") return "엑셀 저장";
+    if (actionKind === "refresh") return "새로고침";
+    if (actionKind === "close") return "닫기";
+    return "HTML 저장";
   }
   function getSnapshotActionStatusKind(status) {
     return status && status.outputFormat === "xlsx" ? "xlsx" : "save";
   }
   function formatSnapshotActionLabel(status, actionKind) {
+    return getSnapshotActionBaseLabel(actionKind);
+  }
+  function setHeaderActionButtonLabel(buttonEl, label) {
+    if (!buttonEl) return;
+    const nextLabel = typeof label === "string" && label.trim() ? label.trim() : "";
+    if (!nextLabel) return;
+    const labelEl = buttonEl.querySelector(".sadv-btn-label");
+    if (labelEl) {
+      labelEl.textContent = nextLabel;
+    } else {
+      buttonEl.textContent = nextLabel;
+    }
+    buttonEl.dataset.currentLabel = nextLabel;
+  }
+  function formatHeaderActionStatusChip(status) {
+    if (!status || typeof status !== "object" || status.uiHidden) return null;
+    const actionKind = getSnapshotActionStatusKind(status);
     const baseLabel = getSnapshotActionBaseLabel(actionKind);
-    if (!status || typeof status !== "object") return baseLabel;
-    const statusKind = getSnapshotActionStatusKind(status);
-    if (statusKind !== actionKind) return baseLabel;
-    const entryPoint = typeof status.entryPoint === "string" ? status.entryPoint : "";
-    const expectedEntryPoint = actionKind === "xlsx" ? "button-xlsx" : "button-save";
-    if (entryPoint !== expectedEntryPoint) return baseLabel;
     const state = typeof status.state === "string" ? status.state : "idle";
     const progress = status.progress && typeof status.progress === "object" ? status.progress : {};
     const done =
       typeof progress.done === "number" && Number.isFinite(progress.done) ? progress.done : 0;
     const total =
       typeof progress.total === "number" && Number.isFinite(progress.total) ? progress.total : 0;
+    const stageLabel =
+      typeof status.stageLabel === "string" && status.stageLabel.trim()
+        ? status.stageLabel.trim()
+        : null;
     if (status.active) {
       if (total > 0 && (state === "collecting" || done > 0)) {
-        return done + "/" + total;
+        return {
+          label: `${baseLabel} ${done}/${total}`,
+          tone: "progress",
+        };
       }
-      return actionKind === "xlsx" ? "엑셀 준비" : "저장 준비";
+      return {
+        label: stageLabel || `${baseLabel} 준비 중`,
+        tone: "progress",
+      };
     }
-    if (state === "completed" || state === "completed-with-issues") {
-      return actionKind === "xlsx" ? "엑셀 완료" : "저장 완료";
+    if (state === "completed") {
+      return {
+        label: `${baseLabel} 완료`,
+        tone: "success",
+      };
     }
-    return baseLabel;
+    if (state === "completed-with-issues") {
+      return {
+        label: stageLabel || `${baseLabel} 일부 확인 필요`,
+        tone: "warning",
+      };
+    }
+    if (state === "blocked") {
+      return {
+        label: stageLabel || `${baseLabel} 차단`,
+        tone: "warning",
+      };
+    }
+    if (state === "failed") {
+      return {
+        label: stageLabel || `${baseLabel} 실패`,
+        tone: "warning",
+      };
+    }
+    return null;
+  }
+  function syncHeaderActionStatusChip(status) {
+    const chipEl = document.getElementById("sadv-action-status-chip");
+    if (!chipEl) return;
+    const chipMeta = formatHeaderActionStatusChip(status);
+    if (!chipMeta) {
+      chipEl.hidden = true;
+      chipEl.setAttribute("aria-hidden", "true");
+      chipEl.textContent = "";
+      chipEl.removeAttribute("data-tone");
+      chipEl.removeAttribute("title");
+      return;
+    }
+    chipEl.hidden = false;
+    chipEl.setAttribute("aria-hidden", "false");
+    chipEl.textContent = chipMeta.label;
+    chipEl.dataset.tone = chipMeta.tone || "progress";
+    chipEl.title = chipMeta.label;
+  }
+  function applyHeaderActionButtonPresentation(buttonEl, presentation) {
+    if (!buttonEl) return;
+    const isVisible = !!(presentation && presentation.visible);
+    buttonEl.style.display = isVisible ? "" : "none";
+    if (!isVisible) {
+      buttonEl.setAttribute("aria-hidden", "true");
+      buttonEl.classList.remove("sadv-action-btn-primary", "sadv-action-btn-secondary");
+      return;
+    }
+    buttonEl.removeAttribute("aria-hidden");
+    const accessibleLabel =
+      buttonEl.dataset.baseLabel ||
+      buttonEl.dataset.currentLabel ||
+      buttonEl.getAttribute("aria-label") ||
+      "";
+    if (accessibleLabel) {
+      buttonEl.setAttribute("aria-label", accessibleLabel);
+      if (!buttonEl.dataset.busy || buttonEl.dataset.busy !== "true") {
+        buttonEl.title = accessibleLabel;
+      }
+    }
+  }
+  function getHeaderSaveHubElements() {
+    return {
+      wrap: document.getElementById("sadv-save-hub"),
+      button: document.getElementById("sadv-save-hub-btn"),
+      menu: document.getElementById("sadv-save-hub-menu"),
+      save: document.getElementById("sadv-save-btn"),
+      xlsx: document.getElementById("sadv-xlsx-btn"),
+    };
+  }
+  function closeHeaderSaveHubMenu() {
+    const refs = getHeaderSaveHubElements();
+    if (!refs.menu || !refs.button || !refs.wrap) return;
+    refs.wrap.dataset.open = "false";
+    refs.menu.hidden = true;
+    refs.button.setAttribute("aria-expanded", "false");
+  }
+  function setHeaderSaveHubButtonMeta(buttonEl, label, title, directAction) {
+    if (!buttonEl) return;
+    const nextLabel = typeof label === "string" && label.trim() ? label.trim() : "내보내기";
+    setHeaderActionButtonLabel(buttonEl, nextLabel);
+    buttonEl.dataset.baseLabel = nextLabel;
+    buttonEl.dataset.directAction = directAction || "";
+    buttonEl.setAttribute("aria-label", nextLabel);
+    buttonEl.title = title || nextLabel;
+    const caretEl = buttonEl.querySelector(".sadv-save-hub-caret");
+    const isDirect = !!directAction;
+    if (caretEl) caretEl.style.display = isDirect ? "none" : "";
+    buttonEl.classList.toggle("sadv-save-hub-direct", isDirect);
+    buttonEl.setAttribute("aria-haspopup", isDirect ? "false" : "menu");
+    if (isDirect) buttonEl.setAttribute("aria-expanded", "false");
+  }
+  function syncHeaderSaveHub(displayMeta) {
+    const refs = getHeaderSaveHubElements();
+    if (!refs.wrap || !refs.button) return;
+    const hubMeta = displayMeta && displayMeta.hub ? displayMeta.hub : null;
+    if (!hubMeta || !hubMeta.visible) {
+      refs.wrap.style.display = "none";
+      refs.wrap.setAttribute("aria-hidden", "true");
+      closeHeaderSaveHubMenu();
+      return;
+    }
+    refs.wrap.style.display = "";
+    refs.wrap.removeAttribute("aria-hidden");
+    setHeaderSaveHubButtonMeta(
+      refs.button,
+      hubMeta.label,
+      hubMeta.title,
+      hubMeta.directAction
+    );
+    if (refs.save) {
+      const showSaveItem = !!(hubMeta.menuVisible && hubMeta.items && hubMeta.items.save);
+      refs.save.hidden = !showSaveItem;
+      refs.save.style.display = showSaveItem ? "" : "none";
+      refs.save.setAttribute("aria-hidden", showSaveItem ? "false" : "true");
+    }
+    if (refs.xlsx) {
+      const showXlsxItem = !!(hubMeta.menuVisible && hubMeta.items && hubMeta.items.xlsx);
+      refs.xlsx.hidden = !showXlsxItem;
+      refs.xlsx.style.display = showXlsxItem ? "" : "none";
+      refs.xlsx.setAttribute("aria-hidden", showXlsxItem ? "false" : "true");
+    }
+    if (refs.menu) {
+      if (!hubMeta.menuVisible) {
+        closeHeaderSaveHubMenu();
+      } else if (refs.wrap.dataset.open !== "true") {
+        refs.menu.hidden = true;
+        refs.button.setAttribute("aria-expanded", "false");
+      }
+    }
+  }
+  function getHeaderActionDisplayMeta(status) {
+    const runtimeCapabilitiesSnapshot = getHeaderActionRuntimeCapabilitiesSnapshot();
+    const xlsxVisible = canCurrentRuntimeManualXlsxExport(runtimeCapabilitiesSnapshot);
+    const saveVisible = !!runtimeCapabilitiesSnapshot.canSave;
+    const buttons = {
+      refresh: { visible: !!runtimeCapabilitiesSnapshot.canRefresh },
+      save: { visible: saveVisible },
+      xlsx: { visible: !!xlsxVisible },
+      close: { visible: !!runtimeCapabilitiesSnapshot.canClose },
+    };
+    const hubVisible = saveVisible || xlsxVisible;
+    const hubDirectAction =
+      hubVisible && !(saveVisible && xlsxVisible)
+        ? (saveVisible ? "save" : "xlsx")
+        : "";
+    const hubLabel = saveVisible && xlsxVisible
+      ? "내보내기"
+      : saveVisible
+        ? "HTML 저장"
+        : xlsxVisible
+          ? "엑셀 저장"
+          : "";
+    const hubTitle = saveVisible && xlsxVisible
+      ? "내보내기"
+      : hubLabel;
+    return {
+      buttons: buttons,
+      hub: {
+        visible: hubVisible,
+        label: hubLabel,
+        title: hubTitle,
+        directAction: hubDirectAction,
+        menuVisible: !!(saveVisible && xlsxVisible),
+        items: {
+          save: saveVisible,
+          xlsx: !!xlsxVisible,
+        },
+      },
+      chip: formatHeaderActionStatusChip(status),
+    };
   }
   function syncSnapshotActionButtonLabel(buttonEl, actionKind, status) {
     if (!buttonEl) return;
-    const baseHtml = buttonEl.dataset.baseHtml || buttonEl.innerHTML;
     const nextLabel = formatSnapshotActionLabel(status, actionKind);
-    const baseLabel = getSnapshotActionBaseLabel(actionKind);
-    if (nextLabel === baseLabel) {
-      buttonEl.innerHTML = baseHtml;
-      return;
-    }
-    buttonEl.textContent = nextLabel;
+    setHeaderActionButtonLabel(buttonEl, nextLabel);
   }
   function syncSnapshotActionButtons(status) {
+    const displayMeta = getHeaderActionDisplayMeta(status);
     syncSnapshotActionButtonLabel(document.getElementById("sadv-save-btn"), "save", status);
     syncSnapshotActionButtonLabel(document.getElementById("sadv-xlsx-btn"), "xlsx", status);
+    applyHeaderActionButtonPresentation(
+      document.getElementById("sadv-refresh-btn"),
+      displayMeta.buttons.refresh
+    );
+    applyHeaderActionButtonPresentation(
+      document.getElementById("sadv-x"),
+      displayMeta.buttons.close
+    );
+    syncHeaderSaveHub(displayMeta);
+    syncHeaderActionStatusChip(status);
   }
   function resolveRuntimeCapabilities() {
     // stage 2 boundary:
@@ -444,6 +658,10 @@ function applyUiControlsTab(tab) {
     orderedSites.forEach(function (s) {
       const selectionState = getUiControlsSelectionState();
       const activeSite = selectionState.curSite;
+      const exportPayload =
+        typeof window !== "undefined" && window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+          ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+          : null;
       const col = SITE_COLORS_MAP[s] || C.muted,
         fullLabel = getSiteLabel(s),
         shortName = getSiteShortName(s),
@@ -451,16 +669,36 @@ function applyUiControlsTab(tab) {
         row = rowsMap[s],
         clickStr = row ? fmt(row.totalC) + "\uD074\uB9AD" : "—",
         clickCol = row ? C.green : C.muted;
+      const ownershipDisplay =
+        typeof resolveSiteOwnershipDisplay === "function"
+          ? resolveSiteOwnershipDisplay(s, row || null, exportPayload, row ? row.sourceAccount : null)
+          : { fullLabel: "", compactLabel: "" };
+      const ownerTagHtml =
+        typeof renderOwnerTagHTML === "function"
+          ? renderOwnerTagHTML(ownershipDisplay, "combo")
+          : "";
       const item = document.createElement("div");
       item.className = "sadv-combo-item sadv-copt" + (s === activeSite ? " active" : "");
       item.dataset.site = s;
       item.setAttribute("tabindex", "0");
       item.setAttribute("role", "option");
       item.setAttribute("aria-selected", s === activeSite ? "true" : "false");
+      item.dataset.ownerLabel =
+        ownershipDisplay && typeof ownershipDisplay.fullLabel === "string"
+          ? ownershipDisplay.fullLabel
+          : "";
       item.style.cursor = "pointer";
-      item.innerHTML = `<div class="sadv-combo-item-dot" style="background:${col}"></div><div class="sadv-combo-item-info"><div class="sadv-combo-item-name">${escHtml(shortName || fullLabel || s)}</div><div class="sadv-combo-item-url">${escHtml(siteUrlLabel || fullLabel || s)}</div></div><div class="sadv-combo-item-click" style="color:${clickCol}">${escHtml(clickStr)}</div>`;
+      item.innerHTML = `<div class="sadv-combo-item-dot" style="background:${col}"></div><div class="sadv-combo-item-info"><div class="sadv-combo-item-name">${escHtml(shortName || fullLabel || s)}</div><div class="sadv-combo-item-url">${escHtml(siteUrlLabel || fullLabel || s)}</div></div><div class="sadv-combo-item-side">${ownerTagHtml}<div class="sadv-combo-item-click" style="color:${clickCol}">${escHtml(clickStr)}</div></div>`;
       item.addEventListener("click", function () {
-        setComboSite(s);
+        if (typeof openAllSitesSelectedSite === "function") {
+          openAllSitesSelectedSite(s);
+        } else {
+          setComboSite(s);
+          const selectionState = getUiControlsSelectionState();
+          if (selectionState.curMode !== CONFIG.MODE.SITE && typeof switchMode === "function") {
+            switchMode(CONFIG.MODE.SITE);
+          }
+        }
         const wrap = document.getElementById("sadv-combo-wrap");
         if (wrap) {
           wrap.classList.remove("open");
@@ -471,7 +709,15 @@ function applyUiControlsTab(tab) {
       item.addEventListener('keydown', function(e) {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          setComboSite(s);
+          if (typeof openAllSitesSelectedSite === "function") {
+            openAllSitesSelectedSite(s);
+          } else {
+            setComboSite(s);
+            const selectionState = getUiControlsSelectionState();
+            if (selectionState.curMode !== CONFIG.MODE.SITE && typeof switchMode === "function") {
+              switchMode(CONFIG.MODE.SITE);
+            }
+          }
           const wrap = document.getElementById("sadv-combo-wrap");
           if (wrap) {
             wrap.classList.remove("open");
@@ -568,10 +814,15 @@ function applyUiControlsTab(tab) {
                   // Combo rows are styled as CSS grid in the shell theme.
                   // When search filtering shows them again, restore `grid` instead of `flex`
                   // to avoid subtle layout drift between normal and filtered states.
-                  const isVisible =
+                  const siteMatch =
                     !q ||
                     (((el.dataset.site || "") + " " + getSiteLabel(el.dataset.site || "")).toLowerCase().includes(q));
-                  el.style.setProperty("display", isVisible ? "grid" : "none", "important");
+                  const ownerMatch = ((el.dataset.ownerLabel || "") + "").toLowerCase().includes(q);
+                  el.style.setProperty(
+                    "display",
+                    siteMatch || ownerMatch ? "grid" : "none",
+                    "important"
+                  );
                 });
             };
           }
@@ -803,18 +1054,27 @@ function applyUiControlsTab(tab) {
       sadvRefreshBtnEl.addEventListener("click", async function () {
         if (this.disabled || this.dataset.busy === "true") return;
         const btn = this;
-        const originalHTML = btn.innerHTML;
+        const baseLabel = btn.dataset.baseLabel || "새로고침";
+        const originalTitle = btn.title || baseLabel;
+        const originalAriaLabel = btn.getAttribute("aria-label") || baseLabel;
         btn.dataset.busy = "true";
         btn.disabled = true;
         btn.classList.add("spinning");
-        btn.innerHTML = ICONS.refresh + " 로딩 중...";
+        btn.title = "새로고침 중";
+        btn.setAttribute("aria-label", "새로고침 중");
         try {
           await runFullRefreshPipeline({ trigger: "manual", button: btn });
         } finally {
           btn.classList.remove("spinning");
           btn.disabled = false;
           btn.dataset.busy = "false";
-          btn.innerHTML = originalHTML;
+          btn.title = originalTitle;
+          btn.setAttribute("aria-label", originalAriaLabel);
+          if (typeof syncSnapshotActionButtons === "function") {
+            syncSnapshotActionButtons(
+              typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null
+            );
+          }
           __sadvNotify();
         }
       });
@@ -825,12 +1085,12 @@ function applyUiControlsTab(tab) {
 
   var sadvSaveBtnEl = document.getElementById("sadv-save-btn");
   if (sadvSaveBtnEl) {
-    sadvSaveBtnEl.dataset.baseHtml = sadvSaveBtnEl.innerHTML;
     if (!runtimeCapabilities.canSave) {
       sadvSaveBtnEl.style.display = "none";
       sadvSaveBtnEl.setAttribute("aria-hidden", "true");
     } else {
       sadvSaveBtnEl.addEventListener("click", function () {
+        if (typeof closeHeaderSaveHubMenu === "function") closeHeaderSaveHubMenu();
         // Canonical save entry:
         // 저장 버튼도 directSave/background save와 같은 save execution contract를 타야 한다.
         // 여기서 downloadSnapshot()로 바로 내려가면 runtime bootstrap lease / refresh lease /
@@ -854,7 +1114,6 @@ function applyUiControlsTab(tab) {
 
   var sadvXlsxBtnEl = document.getElementById("sadv-xlsx-btn");
   if (sadvXlsxBtnEl) {
-    sadvXlsxBtnEl.dataset.baseHtml = sadvXlsxBtnEl.innerHTML;
     // XLSX 상세 저장은 기존 CSV 수동 저장 자리를 완전히 대체한다.
     // 기본 public surface는 live interactive manual button이 정본이다.
     // 단, merge.py가 만든 read-only saved merged snapshot에서는
@@ -862,6 +1121,7 @@ function applyUiControlsTab(tab) {
     // 일반 saved/read-only snapshot과 live merge UI는 계속 보수적으로 숨긴다.
     syncXlsxButtonVisibility();
     sadvXlsxBtnEl.addEventListener("click", function () {
+      if (typeof closeHeaderSaveHubMenu === "function") closeHeaderSaveHubMenu();
       if (sadvXlsxBtnEl.disabled) return;
       const saveStatus =
         typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null;
@@ -880,6 +1140,40 @@ function applyUiControlsTab(tab) {
     });
   } else {
     console.warn("[UI Controls] #sadv-xlsx-btn not found during initialization");
+  }
+
+  var sadvSaveHubBtnEl = document.getElementById("sadv-save-hub-btn");
+  if (sadvSaveHubBtnEl) {
+    sadvSaveHubBtnEl.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      const refs = typeof getHeaderSaveHubElements === "function" ? getHeaderSaveHubElements() : null;
+      if (!refs || !refs.button) return;
+      const directAction = refs.button.dataset.directAction || "";
+      if (directAction === "save" && sadvSaveBtnEl) {
+        sadvSaveBtnEl.click();
+        return;
+      }
+      if (directAction === "xlsx" && sadvXlsxBtnEl) {
+        sadvXlsxBtnEl.click();
+        return;
+      }
+      if (!refs.menu) return;
+      const nextOpen = refs.wrap && refs.wrap.dataset.open === "true" ? "false" : "true";
+      refs.wrap.dataset.open = nextOpen;
+      refs.menu.hidden = nextOpen !== "true";
+      refs.button.setAttribute("aria-expanded", nextOpen === "true" ? "true" : "false");
+    });
+    document.addEventListener("click", function (e) {
+      const refs = typeof getHeaderSaveHubElements === "function" ? getHeaderSaveHubElements() : null;
+      if (!refs || !refs.wrap) return;
+      if (!refs.wrap.contains(e.target)) closeHeaderSaveHubMenu();
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && typeof closeHeaderSaveHubMenu === "function") {
+        closeHeaderSaveHubMenu();
+      }
+    });
   }
 
   var sadvCloseBtnEl = document.getElementById("sadv-x");

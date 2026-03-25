@@ -179,6 +179,10 @@ function buildSnapshotXlsxAccountFallbackContext(payload) {
   const primaryAccount = getSnapshotXlsxPrimaryAccountInfo(payload);
   const accounts =
     payload && payload.accounts && typeof payload.accounts === "object" ? payload.accounts : {};
+  const siteOwnershipBySite =
+    payload && payload.siteOwnershipBySite && typeof payload.siteOwnershipBySite === "object"
+      ? payload.siteOwnershipBySite
+      : {};
   const bySite = {};
   Object.keys(accounts).forEach(function (accountKey) {
     const account = accounts[accountKey];
@@ -206,6 +210,28 @@ function buildSnapshotXlsxAccountFallbackContext(payload) {
         sourceAccount: sourceAccount,
       };
     });
+  });
+  Object.keys(siteOwnershipBySite).forEach(function (site) {
+    if (!site) return;
+    const owners = Array.isArray(siteOwnershipBySite[site])
+      ? siteOwnershipBySite[site].filter(Boolean)
+      : [];
+    if (!owners.length) return;
+    const ownerLabel =
+      owners.length > 1 ? owners[0] + " (+" + (owners.length - 1) + ")" : owners[0];
+    if (!bySite[site]) {
+      bySite[site] = {
+        accountLabel: ownerLabel,
+        sourceAccount: ownerLabel,
+      };
+      return;
+    }
+    if (!bySite[site].accountLabel) {
+      bySite[site].accountLabel = ownerLabel;
+    }
+    if (!bySite[site].sourceAccount) {
+      bySite[site].sourceAccount = ownerLabel;
+    }
   });
   return {
     primaryAccount: primaryAccount,
