@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-25T13:47:49Z";
-var __SADV_GIT_HEAD__="c3dcd58";
+var __SADV_BUILD_STAMP__="2026-03-25T14:01:24Z";
+var __SADV_GIT_HEAD__="47011a6";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -3854,14 +3854,14 @@ siteUiStyle.textContent = `
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  min-height:11px;
+  min-height:13px;
   max-width:100%;
-  padding:0 3px;
-  border-radius:4px;
+  padding:1px 4px;
+  border-radius:5px;
   border:1px solid rgba(255,212,0,0.12);
   background:rgba(255,212,0,0.035);
   color:var(--sadv-text-tertiary,#b9a55a);
-  font-size:6px;
+  font-size:8px;
   font-weight:700;
   line-height:1.1;
   letter-spacing:0;
@@ -3872,12 +3872,15 @@ siteUiStyle.textContent = `
 .sadv-owner-tag--card{
   margin-left:4px;
   max-width:84px;
+  font-size:9px;
 }
 .sadv-owner-tag--combo{
   max-width:92px;
+  font-size:10px;
 }
 .sadv-owner-tag--site{
   max-width:108px;
+  font-size:10px;
 }
 #sadv-tabs{
   position:relative !important;

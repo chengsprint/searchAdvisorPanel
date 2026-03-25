@@ -711,14 +711,14 @@ siteUiStyle.textContent = `
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  min-height:11px;
+  min-height:13px;
   max-width:100%;
-  padding:0 3px;
-  border-radius:4px;
+  padding:1px 4px;
+  border-radius:5px;
   border:1px solid rgba(255,212,0,0.12);
   background:rgba(255,212,0,0.035);
   color:var(--sadv-text-tertiary,#b9a55a);
-  font-size:6px;
+  font-size:8px;
   font-weight:700;
   line-height:1.1;
   letter-spacing:0;
@@ -729,12 +729,15 @@ siteUiStyle.textContent = `
 .sadv-owner-tag--card{
   margin-left:4px;
   max-width:84px;
+  font-size:9px;
 }
 .sadv-owner-tag--combo{
   max-width:92px;
+  font-size:10px;
 }
 .sadv-owner-tag--site{
   max-width:108px;
+  font-size:10px;
 }
 #sadv-tabs{
   position:relative !important;
