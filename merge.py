@@ -39,6 +39,21 @@ MERGED_TEMPLATE_HELPERS = (
     "downloadMergedSnapshotXlsxCompat",
     "createMergedAccountsInfo",
 )
+MERGED_OWNERSHIP_HELPERS = (
+    "getSourceAccountLabelDisplayText",
+    "getSiteOwnershipLabelsFromPayload",
+    "formatCompactOwnerDisplayLabel",
+    "resolveSiteOwnershipDisplay",
+    "renderOwnerTagHTML",
+)
+MERGED_ALL_SITES_HELPERS = (
+    "openAllSitesSelectedSite",
+)
+MERGED_SITE_VIEW_HELPERS = (
+    "getSiteOwnershipLabelsForDisplay",
+    "getSourceAccountLabelForDisplay",
+    "formatSiteOwnershipLabelForDisplay",
+)
 MERGED_HEADER_SHELL_HELPERS = (
     "normalizeHeaderActionShell",
 )
@@ -1195,6 +1210,18 @@ def load_dom_init_source_text() -> str:
     return load_merge_source_text_with_fallback("src/app/main/02-dom-init.js")
 
 
+def load_helpers_source_text() -> str:
+    return load_merge_source_text_with_fallback("src/app/main/01-helpers.js")
+
+
+def load_all_sites_source_text() -> str:
+    return load_merge_source_text_with_fallback("src/app/main/10-all-sites-view.js")
+
+
+def load_site_view_source_text() -> str:
+    return load_merge_source_text_with_fallback("src/app/main/11-site-view.js")
+
+
 def load_xlsx_source_text() -> str:
     source_text = load_merge_source_text_with_fallback("src/app/main/15-export-xlsx.js")
     cutoff = source_text.find("async function downloadSnapshotXlsx(")
@@ -1260,11 +1287,26 @@ def extract_braced_function_source(source_text: str, function_name: str) -> str:
 
 
 def inject_missing_merge_helpers(html: str) -> str:
-    missing = [name for name in MERGED_TEMPLATE_HELPERS if not has_function_definition(html, name)]
-    if not missing:
+    snapshot_missing = [name for name in MERGED_TEMPLATE_HELPERS if not has_function_definition(html, name)]
+    ownership_missing = [name for name in MERGED_OWNERSHIP_HELPERS if not has_function_definition(html, name)]
+    all_sites_missing = [name for name in MERGED_ALL_SITES_HELPERS if not has_function_definition(html, name)]
+    site_view_missing = [name for name in MERGED_SITE_VIEW_HELPERS if not has_function_definition(html, name)]
+    if not snapshot_missing and not ownership_missing and not all_sites_missing and not site_view_missing:
         return html
-    source_text = load_snapshot_source_text()
-    helper_block = "\n\n".join(extract_function_source(source_text, name) for name in missing).strip()
+    helper_sections: List[str] = []
+    if ownership_missing:
+        helper_source = load_helpers_source_text()
+        helper_sections.extend(extract_function_source(helper_source, name) for name in ownership_missing)
+    if all_sites_missing:
+        helper_source = load_all_sites_source_text()
+        helper_sections.extend(extract_function_source(helper_source, name) for name in all_sites_missing)
+    if site_view_missing:
+        helper_source = load_site_view_source_text()
+        helper_sections.extend(extract_function_source(helper_source, name) for name in site_view_missing)
+    if snapshot_missing:
+        helper_source = load_snapshot_source_text()
+        helper_sections.extend(extract_function_source(helper_source, name) for name in snapshot_missing)
+    helper_block = "\n\n".join(section for section in helper_sections if section).strip()
     if not helper_block:
         return html
     anchors = (

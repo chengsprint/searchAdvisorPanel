@@ -2502,6 +2502,7 @@ const SNAPSHOT_ALL_SITES_HELPER_PACK = [
   getAllSitesCanonicalRows,
   setAllSitesCanonicalRows,
   setAllSitesSelectedSite,
+  openAllSitesSelectedSite,
 ];
 
 const SNAPSHOT_UI_CONTROLS_HELPER_PACK = [
@@ -2509,6 +2510,20 @@ const SNAPSHOT_UI_CONTROLS_HELPER_PACK = [
   applyUiControlsMode,
   applyUiControlsSite,
   applyUiControlsTab,
+];
+
+const SNAPSHOT_OWNERSHIP_DISPLAY_HELPER_PACK = [
+  getSourceAccountLabelDisplayText,
+  getSiteOwnershipLabelsFromPayload,
+  formatCompactOwnerDisplayLabel,
+  resolveSiteOwnershipDisplay,
+  renderOwnerTagHTML,
+];
+
+const SNAPSHOT_SITE_VIEW_HELPER_PACK = [
+  getSiteOwnershipLabelsForDisplay,
+  getSourceAccountLabelForDisplay,
+  formatSiteOwnershipLabelForDisplay,
 ];
 
 const SNAPSHOT_SAVED_MERGED_XLSX_COMPAT_HELPER_PACK = [
@@ -2590,6 +2605,20 @@ function buildSnapshotSerializedHelperSection() {
       "// live는 번들 전체가 한 스코프에 있지만, saved는 allowlist에 넣은 함수만",
       "// 포함되므로 여기서 빠지면 saved-only is-not-defined 회귀가 생긴다.",
       serializeSnapshotHelperPack(SNAPSHOT_UI_CONTROLS_HELPER_PACK),
+    ].join("\n"),
+    [
+      "// Ownership display helper contract:",
+      "// 카드/콤보/상세가 같은 ownership 표시 규칙을 보도록 공통 helper를",
+      "// 저장본/병합본에도 함께 직렬화한다. 누락되면 render helper가 없어져",
+      "// badge 미표시 또는 is-not-defined 회귀가 발생한다.",
+      serializeSnapshotHelperPack(SNAPSHOT_OWNERSHIP_DISPLAY_HELPER_PACK),
+    ].join("\n"),
+    [
+      "// Site-view ownership helper contract:",
+      "// loadSiteView()가 소속 계정 라벨 계산 helper를 직접 호출하므로",
+      "// saved/merged reopen도 이 helper들을 같이 포함해야 site mode 전환 시",
+      "// runtime ReferenceError 없이 공통 상세 렌더를 재사용할 수 있다.",
+      serializeSnapshotHelperPack(SNAPSHOT_SITE_VIEW_HELPER_PACK),
     ].join("\n"),
     [
       "// Saved merged snapshot XLSX compat pack:",
