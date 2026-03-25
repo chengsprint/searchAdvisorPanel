@@ -71,8 +71,7 @@ screenshots/
 __pycache__/
 *.pyc
 
-# Public repo minimization: keep docs/tests local-only unless intentionally reintroduced
-docs/
+# Tests stay local-only in the public repo
 tests/
 
 # Public repo minimization: keep only top-level README/CHANGELOG markdown
