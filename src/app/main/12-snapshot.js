@@ -397,6 +397,32 @@ function bindSnapshotManualXlsxButton(buttonEl) {
   if (typeof syncXlsxButtonVisibility === "function") {
     syncXlsxButtonVisibility();
   }
+  if (typeof window !== "undefined" && typeof subscribeRuntimeSaveStatus === "function") {
+    if (typeof window.__SADV_SYNC_ACTION_BUTTONS_UNSUB__ === "function") {
+      try {
+        window.__SADV_SYNC_ACTION_BUTTONS_UNSUB__();
+      } catch (_) {}
+    }
+    window.__SADV_SYNC_ACTION_BUTTONS_UNSUB__ = subscribeRuntimeSaveStatus(function (status) {
+      if (typeof syncSnapshotActionButtons === "function") {
+        syncSnapshotActionButtons(status);
+      }
+    });
+  }
+  if (typeof syncSnapshotActionButtons === "function") {
+    syncSnapshotActionButtons(
+      typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null
+    );
+  }
+  const saveHubBtnEl =
+    typeof document !== "undefined" ? document.getElementById("sadv-save-hub-btn") : null;
+  if (saveHubBtnEl && saveHubBtnEl.dataset.snapshotHubBound !== "true") {
+    saveHubBtnEl.dataset.snapshotHubBound = "true";
+    saveHubBtnEl.addEventListener("click", function () {
+      if ((saveHubBtnEl.dataset.directAction || "") !== "xlsx") return;
+      buttonEl.click();
+    });
+  }
   buttonEl.addEventListener("click", function () {
     if (buttonEl.disabled) return;
     const saveStatus =
@@ -2090,6 +2116,126 @@ async function runSnapshotSaveExecution(options) {
 
   function normalizeSnapshotPayloadForOfflineShell(sourcePayload) {
     const sourceState = extractSnapshotSourceState(sourcePayload);
+    function pushOwnership(ownershipMap, site, label) {
+      if (!site || !label) return;
+      if (!ownershipMap[site]) ownershipMap[site] = [];
+      if (ownershipMap[site].indexOf(label) === -1) ownershipMap[site].push(label);
+    }
+    function sourceAccountLabel(sourceAccount) {
+      if (!sourceAccount) return "";
+      if (typeof sourceAccount === "string") return sourceAccount;
+      if (typeof sourceAccount === "object") {
+        if (typeof sourceAccount.accountLabel === "string" && sourceAccount.accountLabel) {
+          return sourceAccount.accountLabel;
+        }
+        if (typeof sourceAccount.email === "string" && sourceAccount.email) {
+          return sourceAccount.email;
+        }
+      }
+      return "";
+    }
+    function sourceAccountValue(siteData) {
+      if (!siteData || typeof siteData !== "object") return null;
+      return (
+        (siteData.__source && typeof siteData.__source === "object" && siteData.__source) ||
+        (siteData.__meta && siteData.__meta.__source ? siteData.__meta.__source : null) ||
+        (siteData._merge && siteData._merge.__source ? siteData._merge.__source : null) ||
+        null
+      );
+    }
+    function buildOwnershipMap() {
+      const ownership = {};
+      const rawTopLevelOwnership =
+        sourcePayload && sourcePayload.siteOwnershipBySite && typeof sourcePayload.siteOwnershipBySite === "object"
+          ? sourcePayload.siteOwnershipBySite
+          : {};
+      Object.keys(rawTopLevelOwnership).forEach(function (site) {
+        const labels = Array.isArray(rawTopLevelOwnership[site])
+          ? rawTopLevelOwnership[site]
+          : [rawTopLevelOwnership[site]];
+        labels.forEach(function (label) {
+          if (typeof label === "string" && label) pushOwnership(ownership, site, label);
+        });
+      });
+      const rawMergedOwnership =
+        sourceState.mergedMeta &&
+        sourceState.mergedMeta.siteOwnershipBySite &&
+        typeof sourceState.mergedMeta.siteOwnershipBySite === "object"
+          ? sourceState.mergedMeta.siteOwnershipBySite
+          : {};
+      Object.keys(rawMergedOwnership).forEach(function (site) {
+        const labels = Array.isArray(rawMergedOwnership[site])
+          ? rawMergedOwnership[site]
+          : [rawMergedOwnership[site]];
+        labels.forEach(function (label) {
+          if (typeof label === "string" && label) pushOwnership(ownership, site, label);
+        });
+      });
+      const accounts =
+        sourcePayload && sourcePayload.accounts && typeof sourcePayload.accounts === "object"
+          ? sourcePayload.accounts
+          : {};
+      Object.keys(accounts).forEach(function (accountKey) {
+        const account = accounts[accountKey] || {};
+        const accountDisplay =
+          (typeof account.accountLabel === "string" && account.accountLabel) || accountKey || "";
+        const sites = Array.isArray(account.sites) ? account.sites : [];
+        sites.forEach(function (site) {
+          pushOwnership(ownership, site, accountDisplay);
+        });
+      });
+      const dataBySite =
+        sourceState && sourceState.dataBySite && typeof sourceState.dataBySite === "object"
+          ? sourceState.dataBySite
+          : {};
+      Object.keys(dataBySite).forEach(function (site) {
+        const label = sourceAccountLabel(sourceAccountValue(dataBySite[site]));
+        if (label) pushOwnership(ownership, site, label);
+      });
+      (sourceState.summaryRows || []).forEach(function (row) {
+        if (!row || typeof row !== "object") return;
+        const site = typeof row.site === "string" ? row.site : "";
+        if (!site) return;
+        if (typeof row.accountLabel === "string" && row.accountLabel) {
+          pushOwnership(ownership, site, row.accountLabel);
+          return;
+        }
+        const label = sourceAccountLabel(row.sourceAccount);
+        if (label) pushOwnership(ownership, site, label);
+      });
+      return ownership;
+    }
+    function getOwnershipLabel(site, ownershipMap) {
+      const owners = site && ownershipMap && Array.isArray(ownershipMap[site]) ? ownershipMap[site] : [];
+      const validOwners = owners.filter(function (label) {
+        return typeof label === "string" && label;
+      });
+      if (!validOwners.length) return "";
+      if (validOwners.length > 1) return validOwners[0] + " (+" + (validOwners.length - 1) + ")";
+      return validOwners[0];
+    }
+    const siteOwnershipBySite = buildOwnershipMap();
+    const normalizedSummaryRows = (sourceState.summaryRows || []).map(function (row) {
+      if (!row || typeof row !== "object") return row;
+      const nextRow = Object.assign({}, row);
+      const site = typeof nextRow.site === "string" ? nextRow.site : "";
+      const siteData =
+        site && sourceState.dataBySite && typeof sourceState.dataBySite[site] === "object"
+          ? sourceState.dataBySite[site]
+          : null;
+      const sourceAccount = nextRow.sourceAccount || sourceAccountValue(siteData);
+      if (!nextRow.sourceAccount && sourceAccount) {
+        nextRow.sourceAccount = sourceAccount;
+      }
+      if (!(typeof nextRow.accountLabel === "string" && nextRow.accountLabel)) {
+        nextRow.accountLabel =
+          sourceAccountLabel(sourceAccount) ||
+          getOwnershipLabel(site, siteOwnershipBySite) ||
+          sourceState.accountLabel ||
+          "";
+      }
+      return nextRow;
+    });
     const legacyBasePayload =
       sourcePayload &&
       typeof sourcePayload === "object" &&
@@ -2103,10 +2249,11 @@ async function runSnapshotSaveExecution(options) {
       generatorVersion: sourceState.generatorVersion,
       exportFormat: sourceState.exportFormat || "snapshot-v2",
       allSites: sourceState.allSites,
-      summaryRows: sourceState.summaryRows,
+      summaryRows: normalizedSummaryRows,
       dataBySite: sourceState.dataBySite,
       siteMeta: sourceState.siteMeta,
       mergedMeta: sourceState.mergedMeta,
+      siteOwnershipBySite: siteOwnershipBySite,
       allSitesPeriodDays: normalizeAllSitesPeriodDays(sourceState.allSitesPeriodDays),
       curMode: sourceState.curMode,
       curSite: sourceState.curSite,
@@ -2355,6 +2502,7 @@ const SNAPSHOT_ALL_SITES_HELPER_PACK = [
   getAllSitesCanonicalRows,
   setAllSitesCanonicalRows,
   setAllSitesSelectedSite,
+  openAllSitesSelectedSite,
 ];
 
 const SNAPSHOT_UI_CONTROLS_HELPER_PACK = [
@@ -2362,6 +2510,20 @@ const SNAPSHOT_UI_CONTROLS_HELPER_PACK = [
   applyUiControlsMode,
   applyUiControlsSite,
   applyUiControlsTab,
+];
+
+const SNAPSHOT_OWNERSHIP_DISPLAY_HELPER_PACK = [
+  getSourceAccountLabelDisplayText,
+  getSiteOwnershipLabelsFromPayload,
+  formatCompactOwnerDisplayLabel,
+  resolveSiteOwnershipDisplay,
+  renderOwnerTagHTML,
+];
+
+const SNAPSHOT_SITE_VIEW_HELPER_PACK = [
+  getSiteOwnershipLabelsForDisplay,
+  getSourceAccountLabelForDisplay,
+  formatSiteOwnershipLabelForDisplay,
 ];
 
 const SNAPSHOT_SAVED_MERGED_XLSX_COMPAT_HELPER_PACK = [
@@ -2445,6 +2607,20 @@ function buildSnapshotSerializedHelperSection() {
       serializeSnapshotHelperPack(SNAPSHOT_UI_CONTROLS_HELPER_PACK),
     ].join("\n"),
     [
+      "// Ownership display helper contract:",
+      "// 카드/콤보/상세가 같은 ownership 표시 규칙을 보도록 공통 helper를",
+      "// 저장본/병합본에도 함께 직렬화한다. 누락되면 render helper가 없어져",
+      "// badge 미표시 또는 is-not-defined 회귀가 발생한다.",
+      serializeSnapshotHelperPack(SNAPSHOT_OWNERSHIP_DISPLAY_HELPER_PACK),
+    ].join("\n"),
+    [
+      "// Site-view ownership helper contract:",
+      "// loadSiteView()가 소속 계정 라벨 계산 helper를 직접 호출하므로",
+      "// saved/merged reopen도 이 helper들을 같이 포함해야 site mode 전환 시",
+      "// runtime ReferenceError 없이 공통 상세 렌더를 재사용할 수 있다.",
+      serializeSnapshotHelperPack(SNAPSHOT_SITE_VIEW_HELPER_PACK),
+    ].join("\n"),
+    [
       "// Saved merged snapshot XLSX compat pack:",
       "// 일반 saved snapshot은 여전히 read-only지만, merge.py가 만든 merged saved snapshot은",
       "// 수동 엑셀 버튼만 예외적으로 다시 연다.",
@@ -2493,6 +2669,24 @@ function buildSnapshotSerializedHelperSection() {
     delete clone.dataset.sadvPrevPointerEvents;
     delete clone.dataset.sadvPrevBackground;
     delete clone.dataset.sadvPrevBorderLeftColor;
+    if (typeof normalizeHeaderActionShell === "function") {
+      // live와 saved/merge saved가 같은 header skeleton을 보도록,
+      // export 시점 clone도 현재 공통 header shell 정규화 경로를 먼저 탄다.
+      // 여기서 shell을 맞춰두지 않으면 buildSnapshotHtml 이후 산출물은
+      // 최신 helper를 포함해도 old top-right action cluster를 계속 끌고 갈 수 있다.
+      normalizeHeaderActionShell(clone, {
+        runtimeRef:
+          typeof window !== "undefined" &&
+          typeof window.__SEARCHADVISOR_RUNTIME_REF__ === "string"
+            ? window.__SEARCHADVISOR_RUNTIME_REF__
+            : "",
+        runtimeBuiltAt:
+          typeof window !== "undefined" &&
+          typeof window.__SEARCHADVISOR_RUNTIME_BUILD_AT__ === "string"
+            ? window.__SEARCHADVISOR_RUNTIME_BUILD_AT__
+            : "",
+      });
+    }
     const savedLabel = stampLabel(savedAt);
 
     // Handle V2 format for UI state
@@ -2525,6 +2719,7 @@ function buildSnapshotSerializedHelperSection() {
         : allSites.length + "\uac1c \uc0ac\uc774\ud2b8";
     const topRow = clone.querySelector("#sadv-header > div");
     const siteLabelEl = clone.querySelector("#sadv-site-label");
+    const cacheMetaHostEl = clone.querySelector("#sadv-cache-meta");
     const comboWrap = clone.querySelector("#sadv-combo-wrap");
     if (comboWrap) comboWrap.classList.remove("open");
     // 저장 직전 라이브 패널은 renderTab() 경로에서 본문 id를
@@ -2547,34 +2742,54 @@ function buildSnapshotSerializedHelperSection() {
     }
     const allowSavedMergedXlsx =
       !!(payload && payload.mergedMeta && payload.mergedMeta.isMerged);
+    const saveHubWrapEl = clone.querySelector("#sadv-save-hub");
+    const saveHubBtnEl = clone.querySelector("#sadv-save-hub-btn");
+    const saveHubMenuEl = clone.querySelector("#sadv-save-hub-menu");
+    const actionStatusChipEl = clone.querySelector("#sadv-action-status-chip");
+    if (actionStatusChipEl) {
+      actionStatusChipEl.hidden = true;
+      actionStatusChipEl.setAttribute("aria-hidden", "true");
+      actionStatusChipEl.textContent = "";
+      actionStatusChipEl.removeAttribute("data-tone");
+      actionStatusChipEl.removeAttribute("title");
+    }
     ["sadv-refresh-btn", "sadv-save-btn", "sadv-x"].forEach(function (id) {
       const el = clone.querySelector("#" + id);
       if (el) el.remove();
     });
     if (!allowSavedMergedXlsx) {
+      if (saveHubWrapEl) saveHubWrapEl.remove();
       const xlsxEl = clone.querySelector("#sadv-xlsx-btn");
       if (xlsxEl) xlsxEl.remove();
     } else {
       const xlsxEl = clone.querySelector("#sadv-xlsx-btn");
+      if (saveHubWrapEl) {
+        saveHubWrapEl.style.display = "";
+        saveHubWrapEl.removeAttribute("aria-hidden");
+      }
+      if (saveHubMenuEl) saveHubMenuEl.hidden = true;
       if (xlsxEl) {
-        xlsxEl.style.display = "inline-flex";
-        xlsxEl.removeAttribute("aria-hidden");
+        xlsxEl.style.display = "none";
+        xlsxEl.setAttribute("aria-hidden", "true");
+        xlsxEl.hidden = true;
         xlsxEl.disabled = false;
         xlsxEl.title = "병합 데이터 엑셀 저장";
+        xlsxEl.setAttribute("aria-label", "엑셀 저장");
+        xlsxEl.classList.remove("spinning");
       }
     }
-    if (topRow && topRow.lastElementChild) {
+    if (cacheMetaHostEl) {
       const meta = document.createElement("div");
       meta.style.cssText =
         "display:flex;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid " + T.accentSoftBorder + ";color:" + T.accentSoftText + ";background:" + T.warmDarkBg + ";font-size:10px;font-weight:800";
       meta.textContent = "Saved " + savedLabel;
-      if (allowSavedMergedXlsx) {
-        const actions = topRow.lastElementChild;
-        actions.className = "sadv-header-actions";
-        actions.appendChild(meta);
-      } else {
-        topRow.lastElementChild.replaceWith(meta);
-      }
+      cacheMetaHostEl.appendChild(meta);
+    } else if (topRow && topRow.lastElementChild) {
+      const meta = document.createElement("div");
+      meta.style.cssText =
+        "display:flex;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid " + T.accentSoftBorder + ";color:" + T.accentSoftText + ";background:" + T.warmDarkBg + ";font-size:10px;font-weight:800";
+      meta.textContent = "Saved " + savedLabel;
+      topRow.lastElementChild.appendChild(meta);
     }
     const exportPayloadJson = stringifyForInlineJson(payload);
     const html = `<!doctype html>
@@ -2806,7 +3021,7 @@ function buildSnapshotSerializedHelperSection() {
           (displayMeta && displayMeta.snapshotTitle) || "SearchAdvisor Merged Report",
         snapshotLines,
         accountBadge:
-          (displayMeta && displayMeta.accountBadgeLabel) || ("MERGED " + naverIds.length + " IDs"),
+          (displayMeta && displayMeta.accountBadgeLabel) || ("병합 " + naverIds.length + "개 계정"),
         accountTitle:
           (displayMeta && displayMeta.accountBadgeTitle) || naverIds.join(", "),
         runtimeBadgeLabel:
@@ -3006,6 +3221,22 @@ function buildSnapshotSerializedHelperSection() {
     // saved snapshot inline bootstrap도 같은 helper pack을 함께 직렬화해야 한다.
     // 누락되면 reopen 시 pageerror가 나고 shell/API selection parity까지 흔들릴 수 있다.
     ${syncXlsxButtonVisibility.toString()}
+    ${getHeaderActionRuntimeCapabilitiesSnapshot.toString()}
+    ${canCurrentRuntimeManualXlsxExport.toString()}
+    ${getSnapshotActionBaseLabel.toString()}
+    ${getSnapshotActionStatusKind.toString()}
+    ${formatSnapshotActionLabel.toString()}
+    ${setHeaderActionButtonLabel.toString()}
+    ${formatHeaderActionStatusChip.toString()}
+    ${syncHeaderActionStatusChip.toString()}
+    ${applyHeaderActionButtonPresentation.toString()}
+    ${getHeaderSaveHubElements.toString()}
+    ${closeHeaderSaveHubMenu.toString()}
+    ${setHeaderSaveHubButtonMeta.toString()}
+    ${syncHeaderSaveHub.toString()}
+    ${getHeaderActionDisplayMeta.toString()}
+    ${syncSnapshotActionButtonLabel.toString()}
+    ${syncSnapshotActionButtons.toString()}
     // merge.py 산출물은 read-only saved snapshot에서도 공통 xlsx save orchestration을
     // 그대로 재사용해야 하므로, 실행 옵션/버튼 바인딩 helper도 함께 직렬화한다.
     ${buildSnapshotManualXlsxExecutionOptions.toString()}
@@ -3360,23 +3591,46 @@ function buildSnapshotSerializedHelperSection() {
       bindSnapshotManualXlsxButton(document.getElementById("sadv-xlsx-btn"));
     }
     function bindSnapshotAllCardLinks() {
-      document.querySelectorAll(".sadv-allcard[data-site]").forEach(function (card) {
-        if (card.dataset.snapshotBound === "true") return;
-        card.dataset.snapshotBound = "true";
+      const cards = Array.from(document.querySelectorAll(".sadv-allcard[data-site]"));
+      cards.forEach(function (card) {
+        if (card.__sadvSnapshotKeyboardBound === true) return;
+        card.__sadvSnapshotKeyboardBound = true;
         card.setAttribute("tabindex", card.getAttribute("tabindex") || "0");
         card.setAttribute("role", card.getAttribute("role") || "button");
-        const openSite = function () {
-          const site = card.getAttribute("data-site") || "";
-          if (!site) return;
-          curSite = site;
-          if (typeof setComboSite === "function") setComboSite(site);
-          switchMode("site");
-        };
-        card.addEventListener("click", openSite);
         card.addEventListener("keydown", function (event) {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
-            openSite();
+            const site = card.getAttribute("data-site") || "";
+            if (!site) return;
+            if (typeof openAllSitesSelectedSite === "function") {
+              openAllSitesSelectedSite(site);
+            } else {
+              curSite = site;
+              if (typeof setComboSite === "function") setComboSite(site);
+              switchMode("site");
+            }
+          }
+        });
+      });
+      const wraps = [];
+      cards.forEach(function (card) {
+        const wrap = card.closest(".sadv-allsites-wrap") || card.parentElement;
+        if (wrap && wraps.indexOf(wrap) === -1) wraps.push(wrap);
+      });
+      wraps.forEach(function (wrap) {
+        if (!wrap || wrap.__sadvCardDelegateBound === true) return;
+        wrap.__sadvCardDelegateBound = true;
+        wrap.addEventListener("click", function (event) {
+          const card = event.target.closest(".sadv-allcard[data-site]");
+          if (!card) return;
+          const site = card.getAttribute("data-site") || "";
+          if (!site) return;
+          if (typeof openAllSitesSelectedSite === "function") {
+            openAllSitesSelectedSite(site);
+          } else {
+            curSite = site;
+            if (typeof setComboSite === "function") setComboSite(site);
+            switchMode("site");
           }
         });
       });
@@ -3435,16 +3689,24 @@ function buildSnapshotSerializedHelperSection() {
         switchMode(mode);
       },
       setSite: function (site) {
-        setComboSite(site);
-        if (curMode !== "site") switchMode("site");
+        if (typeof openAllSitesSelectedSite === "function") {
+          openAllSitesSelectedSite(site);
+        } else {
+          setComboSite(site);
+          if (curMode !== "site") switchMode("site");
+        }
       },
       switchSite: function (site) {
         // Phase 2 convergence:
         // public facade canonical action은 "site 선택 + site mode 진입"으로 정의한다.
         // 기존 setSite를 그대로 유지해 saved HTML compatibility는 보존하고,
         // switchSite를 추가해 live/saved가 같은 intent 이름을 공유하게 만든다.
-        setComboSite(site);
-        if (curMode !== "site") switchMode("site");
+        if (typeof openAllSitesSelectedSite === "function") {
+          openAllSitesSelectedSite(site);
+        } else {
+          setComboSite(site);
+          if (curMode !== "site") switchMode("site");
+        }
       },
       setTab: function (tab) {
         setTab(tab);
@@ -3753,13 +4015,13 @@ function buildSnapshotSerializedHelperSection() {
   // compat bridge의 site action fallback은 setSite/switchSite가 같은 body를 공유한다.
   // 이 단계에서는 alias 관계를 바꾸지 않고 문자열 조립 책임만 분리해,
   // dormant bridge의 중복을 줄이면서 external caller 호환성을 유지한다.
-  function buildSnapshotApiCompatSiteActionLines(actionName) {
-    return [
+function buildSnapshotApiCompatSiteActionLines(actionName) {
+  return [
       '    ' +
         actionName +
-        ': function (site) { if (typeof setComboSite === "function") setComboSite(site); else { const items = Array.from(document.querySelectorAll(".sadv-combo-item")); const button = items.find(function (item) { return (item.getAttribute("data-site") || "") === site; }); if (button) button.click(); } if (typeof switchMode === "function") switchMode("site"); scheduleSync(); },',
+        ': function (site) { if (typeof openAllSitesSelectedSite === "function") openAllSitesSelectedSite(site); else if (typeof setComboSite === "function") { setComboSite(site); if (typeof switchMode === "function") switchMode("site"); } else { const items = Array.from(document.querySelectorAll(".sadv-combo-item")); const button = items.find(function (item) { return (item.getAttribute("data-site") || "") === site; }); if (button) button.click(); } scheduleSync(); },',
     ];
-  }
+}
 
   function buildSnapshotApiCompatTabActionLines() {
     return [

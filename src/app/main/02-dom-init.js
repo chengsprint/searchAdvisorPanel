@@ -70,42 +70,107 @@ if (initialShellStyleEl) {
 document.body.appendChild(p);
 
 const headerEl = document.getElementById("sadv-header");
-if (headerEl) {
-  const legacyTopRow = headerEl.firstElementChild;
-  const legacyLeft = legacyTopRow ? legacyTopRow.firstElementChild : null;
-  const legacyTitleRow = legacyLeft ? legacyLeft.firstElementChild : null;
-  const brandTitleEl = legacyTitleRow ? legacyTitleRow.firstElementChild : null;
-  const modeBarEl = document.getElementById("sadv-mode-bar");
-  const refreshBtnEl = document.getElementById("sadv-refresh-btn");
-  const saveBtnEl = document.getElementById("sadv-save-btn");
-  const xlsxBtnEl = document.getElementById("sadv-xlsx-btn");
-  const closeBtnEl = document.getElementById("sadv-x");
-  const accountBadgeEl = document.getElementById("sadv-account-badge");
-  const siteLabelMetaEl = document.getElementById("sadv-site-label");
-  const cacheMetaEl = document.getElementById("sadv-cache-meta");
+function normalizeHeaderActionShell(targetHeaderEl, options) {
+  if (!targetHeaderEl) return;
+  const doc = targetHeaderEl.ownerDocument || document;
+  const opts = options || {};
+  const modeBarEl = targetHeaderEl.querySelector("#sadv-mode-bar");
+  const refreshBtnEl = targetHeaderEl.querySelector("#sadv-refresh-btn");
+  const saveBtnEl = targetHeaderEl.querySelector("#sadv-save-btn");
+  const xlsxBtnEl = targetHeaderEl.querySelector("#sadv-xlsx-btn");
+  const closeBtnEl = targetHeaderEl.querySelector("#sadv-x");
+  const accountBadgeEl = targetHeaderEl.querySelector("#sadv-account-badge");
+  const siteLabelMetaEl = targetHeaderEl.querySelector("#sadv-site-label");
+  const cacheMetaEl = targetHeaderEl.querySelector("#sadv-cache-meta");
+  let actionStatusChipEl = targetHeaderEl.querySelector("#sadv-action-status-chip");
 
-  if (legacyTopRow && brandTitleEl && modeBarEl) {
-    const headerTopEl = document.createElement("div");
+  function normalizeHeaderActionButton(buttonEl, label) {
+    if (!buttonEl) return;
+    const iconSvgEl = buttonEl.querySelector("svg");
+    const iconHtml = iconSvgEl ? iconSvgEl.outerHTML : "";
+    const safeLabel = typeof label === "string" ? label.trim() : "";
+    buttonEl.dataset.baseLabel = safeLabel;
+    buttonEl.dataset.baseTitle = buttonEl.getAttribute("title") || safeLabel;
+    buttonEl.innerHTML = sanitizeHTML(
+      safeLabel
+        ? `<span class="sadv-btn-icon" aria-hidden="true">${iconHtml}</span><span class="sadv-btn-label">${escHtml(safeLabel)}</span>`
+        : `<span class="sadv-btn-icon" aria-hidden="true">${iconHtml}</span>`
+    );
+    if (safeLabel) {
+      buttonEl.setAttribute("aria-label", safeLabel);
+      if (!buttonEl.getAttribute("title")) buttonEl.setAttribute("title", safeLabel);
+    }
+  }
+
+  normalizeHeaderActionButton(refreshBtnEl, "새로고침");
+  normalizeHeaderActionButton(saveBtnEl, "HTML 저장");
+  normalizeHeaderActionButton(xlsxBtnEl, "엑셀 저장");
+  normalizeHeaderActionButton(closeBtnEl, "닫기");
+  if (refreshBtnEl) refreshBtnEl.classList.add("sadv-btn-icon-only");
+  if (closeBtnEl) closeBtnEl.classList.add("sadv-btn-icon-only");
+
+  if (siteLabelMetaEl && !siteLabelMetaEl.querySelector("span")) {
+    const siteLabelText = siteLabelMetaEl.textContent || "";
+    siteLabelMetaEl.textContent = "";
+    const siteLabelSpan = doc.createElement("span");
+    siteLabelSpan.textContent = siteLabelText;
+    siteLabelMetaEl.appendChild(siteLabelSpan);
+  }
+
+  if (!actionStatusChipEl) {
+    actionStatusChipEl = doc.createElement("span");
+    actionStatusChipEl.id = "sadv-action-status-chip";
+    actionStatusChipEl.className = "sadv-action-status-chip";
+    actionStatusChipEl.hidden = true;
+    actionStatusChipEl.setAttribute("aria-hidden", "true");
+    actionStatusChipEl.setAttribute("aria-live", "polite");
+  }
+
+  let headerTopEl = targetHeaderEl.querySelector(".sadv-header-top");
+  let metaRowEl = targetHeaderEl.querySelector(".sadv-header-meta");
+  let topActionsWrapEl = targetHeaderEl.querySelector(".sadv-header-top-actions");
+  let actionToolsEl = targetHeaderEl.querySelector("#sadv-header-action-row");
+  let saveHubWrapEl = targetHeaderEl.querySelector("#sadv-save-hub");
+  let saveHubBtnEl = targetHeaderEl.querySelector("#sadv-save-hub-btn");
+  let saveHubMenuEl = targetHeaderEl.querySelector("#sadv-save-hub-menu");
+
+  if (!headerTopEl || !metaRowEl || !topActionsWrapEl || !actionToolsEl) {
+    const legacyTopRow = targetHeaderEl.firstElementChild;
+    const legacyLeft = legacyTopRow ? legacyTopRow.firstElementChild : null;
+    const legacyTitleRow = legacyLeft ? legacyLeft.firstElementChild : null;
+    const brandTitleEl = legacyTitleRow
+      ? legacyTitleRow.firstElementChild
+      : targetHeaderEl.querySelector(".sadv-header-brand > :first-child");
+    if (!modeBarEl || !brandTitleEl) return;
+
+    headerTopEl = doc.createElement("div");
     headerTopEl.className = "sadv-header-top";
 
-    const brandWrapEl = document.createElement("div");
+    const brandWrapEl = doc.createElement("div");
     brandWrapEl.className = "sadv-header-brand";
     brandWrapEl.appendChild(brandTitleEl);
+
     const runtimeRef =
-      typeof window !== "undefined" && typeof window.__SEARCHADVISOR_RUNTIME_REF__ === "string"
-        ? window.__SEARCHADVISOR_RUNTIME_REF__.trim()
-        : "";
+      typeof opts.runtimeRef === "string"
+        ? opts.runtimeRef.trim()
+        : typeof window !== "undefined" &&
+            typeof window.__SEARCHADVISOR_RUNTIME_REF__ === "string"
+          ? window.__SEARCHADVISOR_RUNTIME_REF__.trim()
+          : "";
     const runtimeBuiltAt =
-      typeof window !== "undefined" && typeof window.__SEARCHADVISOR_RUNTIME_BUILD_AT__ === "string"
-        ? window.__SEARCHADVISOR_RUNTIME_BUILD_AT__.trim()
-        : "";
+      typeof opts.runtimeBuiltAt === "string"
+        ? opts.runtimeBuiltAt.trim()
+        : typeof window !== "undefined" &&
+            typeof window.__SEARCHADVISOR_RUNTIME_BUILD_AT__ === "string"
+          ? window.__SEARCHADVISOR_RUNTIME_BUILD_AT__.trim()
+          : "";
     const runtimeBadgeText = runtimeRef
       ? "@" + runtimeRef
       : runtimeBuiltAt
         ? runtimeBuiltAt.slice(5, 16).replace("T", " ")
         : "";
     if (runtimeBadgeText) {
-      const runtimeBadgeEl = document.createElement("span");
+      const runtimeBadgeEl = doc.createElement("span");
       runtimeBadgeEl.id = "sadv-runtime-badge";
       runtimeBadgeEl.textContent = runtimeBadgeText;
       runtimeBadgeEl.title = [
@@ -117,34 +182,100 @@ if (headerEl) {
       brandWrapEl.appendChild(runtimeBadgeEl);
     }
 
-    const actionsWrapEl = document.createElement("div");
-    actionsWrapEl.className = "sadv-header-actions";
-    [refreshBtnEl, saveBtnEl, xlsxBtnEl, closeBtnEl].forEach((node) => {
-      if (node) actionsWrapEl.appendChild(node);
-    });
+    topActionsWrapEl = doc.createElement("div");
+    topActionsWrapEl.className = "sadv-header-top-actions";
+    actionToolsEl = doc.createElement("div");
+    actionToolsEl.id = "sadv-header-action-row";
+    actionToolsEl.className = "sadv-header-action-tools";
+    topActionsWrapEl.appendChild(actionToolsEl);
 
-    const metaRowEl = document.createElement("div");
+    metaRowEl = doc.createElement("div");
     metaRowEl.className = "sadv-header-meta";
 
-    if (siteLabelMetaEl && !siteLabelMetaEl.querySelector("span")) {
-      const siteLabelText = siteLabelMetaEl.textContent || "";
-      siteLabelMetaEl.textContent = "";
-      const siteLabelSpan = document.createElement("span");
-      siteLabelSpan.textContent = siteLabelText;
-      siteLabelMetaEl.appendChild(siteLabelSpan);
-    }
-
-    [accountBadgeEl, siteLabelMetaEl, cacheMetaEl].forEach((node) => {
-      if (node) metaRowEl.appendChild(node);
-    });
-
     headerTopEl.appendChild(brandWrapEl);
-    headerTopEl.appendChild(actionsWrapEl);
+    headerTopEl.appendChild(topActionsWrapEl);
 
-    legacyTopRow.remove();
-    headerEl.insertBefore(headerTopEl, modeBarEl);
-    headerEl.insertBefore(metaRowEl, modeBarEl);
+    if (legacyTopRow && legacyTopRow.parentNode === targetHeaderEl) legacyTopRow.remove();
+    targetHeaderEl.insertBefore(headerTopEl, modeBarEl);
+    targetHeaderEl.insertBefore(metaRowEl, modeBarEl);
   }
+
+  if (!saveHubWrapEl) {
+    saveHubWrapEl = doc.createElement("div");
+    saveHubWrapEl.id = "sadv-save-hub";
+    saveHubWrapEl.className = "sadv-save-hub";
+  }
+  if (!saveHubBtnEl) {
+    const saveIconHtml = saveBtnEl && saveBtnEl.querySelector(".sadv-btn-icon")
+      ? saveBtnEl.querySelector(".sadv-btn-icon").innerHTML
+      : "";
+    saveHubBtnEl = doc.createElement("button");
+    saveHubBtnEl.id = "sadv-save-hub-btn";
+    saveHubBtnEl.type = "button";
+    saveHubBtnEl.className = "sadv-btn sadv-save-hub-btn";
+    saveHubBtnEl.innerHTML = sanitizeHTML(
+      `<span class="sadv-btn-icon" aria-hidden="true">${saveIconHtml}</span><span class="sadv-btn-label">내보내기</span><span class="sadv-save-hub-caret" aria-hidden="true">▾</span>`
+    );
+  }
+  saveHubBtnEl.dataset.baseLabel = "내보내기";
+  saveHubBtnEl.setAttribute("aria-label", "내보내기");
+  saveHubBtnEl.setAttribute("aria-haspopup", "menu");
+  saveHubBtnEl.setAttribute("aria-expanded", "false");
+  saveHubBtnEl.title = "내보내기";
+
+  if (!saveHubMenuEl) {
+    saveHubMenuEl = doc.createElement("div");
+    saveHubMenuEl.id = "sadv-save-hub-menu";
+    saveHubMenuEl.className = "sadv-save-hub-menu";
+  }
+  saveHubMenuEl.hidden = true;
+  saveHubMenuEl.setAttribute("role", "menu");
+  [saveBtnEl, xlsxBtnEl].forEach((buttonEl) => {
+    if (!buttonEl) return;
+    buttonEl.classList.add("sadv-save-hub-item");
+    buttonEl.setAttribute("role", "menuitem");
+    if (buttonEl.parentNode !== saveHubMenuEl) saveHubMenuEl.appendChild(buttonEl);
+  });
+  if (saveHubBtnEl.parentNode !== saveHubWrapEl) saveHubWrapEl.appendChild(saveHubBtnEl);
+  if (saveHubMenuEl.parentNode !== saveHubWrapEl) saveHubWrapEl.appendChild(saveHubMenuEl);
+  if (saveHubWrapEl.parentNode !== actionToolsEl) actionToolsEl.insertBefore(saveHubWrapEl, actionToolsEl.firstChild || null);
+  if (refreshBtnEl && refreshBtnEl.parentNode !== actionToolsEl) actionToolsEl.appendChild(refreshBtnEl);
+  if (closeBtnEl && closeBtnEl.parentNode !== actionToolsEl) actionToolsEl.appendChild(closeBtnEl);
+
+  [accountBadgeEl, siteLabelMetaEl, cacheMetaEl, actionStatusChipEl].forEach((node) => {
+    if (!node || node.parentNode === metaRowEl) return;
+    metaRowEl.appendChild(node);
+  });
+
+  if (modeBarEl) {
+    const modeButtons = Array.prototype.slice.call(modeBarEl.querySelectorAll(".sadv-mode"));
+    const modeOrder = ["all", "site"];
+    let activeAssigned = false;
+    modeButtons.forEach(function (buttonEl, index) {
+      if (!buttonEl) return;
+      const modeValue = buttonEl.getAttribute("data-m") || modeOrder[index] || "";
+      if (modeValue) buttonEl.setAttribute("data-m", modeValue);
+      buttonEl.setAttribute("role", "tab");
+      if (!buttonEl.classList.contains("on") && !activeAssigned && modeValue === "all") {
+        buttonEl.classList.add("on");
+      }
+      const isActive = buttonEl.classList.contains("on");
+      if (isActive) activeAssigned = true;
+      buttonEl.setAttribute("aria-selected", isActive ? "true" : "false");
+    });
+    if (!activeAssigned && modeButtons.length) {
+      modeButtons[0].classList.add("on");
+      modeButtons[0].setAttribute("aria-selected", "true");
+      for (let i = 1; i < modeButtons.length; i += 1) {
+        modeButtons[i].classList.remove("on");
+        modeButtons[i].setAttribute("aria-selected", "false");
+      }
+    }
+  }
+}
+
+if (headerEl) {
+  normalizeHeaderActionShell(headerEl);
 }
 
 const requiredShellIds = [
@@ -224,18 +355,143 @@ siteUiStyle.textContent = `
   white-space:nowrap !important;
   flex-shrink:0 !important;
 }
-.sadv-header-actions{
+.sadv-header-top-actions{
   display:flex !important;
-  gap:8px !important;
   align-items:center !important;
-  flex-wrap:nowrap !important;
   justify-content:flex-end !important;
+  gap:8px !important;
+  min-height:34px !important;
+  flex-shrink:0 !important;
+}
+.sadv-header-action-tools{
+  position:relative !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-end !important;
+  gap:5px !important;
+  min-height:34px !important;
+  flex-wrap:nowrap !important;
+}
+.sadv-header-action-tools > *{
+  align-self:center !important;
+}
+.sadv-btn-icon{
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  line-height:0 !important;
+  flex-shrink:0 !important;
+}
+.sadv-btn-label{
+  display:inline-flex !important;
+  align-items:center !important;
+  line-height:1 !important;
+}
+.sadv-save-hub{
+  position:relative !important;
+  display:inline-flex !important;
+  flex-direction:column !important;
+  align-items:stretch !important;
+  justify-content:center !important;
+  flex-shrink:0 !important;
+}
+.sadv-save-hub-btn{
+  min-width:90px !important;
+  height:34px !important;
+  min-height:34px !important;
+  padding:0 11px !important;
+  gap:5px !important;
+}
+.sadv-save-hub-btn.sadv-save-hub-direct{
+  min-width:96px !important;
+}
+.sadv-save-hub-btn .sadv-btn-label{
+  transform:translateY(-0.5px) !important;
+}
+.sadv-save-hub-btn .sadv-btn-icon svg,
+.sadv-btn-icon-only .sadv-btn-icon svg{
+  width:14px !important;
+  height:14px !important;
+}
+.sadv-save-hub-caret{
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  font-size:10px !important;
+  line-height:1 !important;
+  opacity:0.72 !important;
+  margin-left:0 !important;
+  transform:translateY(-1px) !important;
+}
+.sadv-save-hub-menu{
+  position:absolute !important;
+  top:calc(100% + 6px) !important;
+  right:0 !important;
+  min-width:198px !important;
+  display:flex !important;
+  flex-direction:column !important;
+  padding:6px !important;
+  border:1px solid var(--sadv-border) !important;
+  background:var(--sadv-layer-01) !important;
+  box-shadow:0 18px 40px rgba(0,0,0,0.42) !important;
+  z-index:120 !important;
+}
+.sadv-save-hub-menu[hidden]{
+  display:none !important;
+}
+.sadv-save-hub-item{
+  width:100% !important;
+  min-height:38px !important;
+  padding:0 12px !important;
+  justify-content:flex-start !important;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  color:var(--sadv-text) !important;
+}
+.sadv-save-hub-item:hover{
+  background:var(--sadv-layer-02) !important;
+  color:var(--sadv-text) !important;
+}
+.sadv-save-hub-item[hidden]{
+  display:none !important;
+}
+.sadv-action-status-chip{
+  display:inline-flex !important;
+  align-items:center !important;
+  min-height:22px !important;
+  padding:2px 8px !important;
+  border-radius:999px !important;
+  border:1px solid rgba(255,212,0,0.12) !important;
+  background:rgba(255,212,0,0.06) !important;
+  color:#f5dd92 !important;
+  font-size:10px !important;
+  font-weight:700 !important;
+  line-height:1.1 !important;
   white-space:nowrap !important;
   flex-shrink:0 !important;
 }
+.sadv-action-status-chip[hidden]{
+  display:none !important;
+}
+.sadv-action-status-chip[data-tone="progress"]{
+  border-color:rgba(255,212,0,0.22) !important;
+  background:rgba(255,212,0,0.10) !important;
+  color:#ffe082 !important;
+}
+.sadv-action-status-chip[data-tone="success"]{
+  border-color:rgba(133,224,133,0.24) !important;
+  background:rgba(46,125,50,0.16) !important;
+  color:#c8f7c5 !important;
+}
+.sadv-action-status-chip[data-tone="warning"]{
+  border-color:rgba(255,183,77,0.28) !important;
+  background:rgba(255,152,0,0.14) !important;
+  color:#ffe0b2 !important;
+}
 .sadv-header-meta{
-  display:grid !important;
-  grid-template-columns:auto minmax(0,1fr) auto !important;
+  display:flex !important;
+  flex-wrap:wrap !important;
   align-items:center !important;
   gap:8px !important;
   margin-top:10px !important;
@@ -256,6 +512,7 @@ siteUiStyle.textContent = `
   text-overflow:ellipsis !important;
   white-space:nowrap !important;
   line-height:1.2 !important;
+  flex:1 1 auto !important;
 }
 #sadv-site-label.sadv-meta-hidden{
   display:none !important;
@@ -344,6 +601,7 @@ siteUiStyle.textContent = `
 }
 #sadv-combo-btn:focus-visible,
 #sadv-refresh-btn:focus-visible,
+#sadv-save-hub-btn:focus-visible,
 #sadv-save-btn:focus-visible,
 #sadv-xlsx-btn:focus-visible,
 #sadv-x:focus-visible,
@@ -436,10 +694,50 @@ siteUiStyle.textContent = `
   overflow:hidden;
   text-overflow:ellipsis;
 }
+.sadv-combo-item-side{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  justify-content:center;
+  gap:2px;
+}
 .sadv-combo-item-click{
-  font-size:12px;
+  font-size:10px;
   font-weight:700;
   white-space:nowrap;
+}
+.sadv-owner-tag{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:13px;
+  max-width:100%;
+  padding:1px 4px;
+  border-radius:5px;
+  border:1px solid rgba(255,212,0,0.12);
+  background:rgba(255,212,0,0.035);
+  color:var(--sadv-text-tertiary,#b9a55a);
+  font-size:8px;
+  font-weight:700;
+  line-height:1.1;
+  letter-spacing:0;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.sadv-owner-tag--card{
+  margin-left:4px;
+  max-width:84px;
+  font-size:9px;
+}
+.sadv-owner-tag--combo{
+  max-width:92px;
+  font-size:10px;
+}
+.sadv-owner-tag--site{
+  max-width:108px;
+  font-size:10px;
 }
 #sadv-tabs{
   position:relative !important;
@@ -492,22 +790,47 @@ siteUiStyle.textContent = `
 #sadv-save-btn,
 #sadv-xlsx-btn,
 #sadv-x{
-  min-height:36px !important;
+  min-height:34px !important;
+  height:34px !important;
   border-radius:0 !important;
 }
 #sadv-refresh-btn,
+#sadv-save-hub-btn,
 #sadv-save-btn,
-#sadv-xlsx-btn{
+#sadv-xlsx-btn,
+#sadv-x{
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:6px !important;
   background:var(--sadv-layer-01) !important;
   border:1px solid var(--sadv-border) !important;
   color:var(--sadv-text-secondary) !important;
-  padding:0 12px !important;
+  padding:0 10px !important;
   min-width:0 !important;
   font-size:12px !important;
 }
+.sadv-btn-icon-only{
+  width:34px !important;
+  min-width:34px !important;
+  height:34px !important;
+  padding:0 !important;
+  gap:0 !important;
+}
+.sadv-btn-icon-only .sadv-btn-label{
+  display:none !important;
+}
+#sadv-refresh-btn.spinning .sadv-btn-icon svg,
+#sadv-save-btn.spinning .sadv-btn-icon svg,
+#sadv-xlsx-btn.spinning .sadv-btn-icon svg,
+#sadv-save-hub-btn.spinning .sadv-btn-icon svg{
+  animation:sadv-action-spin 0.9s linear infinite;
+}
 #sadv-refresh-btn:hover,
+#sadv-save-hub-btn:hover,
 #sadv-save-btn:hover,
-#sadv-xlsx-btn:hover{
+#sadv-xlsx-btn:hover,
+#sadv-x:hover{
   background:var(--sadv-layer-02) !important;
   border-color:var(--sadv-accent) !important;
   color:var(--sadv-text) !important;
@@ -516,13 +839,19 @@ siteUiStyle.textContent = `
   background:transparent !important;
   border:1px solid var(--sadv-border-subtle) !important;
   color:var(--sadv-text-secondary) !important;
-  width:36px !important;
-  height:36px !important;
+  width:auto !important;
+  height:34px !important;
+  padding:0 10px !important;
+  min-width:0 !important;
 }
 #sadv-x:hover {
   border-color:var(--sadv-danger) !important;
   color:var(--sadv-danger) !important;
   background:${T.dangerSoftBg} !important;
+}
+@keyframes sadv-action-spin{
+  from{transform:rotate(0deg)}
+  to{transform:rotate(360deg)}
 }
 #sadv-bd,
 #sadv-tabpanel{
@@ -552,12 +881,25 @@ siteUiStyle.textContent = `
     padding:18px 16px 14px !important;
   }
   .sadv-header-top{
-    grid-template-columns:1fr !important;
+    grid-template-columns:minmax(0,1fr) auto !important;
     align-items:flex-start !important;
   }
-  .sadv-header-actions{
-    width:100%;
-    justify-content:flex-start !important;
+  .sadv-header-top-actions{
+    flex-shrink:0 !important;
+  }
+  .sadv-header-action-tools{
+    gap:6px !important;
+  }
+  .sadv-save-hub{
+    width:auto !important;
+  }
+  .sadv-save-hub-btn{
+    min-width:84px !important;
+  }
+  .sadv-save-hub-menu{
+    right:0 !important;
+    left:auto !important;
+    min-width:178px !important;
   }
   .sadv-header-meta{
     display:flex !important;

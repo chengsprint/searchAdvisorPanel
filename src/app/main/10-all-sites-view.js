@@ -103,6 +103,18 @@ function setAllSitesSelectedSite(site) {
   return getAllSitesSelectionState();
 }
 
+function openAllSitesSelectedSite(site) {
+  const runtimeSites =
+    typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
+  if (!site || (Array.isArray(runtimeSites) && runtimeSites.length && !runtimeSites.includes(site))) return;
+  const selectionState = getAllSitesSelectionState();
+  const sameSite = selectionState.curSite === site;
+  if (selectionState.curMode === CONFIG.MODE.SITE && sameSite) return;
+  setAllSitesSelectedSite(site);
+  if (typeof setComboSite === "function") setComboSite(site);
+  if (typeof switchMode === "function") switchMode("site");
+}
+
 function buildAllSitesPeriodToolbar(periodDays) {
   const currentDays = normalizeAllSitesPeriodDays(periodDays);
   const bar = document.createElement("div");
@@ -174,6 +186,7 @@ function buildAllSitesDisplayWrap(baseRows) {
   }
 
   const wrap = document.createElement("div");
+  wrap.className = "sadv-allsites-wrap";
   const mergedMeta =
     typeof getRuntimeMergedMeta === "function" ? getRuntimeMergedMeta() : getMergedMetaState();
   if (isMergedReport() && mergedMeta && mergedMeta.accounts) {
@@ -234,10 +247,17 @@ function buildAllSitesDisplayWrap(baseRows) {
     card.style.borderTop = "2px solid " + col + "44";
     const shortName =
       typeof getSiteLabel === "function" ? getSiteLabel(r.site) : r.site.replace(/^https?:\/\//, "");
-    const displayAccount = r.accountLabel || r.sourceAccount;
+    const exportPayload =
+      typeof window !== "undefined" && window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+        ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+        : null;
+    const ownershipDisplay =
+      typeof resolveSiteOwnershipDisplay === "function"
+        ? resolveSiteOwnershipDisplay(r.site, r, exportPayload, r ? r.sourceAccount : null)
+        : { fullLabel: "", compactLabel: "" };
     const accountBadge =
-      displayAccount && (typeof displayAccount === "string" ? displayAccount.trim() : "")
-        ? `<span style="font-size:10px;color:${T.accentSoftText};background:${T.accentSoftBg};padding:3px 8px;border-radius:999px;margin-left:8px;white-space:nowrap;border:1px solid ${T.accentSoftBorder}" title="${escHtml(displayAccount)}">${escHtml(displayAccount.includes("@") ? displayAccount.split("@")[0] : displayAccount)}</span>`
+      typeof renderOwnerTagHTML === "function"
+        ? renderOwnerTagHTML(ownershipDisplay, "card")
         : "";
     const compact = window.innerWidth <= 768;
     const gridTemplate = compact
@@ -373,10 +393,10 @@ function buildAllSitesDisplayWrap(baseRows) {
     }
     const card = e.target.closest(".sadv-allcard");
     if (card && card.dataset.site) {
-      setAllSitesSelectedSite(card.dataset.site);
-      switchMode("site");
+      openAllSitesSelectedSite(card.dataset.site);
     }
   });
+  wrap.__sadvCardDelegateBound = true;
   wrap.addEventListener("mouseenter", function (e) {
     const card = e.target.closest(".sadv-allcard");
     if (card && card.dataset.col) {
@@ -707,6 +727,7 @@ async function collectExportData(onProgress, options) {
   }
   const dataBySite = {};
   const summaryRows = [];
+  const siteOwnershipBySite = {};
   const batchSize = FULL_REFRESH_BATCH_SIZE;
   const refreshMode = options && options.refreshMode === "refresh" ? "refresh" : "cache-first";
   const selectionState = getAllSitesSelectionState();
@@ -773,19 +794,35 @@ async function collectExportData(onProgress, options) {
           stats.errors.push({ site, error: "request rejected" });
         }
       }
-      dataBySite[site] = {
-        ...siteData,
-        __source: {
-          accountLabel: exportAccountLabel || "unknown",
-          accountEncId: exportEncId,
-          fetchedAt:
-            siteData && typeof siteData.__cacheSavedAt === "number"
-              ? siteData.__cacheSavedAt
-              : new Date().toISOString(),
-          exportedAt: savedAtIso(new Date()),
-        }
+      const sourceAccountInfo = {
+        accountLabel: exportAccountLabel || "unknown",
+        accountEncId: exportEncId,
+        fetchedAt:
+          siteData && typeof siteData.__cacheSavedAt === "number"
+            ? siteData.__cacheSavedAt
+            : new Date().toISOString(),
+        exportedAt: savedAtIso(new Date()),
       };
-      summaryRows.push(buildSiteSummaryRow(site, siteData));
+      const normalizedSiteData = {
+        ...siteData,
+        __source: sourceAccountInfo,
+      };
+      dataBySite[site] = normalizedSiteData;
+      const summaryRow = buildSiteSummaryRow(site, normalizedSiteData);
+      if (!summaryRow.accountLabel && sourceAccountInfo.accountLabel) {
+        summaryRow.accountLabel = sourceAccountInfo.accountLabel;
+      }
+      if (!summaryRow.sourceAccount) {
+        summaryRow.sourceAccount = sourceAccountInfo;
+      }
+      summaryRows.push(summaryRow);
+      if (!siteOwnershipBySite[site]) siteOwnershipBySite[site] = [];
+      if (
+        sourceAccountInfo.accountLabel &&
+        siteOwnershipBySite[site].indexOf(sourceAccountInfo.accountLabel) === -1
+      ) {
+        siteOwnershipBySite[site].push(sourceAccountInfo.accountLabel);
+      }
       done++;
       if (onProgress) onProgress(done, total, site, stats);
     });
@@ -844,6 +881,7 @@ async function collectExportData(onProgress, options) {
       typeof getRuntimeMergedMeta === "function"
         ? getRuntimeMergedMeta()
         : (typeof getMergedMetaState === "function" ? getMergedMetaState() : null),
+    siteOwnershipBySite: siteOwnershipBySite,
     summaryRows,
     stats
   };

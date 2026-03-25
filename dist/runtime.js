@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-24T09:54:02Z";
-var __SADV_GIT_HEAD__="ef6c73f";
+var __SADV_BUILD_STAMP__="2026-03-25T14:01:24Z";
+var __SADV_GIT_HEAD__="47011a6";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -2011,11 +2011,7 @@ function sparkline(vals, labels, H, col, unit, opts) {
     rng = mx - mn || 1;
   const showYAxisGuides = H >= CONFIG.CHART.MIN_HEIGHT;
   const formatAxisValue = function (value) {
-    const rounded =
-      Math.abs(value - Math.round(value)) < 0.05
-        ? Math.round(value)
-        : Math.round(value * 10) / 10;
-    return fmt(rounded) + unit;
+    return fmt(Math.round(Number(value) || 0)) + unit;
   };
   const uid = "g" + Math.random().toString(36).slice(2, 6),
     cid = "c" + uid,
@@ -2194,11 +2190,7 @@ function barchart(vals, labels, H, col, unit) {
     bw = Math.max(CONFIG.CHART.MIN_BAR_WIDTH, (W2 - gap * (vals.length + 1)) / vals.length);
   const showYAxisGuides = H >= CONFIG.CHART.MIN_HEIGHT;
   const formatAxisValue = function (value) {
-    const rounded =
-      Math.abs(value - Math.round(value)) < 0.05
-        ? Math.round(value)
-        : Math.round(value * 10) / 10;
-    return fmt(rounded) + unit;
+    return fmt(Math.round(Number(value) || 0)) + unit;
   };
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("width", "100%");
@@ -2989,6 +2981,107 @@ function getSiteOwnership(payload) {
   return summary.siteOwnership || {};
 }
 
+function getSourceAccountLabelDisplayText(sourceAccount) {
+  if (!sourceAccount) return "";
+  if (typeof sourceAccount === "string") return sourceAccount.trim();
+  if (typeof sourceAccount === "object") {
+    if (typeof sourceAccount.accountLabel === "string" && sourceAccount.accountLabel.trim()) {
+      return sourceAccount.accountLabel.trim();
+    }
+    if (typeof sourceAccount.email === "string" && sourceAccount.email.trim()) {
+      return sourceAccount.email.trim();
+    }
+  }
+  return "";
+}
+
+function getSiteOwnershipLabelsFromPayload(site, payload, row, sourceAccount) {
+  if (!site) return [];
+  const labels = [];
+  function pushLabel(label) {
+    if (typeof label !== "string") return;
+    const normalized = label.trim();
+    if (!normalized) return;
+    if (labels.indexOf(normalized) === -1) labels.push(normalized);
+  }
+  const safePayload =
+    payload ||
+    (typeof window !== "undefined" ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__ || null : null);
+  const safeInitOwnership =
+    typeof window !== "undefined" &&
+    window.__sadvInitData &&
+    window.__sadvInitData.siteOwnership &&
+    typeof window.__sadvInitData.siteOwnership === "object"
+      ? window.__sadvInitData.siteOwnership
+      : null;
+  if (safeInitOwnership && Array.isArray(safeInitOwnership[site])) {
+    safeInitOwnership[site].forEach(pushLabel);
+  }
+  if (
+    safePayload &&
+    safePayload.siteOwnershipBySite &&
+    typeof safePayload.siteOwnershipBySite === "object" &&
+    Array.isArray(safePayload.siteOwnershipBySite[site])
+  ) {
+    safePayload.siteOwnershipBySite[site].forEach(pushLabel);
+  }
+  if (
+    safePayload &&
+    safePayload.mergedMeta &&
+    safePayload.mergedMeta.siteOwnershipBySite &&
+    typeof safePayload.mergedMeta.siteOwnershipBySite === "object" &&
+    Array.isArray(safePayload.mergedMeta.siteOwnershipBySite[site])
+  ) {
+    safePayload.mergedMeta.siteOwnershipBySite[site].forEach(pushLabel);
+  }
+  if (row && typeof row.accountLabel === "string") pushLabel(row.accountLabel);
+  if (row && row.sourceAccount) pushLabel(getSourceAccountLabelDisplayText(row.sourceAccount));
+  if (sourceAccount) pushLabel(getSourceAccountLabelDisplayText(sourceAccount));
+  return labels;
+}
+
+function formatCompactOwnerDisplayLabel(label) {
+  if (typeof label !== "string") return "";
+  const trimmed = label.trim();
+  if (!trimmed) return "";
+  const suffixMatch = trimmed.match(/\s*\(\+\d+\)$/);
+  const suffix = suffixMatch ? suffixMatch[0].trim() : "";
+  let base = suffixMatch ? trimmed.slice(0, -suffixMatch[0].length).trim() : trimmed;
+  if (base.includes("@")) base = base.split("@")[0] || base;
+  return suffix ? `${base} ${suffix}` : base;
+}
+
+function resolveSiteOwnershipDisplay(site, row, payload, sourceAccount) {
+  const labels = getSiteOwnershipLabelsFromPayload(site, payload, row, sourceAccount);
+  const fallbackLabel =
+    getSourceAccountLabelDisplayText(sourceAccount) ||
+    (row ? getSourceAccountLabelDisplayText(row.sourceAccount) : "") ||
+    (row && typeof row.accountLabel === "string" ? row.accountLabel : "");
+  const fullLabel =
+    labels.length > 1 ? `${labels[0]} (+${labels.length - 1})` : labels.length === 1 ? labels[0] : fallbackLabel;
+  return {
+    labels: labels,
+    ownerCount: labels.length || (fullLabel ? 1 : 0),
+    fullLabel: fullLabel || "",
+    compactLabel: formatCompactOwnerDisplayLabel(fullLabel || ""),
+  };
+}
+
+function renderOwnerTagHTML(display, variant) {
+  if (!display || typeof display !== "object") return "";
+  const fullLabel = typeof display.fullLabel === "string" ? display.fullLabel.trim() : "";
+  const compactLabel =
+    typeof display.compactLabel === "string" ? display.compactLabel.trim() : "";
+  if (!fullLabel || !compactLabel) return "";
+  const classes = ["sadv-owner-tag"];
+  if (variant) classes.push(`sadv-owner-tag--${variant}`);
+  const ownerCount =
+    typeof display.ownerCount === "number" && Number.isFinite(display.ownerCount)
+      ? Math.max(0, display.ownerCount)
+      : 0;
+  return `<span class="${classes.join(" ")}" title="${escHtml(fullLabel)}" aria-label="${escHtml(fullLabel)}" data-owner-count="${ownerCount}">${escHtml(compactLabel)}</span>`;
+}
+
 // ============================================================
 // MIGRATION HELPERS (Big Bang - no v1 support)
 // ============================================================
@@ -3120,42 +3213,107 @@ if (initialShellStyleEl) {
 document.body.appendChild(p);
 
 const headerEl = document.getElementById("sadv-header");
-if (headerEl) {
-  const legacyTopRow = headerEl.firstElementChild;
-  const legacyLeft = legacyTopRow ? legacyTopRow.firstElementChild : null;
-  const legacyTitleRow = legacyLeft ? legacyLeft.firstElementChild : null;
-  const brandTitleEl = legacyTitleRow ? legacyTitleRow.firstElementChild : null;
-  const modeBarEl = document.getElementById("sadv-mode-bar");
-  const refreshBtnEl = document.getElementById("sadv-refresh-btn");
-  const saveBtnEl = document.getElementById("sadv-save-btn");
-  const xlsxBtnEl = document.getElementById("sadv-xlsx-btn");
-  const closeBtnEl = document.getElementById("sadv-x");
-  const accountBadgeEl = document.getElementById("sadv-account-badge");
-  const siteLabelMetaEl = document.getElementById("sadv-site-label");
-  const cacheMetaEl = document.getElementById("sadv-cache-meta");
+function normalizeHeaderActionShell(targetHeaderEl, options) {
+  if (!targetHeaderEl) return;
+  const doc = targetHeaderEl.ownerDocument || document;
+  const opts = options || {};
+  const modeBarEl = targetHeaderEl.querySelector("#sadv-mode-bar");
+  const refreshBtnEl = targetHeaderEl.querySelector("#sadv-refresh-btn");
+  const saveBtnEl = targetHeaderEl.querySelector("#sadv-save-btn");
+  const xlsxBtnEl = targetHeaderEl.querySelector("#sadv-xlsx-btn");
+  const closeBtnEl = targetHeaderEl.querySelector("#sadv-x");
+  const accountBadgeEl = targetHeaderEl.querySelector("#sadv-account-badge");
+  const siteLabelMetaEl = targetHeaderEl.querySelector("#sadv-site-label");
+  const cacheMetaEl = targetHeaderEl.querySelector("#sadv-cache-meta");
+  let actionStatusChipEl = targetHeaderEl.querySelector("#sadv-action-status-chip");
 
-  if (legacyTopRow && brandTitleEl && modeBarEl) {
-    const headerTopEl = document.createElement("div");
+  function normalizeHeaderActionButton(buttonEl, label) {
+    if (!buttonEl) return;
+    const iconSvgEl = buttonEl.querySelector("svg");
+    const iconHtml = iconSvgEl ? iconSvgEl.outerHTML : "";
+    const safeLabel = typeof label === "string" ? label.trim() : "";
+    buttonEl.dataset.baseLabel = safeLabel;
+    buttonEl.dataset.baseTitle = buttonEl.getAttribute("title") || safeLabel;
+    buttonEl.innerHTML = sanitizeHTML(
+      safeLabel
+        ? `<span class="sadv-btn-icon" aria-hidden="true">${iconHtml}</span><span class="sadv-btn-label">${escHtml(safeLabel)}</span>`
+        : `<span class="sadv-btn-icon" aria-hidden="true">${iconHtml}</span>`
+    );
+    if (safeLabel) {
+      buttonEl.setAttribute("aria-label", safeLabel);
+      if (!buttonEl.getAttribute("title")) buttonEl.setAttribute("title", safeLabel);
+    }
+  }
+
+  normalizeHeaderActionButton(refreshBtnEl, "새로고침");
+  normalizeHeaderActionButton(saveBtnEl, "HTML 저장");
+  normalizeHeaderActionButton(xlsxBtnEl, "엑셀 저장");
+  normalizeHeaderActionButton(closeBtnEl, "닫기");
+  if (refreshBtnEl) refreshBtnEl.classList.add("sadv-btn-icon-only");
+  if (closeBtnEl) closeBtnEl.classList.add("sadv-btn-icon-only");
+
+  if (siteLabelMetaEl && !siteLabelMetaEl.querySelector("span")) {
+    const siteLabelText = siteLabelMetaEl.textContent || "";
+    siteLabelMetaEl.textContent = "";
+    const siteLabelSpan = doc.createElement("span");
+    siteLabelSpan.textContent = siteLabelText;
+    siteLabelMetaEl.appendChild(siteLabelSpan);
+  }
+
+  if (!actionStatusChipEl) {
+    actionStatusChipEl = doc.createElement("span");
+    actionStatusChipEl.id = "sadv-action-status-chip";
+    actionStatusChipEl.className = "sadv-action-status-chip";
+    actionStatusChipEl.hidden = true;
+    actionStatusChipEl.setAttribute("aria-hidden", "true");
+    actionStatusChipEl.setAttribute("aria-live", "polite");
+  }
+
+  let headerTopEl = targetHeaderEl.querySelector(".sadv-header-top");
+  let metaRowEl = targetHeaderEl.querySelector(".sadv-header-meta");
+  let topActionsWrapEl = targetHeaderEl.querySelector(".sadv-header-top-actions");
+  let actionToolsEl = targetHeaderEl.querySelector("#sadv-header-action-row");
+  let saveHubWrapEl = targetHeaderEl.querySelector("#sadv-save-hub");
+  let saveHubBtnEl = targetHeaderEl.querySelector("#sadv-save-hub-btn");
+  let saveHubMenuEl = targetHeaderEl.querySelector("#sadv-save-hub-menu");
+
+  if (!headerTopEl || !metaRowEl || !topActionsWrapEl || !actionToolsEl) {
+    const legacyTopRow = targetHeaderEl.firstElementChild;
+    const legacyLeft = legacyTopRow ? legacyTopRow.firstElementChild : null;
+    const legacyTitleRow = legacyLeft ? legacyLeft.firstElementChild : null;
+    const brandTitleEl = legacyTitleRow
+      ? legacyTitleRow.firstElementChild
+      : targetHeaderEl.querySelector(".sadv-header-brand > :first-child");
+    if (!modeBarEl || !brandTitleEl) return;
+
+    headerTopEl = doc.createElement("div");
     headerTopEl.className = "sadv-header-top";
 
-    const brandWrapEl = document.createElement("div");
+    const brandWrapEl = doc.createElement("div");
     brandWrapEl.className = "sadv-header-brand";
     brandWrapEl.appendChild(brandTitleEl);
+
     const runtimeRef =
-      typeof window !== "undefined" && typeof window.__SEARCHADVISOR_RUNTIME_REF__ === "string"
-        ? window.__SEARCHADVISOR_RUNTIME_REF__.trim()
-        : "";
+      typeof opts.runtimeRef === "string"
+        ? opts.runtimeRef.trim()
+        : typeof window !== "undefined" &&
+            typeof window.__SEARCHADVISOR_RUNTIME_REF__ === "string"
+          ? window.__SEARCHADVISOR_RUNTIME_REF__.trim()
+          : "";
     const runtimeBuiltAt =
-      typeof window !== "undefined" && typeof window.__SEARCHADVISOR_RUNTIME_BUILD_AT__ === "string"
-        ? window.__SEARCHADVISOR_RUNTIME_BUILD_AT__.trim()
-        : "";
+      typeof opts.runtimeBuiltAt === "string"
+        ? opts.runtimeBuiltAt.trim()
+        : typeof window !== "undefined" &&
+            typeof window.__SEARCHADVISOR_RUNTIME_BUILD_AT__ === "string"
+          ? window.__SEARCHADVISOR_RUNTIME_BUILD_AT__.trim()
+          : "";
     const runtimeBadgeText = runtimeRef
       ? "@" + runtimeRef
       : runtimeBuiltAt
         ? runtimeBuiltAt.slice(5, 16).replace("T", " ")
         : "";
     if (runtimeBadgeText) {
-      const runtimeBadgeEl = document.createElement("span");
+      const runtimeBadgeEl = doc.createElement("span");
       runtimeBadgeEl.id = "sadv-runtime-badge";
       runtimeBadgeEl.textContent = runtimeBadgeText;
       runtimeBadgeEl.title = [
@@ -3167,34 +3325,100 @@ if (headerEl) {
       brandWrapEl.appendChild(runtimeBadgeEl);
     }
 
-    const actionsWrapEl = document.createElement("div");
-    actionsWrapEl.className = "sadv-header-actions";
-    [refreshBtnEl, saveBtnEl, xlsxBtnEl, closeBtnEl].forEach((node) => {
-      if (node) actionsWrapEl.appendChild(node);
-    });
+    topActionsWrapEl = doc.createElement("div");
+    topActionsWrapEl.className = "sadv-header-top-actions";
+    actionToolsEl = doc.createElement("div");
+    actionToolsEl.id = "sadv-header-action-row";
+    actionToolsEl.className = "sadv-header-action-tools";
+    topActionsWrapEl.appendChild(actionToolsEl);
 
-    const metaRowEl = document.createElement("div");
+    metaRowEl = doc.createElement("div");
     metaRowEl.className = "sadv-header-meta";
 
-    if (siteLabelMetaEl && !siteLabelMetaEl.querySelector("span")) {
-      const siteLabelText = siteLabelMetaEl.textContent || "";
-      siteLabelMetaEl.textContent = "";
-      const siteLabelSpan = document.createElement("span");
-      siteLabelSpan.textContent = siteLabelText;
-      siteLabelMetaEl.appendChild(siteLabelSpan);
-    }
-
-    [accountBadgeEl, siteLabelMetaEl, cacheMetaEl].forEach((node) => {
-      if (node) metaRowEl.appendChild(node);
-    });
-
     headerTopEl.appendChild(brandWrapEl);
-    headerTopEl.appendChild(actionsWrapEl);
+    headerTopEl.appendChild(topActionsWrapEl);
 
-    legacyTopRow.remove();
-    headerEl.insertBefore(headerTopEl, modeBarEl);
-    headerEl.insertBefore(metaRowEl, modeBarEl);
+    if (legacyTopRow && legacyTopRow.parentNode === targetHeaderEl) legacyTopRow.remove();
+    targetHeaderEl.insertBefore(headerTopEl, modeBarEl);
+    targetHeaderEl.insertBefore(metaRowEl, modeBarEl);
   }
+
+  if (!saveHubWrapEl) {
+    saveHubWrapEl = doc.createElement("div");
+    saveHubWrapEl.id = "sadv-save-hub";
+    saveHubWrapEl.className = "sadv-save-hub";
+  }
+  if (!saveHubBtnEl) {
+    const saveIconHtml = saveBtnEl && saveBtnEl.querySelector(".sadv-btn-icon")
+      ? saveBtnEl.querySelector(".sadv-btn-icon").innerHTML
+      : "";
+    saveHubBtnEl = doc.createElement("button");
+    saveHubBtnEl.id = "sadv-save-hub-btn";
+    saveHubBtnEl.type = "button";
+    saveHubBtnEl.className = "sadv-btn sadv-save-hub-btn";
+    saveHubBtnEl.innerHTML = sanitizeHTML(
+      `<span class="sadv-btn-icon" aria-hidden="true">${saveIconHtml}</span><span class="sadv-btn-label">내보내기</span><span class="sadv-save-hub-caret" aria-hidden="true">▾</span>`
+    );
+  }
+  saveHubBtnEl.dataset.baseLabel = "내보내기";
+  saveHubBtnEl.setAttribute("aria-label", "내보내기");
+  saveHubBtnEl.setAttribute("aria-haspopup", "menu");
+  saveHubBtnEl.setAttribute("aria-expanded", "false");
+  saveHubBtnEl.title = "내보내기";
+
+  if (!saveHubMenuEl) {
+    saveHubMenuEl = doc.createElement("div");
+    saveHubMenuEl.id = "sadv-save-hub-menu";
+    saveHubMenuEl.className = "sadv-save-hub-menu";
+  }
+  saveHubMenuEl.hidden = true;
+  saveHubMenuEl.setAttribute("role", "menu");
+  [saveBtnEl, xlsxBtnEl].forEach((buttonEl) => {
+    if (!buttonEl) return;
+    buttonEl.classList.add("sadv-save-hub-item");
+    buttonEl.setAttribute("role", "menuitem");
+    if (buttonEl.parentNode !== saveHubMenuEl) saveHubMenuEl.appendChild(buttonEl);
+  });
+  if (saveHubBtnEl.parentNode !== saveHubWrapEl) saveHubWrapEl.appendChild(saveHubBtnEl);
+  if (saveHubMenuEl.parentNode !== saveHubWrapEl) saveHubWrapEl.appendChild(saveHubMenuEl);
+  if (saveHubWrapEl.parentNode !== actionToolsEl) actionToolsEl.insertBefore(saveHubWrapEl, actionToolsEl.firstChild || null);
+  if (refreshBtnEl && refreshBtnEl.parentNode !== actionToolsEl) actionToolsEl.appendChild(refreshBtnEl);
+  if (closeBtnEl && closeBtnEl.parentNode !== actionToolsEl) actionToolsEl.appendChild(closeBtnEl);
+
+  [accountBadgeEl, siteLabelMetaEl, cacheMetaEl, actionStatusChipEl].forEach((node) => {
+    if (!node || node.parentNode === metaRowEl) return;
+    metaRowEl.appendChild(node);
+  });
+
+  if (modeBarEl) {
+    const modeButtons = Array.prototype.slice.call(modeBarEl.querySelectorAll(".sadv-mode"));
+    const modeOrder = ["all", "site"];
+    let activeAssigned = false;
+    modeButtons.forEach(function (buttonEl, index) {
+      if (!buttonEl) return;
+      const modeValue = buttonEl.getAttribute("data-m") || modeOrder[index] || "";
+      if (modeValue) buttonEl.setAttribute("data-m", modeValue);
+      buttonEl.setAttribute("role", "tab");
+      if (!buttonEl.classList.contains("on") && !activeAssigned && modeValue === "all") {
+        buttonEl.classList.add("on");
+      }
+      const isActive = buttonEl.classList.contains("on");
+      if (isActive) activeAssigned = true;
+      buttonEl.setAttribute("aria-selected", isActive ? "true" : "false");
+    });
+    if (!activeAssigned && modeButtons.length) {
+      modeButtons[0].classList.add("on");
+      modeButtons[0].setAttribute("aria-selected", "true");
+      for (let i = 1; i < modeButtons.length; i += 1) {
+        modeButtons[i].classList.remove("on");
+        modeButtons[i].setAttribute("aria-selected", "false");
+      }
+    }
+  }
+}
+
+if (headerEl) {
+  normalizeHeaderActionShell(headerEl);
 }
 
 const requiredShellIds = [
@@ -3274,18 +3498,143 @@ siteUiStyle.textContent = `
   white-space:nowrap !important;
   flex-shrink:0 !important;
 }
-.sadv-header-actions{
+.sadv-header-top-actions{
   display:flex !important;
-  gap:8px !important;
   align-items:center !important;
-  flex-wrap:nowrap !important;
   justify-content:flex-end !important;
+  gap:8px !important;
+  min-height:34px !important;
+  flex-shrink:0 !important;
+}
+.sadv-header-action-tools{
+  position:relative !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-end !important;
+  gap:5px !important;
+  min-height:34px !important;
+  flex-wrap:nowrap !important;
+}
+.sadv-header-action-tools > *{
+  align-self:center !important;
+}
+.sadv-btn-icon{
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  line-height:0 !important;
+  flex-shrink:0 !important;
+}
+.sadv-btn-label{
+  display:inline-flex !important;
+  align-items:center !important;
+  line-height:1 !important;
+}
+.sadv-save-hub{
+  position:relative !important;
+  display:inline-flex !important;
+  flex-direction:column !important;
+  align-items:stretch !important;
+  justify-content:center !important;
+  flex-shrink:0 !important;
+}
+.sadv-save-hub-btn{
+  min-width:90px !important;
+  height:34px !important;
+  min-height:34px !important;
+  padding:0 11px !important;
+  gap:5px !important;
+}
+.sadv-save-hub-btn.sadv-save-hub-direct{
+  min-width:96px !important;
+}
+.sadv-save-hub-btn .sadv-btn-label{
+  transform:translateY(-0.5px) !important;
+}
+.sadv-save-hub-btn .sadv-btn-icon svg,
+.sadv-btn-icon-only .sadv-btn-icon svg{
+  width:14px !important;
+  height:14px !important;
+}
+.sadv-save-hub-caret{
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  font-size:10px !important;
+  line-height:1 !important;
+  opacity:0.72 !important;
+  margin-left:0 !important;
+  transform:translateY(-1px) !important;
+}
+.sadv-save-hub-menu{
+  position:absolute !important;
+  top:calc(100% + 6px) !important;
+  right:0 !important;
+  min-width:198px !important;
+  display:flex !important;
+  flex-direction:column !important;
+  padding:6px !important;
+  border:1px solid var(--sadv-border) !important;
+  background:var(--sadv-layer-01) !important;
+  box-shadow:0 18px 40px rgba(0,0,0,0.42) !important;
+  z-index:120 !important;
+}
+.sadv-save-hub-menu[hidden]{
+  display:none !important;
+}
+.sadv-save-hub-item{
+  width:100% !important;
+  min-height:38px !important;
+  padding:0 12px !important;
+  justify-content:flex-start !important;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  color:var(--sadv-text) !important;
+}
+.sadv-save-hub-item:hover{
+  background:var(--sadv-layer-02) !important;
+  color:var(--sadv-text) !important;
+}
+.sadv-save-hub-item[hidden]{
+  display:none !important;
+}
+.sadv-action-status-chip{
+  display:inline-flex !important;
+  align-items:center !important;
+  min-height:22px !important;
+  padding:2px 8px !important;
+  border-radius:999px !important;
+  border:1px solid rgba(255,212,0,0.12) !important;
+  background:rgba(255,212,0,0.06) !important;
+  color:#f5dd92 !important;
+  font-size:10px !important;
+  font-weight:700 !important;
+  line-height:1.1 !important;
   white-space:nowrap !important;
   flex-shrink:0 !important;
 }
+.sadv-action-status-chip[hidden]{
+  display:none !important;
+}
+.sadv-action-status-chip[data-tone="progress"]{
+  border-color:rgba(255,212,0,0.22) !important;
+  background:rgba(255,212,0,0.10) !important;
+  color:#ffe082 !important;
+}
+.sadv-action-status-chip[data-tone="success"]{
+  border-color:rgba(133,224,133,0.24) !important;
+  background:rgba(46,125,50,0.16) !important;
+  color:#c8f7c5 !important;
+}
+.sadv-action-status-chip[data-tone="warning"]{
+  border-color:rgba(255,183,77,0.28) !important;
+  background:rgba(255,152,0,0.14) !important;
+  color:#ffe0b2 !important;
+}
 .sadv-header-meta{
-  display:grid !important;
-  grid-template-columns:auto minmax(0,1fr) auto !important;
+  display:flex !important;
+  flex-wrap:wrap !important;
   align-items:center !important;
   gap:8px !important;
   margin-top:10px !important;
@@ -3306,6 +3655,7 @@ siteUiStyle.textContent = `
   text-overflow:ellipsis !important;
   white-space:nowrap !important;
   line-height:1.2 !important;
+  flex:1 1 auto !important;
 }
 #sadv-site-label.sadv-meta-hidden{
   display:none !important;
@@ -3394,6 +3744,7 @@ siteUiStyle.textContent = `
 }
 #sadv-combo-btn:focus-visible,
 #sadv-refresh-btn:focus-visible,
+#sadv-save-hub-btn:focus-visible,
 #sadv-save-btn:focus-visible,
 #sadv-xlsx-btn:focus-visible,
 #sadv-x:focus-visible,
@@ -3486,10 +3837,50 @@ siteUiStyle.textContent = `
   overflow:hidden;
   text-overflow:ellipsis;
 }
+.sadv-combo-item-side{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  justify-content:center;
+  gap:2px;
+}
 .sadv-combo-item-click{
-  font-size:12px;
+  font-size:10px;
   font-weight:700;
   white-space:nowrap;
+}
+.sadv-owner-tag{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:13px;
+  max-width:100%;
+  padding:1px 4px;
+  border-radius:5px;
+  border:1px solid rgba(255,212,0,0.12);
+  background:rgba(255,212,0,0.035);
+  color:var(--sadv-text-tertiary,#b9a55a);
+  font-size:8px;
+  font-weight:700;
+  line-height:1.1;
+  letter-spacing:0;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.sadv-owner-tag--card{
+  margin-left:4px;
+  max-width:84px;
+  font-size:9px;
+}
+.sadv-owner-tag--combo{
+  max-width:92px;
+  font-size:10px;
+}
+.sadv-owner-tag--site{
+  max-width:108px;
+  font-size:10px;
 }
 #sadv-tabs{
   position:relative !important;
@@ -3542,22 +3933,47 @@ siteUiStyle.textContent = `
 #sadv-save-btn,
 #sadv-xlsx-btn,
 #sadv-x{
-  min-height:36px !important;
+  min-height:34px !important;
+  height:34px !important;
   border-radius:0 !important;
 }
 #sadv-refresh-btn,
+#sadv-save-hub-btn,
 #sadv-save-btn,
-#sadv-xlsx-btn{
+#sadv-xlsx-btn,
+#sadv-x{
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:6px !important;
   background:var(--sadv-layer-01) !important;
   border:1px solid var(--sadv-border) !important;
   color:var(--sadv-text-secondary) !important;
-  padding:0 12px !important;
+  padding:0 10px !important;
   min-width:0 !important;
   font-size:12px !important;
 }
+.sadv-btn-icon-only{
+  width:34px !important;
+  min-width:34px !important;
+  height:34px !important;
+  padding:0 !important;
+  gap:0 !important;
+}
+.sadv-btn-icon-only .sadv-btn-label{
+  display:none !important;
+}
+#sadv-refresh-btn.spinning .sadv-btn-icon svg,
+#sadv-save-btn.spinning .sadv-btn-icon svg,
+#sadv-xlsx-btn.spinning .sadv-btn-icon svg,
+#sadv-save-hub-btn.spinning .sadv-btn-icon svg{
+  animation:sadv-action-spin 0.9s linear infinite;
+}
 #sadv-refresh-btn:hover,
+#sadv-save-hub-btn:hover,
 #sadv-save-btn:hover,
-#sadv-xlsx-btn:hover{
+#sadv-xlsx-btn:hover,
+#sadv-x:hover{
   background:var(--sadv-layer-02) !important;
   border-color:var(--sadv-accent) !important;
   color:var(--sadv-text) !important;
@@ -3566,13 +3982,19 @@ siteUiStyle.textContent = `
   background:transparent !important;
   border:1px solid var(--sadv-border-subtle) !important;
   color:var(--sadv-text-secondary) !important;
-  width:36px !important;
-  height:36px !important;
+  width:auto !important;
+  height:34px !important;
+  padding:0 10px !important;
+  min-width:0 !important;
 }
 #sadv-x:hover {
   border-color:var(--sadv-danger) !important;
   color:var(--sadv-danger) !important;
   background:${T.dangerSoftBg} !important;
+}
+@keyframes sadv-action-spin{
+  from{transform:rotate(0deg)}
+  to{transform:rotate(360deg)}
 }
 #sadv-bd,
 #sadv-tabpanel{
@@ -3602,12 +4024,25 @@ siteUiStyle.textContent = `
     padding:18px 16px 14px !important;
   }
   .sadv-header-top{
-    grid-template-columns:1fr !important;
+    grid-template-columns:minmax(0,1fr) auto !important;
     align-items:flex-start !important;
   }
-  .sadv-header-actions{
-    width:100%;
-    justify-content:flex-start !important;
+  .sadv-header-top-actions{
+    flex-shrink:0 !important;
+  }
+  .sadv-header-action-tools{
+    gap:6px !important;
+  }
+  .sadv-save-hub{
+    width:auto !important;
+  }
+  .sadv-save-hub-btn{
+    min-width:84px !important;
+  }
+  .sadv-save-hub-menu{
+    right:0 !important;
+    left:auto !important;
+    min-width:178px !important;
   }
   .sadv-header-meta{
     display:flex !important;
@@ -10283,6 +10718,35 @@ function applyUiControlsTab(tab) {
     else labelEl.textContent = summary;
     labelEl.title = summary;
     syncXlsxButtonVisibility();
+    syncSnapshotActionButtons(
+      typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null
+    );
+  }
+  function getHeaderActionRuntimeCapabilitiesSnapshot() {
+    return typeof getRuntimeCapabilities === "function"
+      ? getRuntimeCapabilities()
+      : typeof runtimeCapabilities !== "undefined"
+        ? runtimeCapabilities
+        : typeof resolveRuntimeCapabilities === "function"
+          ? resolveRuntimeCapabilities()
+          : {
+              canRefresh: false,
+              canSave: false,
+              canClose: false,
+              canXlsxSave: false,
+              isReadOnly: true,
+            };
+  }
+  function canCurrentRuntimeManualXlsxExport(runtimeCapabilitiesSnapshot) {
+    if (typeof canManualXlsxExportInCurrentRuntime === "function") {
+      return !!canManualXlsxExportInCurrentRuntime();
+    }
+    return !!(
+      runtimeCapabilitiesSnapshot &&
+      runtimeCapabilitiesSnapshot.canSave &&
+      runtimeCapabilitiesSnapshot.canXlsxSave &&
+      !runtimeCapabilitiesSnapshot.isReadOnly
+    );
   }
   function syncXlsxButtonVisibility() {
     const xlsxBtnEl = document.getElementById("sadv-xlsx-btn");
@@ -10291,24 +10755,8 @@ function applyUiControlsTab(tab) {
     // 따라서 live initialize()의 closure(runtimeCapabilities)에만 의존하면
     // reopen 시 ReferenceError/undefined 접근으로 회귀가 날 수 있다.
     // 공통 helper를 그대로 재사용하되, closure가 없을 때도 self-contained 하게 capability snapshot을 읽는다.
-    const runtimeCapabilitiesSnapshot =
-      typeof getRuntimeCapabilities === "function"
-        ? getRuntimeCapabilities()
-        : typeof runtimeCapabilities !== "undefined"
-          ? runtimeCapabilities
-          : {
-              canSave: false,
-              canXlsxSave: false,
-              isReadOnly: true,
-            };
-    const canManualXlsxSave =
-      typeof canManualXlsxExportInCurrentRuntime === "function"
-        ? canManualXlsxExportInCurrentRuntime()
-        : !!(
-            runtimeCapabilitiesSnapshot.canSave &&
-            runtimeCapabilitiesSnapshot.canXlsxSave &&
-            !runtimeCapabilitiesSnapshot.isReadOnly
-          );
+    const runtimeCapabilitiesSnapshot = getHeaderActionRuntimeCapabilitiesSnapshot();
+    const canManualXlsxSave = canCurrentRuntimeManualXlsxExport(runtimeCapabilitiesSnapshot);
     if (!canManualXlsxSave) {
       xlsxBtnEl.style.display = "none";
       xlsxBtnEl.setAttribute("aria-hidden", "true");
@@ -10413,50 +10861,251 @@ function applyUiControlsTab(tab) {
     );
   }
   function getSnapshotActionBaseLabel(actionKind) {
-    return actionKind === "xlsx" ? "엑셀" : "저장";
+    if (actionKind === "xlsx") return "엑셀 저장";
+    if (actionKind === "refresh") return "새로고침";
+    if (actionKind === "close") return "닫기";
+    return "HTML 저장";
   }
   function getSnapshotActionStatusKind(status) {
     return status && status.outputFormat === "xlsx" ? "xlsx" : "save";
   }
   function formatSnapshotActionLabel(status, actionKind) {
+    return getSnapshotActionBaseLabel(actionKind);
+  }
+  function setHeaderActionButtonLabel(buttonEl, label) {
+    if (!buttonEl) return;
+    const nextLabel = typeof label === "string" && label.trim() ? label.trim() : "";
+    if (!nextLabel) return;
+    const labelEl = buttonEl.querySelector(".sadv-btn-label");
+    if (labelEl) {
+      labelEl.textContent = nextLabel;
+    } else {
+      buttonEl.textContent = nextLabel;
+    }
+    buttonEl.dataset.currentLabel = nextLabel;
+  }
+  function formatHeaderActionStatusChip(status) {
+    if (!status || typeof status !== "object" || status.uiHidden) return null;
+    const actionKind = getSnapshotActionStatusKind(status);
     const baseLabel = getSnapshotActionBaseLabel(actionKind);
-    if (!status || typeof status !== "object") return baseLabel;
-    const statusKind = getSnapshotActionStatusKind(status);
-    if (statusKind !== actionKind) return baseLabel;
-    const entryPoint = typeof status.entryPoint === "string" ? status.entryPoint : "";
-    const expectedEntryPoint = actionKind === "xlsx" ? "button-xlsx" : "button-save";
-    if (entryPoint !== expectedEntryPoint) return baseLabel;
     const state = typeof status.state === "string" ? status.state : "idle";
     const progress = status.progress && typeof status.progress === "object" ? status.progress : {};
     const done =
       typeof progress.done === "number" && Number.isFinite(progress.done) ? progress.done : 0;
     const total =
       typeof progress.total === "number" && Number.isFinite(progress.total) ? progress.total : 0;
+    const stageLabel =
+      typeof status.stageLabel === "string" && status.stageLabel.trim()
+        ? status.stageLabel.trim()
+        : null;
     if (status.active) {
       if (total > 0 && (state === "collecting" || done > 0)) {
-        return done + "/" + total;
+        return {
+          label: `${baseLabel} ${done}/${total}`,
+          tone: "progress",
+        };
       }
-      return actionKind === "xlsx" ? "엑셀 준비" : "저장 준비";
+      return {
+        label: stageLabel || `${baseLabel} 준비 중`,
+        tone: "progress",
+      };
     }
-    if (state === "completed" || state === "completed-with-issues") {
-      return actionKind === "xlsx" ? "엑셀 완료" : "저장 완료";
+    if (state === "completed") {
+      return {
+        label: `${baseLabel} 완료`,
+        tone: "success",
+      };
     }
-    return baseLabel;
+    if (state === "completed-with-issues") {
+      return {
+        label: stageLabel || `${baseLabel} 일부 확인 필요`,
+        tone: "warning",
+      };
+    }
+    if (state === "blocked") {
+      return {
+        label: stageLabel || `${baseLabel} 차단`,
+        tone: "warning",
+      };
+    }
+    if (state === "failed") {
+      return {
+        label: stageLabel || `${baseLabel} 실패`,
+        tone: "warning",
+      };
+    }
+    return null;
+  }
+  function syncHeaderActionStatusChip(status) {
+    const chipEl = document.getElementById("sadv-action-status-chip");
+    if (!chipEl) return;
+    const chipMeta = formatHeaderActionStatusChip(status);
+    if (!chipMeta) {
+      chipEl.hidden = true;
+      chipEl.setAttribute("aria-hidden", "true");
+      chipEl.textContent = "";
+      chipEl.removeAttribute("data-tone");
+      chipEl.removeAttribute("title");
+      return;
+    }
+    chipEl.hidden = false;
+    chipEl.setAttribute("aria-hidden", "false");
+    chipEl.textContent = chipMeta.label;
+    chipEl.dataset.tone = chipMeta.tone || "progress";
+    chipEl.title = chipMeta.label;
+  }
+  function applyHeaderActionButtonPresentation(buttonEl, presentation) {
+    if (!buttonEl) return;
+    const isVisible = !!(presentation && presentation.visible);
+    buttonEl.style.display = isVisible ? "" : "none";
+    if (!isVisible) {
+      buttonEl.setAttribute("aria-hidden", "true");
+      buttonEl.classList.remove("sadv-action-btn-primary", "sadv-action-btn-secondary");
+      return;
+    }
+    buttonEl.removeAttribute("aria-hidden");
+    const accessibleLabel =
+      buttonEl.dataset.baseLabel ||
+      buttonEl.dataset.currentLabel ||
+      buttonEl.getAttribute("aria-label") ||
+      "";
+    if (accessibleLabel) {
+      buttonEl.setAttribute("aria-label", accessibleLabel);
+      if (!buttonEl.dataset.busy || buttonEl.dataset.busy !== "true") {
+        buttonEl.title = accessibleLabel;
+      }
+    }
+  }
+  function getHeaderSaveHubElements() {
+    return {
+      wrap: document.getElementById("sadv-save-hub"),
+      button: document.getElementById("sadv-save-hub-btn"),
+      menu: document.getElementById("sadv-save-hub-menu"),
+      save: document.getElementById("sadv-save-btn"),
+      xlsx: document.getElementById("sadv-xlsx-btn"),
+    };
+  }
+  function closeHeaderSaveHubMenu() {
+    const refs = getHeaderSaveHubElements();
+    if (!refs.menu || !refs.button || !refs.wrap) return;
+    refs.wrap.dataset.open = "false";
+    refs.menu.hidden = true;
+    refs.button.setAttribute("aria-expanded", "false");
+  }
+  function setHeaderSaveHubButtonMeta(buttonEl, label, title, directAction) {
+    if (!buttonEl) return;
+    const nextLabel = typeof label === "string" && label.trim() ? label.trim() : "내보내기";
+    setHeaderActionButtonLabel(buttonEl, nextLabel);
+    buttonEl.dataset.baseLabel = nextLabel;
+    buttonEl.dataset.directAction = directAction || "";
+    buttonEl.setAttribute("aria-label", nextLabel);
+    buttonEl.title = title || nextLabel;
+    const caretEl = buttonEl.querySelector(".sadv-save-hub-caret");
+    const isDirect = !!directAction;
+    if (caretEl) caretEl.style.display = isDirect ? "none" : "";
+    buttonEl.classList.toggle("sadv-save-hub-direct", isDirect);
+    buttonEl.setAttribute("aria-haspopup", isDirect ? "false" : "menu");
+    if (isDirect) buttonEl.setAttribute("aria-expanded", "false");
+  }
+  function syncHeaderSaveHub(displayMeta) {
+    const refs = getHeaderSaveHubElements();
+    if (!refs.wrap || !refs.button) return;
+    const hubMeta = displayMeta && displayMeta.hub ? displayMeta.hub : null;
+    if (!hubMeta || !hubMeta.visible) {
+      refs.wrap.style.display = "none";
+      refs.wrap.setAttribute("aria-hidden", "true");
+      closeHeaderSaveHubMenu();
+      return;
+    }
+    refs.wrap.style.display = "";
+    refs.wrap.removeAttribute("aria-hidden");
+    setHeaderSaveHubButtonMeta(
+      refs.button,
+      hubMeta.label,
+      hubMeta.title,
+      hubMeta.directAction
+    );
+    if (refs.save) {
+      const showSaveItem = !!(hubMeta.menuVisible && hubMeta.items && hubMeta.items.save);
+      refs.save.hidden = !showSaveItem;
+      refs.save.style.display = showSaveItem ? "" : "none";
+      refs.save.setAttribute("aria-hidden", showSaveItem ? "false" : "true");
+    }
+    if (refs.xlsx) {
+      const showXlsxItem = !!(hubMeta.menuVisible && hubMeta.items && hubMeta.items.xlsx);
+      refs.xlsx.hidden = !showXlsxItem;
+      refs.xlsx.style.display = showXlsxItem ? "" : "none";
+      refs.xlsx.setAttribute("aria-hidden", showXlsxItem ? "false" : "true");
+    }
+    if (refs.menu) {
+      if (!hubMeta.menuVisible) {
+        closeHeaderSaveHubMenu();
+      } else if (refs.wrap.dataset.open !== "true") {
+        refs.menu.hidden = true;
+        refs.button.setAttribute("aria-expanded", "false");
+      }
+    }
+  }
+  function getHeaderActionDisplayMeta(status) {
+    const runtimeCapabilitiesSnapshot = getHeaderActionRuntimeCapabilitiesSnapshot();
+    const xlsxVisible = canCurrentRuntimeManualXlsxExport(runtimeCapabilitiesSnapshot);
+    const saveVisible = !!runtimeCapabilitiesSnapshot.canSave;
+    const buttons = {
+      refresh: { visible: !!runtimeCapabilitiesSnapshot.canRefresh },
+      save: { visible: saveVisible },
+      xlsx: { visible: !!xlsxVisible },
+      close: { visible: !!runtimeCapabilitiesSnapshot.canClose },
+    };
+    const hubVisible = saveVisible || xlsxVisible;
+    const hubDirectAction =
+      hubVisible && !(saveVisible && xlsxVisible)
+        ? (saveVisible ? "save" : "xlsx")
+        : "";
+    const hubLabel = saveVisible && xlsxVisible
+      ? "내보내기"
+      : saveVisible
+        ? "HTML 저장"
+        : xlsxVisible
+          ? "엑셀 저장"
+          : "";
+    const hubTitle = saveVisible && xlsxVisible
+      ? "내보내기"
+      : hubLabel;
+    return {
+      buttons: buttons,
+      hub: {
+        visible: hubVisible,
+        label: hubLabel,
+        title: hubTitle,
+        directAction: hubDirectAction,
+        menuVisible: !!(saveVisible && xlsxVisible),
+        items: {
+          save: saveVisible,
+          xlsx: !!xlsxVisible,
+        },
+      },
+      chip: formatHeaderActionStatusChip(status),
+    };
   }
   function syncSnapshotActionButtonLabel(buttonEl, actionKind, status) {
     if (!buttonEl) return;
-    const baseHtml = buttonEl.dataset.baseHtml || buttonEl.innerHTML;
     const nextLabel = formatSnapshotActionLabel(status, actionKind);
-    const baseLabel = getSnapshotActionBaseLabel(actionKind);
-    if (nextLabel === baseLabel) {
-      buttonEl.innerHTML = baseHtml;
-      return;
-    }
-    buttonEl.textContent = nextLabel;
+    setHeaderActionButtonLabel(buttonEl, nextLabel);
   }
   function syncSnapshotActionButtons(status) {
+    const displayMeta = getHeaderActionDisplayMeta(status);
     syncSnapshotActionButtonLabel(document.getElementById("sadv-save-btn"), "save", status);
     syncSnapshotActionButtonLabel(document.getElementById("sadv-xlsx-btn"), "xlsx", status);
+    applyHeaderActionButtonPresentation(
+      document.getElementById("sadv-refresh-btn"),
+      displayMeta.buttons.refresh
+    );
+    applyHeaderActionButtonPresentation(
+      document.getElementById("sadv-x"),
+      displayMeta.buttons.close
+    );
+    syncHeaderSaveHub(displayMeta);
+    syncHeaderActionStatusChip(status);
   }
   function resolveRuntimeCapabilities() {
     // stage 2 boundary:
@@ -10532,6 +11181,10 @@ function applyUiControlsTab(tab) {
     orderedSites.forEach(function (s) {
       const selectionState = getUiControlsSelectionState();
       const activeSite = selectionState.curSite;
+      const exportPayload =
+        typeof window !== "undefined" && window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+          ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+          : null;
       const col = SITE_COLORS_MAP[s] || C.muted,
         fullLabel = getSiteLabel(s),
         shortName = getSiteShortName(s),
@@ -10539,16 +11192,36 @@ function applyUiControlsTab(tab) {
         row = rowsMap[s],
         clickStr = row ? fmt(row.totalC) + "\uD074\uB9AD" : "—",
         clickCol = row ? C.green : C.muted;
+      const ownershipDisplay =
+        typeof resolveSiteOwnershipDisplay === "function"
+          ? resolveSiteOwnershipDisplay(s, row || null, exportPayload, row ? row.sourceAccount : null)
+          : { fullLabel: "", compactLabel: "" };
+      const ownerTagHtml =
+        typeof renderOwnerTagHTML === "function"
+          ? renderOwnerTagHTML(ownershipDisplay, "combo")
+          : "";
       const item = document.createElement("div");
       item.className = "sadv-combo-item sadv-copt" + (s === activeSite ? " active" : "");
       item.dataset.site = s;
       item.setAttribute("tabindex", "0");
       item.setAttribute("role", "option");
       item.setAttribute("aria-selected", s === activeSite ? "true" : "false");
+      item.dataset.ownerLabel =
+        ownershipDisplay && typeof ownershipDisplay.fullLabel === "string"
+          ? ownershipDisplay.fullLabel
+          : "";
       item.style.cursor = "pointer";
-      item.innerHTML = `<div class="sadv-combo-item-dot" style="background:${col}"></div><div class="sadv-combo-item-info"><div class="sadv-combo-item-name">${escHtml(shortName || fullLabel || s)}</div><div class="sadv-combo-item-url">${escHtml(siteUrlLabel || fullLabel || s)}</div></div><div class="sadv-combo-item-click" style="color:${clickCol}">${escHtml(clickStr)}</div>`;
+      item.innerHTML = `<div class="sadv-combo-item-dot" style="background:${col}"></div><div class="sadv-combo-item-info"><div class="sadv-combo-item-name">${escHtml(shortName || fullLabel || s)}</div><div class="sadv-combo-item-url">${escHtml(siteUrlLabel || fullLabel || s)}</div></div><div class="sadv-combo-item-side">${ownerTagHtml}<div class="sadv-combo-item-click" style="color:${clickCol}">${escHtml(clickStr)}</div></div>`;
       item.addEventListener("click", function () {
-        setComboSite(s);
+        if (typeof openAllSitesSelectedSite === "function") {
+          openAllSitesSelectedSite(s);
+        } else {
+          setComboSite(s);
+          const selectionState = getUiControlsSelectionState();
+          if (selectionState.curMode !== CONFIG.MODE.SITE && typeof switchMode === "function") {
+            switchMode(CONFIG.MODE.SITE);
+          }
+        }
         const wrap = document.getElementById("sadv-combo-wrap");
         if (wrap) {
           wrap.classList.remove("open");
@@ -10559,7 +11232,15 @@ function applyUiControlsTab(tab) {
       item.addEventListener('keydown', function(e) {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          setComboSite(s);
+          if (typeof openAllSitesSelectedSite === "function") {
+            openAllSitesSelectedSite(s);
+          } else {
+            setComboSite(s);
+            const selectionState = getUiControlsSelectionState();
+            if (selectionState.curMode !== CONFIG.MODE.SITE && typeof switchMode === "function") {
+              switchMode(CONFIG.MODE.SITE);
+            }
+          }
           const wrap = document.getElementById("sadv-combo-wrap");
           if (wrap) {
             wrap.classList.remove("open");
@@ -10656,10 +11337,15 @@ function applyUiControlsTab(tab) {
                   // Combo rows are styled as CSS grid in the shell theme.
                   // When search filtering shows them again, restore `grid` instead of `flex`
                   // to avoid subtle layout drift between normal and filtered states.
-                  const isVisible =
+                  const siteMatch =
                     !q ||
                     (((el.dataset.site || "") + " " + getSiteLabel(el.dataset.site || "")).toLowerCase().includes(q));
-                  el.style.setProperty("display", isVisible ? "grid" : "none", "important");
+                  const ownerMatch = ((el.dataset.ownerLabel || "") + "").toLowerCase().includes(q);
+                  el.style.setProperty(
+                    "display",
+                    siteMatch || ownerMatch ? "grid" : "none",
+                    "important"
+                  );
                 });
             };
           }
@@ -10891,18 +11577,27 @@ function applyUiControlsTab(tab) {
       sadvRefreshBtnEl.addEventListener("click", async function () {
         if (this.disabled || this.dataset.busy === "true") return;
         const btn = this;
-        const originalHTML = btn.innerHTML;
+        const baseLabel = btn.dataset.baseLabel || "새로고침";
+        const originalTitle = btn.title || baseLabel;
+        const originalAriaLabel = btn.getAttribute("aria-label") || baseLabel;
         btn.dataset.busy = "true";
         btn.disabled = true;
         btn.classList.add("spinning");
-        btn.innerHTML = ICONS.refresh + " 로딩 중...";
+        btn.title = "새로고침 중";
+        btn.setAttribute("aria-label", "새로고침 중");
         try {
           await runFullRefreshPipeline({ trigger: "manual", button: btn });
         } finally {
           btn.classList.remove("spinning");
           btn.disabled = false;
           btn.dataset.busy = "false";
-          btn.innerHTML = originalHTML;
+          btn.title = originalTitle;
+          btn.setAttribute("aria-label", originalAriaLabel);
+          if (typeof syncSnapshotActionButtons === "function") {
+            syncSnapshotActionButtons(
+              typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null
+            );
+          }
           __sadvNotify();
         }
       });
@@ -10913,12 +11608,12 @@ function applyUiControlsTab(tab) {
 
   var sadvSaveBtnEl = document.getElementById("sadv-save-btn");
   if (sadvSaveBtnEl) {
-    sadvSaveBtnEl.dataset.baseHtml = sadvSaveBtnEl.innerHTML;
     if (!runtimeCapabilities.canSave) {
       sadvSaveBtnEl.style.display = "none";
       sadvSaveBtnEl.setAttribute("aria-hidden", "true");
     } else {
       sadvSaveBtnEl.addEventListener("click", function () {
+        if (typeof closeHeaderSaveHubMenu === "function") closeHeaderSaveHubMenu();
         // Canonical save entry:
         // 저장 버튼도 directSave/background save와 같은 save execution contract를 타야 한다.
         // 여기서 downloadSnapshot()로 바로 내려가면 runtime bootstrap lease / refresh lease /
@@ -10942,7 +11637,6 @@ function applyUiControlsTab(tab) {
 
   var sadvXlsxBtnEl = document.getElementById("sadv-xlsx-btn");
   if (sadvXlsxBtnEl) {
-    sadvXlsxBtnEl.dataset.baseHtml = sadvXlsxBtnEl.innerHTML;
     // XLSX 상세 저장은 기존 CSV 수동 저장 자리를 완전히 대체한다.
     // 기본 public surface는 live interactive manual button이 정본이다.
     // 단, merge.py가 만든 read-only saved merged snapshot에서는
@@ -10950,6 +11644,7 @@ function applyUiControlsTab(tab) {
     // 일반 saved/read-only snapshot과 live merge UI는 계속 보수적으로 숨긴다.
     syncXlsxButtonVisibility();
     sadvXlsxBtnEl.addEventListener("click", function () {
+      if (typeof closeHeaderSaveHubMenu === "function") closeHeaderSaveHubMenu();
       if (sadvXlsxBtnEl.disabled) return;
       const saveStatus =
         typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null;
@@ -10968,6 +11663,40 @@ function applyUiControlsTab(tab) {
     });
   } else {
     console.warn("[UI Controls] #sadv-xlsx-btn not found during initialization");
+  }
+
+  var sadvSaveHubBtnEl = document.getElementById("sadv-save-hub-btn");
+  if (sadvSaveHubBtnEl) {
+    sadvSaveHubBtnEl.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      const refs = typeof getHeaderSaveHubElements === "function" ? getHeaderSaveHubElements() : null;
+      if (!refs || !refs.button) return;
+      const directAction = refs.button.dataset.directAction || "";
+      if (directAction === "save" && sadvSaveBtnEl) {
+        sadvSaveBtnEl.click();
+        return;
+      }
+      if (directAction === "xlsx" && sadvXlsxBtnEl) {
+        sadvXlsxBtnEl.click();
+        return;
+      }
+      if (!refs.menu) return;
+      const nextOpen = refs.wrap && refs.wrap.dataset.open === "true" ? "false" : "true";
+      refs.wrap.dataset.open = nextOpen;
+      refs.menu.hidden = nextOpen !== "true";
+      refs.button.setAttribute("aria-expanded", nextOpen === "true" ? "true" : "false");
+    });
+    document.addEventListener("click", function (e) {
+      const refs = typeof getHeaderSaveHubElements === "function" ? getHeaderSaveHubElements() : null;
+      if (!refs || !refs.wrap) return;
+      if (!refs.wrap.contains(e.target)) closeHeaderSaveHubMenu();
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && typeof closeHeaderSaveHubMenu === "function") {
+        closeHeaderSaveHubMenu();
+      }
+    });
   }
 
   var sadvCloseBtnEl = document.getElementById("sadv-x");
@@ -11290,6 +12019,18 @@ function setAllSitesSelectedSite(site) {
   return getAllSitesSelectionState();
 }
 
+function openAllSitesSelectedSite(site) {
+  const runtimeSites =
+    typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
+  if (!site || (Array.isArray(runtimeSites) && runtimeSites.length && !runtimeSites.includes(site))) return;
+  const selectionState = getAllSitesSelectionState();
+  const sameSite = selectionState.curSite === site;
+  if (selectionState.curMode === CONFIG.MODE.SITE && sameSite) return;
+  setAllSitesSelectedSite(site);
+  if (typeof setComboSite === "function") setComboSite(site);
+  if (typeof switchMode === "function") switchMode("site");
+}
+
 function buildAllSitesPeriodToolbar(periodDays) {
   const currentDays = normalizeAllSitesPeriodDays(periodDays);
   const bar = document.createElement("div");
@@ -11361,6 +12102,7 @@ function buildAllSitesDisplayWrap(baseRows) {
   }
 
   const wrap = document.createElement("div");
+  wrap.className = "sadv-allsites-wrap";
   const mergedMeta =
     typeof getRuntimeMergedMeta === "function" ? getRuntimeMergedMeta() : getMergedMetaState();
   if (isMergedReport() && mergedMeta && mergedMeta.accounts) {
@@ -11421,10 +12163,17 @@ function buildAllSitesDisplayWrap(baseRows) {
     card.style.borderTop = "2px solid " + col + "44";
     const shortName =
       typeof getSiteLabel === "function" ? getSiteLabel(r.site) : r.site.replace(/^https?:\/\//, "");
-    const displayAccount = r.accountLabel || r.sourceAccount;
+    const exportPayload =
+      typeof window !== "undefined" && window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+        ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+        : null;
+    const ownershipDisplay =
+      typeof resolveSiteOwnershipDisplay === "function"
+        ? resolveSiteOwnershipDisplay(r.site, r, exportPayload, r ? r.sourceAccount : null)
+        : { fullLabel: "", compactLabel: "" };
     const accountBadge =
-      displayAccount && (typeof displayAccount === "string" ? displayAccount.trim() : "")
-        ? `<span style="font-size:10px;color:${T.accentSoftText};background:${T.accentSoftBg};padding:3px 8px;border-radius:999px;margin-left:8px;white-space:nowrap;border:1px solid ${T.accentSoftBorder}" title="${escHtml(displayAccount)}">${escHtml(displayAccount.includes("@") ? displayAccount.split("@")[0] : displayAccount)}</span>`
+      typeof renderOwnerTagHTML === "function"
+        ? renderOwnerTagHTML(ownershipDisplay, "card")
         : "";
     const compact = window.innerWidth <= 768;
     const gridTemplate = compact
@@ -11560,10 +12309,10 @@ function buildAllSitesDisplayWrap(baseRows) {
     }
     const card = e.target.closest(".sadv-allcard");
     if (card && card.dataset.site) {
-      setAllSitesSelectedSite(card.dataset.site);
-      switchMode("site");
+      openAllSitesSelectedSite(card.dataset.site);
     }
   });
+  wrap.__sadvCardDelegateBound = true;
   wrap.addEventListener("mouseenter", function (e) {
     const card = e.target.closest(".sadv-allcard");
     if (card && card.dataset.col) {
@@ -11894,6 +12643,7 @@ async function collectExportData(onProgress, options) {
   }
   const dataBySite = {};
   const summaryRows = [];
+  const siteOwnershipBySite = {};
   const batchSize = FULL_REFRESH_BATCH_SIZE;
   const refreshMode = options && options.refreshMode === "refresh" ? "refresh" : "cache-first";
   const selectionState = getAllSitesSelectionState();
@@ -11960,19 +12710,35 @@ async function collectExportData(onProgress, options) {
           stats.errors.push({ site, error: "request rejected" });
         }
       }
-      dataBySite[site] = {
-        ...siteData,
-        __source: {
-          accountLabel: exportAccountLabel || "unknown",
-          accountEncId: exportEncId,
-          fetchedAt:
-            siteData && typeof siteData.__cacheSavedAt === "number"
-              ? siteData.__cacheSavedAt
-              : new Date().toISOString(),
-          exportedAt: savedAtIso(new Date()),
-        }
+      const sourceAccountInfo = {
+        accountLabel: exportAccountLabel || "unknown",
+        accountEncId: exportEncId,
+        fetchedAt:
+          siteData && typeof siteData.__cacheSavedAt === "number"
+            ? siteData.__cacheSavedAt
+            : new Date().toISOString(),
+        exportedAt: savedAtIso(new Date()),
       };
-      summaryRows.push(buildSiteSummaryRow(site, siteData));
+      const normalizedSiteData = {
+        ...siteData,
+        __source: sourceAccountInfo,
+      };
+      dataBySite[site] = normalizedSiteData;
+      const summaryRow = buildSiteSummaryRow(site, normalizedSiteData);
+      if (!summaryRow.accountLabel && sourceAccountInfo.accountLabel) {
+        summaryRow.accountLabel = sourceAccountInfo.accountLabel;
+      }
+      if (!summaryRow.sourceAccount) {
+        summaryRow.sourceAccount = sourceAccountInfo;
+      }
+      summaryRows.push(summaryRow);
+      if (!siteOwnershipBySite[site]) siteOwnershipBySite[site] = [];
+      if (
+        sourceAccountInfo.accountLabel &&
+        siteOwnershipBySite[site].indexOf(sourceAccountInfo.accountLabel) === -1
+      ) {
+        siteOwnershipBySite[site].push(sourceAccountInfo.accountLabel);
+      }
       done++;
       if (onProgress) onProgress(done, total, site, stats);
     });
@@ -12031,6 +12797,7 @@ async function collectExportData(onProgress, options) {
       typeof getRuntimeMergedMeta === "function"
         ? getRuntimeMergedMeta()
         : (typeof getMergedMetaState === "function" ? getMergedMetaState() : null),
+    siteOwnershipBySite: siteOwnershipBySite,
     summaryRows,
     stats
   };
@@ -12450,6 +13217,32 @@ function bindSnapshotManualXlsxButton(buttonEl) {
   buttonEl.dataset.snapshotXlsxBound = "true";
   if (typeof syncXlsxButtonVisibility === "function") {
     syncXlsxButtonVisibility();
+  }
+  if (typeof window !== "undefined" && typeof subscribeRuntimeSaveStatus === "function") {
+    if (typeof window.__SADV_SYNC_ACTION_BUTTONS_UNSUB__ === "function") {
+      try {
+        window.__SADV_SYNC_ACTION_BUTTONS_UNSUB__();
+      } catch (_) {}
+    }
+    window.__SADV_SYNC_ACTION_BUTTONS_UNSUB__ = subscribeRuntimeSaveStatus(function (status) {
+      if (typeof syncSnapshotActionButtons === "function") {
+        syncSnapshotActionButtons(status);
+      }
+    });
+  }
+  if (typeof syncSnapshotActionButtons === "function") {
+    syncSnapshotActionButtons(
+      typeof getRuntimeSaveStatus === "function" ? getRuntimeSaveStatus() : null
+    );
+  }
+  const saveHubBtnEl =
+    typeof document !== "undefined" ? document.getElementById("sadv-save-hub-btn") : null;
+  if (saveHubBtnEl && saveHubBtnEl.dataset.snapshotHubBound !== "true") {
+    saveHubBtnEl.dataset.snapshotHubBound = "true";
+    saveHubBtnEl.addEventListener("click", function () {
+      if ((saveHubBtnEl.dataset.directAction || "") !== "xlsx") return;
+      buttonEl.click();
+    });
   }
   buttonEl.addEventListener("click", function () {
     if (buttonEl.disabled) return;
@@ -14144,6 +14937,126 @@ async function runSnapshotSaveExecution(options) {
 
   function normalizeSnapshotPayloadForOfflineShell(sourcePayload) {
     const sourceState = extractSnapshotSourceState(sourcePayload);
+    function pushOwnership(ownershipMap, site, label) {
+      if (!site || !label) return;
+      if (!ownershipMap[site]) ownershipMap[site] = [];
+      if (ownershipMap[site].indexOf(label) === -1) ownershipMap[site].push(label);
+    }
+    function sourceAccountLabel(sourceAccount) {
+      if (!sourceAccount) return "";
+      if (typeof sourceAccount === "string") return sourceAccount;
+      if (typeof sourceAccount === "object") {
+        if (typeof sourceAccount.accountLabel === "string" && sourceAccount.accountLabel) {
+          return sourceAccount.accountLabel;
+        }
+        if (typeof sourceAccount.email === "string" && sourceAccount.email) {
+          return sourceAccount.email;
+        }
+      }
+      return "";
+    }
+    function sourceAccountValue(siteData) {
+      if (!siteData || typeof siteData !== "object") return null;
+      return (
+        (siteData.__source && typeof siteData.__source === "object" && siteData.__source) ||
+        (siteData.__meta && siteData.__meta.__source ? siteData.__meta.__source : null) ||
+        (siteData._merge && siteData._merge.__source ? siteData._merge.__source : null) ||
+        null
+      );
+    }
+    function buildOwnershipMap() {
+      const ownership = {};
+      const rawTopLevelOwnership =
+        sourcePayload && sourcePayload.siteOwnershipBySite && typeof sourcePayload.siteOwnershipBySite === "object"
+          ? sourcePayload.siteOwnershipBySite
+          : {};
+      Object.keys(rawTopLevelOwnership).forEach(function (site) {
+        const labels = Array.isArray(rawTopLevelOwnership[site])
+          ? rawTopLevelOwnership[site]
+          : [rawTopLevelOwnership[site]];
+        labels.forEach(function (label) {
+          if (typeof label === "string" && label) pushOwnership(ownership, site, label);
+        });
+      });
+      const rawMergedOwnership =
+        sourceState.mergedMeta &&
+        sourceState.mergedMeta.siteOwnershipBySite &&
+        typeof sourceState.mergedMeta.siteOwnershipBySite === "object"
+          ? sourceState.mergedMeta.siteOwnershipBySite
+          : {};
+      Object.keys(rawMergedOwnership).forEach(function (site) {
+        const labels = Array.isArray(rawMergedOwnership[site])
+          ? rawMergedOwnership[site]
+          : [rawMergedOwnership[site]];
+        labels.forEach(function (label) {
+          if (typeof label === "string" && label) pushOwnership(ownership, site, label);
+        });
+      });
+      const accounts =
+        sourcePayload && sourcePayload.accounts && typeof sourcePayload.accounts === "object"
+          ? sourcePayload.accounts
+          : {};
+      Object.keys(accounts).forEach(function (accountKey) {
+        const account = accounts[accountKey] || {};
+        const accountDisplay =
+          (typeof account.accountLabel === "string" && account.accountLabel) || accountKey || "";
+        const sites = Array.isArray(account.sites) ? account.sites : [];
+        sites.forEach(function (site) {
+          pushOwnership(ownership, site, accountDisplay);
+        });
+      });
+      const dataBySite =
+        sourceState && sourceState.dataBySite && typeof sourceState.dataBySite === "object"
+          ? sourceState.dataBySite
+          : {};
+      Object.keys(dataBySite).forEach(function (site) {
+        const label = sourceAccountLabel(sourceAccountValue(dataBySite[site]));
+        if (label) pushOwnership(ownership, site, label);
+      });
+      (sourceState.summaryRows || []).forEach(function (row) {
+        if (!row || typeof row !== "object") return;
+        const site = typeof row.site === "string" ? row.site : "";
+        if (!site) return;
+        if (typeof row.accountLabel === "string" && row.accountLabel) {
+          pushOwnership(ownership, site, row.accountLabel);
+          return;
+        }
+        const label = sourceAccountLabel(row.sourceAccount);
+        if (label) pushOwnership(ownership, site, label);
+      });
+      return ownership;
+    }
+    function getOwnershipLabel(site, ownershipMap) {
+      const owners = site && ownershipMap && Array.isArray(ownershipMap[site]) ? ownershipMap[site] : [];
+      const validOwners = owners.filter(function (label) {
+        return typeof label === "string" && label;
+      });
+      if (!validOwners.length) return "";
+      if (validOwners.length > 1) return validOwners[0] + " (+" + (validOwners.length - 1) + ")";
+      return validOwners[0];
+    }
+    const siteOwnershipBySite = buildOwnershipMap();
+    const normalizedSummaryRows = (sourceState.summaryRows || []).map(function (row) {
+      if (!row || typeof row !== "object") return row;
+      const nextRow = Object.assign({}, row);
+      const site = typeof nextRow.site === "string" ? nextRow.site : "";
+      const siteData =
+        site && sourceState.dataBySite && typeof sourceState.dataBySite[site] === "object"
+          ? sourceState.dataBySite[site]
+          : null;
+      const sourceAccount = nextRow.sourceAccount || sourceAccountValue(siteData);
+      if (!nextRow.sourceAccount && sourceAccount) {
+        nextRow.sourceAccount = sourceAccount;
+      }
+      if (!(typeof nextRow.accountLabel === "string" && nextRow.accountLabel)) {
+        nextRow.accountLabel =
+          sourceAccountLabel(sourceAccount) ||
+          getOwnershipLabel(site, siteOwnershipBySite) ||
+          sourceState.accountLabel ||
+          "";
+      }
+      return nextRow;
+    });
     const legacyBasePayload =
       sourcePayload &&
       typeof sourcePayload === "object" &&
@@ -14157,10 +15070,11 @@ async function runSnapshotSaveExecution(options) {
       generatorVersion: sourceState.generatorVersion,
       exportFormat: sourceState.exportFormat || "snapshot-v2",
       allSites: sourceState.allSites,
-      summaryRows: sourceState.summaryRows,
+      summaryRows: normalizedSummaryRows,
       dataBySite: sourceState.dataBySite,
       siteMeta: sourceState.siteMeta,
       mergedMeta: sourceState.mergedMeta,
+      siteOwnershipBySite: siteOwnershipBySite,
       allSitesPeriodDays: normalizeAllSitesPeriodDays(sourceState.allSitesPeriodDays),
       curMode: sourceState.curMode,
       curSite: sourceState.curSite,
@@ -14409,6 +15323,7 @@ const SNAPSHOT_ALL_SITES_HELPER_PACK = [
   getAllSitesCanonicalRows,
   setAllSitesCanonicalRows,
   setAllSitesSelectedSite,
+  openAllSitesSelectedSite,
 ];
 
 const SNAPSHOT_UI_CONTROLS_HELPER_PACK = [
@@ -14416,6 +15331,20 @@ const SNAPSHOT_UI_CONTROLS_HELPER_PACK = [
   applyUiControlsMode,
   applyUiControlsSite,
   applyUiControlsTab,
+];
+
+const SNAPSHOT_OWNERSHIP_DISPLAY_HELPER_PACK = [
+  getSourceAccountLabelDisplayText,
+  getSiteOwnershipLabelsFromPayload,
+  formatCompactOwnerDisplayLabel,
+  resolveSiteOwnershipDisplay,
+  renderOwnerTagHTML,
+];
+
+const SNAPSHOT_SITE_VIEW_HELPER_PACK = [
+  getSiteOwnershipLabelsForDisplay,
+  getSourceAccountLabelForDisplay,
+  formatSiteOwnershipLabelForDisplay,
 ];
 
 const SNAPSHOT_SAVED_MERGED_XLSX_COMPAT_HELPER_PACK = [
@@ -14499,6 +15428,20 @@ function buildSnapshotSerializedHelperSection() {
       serializeSnapshotHelperPack(SNAPSHOT_UI_CONTROLS_HELPER_PACK),
     ].join("\n"),
     [
+      "// Ownership display helper contract:",
+      "// 카드/콤보/상세가 같은 ownership 표시 규칙을 보도록 공통 helper를",
+      "// 저장본/병합본에도 함께 직렬화한다. 누락되면 render helper가 없어져",
+      "// badge 미표시 또는 is-not-defined 회귀가 발생한다.",
+      serializeSnapshotHelperPack(SNAPSHOT_OWNERSHIP_DISPLAY_HELPER_PACK),
+    ].join("\n"),
+    [
+      "// Site-view ownership helper contract:",
+      "// loadSiteView()가 소속 계정 라벨 계산 helper를 직접 호출하므로",
+      "// saved/merged reopen도 이 helper들을 같이 포함해야 site mode 전환 시",
+      "// runtime ReferenceError 없이 공통 상세 렌더를 재사용할 수 있다.",
+      serializeSnapshotHelperPack(SNAPSHOT_SITE_VIEW_HELPER_PACK),
+    ].join("\n"),
+    [
       "// Saved merged snapshot XLSX compat pack:",
       "// 일반 saved snapshot은 여전히 read-only지만, merge.py가 만든 merged saved snapshot은",
       "// 수동 엑셀 버튼만 예외적으로 다시 연다.",
@@ -14547,6 +15490,24 @@ function buildSnapshotSerializedHelperSection() {
     delete clone.dataset.sadvPrevPointerEvents;
     delete clone.dataset.sadvPrevBackground;
     delete clone.dataset.sadvPrevBorderLeftColor;
+    if (typeof normalizeHeaderActionShell === "function") {
+      // live와 saved/merge saved가 같은 header skeleton을 보도록,
+      // export 시점 clone도 현재 공통 header shell 정규화 경로를 먼저 탄다.
+      // 여기서 shell을 맞춰두지 않으면 buildSnapshotHtml 이후 산출물은
+      // 최신 helper를 포함해도 old top-right action cluster를 계속 끌고 갈 수 있다.
+      normalizeHeaderActionShell(clone, {
+        runtimeRef:
+          typeof window !== "undefined" &&
+          typeof window.__SEARCHADVISOR_RUNTIME_REF__ === "string"
+            ? window.__SEARCHADVISOR_RUNTIME_REF__
+            : "",
+        runtimeBuiltAt:
+          typeof window !== "undefined" &&
+          typeof window.__SEARCHADVISOR_RUNTIME_BUILD_AT__ === "string"
+            ? window.__SEARCHADVISOR_RUNTIME_BUILD_AT__
+            : "",
+      });
+    }
     const savedLabel = stampLabel(savedAt);
 
     // Handle V2 format for UI state
@@ -14579,6 +15540,7 @@ function buildSnapshotSerializedHelperSection() {
         : allSites.length + "\uac1c \uc0ac\uc774\ud2b8";
     const topRow = clone.querySelector("#sadv-header > div");
     const siteLabelEl = clone.querySelector("#sadv-site-label");
+    const cacheMetaHostEl = clone.querySelector("#sadv-cache-meta");
     const comboWrap = clone.querySelector("#sadv-combo-wrap");
     if (comboWrap) comboWrap.classList.remove("open");
     // 저장 직전 라이브 패널은 renderTab() 경로에서 본문 id를
@@ -14601,34 +15563,54 @@ function buildSnapshotSerializedHelperSection() {
     }
     const allowSavedMergedXlsx =
       !!(payload && payload.mergedMeta && payload.mergedMeta.isMerged);
+    const saveHubWrapEl = clone.querySelector("#sadv-save-hub");
+    const saveHubBtnEl = clone.querySelector("#sadv-save-hub-btn");
+    const saveHubMenuEl = clone.querySelector("#sadv-save-hub-menu");
+    const actionStatusChipEl = clone.querySelector("#sadv-action-status-chip");
+    if (actionStatusChipEl) {
+      actionStatusChipEl.hidden = true;
+      actionStatusChipEl.setAttribute("aria-hidden", "true");
+      actionStatusChipEl.textContent = "";
+      actionStatusChipEl.removeAttribute("data-tone");
+      actionStatusChipEl.removeAttribute("title");
+    }
     ["sadv-refresh-btn", "sadv-save-btn", "sadv-x"].forEach(function (id) {
       const el = clone.querySelector("#" + id);
       if (el) el.remove();
     });
     if (!allowSavedMergedXlsx) {
+      if (saveHubWrapEl) saveHubWrapEl.remove();
       const xlsxEl = clone.querySelector("#sadv-xlsx-btn");
       if (xlsxEl) xlsxEl.remove();
     } else {
       const xlsxEl = clone.querySelector("#sadv-xlsx-btn");
+      if (saveHubWrapEl) {
+        saveHubWrapEl.style.display = "";
+        saveHubWrapEl.removeAttribute("aria-hidden");
+      }
+      if (saveHubMenuEl) saveHubMenuEl.hidden = true;
       if (xlsxEl) {
-        xlsxEl.style.display = "inline-flex";
-        xlsxEl.removeAttribute("aria-hidden");
+        xlsxEl.style.display = "none";
+        xlsxEl.setAttribute("aria-hidden", "true");
+        xlsxEl.hidden = true;
         xlsxEl.disabled = false;
         xlsxEl.title = "병합 데이터 엑셀 저장";
+        xlsxEl.setAttribute("aria-label", "엑셀 저장");
+        xlsxEl.classList.remove("spinning");
       }
     }
-    if (topRow && topRow.lastElementChild) {
+    if (cacheMetaHostEl) {
       const meta = document.createElement("div");
       meta.style.cssText =
         "display:flex;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid " + T.accentSoftBorder + ";color:" + T.accentSoftText + ";background:" + T.warmDarkBg + ";font-size:10px;font-weight:800";
       meta.textContent = "Saved " + savedLabel;
-      if (allowSavedMergedXlsx) {
-        const actions = topRow.lastElementChild;
-        actions.className = "sadv-header-actions";
-        actions.appendChild(meta);
-      } else {
-        topRow.lastElementChild.replaceWith(meta);
-      }
+      cacheMetaHostEl.appendChild(meta);
+    } else if (topRow && topRow.lastElementChild) {
+      const meta = document.createElement("div");
+      meta.style.cssText =
+        "display:flex;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid " + T.accentSoftBorder + ";color:" + T.accentSoftText + ";background:" + T.warmDarkBg + ";font-size:10px;font-weight:800";
+      meta.textContent = "Saved " + savedLabel;
+      topRow.lastElementChild.appendChild(meta);
     }
     const exportPayloadJson = stringifyForInlineJson(payload);
     const html = `<!doctype html>
@@ -14860,7 +15842,7 @@ function buildSnapshotSerializedHelperSection() {
           (displayMeta && displayMeta.snapshotTitle) || "SearchAdvisor Merged Report",
         snapshotLines,
         accountBadge:
-          (displayMeta && displayMeta.accountBadgeLabel) || ("MERGED " + naverIds.length + " IDs"),
+          (displayMeta && displayMeta.accountBadgeLabel) || ("병합 " + naverIds.length + "개 계정"),
         accountTitle:
           (displayMeta && displayMeta.accountBadgeTitle) || naverIds.join(", "),
         runtimeBadgeLabel:
@@ -15060,6 +16042,22 @@ function buildSnapshotSerializedHelperSection() {
     // saved snapshot inline bootstrap도 같은 helper pack을 함께 직렬화해야 한다.
     // 누락되면 reopen 시 pageerror가 나고 shell/API selection parity까지 흔들릴 수 있다.
     ${syncXlsxButtonVisibility.toString()}
+    ${getHeaderActionRuntimeCapabilitiesSnapshot.toString()}
+    ${canCurrentRuntimeManualXlsxExport.toString()}
+    ${getSnapshotActionBaseLabel.toString()}
+    ${getSnapshotActionStatusKind.toString()}
+    ${formatSnapshotActionLabel.toString()}
+    ${setHeaderActionButtonLabel.toString()}
+    ${formatHeaderActionStatusChip.toString()}
+    ${syncHeaderActionStatusChip.toString()}
+    ${applyHeaderActionButtonPresentation.toString()}
+    ${getHeaderSaveHubElements.toString()}
+    ${closeHeaderSaveHubMenu.toString()}
+    ${setHeaderSaveHubButtonMeta.toString()}
+    ${syncHeaderSaveHub.toString()}
+    ${getHeaderActionDisplayMeta.toString()}
+    ${syncSnapshotActionButtonLabel.toString()}
+    ${syncSnapshotActionButtons.toString()}
     // merge.py 산출물은 read-only saved snapshot에서도 공통 xlsx save orchestration을
     // 그대로 재사용해야 하므로, 실행 옵션/버튼 바인딩 helper도 함께 직렬화한다.
     ${buildSnapshotManualXlsxExecutionOptions.toString()}
@@ -15414,23 +16412,46 @@ function buildSnapshotSerializedHelperSection() {
       bindSnapshotManualXlsxButton(document.getElementById("sadv-xlsx-btn"));
     }
     function bindSnapshotAllCardLinks() {
-      document.querySelectorAll(".sadv-allcard[data-site]").forEach(function (card) {
-        if (card.dataset.snapshotBound === "true") return;
-        card.dataset.snapshotBound = "true";
+      const cards = Array.from(document.querySelectorAll(".sadv-allcard[data-site]"));
+      cards.forEach(function (card) {
+        if (card.__sadvSnapshotKeyboardBound === true) return;
+        card.__sadvSnapshotKeyboardBound = true;
         card.setAttribute("tabindex", card.getAttribute("tabindex") || "0");
         card.setAttribute("role", card.getAttribute("role") || "button");
-        const openSite = function () {
-          const site = card.getAttribute("data-site") || "";
-          if (!site) return;
-          curSite = site;
-          if (typeof setComboSite === "function") setComboSite(site);
-          switchMode("site");
-        };
-        card.addEventListener("click", openSite);
         card.addEventListener("keydown", function (event) {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
-            openSite();
+            const site = card.getAttribute("data-site") || "";
+            if (!site) return;
+            if (typeof openAllSitesSelectedSite === "function") {
+              openAllSitesSelectedSite(site);
+            } else {
+              curSite = site;
+              if (typeof setComboSite === "function") setComboSite(site);
+              switchMode("site");
+            }
+          }
+        });
+      });
+      const wraps = [];
+      cards.forEach(function (card) {
+        const wrap = card.closest(".sadv-allsites-wrap") || card.parentElement;
+        if (wrap && wraps.indexOf(wrap) === -1) wraps.push(wrap);
+      });
+      wraps.forEach(function (wrap) {
+        if (!wrap || wrap.__sadvCardDelegateBound === true) return;
+        wrap.__sadvCardDelegateBound = true;
+        wrap.addEventListener("click", function (event) {
+          const card = event.target.closest(".sadv-allcard[data-site]");
+          if (!card) return;
+          const site = card.getAttribute("data-site") || "";
+          if (!site) return;
+          if (typeof openAllSitesSelectedSite === "function") {
+            openAllSitesSelectedSite(site);
+          } else {
+            curSite = site;
+            if (typeof setComboSite === "function") setComboSite(site);
+            switchMode("site");
           }
         });
       });
@@ -15489,16 +16510,24 @@ function buildSnapshotSerializedHelperSection() {
         switchMode(mode);
       },
       setSite: function (site) {
-        setComboSite(site);
-        if (curMode !== "site") switchMode("site");
+        if (typeof openAllSitesSelectedSite === "function") {
+          openAllSitesSelectedSite(site);
+        } else {
+          setComboSite(site);
+          if (curMode !== "site") switchMode("site");
+        }
       },
       switchSite: function (site) {
         // Phase 2 convergence:
         // public facade canonical action은 "site 선택 + site mode 진입"으로 정의한다.
         // 기존 setSite를 그대로 유지해 saved HTML compatibility는 보존하고,
         // switchSite를 추가해 live/saved가 같은 intent 이름을 공유하게 만든다.
-        setComboSite(site);
-        if (curMode !== "site") switchMode("site");
+        if (typeof openAllSitesSelectedSite === "function") {
+          openAllSitesSelectedSite(site);
+        } else {
+          setComboSite(site);
+          if (curMode !== "site") switchMode("site");
+        }
       },
       setTab: function (tab) {
         setTab(tab);
@@ -15807,13 +16836,13 @@ function buildSnapshotSerializedHelperSection() {
   // compat bridge의 site action fallback은 setSite/switchSite가 같은 body를 공유한다.
   // 이 단계에서는 alias 관계를 바꾸지 않고 문자열 조립 책임만 분리해,
   // dormant bridge의 중복을 줄이면서 external caller 호환성을 유지한다.
-  function buildSnapshotApiCompatSiteActionLines(actionName) {
-    return [
+function buildSnapshotApiCompatSiteActionLines(actionName) {
+  return [
       '    ' +
         actionName +
-        ': function (site) { if (typeof setComboSite === "function") setComboSite(site); else { const items = Array.from(document.querySelectorAll(".sadv-combo-item")); const button = items.find(function (item) { return (item.getAttribute("data-site") || "") === site; }); if (button) button.click(); } if (typeof switchMode === "function") switchMode("site"); scheduleSync(); },',
+        ': function (site) { if (typeof openAllSitesSelectedSite === "function") openAllSitesSelectedSite(site); else if (typeof setComboSite === "function") { setComboSite(site); if (typeof switchMode === "function") switchMode("site"); } else { const items = Array.from(document.querySelectorAll(".sadv-combo-item")); const button = items.find(function (item) { return (item.getAttribute("data-site") || "") === site; }); if (button) button.click(); } scheduleSync(); },',
     ];
-  }
+}
 
   function buildSnapshotApiCompatTabActionLines() {
     return [
@@ -16080,6 +17109,39 @@ function buildSnapshotSerializedHelperSection() {
     };
   }
 
+  function getSiteOwnershipLabelsForDisplay(site) {
+    if (typeof getSiteOwnershipLabelsFromPayload === "function") {
+      return getSiteOwnershipLabelsFromPayload(site);
+    }
+    return [];
+  }
+
+  function getSourceAccountLabelForDisplay(sourceAccount) {
+    if (typeof getSourceAccountLabelDisplayText === "function") {
+      return getSourceAccountLabelDisplayText(sourceAccount);
+    }
+    return "";
+  }
+
+function formatSiteOwnershipLabelForDisplay(site, sourceAccount) {
+  if (typeof resolveSiteOwnershipDisplay === "function") {
+    const exportPayload =
+      typeof window !== "undefined" && window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+        ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+        : null;
+    const resolved = resolveSiteOwnershipDisplay(
+      site,
+      { sourceAccount: sourceAccount, accountLabel: getSourceAccountLabelForDisplay(sourceAccount) },
+      exportPayload,
+      sourceAccount
+    );
+      return resolved && typeof resolved.fullLabel === "string"
+        ? resolved.fullLabel
+        : getSourceAccountLabelForDisplay(sourceAccount);
+    }
+    return getSourceAccountLabelForDisplay(sourceAccount);
+  }
+
   async function loadSiteView(site) {
     // 사이트별 상세는 live/snapshot이 최대한 같은 renderer 경로를 타야 하는 핵심 영역이다.
     // 목표는 snapshot 전용 site UI가 아니라, 같은 site UI를 다른 provider에서 그리는 것이다.
@@ -16117,16 +17179,18 @@ function buildSnapshotSerializedHelperSection() {
     const requestPromise = (async function () {
 
     // Get account label from siteOwnership for display
-    let accountLabel = null;
-    if (window.__sadvInitData && window.__sadvInitData.siteOwnership) {
-      const owners = window.__sadvInitData.siteOwnership[site];
-      if (owners && owners.length > 0) {
-        accountLabel = owners[0];
-        if (owners.length > 1) {
-          accountLabel = `${owners[0]} (+${owners.length - 1})`;
-        }
-      }
-    }
+    const payloadSiteData =
+      (typeof window !== "undefined" &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__ &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.dataBySite)
+        ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__.dataBySite[site]
+        : null;
+    const payloadSourceAccount =
+      (payloadSiteData && payloadSiteData.__source) ||
+      (payloadSiteData && payloadSiteData.__meta && payloadSiteData.__meta.__source) ||
+      (payloadSiteData && payloadSiteData._merge && payloadSiteData._merge.__source) ||
+      null;
+    const accountLabel = formatSiteOwnershipLabelForDisplay(site, payloadSourceAccount);
 
     // Keep header meta concise in site mode; current site is already visible in the combo box.
     labelEl.innerHTML = sanitizeHTML(`<span></span>`);
@@ -16261,25 +17325,7 @@ function buildSnapshotSerializedHelperSection() {
       (initSiteData && initSiteData.__meta && initSiteData.__meta.__source) ||
       null;
 
-    // Get account ownership from siteOwnership (V2 multi-account)
-    let accountLabel = null;
-    if (typeof window !== "undefined" && window.__sadvInitData && window.__sadvInitData.siteOwnership) {
-      const owners = window.__sadvInitData.siteOwnership[site];
-      if (owners && owners.length > 0) {
-        // Use first owner email as account label
-        accountLabel = owners[0];
-        // If multiple accounts, show count
-        if (owners.length > 1) {
-          accountLabel = `${owners[0]} (+${owners.length - 1})`;
-        }
-      }
-    }
-    // Fallback to sourceAccount if available
-    if (!accountLabel && sourceAccount) {
-      accountLabel = typeof sourceAccount === "object" && sourceAccount.accountLabel
-        ? sourceAccount.accountLabel
-        : sourceAccount;
-    }
+    const accountLabel = formatSiteOwnershipLabelForDisplay(site, sourceAccount);
 
     return {
       site,
@@ -17109,6 +18155,10 @@ function buildSnapshotXlsxAccountFallbackContext(payload) {
   const primaryAccount = getSnapshotXlsxPrimaryAccountInfo(payload);
   const accounts =
     payload && payload.accounts && typeof payload.accounts === "object" ? payload.accounts : {};
+  const siteOwnershipBySite =
+    payload && payload.siteOwnershipBySite && typeof payload.siteOwnershipBySite === "object"
+      ? payload.siteOwnershipBySite
+      : {};
   const bySite = {};
   Object.keys(accounts).forEach(function (accountKey) {
     const account = accounts[accountKey];
@@ -17136,6 +18186,28 @@ function buildSnapshotXlsxAccountFallbackContext(payload) {
         sourceAccount: sourceAccount,
       };
     });
+  });
+  Object.keys(siteOwnershipBySite).forEach(function (site) {
+    if (!site) return;
+    const owners = Array.isArray(siteOwnershipBySite[site])
+      ? siteOwnershipBySite[site].filter(Boolean)
+      : [];
+    if (!owners.length) return;
+    const ownerLabel =
+      owners.length > 1 ? owners[0] + " (+" + (owners.length - 1) + ")" : owners[0];
+    if (!bySite[site]) {
+      bySite[site] = {
+        accountLabel: ownerLabel,
+        sourceAccount: ownerLabel,
+      };
+      return;
+    }
+    if (!bySite[site].accountLabel) {
+      bySite[site].accountLabel = ownerLabel;
+    }
+    if (!bySite[site].sourceAccount) {
+      bySite[site].sourceAccount = ownerLabel;
+    }
   });
   return {
     primaryAccount: primaryAccount,

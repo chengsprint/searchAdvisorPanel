@@ -49,6 +49,39 @@
     };
   }
 
+  function getSiteOwnershipLabelsForDisplay(site) {
+    if (typeof getSiteOwnershipLabelsFromPayload === "function") {
+      return getSiteOwnershipLabelsFromPayload(site);
+    }
+    return [];
+  }
+
+  function getSourceAccountLabelForDisplay(sourceAccount) {
+    if (typeof getSourceAccountLabelDisplayText === "function") {
+      return getSourceAccountLabelDisplayText(sourceAccount);
+    }
+    return "";
+  }
+
+function formatSiteOwnershipLabelForDisplay(site, sourceAccount) {
+  if (typeof resolveSiteOwnershipDisplay === "function") {
+    const exportPayload =
+      typeof window !== "undefined" && window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+        ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__
+        : null;
+    const resolved = resolveSiteOwnershipDisplay(
+      site,
+      { sourceAccount: sourceAccount, accountLabel: getSourceAccountLabelForDisplay(sourceAccount) },
+      exportPayload,
+      sourceAccount
+    );
+      return resolved && typeof resolved.fullLabel === "string"
+        ? resolved.fullLabel
+        : getSourceAccountLabelForDisplay(sourceAccount);
+    }
+    return getSourceAccountLabelForDisplay(sourceAccount);
+  }
+
   async function loadSiteView(site) {
     // 사이트별 상세는 live/snapshot이 최대한 같은 renderer 경로를 타야 하는 핵심 영역이다.
     // 목표는 snapshot 전용 site UI가 아니라, 같은 site UI를 다른 provider에서 그리는 것이다.
@@ -86,16 +119,18 @@
     const requestPromise = (async function () {
 
     // Get account label from siteOwnership for display
-    let accountLabel = null;
-    if (window.__sadvInitData && window.__sadvInitData.siteOwnership) {
-      const owners = window.__sadvInitData.siteOwnership[site];
-      if (owners && owners.length > 0) {
-        accountLabel = owners[0];
-        if (owners.length > 1) {
-          accountLabel = `${owners[0]} (+${owners.length - 1})`;
-        }
-      }
-    }
+    const payloadSiteData =
+      (typeof window !== "undefined" &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__ &&
+      window.__SEARCHADVISOR_EXPORT_PAYLOAD__.dataBySite)
+        ? window.__SEARCHADVISOR_EXPORT_PAYLOAD__.dataBySite[site]
+        : null;
+    const payloadSourceAccount =
+      (payloadSiteData && payloadSiteData.__source) ||
+      (payloadSiteData && payloadSiteData.__meta && payloadSiteData.__meta.__source) ||
+      (payloadSiteData && payloadSiteData._merge && payloadSiteData._merge.__source) ||
+      null;
+    const accountLabel = formatSiteOwnershipLabelForDisplay(site, payloadSourceAccount);
 
     // Keep header meta concise in site mode; current site is already visible in the combo box.
     labelEl.innerHTML = sanitizeHTML(`<span></span>`);
@@ -230,25 +265,7 @@
       (initSiteData && initSiteData.__meta && initSiteData.__meta.__source) ||
       null;
 
-    // Get account ownership from siteOwnership (V2 multi-account)
-    let accountLabel = null;
-    if (typeof window !== "undefined" && window.__sadvInitData && window.__sadvInitData.siteOwnership) {
-      const owners = window.__sadvInitData.siteOwnership[site];
-      if (owners && owners.length > 0) {
-        // Use first owner email as account label
-        accountLabel = owners[0];
-        // If multiple accounts, show count
-        if (owners.length > 1) {
-          accountLabel = `${owners[0]} (+${owners.length - 1})`;
-        }
-      }
-    }
-    // Fallback to sourceAccount if available
-    if (!accountLabel && sourceAccount) {
-      accountLabel = typeof sourceAccount === "object" && sourceAccount.accountLabel
-        ? sourceAccount.accountLabel
-        : sourceAccount;
-    }
+    const accountLabel = formatSiteOwnershipLabelForDisplay(site, sourceAccount);
 
     return {
       site,

@@ -71,14 +71,16 @@ screenshots/
 __pycache__/
 *.pyc
 
-# Public repo minimization: keep docs/tests local-only unless intentionally reintroduced
-docs/
+# Tests stay local-only in the public repo
 tests/
 
 # Public repo minimization: keep only top-level README/CHANGELOG markdown
 *.md
 !README.md
 !CHANGELOG.md
+!docs/
+!docs/**
+!**/README.md
 
 # Internal capture / screenshot helper scripts should stay local-only
 capture-*
