@@ -104,7 +104,9 @@ function setAllSitesSelectedSite(site) {
 }
 
 function openAllSitesSelectedSite(site) {
-  if (!site) return;
+  const runtimeSites =
+    typeof getRuntimeAllSites === "function" ? getRuntimeAllSites() : allSites;
+  if (!site || (Array.isArray(runtimeSites) && runtimeSites.length && !runtimeSites.includes(site))) return;
   setAllSitesSelectedSite(site);
   if (typeof setComboSite === "function") setComboSite(site);
   if (typeof switchMode === "function") switchMode("site");
