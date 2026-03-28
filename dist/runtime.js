@@ -19,8 +19,8 @@
 
 (function() {
 'use strict';
-var __SADV_BUILD_STAMP__="2026-03-25T14:01:24Z";
-var __SADV_GIT_HEAD__="47011a6";
+var __SADV_BUILD_STAMP__="2026-03-28T19:00:54Z";
+var __SADV_GIT_HEAD__="fd1c6cd";
 var __SADV_SCRIPT_REF__=(function(){try{var current=document.currentScript;var src=current&&current.src?current.src:"";if(!src){var scripts=Array.prototype.slice.call(document.scripts||[]);var matched=scripts.filter(function(node){return node&&typeof node.src==="string"&&/searchAdvisorPanel@[^/]+\/dist\/runtime\.js/i.test(node.src);});src=matched.length?matched[matched.length-1].src:"";}var match=src.match(/searchAdvisorPanel@([^/]+)\/dist\/runtime\.js/i);return match?decodeURIComponent(match[1]):"";}catch(_){return "";}})();
 if(typeof window!=="undefined"){window.__SEARCHADVISOR_RUNTIME_REF__=__SADV_SCRIPT_REF__||"";window.__SEARCHADVISOR_RUNTIME_BUILD_AT__=__SADV_BUILD_STAMP__;window.__SEARCHADVISOR_RUNTIME_GIT_HEAD__=__SADV_GIT_HEAD__;window.__SEARCHADVISOR_RUNTIME_VERSION__=(__SADV_SCRIPT_REF__||__SADV_GIT_HEAD__||"local")+" · "+__SADV_BUILD_STAMP__;}
 
@@ -1077,7 +1077,7 @@ const SITE_COLORS_MAP = {};
 const SITE_LS_KEY = "sadv_sites_v1";
 const DATA_LS_PREFIX = "sadv_data_v2_";
 const UI_STATE_LS_KEY = "sadv_ui_state_v1";
-const DATA_TTL = 12 * 60 * 60 * 1000;
+const DATA_TTL = 24 * 60 * 60 * 1000;
 
 function getDataTtlMs() {
   try {

@@ -352,7 +352,7 @@ const SITE_COLORS_MAP = {};
 const SITE_LS_KEY = "sadv_sites_v1";
 const DATA_LS_PREFIX = "sadv_data_v2_";
 const UI_STATE_LS_KEY = "sadv_ui_state_v1";
-const DATA_TTL = 12 * 60 * 60 * 1000;
+const DATA_TTL = 24 * 60 * 60 * 1000;
 
 function getDataTtlMs() {
   try {
